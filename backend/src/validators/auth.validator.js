@@ -1,0 +1,76 @@
+import { z } from 'zod';
+
+export const signupSchema = {
+  body: z.object({
+    fullName: z
+      .string({ required_error: 'Full name is required' })
+      .trim()
+      .min(2, { message: 'Full name must be at least 2 characters' })
+      .max(100, { message: 'Full name cannot exceed 100 characters' }),
+    email: z
+      .string({ required_error: 'Email address is required' })
+      .trim()
+      .email({ message: 'Invalid email address format' })
+      .toLowerCase(),
+    phone: z
+      .string({ required_error: 'Phone number is required' })
+      .trim()
+      .min(10, { message: 'Phone number must be at least 10 digits' }),
+    password: z
+      .string({ required_error: 'Password is required' })
+      .min(6, { message: 'Password must be at least 6 characters' }),
+    role: z
+      .enum(['customer', 'dealer'], {
+        invalid_type_error: 'Role must be either customer or dealer',
+      })
+      .default('customer'),
+  }),
+};
+
+export const sendOtpSchema = {
+  body: z.object({
+    identifier: z
+      .string({ required_error: 'Identifier (email or phone) is required' })
+      .trim()
+      .min(3, { message: 'Identifier must be at least 3 characters' }),
+    purpose: z
+      .enum(['signup', 'login', 'phone-change'], {
+        invalid_type_error: 'Purpose must be one of: signup, login, phone-change',
+      })
+      .default('login'),
+  }),
+};
+
+export const verifyOtpSchema = {
+  body: z.object({
+    identifier: z
+      .string({ required_error: 'Identifier (email or phone) is required' })
+      .trim()
+      .min(3, { message: 'Identifier must be at least 3 characters' }),
+    otp: z
+      .string({ required_error: 'OTP is required' })
+      .trim()
+      .regex(/^\d{6}$/, { message: 'OTP must be exactly 6 numeric digits' }),
+    purpose: z
+      .enum(['signup', 'login', 'phone-change'], {
+        invalid_type_error: 'Purpose must be one of: signup, login, phone-change',
+      })
+      .default('login'),
+  }),
+};
+
+export const forceLoginSchema = {
+  body: z.object({
+    conflictTicket: z
+      .string({ required_error: 'Conflict ticket is required for force-login' })
+      .trim(),
+  }),
+};
+
+export const refreshTokenSchema = {
+  body: z.object({
+    refreshToken: z
+      .string({ required_error: 'Refresh token is required' })
+      .trim(),
+  }),
+};
