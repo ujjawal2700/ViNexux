@@ -71,6 +71,16 @@ const productSchema = new mongoose.Schema(
     },
     images: [productImageSchema],
     specifications: [productSpecificationSchema],
+    standardPrice: {
+      type: Number,
+      default: 0,
+      min: [0, 'Standard price cannot be negative'],
+    },
+    dealerPrice: {
+      type: Number,
+      default: 0,
+      min: [0, 'Dealer price cannot be negative'],
+    },
     isFeatured: {
       type: Boolean,
       default: false,

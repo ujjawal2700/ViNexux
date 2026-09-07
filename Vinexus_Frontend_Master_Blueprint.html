@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vinexus Frontend Master Blueprint & Development Specification</title>
+  <style>
+    :root {
+      --primary: #0F172A;
+      --secondary: #1E293B;
+      --accent: #EA580C;
+      --accent-hover: #C2410C;
+      --text: #334155;
+      --text-muted: #64748B;
+      --bg: #F8FAFC;
+      --border: #E2E8F0;
+      --success: #10B981;
+      --warning: #F59E0B;
+      --danger: #EF4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background-color: var(--bg);
+      line-height: 1.6;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+    }
+
+    .action-bar {
+      background: var(--secondary);
+      color: #ffffff;
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--accent);
+    }
+
+    .action-bar h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .print-btn {
+      background: var(--accent);
+      color: #ffffff;
+      border: none;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.2s;
+    }
+
+    .print-btn:hover {
+      background: var(--accent-hover);
+    }
+
+    .cover-header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: #ffffff;
+      padding: 60px 40px;
+      text-align: left;
+    }
+
+    .cover-header .subtitle {
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 10px;
+    }
+
+    .cover-header h1 {
+      font-size: 32px;
+      font-weight: 800;
+      margin-bottom: 15px;
+      line-height: 1.2;
+    }
+
+    .cover-header p {
+      color: #94A3B8;
+      font-size: 16px;
+      max-width: 700px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 30px;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .meta-item label {
+      display: block;
+      font-size: 11px;
+      color: #94A3B8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .meta-item span {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .content {
+      padding: 40px;
+    }
+
+    section {
+      margin-bottom: 40px;
+    }
+
+    h2 {
+      font-size: 22px;
+      color: var(--primary);
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 8px;
+      margin-bottom: 20px;
+    }
+
+    h3 {
+      font-size: 16px;
+      color: var(--secondary);
+      margin: 20px 0 10px 0;
+    }
+
+    p, li {
+      font-size: 14.5px;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+
+    ul, ol {
+      padding-left: 20px;
+      margin-bottom: 15px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    .styled-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 13.5px;
+    }
+
+    .styled-table header, .styled-table th {
+      background-color: var(--secondary);
+      color: #ffffff;
+      text-align: left;
+      padding: 12px 15px;
+      font-weight: 600;
+    }
+
+    .styled-table td {
+      padding: 10px 15px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .styled-table tbody tr:nth-of-type(even) {
+      background-color: #F8FAFC;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .badge-success { background: #D1FAE5; color: #065F46; }
+    .badge-warning { background: #FEF3C7; color: #92400E; }
+
+    .alert-box {
+      background: #EFF6FF;
+      border-left: 4px solid #3B82F6;
+      padding: 15px 20px;
+      border-radius: 0 6px 6px 0;
+      margin: 20px 0;
+    }
+
+    .alert-box p {
+      color: #1E40AF;
+      margin: 0;
+      font-weight: 500;
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+        padding: 0;
+      }
+      .container {
+        box-shadow: none;
+        border: none;
+        max-width: 100%;
+      }
+      .action-bar {
+        display: none !important;
+      }
+      .cover-header {
+        padding: 40px 20px;
+      }
+      .content {
+        padding: 20px;
+      }
+      h2 {
+        page-break-after: avoid;
+      }
+      .styled-table {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Top Interactive Toolbar -->
+    <div class="action-bar">
+      <h3>Vinexus Master Blueprint Document</h3>
+      <button class="print-btn" onclick="window.print()">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2m-4 0h-8v4h8v-4z"></path>
+        </svg>
+        Save as PDF / Print Document
+      </button>
+    </div>
+
+    <!-- Cover Header -->
+    <div class="cover-header">
+      <div class="subtitle">Official Product & Frontend Specification</div>
+      <h1>Vinexus Frontend Master Blueprint</h1>
+      <p>Audited Step-by-Step Implementation Guide for MERN Stack Frontend Development based on Growme PRD v1.0 & Node.js Backend APIs</p>
+      
+      <div class="meta-grid">
+        <div class="meta-item">
+          <label>Project Name</label>
+          <span>Vinexus Lead Platform</span>
+        </div>
+        <div class="meta-item">
+          <label>Client & Industry</label>
+          <span>CCTV & Security Dealer</span>
+        </div>
+        <div class="meta-item">
+          <label>PRD Version</label>
+          <span>Growme PRD v1.0 (24 Pages)</span>
+        </div>
+        <div class="meta-item">
+          <label>Backend Status</label>
+          <span>77 APIs Audited & Verified</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Body -->
+    <div class="content">
+
+      <!-- Section 1 -->
+      <section>
+        <h2>1. Project Overview & Business Domain</h2>
+        <p>Vinexus is an online <strong>Lead Generation & Product Catalog Platform</strong> for a leading CCTV and Security Equipment Dealer in India.</p>
+        
+        <h3>Core Product Catalog:</h3>
+        <ul>
+          <li><strong>CCTV Cameras</strong> (e.g. TrueView, CP Plus, Hikvision)</li>
+          <li><strong>DVRs / NVRs</strong> & Storage Units</li>
+          <li><strong>Modems & Industrial Routers</strong></li>
+          <li><strong>LAN Wires</strong> & Networking Cables</li>
+          <li><strong>Security Accessories</strong> & Hardware Supplies</li>
+        </ul>
+
+        <div class="alert-box">
+          <p><strong>Key Rule</strong>: Vinexus is NOT a transactional e-commerce store. There are NO online payments or checkout steps. From the cart, users either click <em>"Chat on WhatsApp"</em> or <em>"Send Enquiry"</em>.</p>
+        </div>
+      </section>
+
+      <!-- Section 2 -->
+      <section>
+        <h2>2. Audited API Endpoint Mappings</h2>
+        <table class="styled-table">
+          <thead>
+            <tr>
+              <th>Feature / Resource</th>
+              <th>Public Endpoint</th>
+              <th>Admin Endpoint</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Hero Banners</strong></td>
+              <td><code>GET /api/content/banners</code></td>
+              <td><code>GET/POST/PUT/DELETE /api/admin/cms/banners</code></td>
+            </tr>
+            <tr>
+              <td><strong>Promo Banners</strong></td>
+              <td><code>GET /api/content/promotional-banners</code></td>
+              <td><code>GET/POST/PUT/DELETE /api/admin/cms/promotional-banners</code></td>
+            </tr>
+            <tr>
+              <td><strong>Static CMS Pages</strong></td>
+              <td><code>GET /api/content/pages/:slug</code></td>
+              <td><code>GET/POST/PUT/DELETE /api/admin/cms/pages</code></td>
+            </tr>
+            <tr>
+              <td><strong>Trust Badges</strong></td>
+              <td><code>GET /api/content/trust-badges</code></td>
+              <td><code>GET/POST/PUT/DELETE /api/admin/cms/trust-badges</code></td>
+            </tr>
+            <tr>
+              <td><strong>Footer Content</strong></td>
+              <td><code>GET /api/content/footer-content</code></td>
+              <td><code>GET/PUT /api/admin/cms/footer-content</code></td>
+            </tr>
+            <tr>
+              <td><strong>Product Images</strong></td>
+              <td>Standard Image URL rendering</td>
+              <td><code>POST /api/admin/products/:id/images</code></td>
+            </tr>
+            <tr>
+              <td><strong>Active Sessions</strong></td>
+              <td>N/A</td>
+              <td><code>PUT /api/admin/sessions/:id/revoke</code></td>
+            </tr>
+            <tr>
+              <td><strong>Revoke Dealer Status</strong></td>
+              <td>N/A</td>
+              <td><code>PUT /api/admin/dealers/:id/revoke</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Section 3 -->
+      <section>
+        <h2>3. Form Validation & File Upload Rules</h2>
+        <ul>
+          <li><strong>Login Identifier</strong>: Valid Email or 10-digit Indian Mobile (<code>^[6-9]\d{9}$</code>).</li>
+          <li><strong>OTP Code</strong>: Exactly 6 numeric digits (<code>^\d{6}$</code>).</li>
+          <li><strong>GSTIN</strong>: 15-character uppercase string (<code>^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$</code>).</li>
+          <li><strong>PAN</strong>: 10-character uppercase string (<code>^[A-Z]{5}[0-9]{4}[A-Z]{1}$</code>).</li>
+          <li><strong>Aadhar</strong>: 12-digit numeric string (<code>^\d{12}$</code>).</li>
+          <li><strong>File Uploads</strong>: Max 5 MB per file. Accepted types: <code>.jpg</code>, <code>.png</code>, <code>.webp</code>, <code>.pdf</code>.</li>
+        </ul>
+      </section>
+
+      <!-- Section 4 -->
+      <section>
+        <h2>4. Recommended Implementation Order</h2>
+        <ol>
+          <li><strong>PHASE 11</strong>: Project Setup (React + Vite, TailwindCSS, Axios Interceptors, Router Setup, Auth Context)</li>
+          <li><strong>PHASE 12</strong>: Shared UI Primitives (Button, Modal, Input, Table, Drawer, Toast, Skeleton, StatusBadge)</li>
+          <li><strong>PHASE 13</strong>: Public & Customer Panel (Homepage, Catalog, Product Detail, Cart Drawer, Enquiry Checkout)</li>
+          <li><strong>PHASE 14</strong>: Dealer Panel (Dealer Dashboard, KYC Upload Form for GST/Aadhar/PAN, Wholesale Catalog)</li>
+          <li><strong>PHASE 15</strong>: Admin Panel Core (Dashboard, Category Tree, Product Management, Dealer KYC Audit Queue)</li>
+          <li><strong>PHASE 16</strong>: Admin Panel Advanced (Enquiry Lead Manager, Sessions Audit, Reports, Website CMS Builder)</li>
+          <li><strong>PHASE 17</strong>: Integration Verification (Responsive Mobile Polish, End-to-End API Checks & Production Build)</li>
+        </ol>
+      </section>
+
+    </div>
+  </div>
+
+</body>
+</html>

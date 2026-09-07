@@ -10,6 +10,7 @@ const categorySchema = new mongoose.Schema(
     },
     // Category slugs are intentionally globally unique so categories/subcategories can be resolved directly by slug without requiring parentId
     slug: {
+      
       type: String,
       required: [true, 'Category slug is required'],
       trim: true,

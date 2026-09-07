@@ -1,6 +1,21 @@
 import { Router } from 'express';
 import healthRoutes from './health.routes.js';
 import authRoutes from './auth.routes.js';
+import categoryRoutes from './category.routes.js';
+import productRoutes from './product.routes.js';
+import dealerRoutes from './dealer.routes.js';
+import adminRoutes from './admin.routes.js';
+import adminCategoryRoutes from './adminCategory.routes.js';
+import adminProductRoutes from './adminProduct.routes.js';
+import adminDealerRoutes from './adminDealer.routes.js';
+import cartRoutes from './cart.routes.js';
+import enquiryRoutes from './enquiry.routes.js';
+import adminEnquiryRoutes from './adminEnquiry.routes.js';
+import adminCustomerRoutes from './adminCustomer.routes.js';
+import adminSessionRoutes from './adminSession.routes.js';
+import adminReportRoutes from './adminReport.routes.js';
+import adminCmsRoutes from './adminCms.routes.js';
+import publicCmsRoutes from './publicCms.routes.js';
 
 const router = Router();
 
@@ -10,13 +25,30 @@ router.use('/', healthRoutes);
 // Mount authentication module
 router.use('/auth', authRoutes);
 
-// Modular mount points ready for future Vinexus modules:
-// router.use('/products', productRoutes);
-// router.use('/categories', categoryRoutes);
-// router.use('/cart', cartRoutes);
-// router.use('/enquiries', enquiryRoutes);
-// router.use('/dealers', dealerRoutes);
-// router.use('/admin', adminRoutes);
-// router.use('/cms', cmsRoutes);
+// Mount catalog modules
+router.use('/categories', categoryRoutes);
+router.use('/products', productRoutes);
+
+// Mount public CMS content module
+router.use('/content', publicCmsRoutes);
+
+// Mount admin core & catalog/dealer management modules
+router.use('/admin', adminRoutes);
+router.use('/admin/categories', adminCategoryRoutes);
+router.use('/admin/products', adminProductRoutes);
+router.use('/admin/dealers', adminDealerRoutes);
+router.use('/admin/enquiries', adminEnquiryRoutes);
+router.use('/admin/customers', adminCustomerRoutes);
+router.use('/admin/sessions', adminSessionRoutes);
+router.use('/admin/reports', adminReportRoutes);
+router.use('/admin/cms', adminCmsRoutes);
+
+// Mount dealer module
+router.use('/dealers', dealerRoutes);
+
+// Mount cart and enquiry modules
+router.use('/cart', cartRoutes);
+router.use('/enquiries', enquiryRoutes);
 
 export default router;
+

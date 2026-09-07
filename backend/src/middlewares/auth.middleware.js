@@ -86,3 +86,29 @@ export const authenticate = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Reusable role-based authorization middleware.
+ * @param  {...string} allowedRoles
+ */
+export const authorize = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      throw new AppError(
+        'Authentication required.',
+        HTTP_STATUS.UNAUTHORIZED,
+        ERROR_CODES.UNAUTHORIZED
+      );
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      throw new AppError(
+        'Access forbidden. You do not have sufficient permissions to perform this operation.',
+        HTTP_STATUS.FORBIDDEN,
+        ERROR_CODES.FORBIDDEN
+      );
+    }
+
+    next();
+  };
+};

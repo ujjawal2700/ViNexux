@@ -18,7 +18,7 @@ const sessionSchema = new mongoose.Schema(
     },
     userType: {
       type: String,
-      enum: ['customer', 'dealer'],
+      enum: ['customer', 'dealer', 'admin'],
       default: 'customer',
       required: [true, 'User type is required'],
     },

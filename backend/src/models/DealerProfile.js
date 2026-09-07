@@ -85,6 +85,20 @@ const dealerProfileSchema = new mongoose.Schema(
       trim: true,
       maxlength: [500, 'Rejection reason cannot exceed 500 characters'],
     },
+    kycReviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    kycReviewedAt: {
+      type: Date,
+      default: null,
+    },
+    kycReviewAction: {
+      type: String,
+      enum: ['approved', 'rejected', 'revoked'],
+      default: null,
+    },
   },
   {
     timestamps: true,

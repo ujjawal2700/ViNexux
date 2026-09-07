@@ -17,6 +17,12 @@ const cartItemSchema = new mongoose.Schema(
         message: 'Quantity must be an integer',
       },
     },
+    priceSnapshot: {
+      type: Number,
+      required: [true, 'Price snapshot is required'],
+      default: 0,
+      min: [0, 'Price snapshot cannot be negative'],
+    },
   },
   { _id: false }
 );

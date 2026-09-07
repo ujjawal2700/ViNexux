@@ -16,10 +16,17 @@ import {
   verifyConflictTicket,
 } from '../utils/token.util.js';
 
+import { normalizePhoneNumber } from '../utils/phone.util.js';
+import { emailService } from './email/email.service.js';
+
 const normalizeIdentifier = (identifier) => {
   if (!identifier) return '';
   const trimmed = identifier.trim();
-  return trimmed.includes('@') ? trimmed.toLowerCase() : trimmed;
+  if (trimmed.includes('@')) {
+    return trimmed.toLowerCase();
+  }
+  const normalizedPhone = normalizePhoneNumber(trimmed);
+  return normalizedPhone || trimmed;
 };
 
 const hashOtp = (otp) => {
@@ -137,18 +144,25 @@ export const authService = {
       { upsert: true, new: true, runValidators: true }
     );
 
-    const provider = getOtpProvider();
-    const dispatchResult = await provider.sendOtp({
-      identifier: normalized,
-      otp,
-      purpose,
-    });
+    let devOtp;
+    if (normalized.includes('@')) {
+      const emailResult = await emailService.sendOtpEmail({ email: normalized, otp, purpose });
+      devOtp = config.nodeEnv !== 'production' ? otp : undefined;
+    } else {
+      const provider = getOtpProvider();
+      const dispatchResult = await provider.sendOtp({
+        identifier: normalized,
+        otp,
+        purpose,
+      });
+      devOtp = dispatchResult.devOtp;
+    }
 
     return {
       identifier: normalized,
       purpose,
       expiresAt,
-      devOtp: dispatchResult.devOtp,
+      devOtp,
     };
   },
 

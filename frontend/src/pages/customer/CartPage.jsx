@@ -1,0 +1,391 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import cartService from '../../services/cartService';
+import contentService from '../../services/contentService';
+import useToast from '../../hooks/useToast';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { Image } from '../../components/ui/Image';
+import {
+  ShoppingBag,
+  Trash2,
+  Plus,
+  Minus,
+  MessageCircle,
+  FileCheck,
+  ArrowRight,
+  ArrowLeft,
+  ShieldCheck,
+} from 'lucide-react';
+
+export const CartPage = () => {
+  const navigate = useNavigate();
+  const toast = useToast();
+
+  const [cart, setCart] = useState(null);
+  const [supportPhone, setSupportPhone] = useState('919876543210');
+  const [isLoading, setIsLoading] = useState(true);
+  const [updatingItemId, setUpdatingItemId] = useState(null);
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Fetch Cart Data & Footer Support Phone
+  const fetchCartData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    // Fetch footer content for WhatsApp phone
+    try {
+      const footerRes = await contentService.getFooterContent();
+      const phoneRaw = footerRes.data?.footer?.contactDetails?.phone || footerRes.footer?.contactDetails?.phone;
+      if (phoneRaw) {
+        const cleanedPhone = phoneRaw.replace(/\D/g, '');
+        if (cleanedPhone.length >= 10) {
+          setSupportPhone(cleanedPhone.startsWith('91') ? cleanedPhone : `91${cleanedPhone}`);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch support phone from CMS footer:', err);
+    }
+
+    // Fetch Cart
+    try {
+      const cartRes = await cartService.getCart();
+      const cartData = cartRes.data?.cart || cartRes.cart || cartRes.data;
+      setCart(cartData);
+    } catch (err) {
+      console.error('Cart fetch error:', err);
+      setError('Unable to load your shopping cart.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCartData();
+  }, [fetchCartData]);
+
+  // Format Currency (INR ₹)
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  // Update Item Quantity
+  const handleUpdateQuantity = async (productId, newQuantity) => {
+    if (newQuantity < 1) return;
+    try {
+      setUpdatingItemId(productId);
+      const res = await cartService.updateItemQuantity(productId, newQuantity);
+      const updatedCart = res.data?.cart || res.cart || res.data;
+      setCart(updatedCart);
+      toast.success('Cart updated');
+    } catch (err) {
+      console.error('Update item quantity error:', err);
+      toast.error('Failed to update item quantity.');
+    } finally {
+      setUpdatingItemId(null);
+    }
+  };
+
+  // Remove Item from Cart
+  const handleRemoveItem = async (productId, productName) => {
+    try {
+      setUpdatingItemId(productId);
+      const res = await cartService.removeItem(productId);
+      const updatedCart = res.data?.cart || res.cart || res.data;
+      setCart(updatedCart);
+      toast.success(`Removed "${productName}" from cart`);
+    } catch (err) {
+      console.error('Remove item error:', err);
+      toast.error('Failed to remove item from cart.');
+    } finally {
+      setUpdatingItemId(null);
+    }
+  };
+
+  // Clear Entire Cart
+  const handleClearCart = async () => {
+    try {
+      const res = await cartService.clearCart();
+      const updatedCart = res.data?.cart || res.cart || res.data;
+      setCart(updatedCart);
+      setIsClearConfirmOpen(false);
+      toast.success('Cart cleared successfully');
+    } catch (err) {
+      console.error('Clear cart error:', err);
+      toast.error('Failed to clear cart.');
+    }
+  };
+
+  // Calculate Subtotal
+  const items = cart?.items || [];
+  const subtotal = items.reduce((sum, item) => {
+    const price = item.priceSnapshot !== undefined ? item.priceSnapshot : 0;
+    return sum + price * (item.quantity || 1);
+  }, 0);
+
+  const totalQuantity = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+
+  // Build Encoded WhatsApp Deep Link String
+  const generateWhatsAppLink = () => {
+    let text = `*Vinexus Commercial Quotation Request*\n\n`;
+    text += `Hello, I would like to enquire about the following cart items:\n\n`;
+
+    items.forEach((item, idx) => {
+      const name = item.productId?.name || 'Product';
+      const sku = item.productId?.sku ? `(SKU: ${item.productId.sku})` : '';
+      const qty = item.quantity || 1;
+      const price = item.priceSnapshot !== undefined ? item.priceSnapshot : 0;
+      text += `${idx + 1}. *${name}* ${sku}\n   Qty: ${qty} | Unit Price: ₹${price} | Line Total: ₹${price * qty}\n\n`;
+    });
+
+    text += `*Estimated Cart Subtotal:* ₹${subtotal}\n`;
+    text += `Please send me an official quotation and availability status. Thank you!`;
+
+    const encodedText = encodeURIComponent(text);
+    return `https://wa.me/${supportPhone}?text=${encodedText}`;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 space-y-6 bg-[#fdf8f9]">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-8 space-y-4">
+            <Skeleton className="h-28 w-full rounded-2xl" />
+            <Skeleton className="h-28 w-full rounded-2xl" />
+          </div>
+          <div className="lg:col-span-4">
+            <Skeleton className="h-64 w-full rounded-2xl" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16">
+        <ErrorState title="Cart Error" description={error} onRetry={fetchCartData} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 bg-[#fdf8f9] text-[#3d0a0d] min-h-screen">
+      
+      {/* Header */}
+      <div className="border-b border-[#e5d1d4] pb-6 flex items-center justify-between">
+        <div>
+          <span className="text-xs font-bold uppercase tracking-wider text-[#800020]">Cart & Quotation Builder</span>
+          <h1 className="text-3xl font-extrabold text-[#3d0a0d] tracking-tight flex items-center gap-3">
+            <ShoppingBag className="w-7 h-7 text-[#800020]" />
+            <span>Shopping Cart</span>
+          </h1>
+        </div>
+
+        {items.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+            leftIcon={<Trash2 className="w-4 h-4" />}
+            onClick={() => setIsClearConfirmOpen(true)}
+          >
+            Clear Cart
+          </Button>
+        )}
+      </div>
+
+      {/* Cart Content Body */}
+      {items.length > 0 ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* Item List Column */}
+          <div className="lg:col-span-8 space-y-4">
+            {items.map((item) => {
+              const product = item.productId || {};
+              const price = item.priceSnapshot !== undefined ? item.priceSnapshot : 0;
+              const lineTotal = price * item.quantity;
+              const imgUrl = product.images?.[0]?.url || product.image || '';
+
+              return (
+                <Card
+                  key={product._id || item._id}
+                  className="p-4 bg-white border-[#e5d1d4] flex flex-col sm:flex-row items-center gap-4 justify-between shadow-sm"
+                >
+                  {/* Thumbnail & Product Details */}
+                  <div className="flex items-center gap-4 w-full sm:w-auto">
+                    <Link to={`/products/${product._id}`} className="shrink-0">
+                      <Image
+                        src={imgUrl}
+                        alt={product.name || 'Product'}
+                        aspectRatio="aspect-square"
+                        className="w-20 h-20 rounded-xl object-cover border border-[#e5d1d4]"
+                      />
+                    </Link>
+
+                    <div className="space-y-1">
+                      <Link to={`/products/${product._id}`} className="hover:text-[#800020] transition-colors">
+                        <h4 className="font-bold text-[#3d0a0d] text-sm line-clamp-2">
+                          {product.name || 'Vinexus Equipment'}
+                        </h4>
+                      </Link>
+                      <div className="flex items-center gap-2 text-xs text-[#7c5c5f] font-mono">
+                        <span>SKU: {product.sku || 'N/A'}</span>
+                      </div>
+                      <div className="text-xs text-[#664448] font-medium">
+                        Unit Price: <span className="text-[#3d0a0d] font-bold">{formatCurrency(price)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quantity Modifier & Line Total Controls */}
+                  <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-t-0 border-[#e5d1d4]">
+                    {/* Quantity Controls */}
+                    <div className="flex items-center bg-[#f4e7ea] border border-[#e5d1d4] rounded-xl overflow-hidden">
+                      <button
+                        onClick={() => handleUpdateQuantity(product._id, item.quantity - 1)}
+                        disabled={item.quantity <= 1 || updatingItemId === product._id}
+                        className="p-2 text-[#7c5c5f] hover:text-[#800020] disabled:opacity-40"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="px-3 text-xs font-bold text-[#3d0a0d] font-mono">{item.quantity}</span>
+                      <button
+                        onClick={() => handleUpdateQuantity(product._id, item.quantity + 1)}
+                        disabled={updatingItemId === product._id}
+                        className="p-2 text-[#7c5c5f] hover:text-[#800020] disabled:opacity-40"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Line Total */}
+                    <div className="text-right">
+                      <div className="text-sm font-extrabold text-[#3d0a0d] font-mono">
+                        {formatCurrency(lineTotal)}
+                      </div>
+                    </div>
+
+                    {/* Delete Item */}
+                    <button
+                      onClick={() => handleRemoveItem(product._id, product.name)}
+                      disabled={updatingItemId === product._id}
+                      className="p-2 text-[#9a6870] hover:text-rose-600 transition-colors"
+                      title="Remove item"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </Card>
+              );
+            })}
+
+            <div className="pt-2">
+              <Link to="/products" className="text-xs font-semibold text-[#800020] hover:text-[#66001a] inline-flex items-center gap-1">
+                <ArrowLeft className="w-4 h-4" /> Continue Browsing Catalog
+              </Link>
+            </div>
+          </div>
+
+          {/* Cart Summary & Dual CTAs Column */}
+          <div className="lg:col-span-4 space-y-6 sticky top-24">
+            <Card className="bg-white p-6 rounded-2xl border border-[#e5d1d4] space-y-6 shadow-sm">
+              <CardHeader className="p-0 pb-4 border-b border-[#e5d1d4]">
+                <CardTitle className="text-[#3d0a0d]">Cart Summary</CardTitle>
+              </CardHeader>
+
+              <CardContent className="p-0 space-y-3 text-xs">
+                <div className="flex justify-between text-[#7c5c5f]">
+                  <span>Unique Items</span>
+                  <span className="font-bold text-[#3d0a0d]">{items.length}</span>
+                </div>
+                <div className="flex justify-between text-[#7c5c5f]">
+                  <span>Total Equipment Units</span>
+                  <span className="font-bold text-[#3d0a0d]">{totalQuantity}</span>
+                </div>
+                <div className="pt-3 border-t border-[#e5d1d4] flex justify-between text-sm">
+                  <span className="font-bold text-[#3d0a0d]">Estimated Subtotal</span>
+                  <span className="font-extrabold text-[#3d0a0d] text-base">{formatCurrency(subtotal)}</span>
+                </div>
+                <p className="text-[10px] text-[#9a6870]">
+                  *Prices shown represent applicable standard or verified dealer rates. Formal quotation confirmed upon submission.
+                </p>
+              </CardContent>
+
+              {/* DUAL CONVERSION CALL-TO-ACTIONS */}
+              <CardFooter className="p-0 pt-2 flex flex-col gap-3">
+                {/* CTA B: Primary Official Enquiry Submission */}
+                <Button
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  rightIcon={<ArrowRight className="w-4 h-4" />}
+                  onClick={() => navigate('/customer/checkout-enquiry')}
+                >
+                  Send Official Enquiry
+                </Button>
+
+                {/* CTA A: WhatsApp Instant Deep Link Chat */}
+                <a
+                  href={generateWhatsAppLink()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full"
+                >
+                  <Button
+                    variant="success"
+                    size="lg"
+                    fullWidth
+                    leftIcon={<MessageCircle className="w-4 h-4" />}
+                  >
+                    Chat on WhatsApp
+                  </Button>
+                </a>
+              </CardFooter>
+            </Card>
+
+            <div className="p-4 rounded-xl bg-white border border-[#e5d1d4] text-xs text-[#7c5c5f] space-y-1 shadow-sm">
+              <div className="font-bold text-[#3d0a0d] flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-[#800020]" />
+                <span>Non-Transactional B2B Platform</span>
+              </div>
+              <p className="text-[11px] leading-relaxed">
+                No online payment required. Submitting an enquiry or WhatsApp message dispatches your lead directly to Vinexus commercial representatives.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <EmptyState
+          title="Your Cart is Empty"
+          description="Browse our CCTV cameras, DVRs, NVRs, and accessories to build a quotation enquiry."
+          actionLabel="Explore Product Catalog"
+          onAction={() => navigate('/products')}
+        />
+      )}
+
+      {/* Clear Cart Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={isClearConfirmOpen}
+        onClose={() => setIsClearConfirmOpen(false)}
+        onConfirm={handleClearCart}
+        title="Clear Entire Shopping Cart?"
+        description="Are you sure you want to remove all items from your quotation cart?"
+        confirmText="Yes, Clear Cart"
+        isDanger
+      />
+    </div>
+  );
+};
+
+export default CartPage;
