@@ -9,7 +9,7 @@ export const config = {
   apiBaseUrl: process.env.API_BASE_URL || '/api',
   corsOrigin: process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
-    : ['http://localhost:3000', 'http://localhost:5173'],
+    : ['http://localhost:3000', 'http://localhost:5173', 'https://vi-nexux.vercel.app'],
   otpExpiryMinutes: Number(process.env.OTP_EXPIRY_MINUTES) || 5,
   otpMaxAttempts: Number(process.env.OTP_MAX_ATTEMPTS) || 3,
   devOtp: process.env.DEV_OTP || '123456',
