@@ -39,12 +39,12 @@ export const CategoriesPage = () => {
   const subCategories = categories.filter((cat) => Boolean(cat.parentId));
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-10 bg-[#fdf8f9] text-[#3d0a0d] min-h-screen">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-10 bg-background text-foreground min-h-screen">
       {/* Header */}
-      <div className="border-b border-[#e5d1d4] pb-6">
-        <span className="text-xs font-bold uppercase tracking-wider text-[#800020]">Security Equipment Classification</span>
-        <h1 className="text-3xl font-extrabold text-[#3d0a0d] tracking-tight">Category Directory</h1>
-        <p className="text-xs text-[#7c5c5f] mt-1">
+      <div className="border-b border-border pb-6">
+        <span className="text-xs font-bold uppercase tracking-wider text-primary">Security Equipment Classification</span>
+        <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Category Directory</h1>
+        <p className="text-xs text-muted-foreground mt-1">
           Explore specialized categories for CCTV cameras, network recorders, routers, wiring, and hardware.
         </p>
       </div>
@@ -62,8 +62,8 @@ export const CategoriesPage = () => {
         <div className="space-y-12">
           {/* Main Categories Section */}
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-[#3d0a0d] flex items-center gap-2 border-b border-[#e5d1d4] pb-2">
-              <Layers className="w-5 h-5 text-[#800020]" />
+            <h2 className="text-xl font-bold text-foreground flex items-center gap-2 border-b border-border pb-2">
+              <Layers className="w-5 h-5 text-primary" />
               <span>Primary Equipment Categories</span>
             </h2>
 
@@ -72,26 +72,26 @@ export const CategoriesPage = () => {
                 <Card
                   key={cat._id}
                   hoverable
-                  className="h-full flex flex-col justify-between group bg-white border-[#e5d1d4] hover:border-[#800020] transition-all duration-300 shadow-sm"
+                  className="h-full flex flex-col justify-between group bg-card border-border hover:border-primary transition-all duration-300 shadow-sm"
                 >
                   <div>
                     {/* Category Image if present */}
                     {cat.image ? (
-                      <div className="overflow-hidden bg-[#f4e7ea]">
+                      <div className="overflow-hidden bg-muted">
                         <Image src={cat.image} alt={cat.name} aspectRatio="aspect-video" />
                       </div>
                     ) : (
-                      <div className="p-6 bg-[#f4e7ea] border-b border-[#e5d1d4] flex items-center justify-center text-[#800020]">
+                      <div className="p-6 bg-muted border-b border-border flex items-center justify-center text-primary">
                         <Grid className="w-10 h-10 group-hover:scale-110 transition-transform" />
                       </div>
                     )}
 
                     <CardContent className="p-5 space-y-2">
-                      <h3 className="font-bold text-[#3d0a0d] text-lg group-hover:text-[#800020] transition-colors">
+                      <h3 className="font-bold text-foreground text-lg group-hover:text-primary transition-colors">
                         {cat.name}
                       </h3>
                       {cat.description && (
-                        <p className="text-xs text-[#7c5c5f] line-clamp-3 leading-relaxed">
+                        <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
                           {cat.description}
                         </p>
                       )}
@@ -112,9 +112,9 @@ export const CategoriesPage = () => {
 
           {/* Subcategories Section (if present) */}
           {subCategories.length > 0 && (
-            <div className="space-y-6 pt-6 border-t border-[#e5d1d4]">
-              <h2 className="text-xl font-bold text-[#3d0a0d] flex items-center gap-2 border-b border-[#e5d1d4] pb-2">
-                <Grid className="w-5 h-5 text-[#800020]" />
+            <div className="space-y-6 pt-6 border-t border-border">
+              <h2 className="text-xl font-bold text-foreground flex items-center gap-2 border-b border-border pb-2">
+                <Grid className="w-5 h-5 text-primary" />
                 <span>Specialized Subcategories</span>
               </h2>
 
@@ -123,14 +123,14 @@ export const CategoriesPage = () => {
                   <Link
                     key={sub._id}
                     to={`/products?categoryId=${sub._id}`}
-                    className="bg-white p-4 rounded-xl border border-[#e5d1d4] hover:border-[#800020] transition-all flex items-center justify-between group shadow-sm"
+                    className="bg-card p-4 rounded-xl border border-border hover:border-primary transition-all flex items-center justify-between group shadow-sm"
                   >
                     <div className="truncate">
-                      <span className="font-bold text-xs text-[#3d0a0d] group-hover:text-[#800020] truncate block">
+                      <span className="font-bold text-xs text-foreground group-hover:text-primary truncate block">
                         {sub.name}
                       </span>
                     </div>
-                    <ArrowRight className="w-3.5 h-3.5 text-[#9a6870] group-hover:text-[#800020] group-hover:translate-x-1 transition-transform shrink-0" />
+                    <ArrowRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-transform shrink-0" />
                   </Link>
                 ))}
               </div>

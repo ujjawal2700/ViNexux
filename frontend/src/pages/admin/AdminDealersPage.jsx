@@ -201,7 +201,7 @@ const AdminDealersPage = () => {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4, 5].map((n) => (
-            <Skeleton key={n} className="h-16 rounded-lg bg-slate-900" />
+            <Skeleton key={n} className="h-16 rounded-lg" />
           ))}
         </div>
       ) : error ? (
@@ -233,19 +233,19 @@ const AdminDealersPage = () => {
                 return (
                   <Table.Row key={dlr._id}>
                     <Table.Cell>
-                      <div className="text-xs font-bold text-white">{dlr.companyName}</div>
-                      <div className="text-[10px] text-slate-400 font-mono">ID: {dlr._id}</div>
+                      <div className="text-xs font-bold text-foreground">{dlr.companyName}</div>
+                      <div className="text-[10px] text-muted-foreground font-mono">ID: {dlr._id}</div>
                     </Table.Cell>
                     <Table.Cell>
-                      <div className="font-mono text-[11px] text-slate-300">GST: {dlr.gstin || 'N/A'}</div>
-                      <div className="font-mono text-[10px] text-slate-400">PAN: {dlr.pan || 'N/A'}</div>
+                      <div className="font-mono text-[11px] text-muted-foreground">GST: {dlr.gstin || 'N/A'}</div>
+                      <div className="font-mono text-[10px] text-muted-foreground">PAN: {dlr.pan || 'N/A'}</div>
                     </Table.Cell>
-                    <Table.Cell className="text-xs text-slate-300">
+                    <Table.Cell className="text-xs text-muted-foreground">
                       {locationStr}
                     </Table.Cell>
                     <Table.Cell>
-                      <div className="text-xs font-semibold text-slate-200">{userObj?.name || userObj?.fullName || 'N/A'}</div>
-                      <div className="text-[10px] text-slate-400">{userObj?.email || userObj?.phone}</div>
+                      <div className="text-xs font-semibold text-foreground">{userObj?.name || userObj?.fullName || 'N/A'}</div>
+                      <div className="text-[10px] text-muted-foreground">{userObj?.email || userObj?.phone}</div>
                     </Table.Cell>
                     <Table.Cell>
                       <StatusBadge status={dlr.status} />
@@ -330,7 +330,7 @@ const AdminDealersPage = () => {
       >
         <form onSubmit={handleRejectSubmit} className="space-y-4">
           <FormError message={rejectError} />
-          <p className="text-xs text-slate-300">
+          <p className="text-xs text-muted-foreground">
             Please provide a clear reason for rejecting this dealer's verification. The dealer will see this message in their KYC center.
           </p>
 
@@ -344,7 +344,7 @@ const AdminDealersPage = () => {
             />
           </FormField>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button variant="outline" type="button" onClick={() => setRejectTarget(null)}>
               Cancel
             </Button>
@@ -362,7 +362,7 @@ const AdminDealersPage = () => {
         title={`Revoke Approved Dealer: ${revokeTarget?.companyName || ''}`}
       >
         <div className="space-y-4">
-          <p className="text-xs text-slate-300">
+          <p className="text-xs text-muted-foreground">
             Revoking this dealer will reset their account status to rejected and revert them back to standard retail pricing.
           </p>
 
@@ -375,7 +375,7 @@ const AdminDealersPage = () => {
             />
           </FormField>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button variant="outline" onClick={() => setRevokeTarget(null)}>
               Cancel
             </Button>

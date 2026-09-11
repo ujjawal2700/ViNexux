@@ -3,13 +3,13 @@ import React from 'react';
 export const Skeleton = ({ className = '', height = '', width = '' }) => {
   return (
     <div
-      className={`bg-[#f4e7ea] rounded-lg animate-pulse ${height} ${width} ${className}`}
+      className={`bg-muted rounded-lg animate-pulse ${height} ${width} ${className}`}
     />
   );
 };
 
 export const SkeletonCard = ({ className = '' }) => (
-  <div className={`p-6 rounded-2xl bg-white border border-[#e5d1d4] space-y-4 ${className}`}>
+  <div className={`p-6 rounded-2xl bg-card border border-border space-y-4 ${className}`}>
     <Skeleton className="h-5 w-1/3" />
     <Skeleton className="h-4 w-2/3" />
     <Skeleton className="h-24 w-full" />
@@ -21,8 +21,8 @@ export const SkeletonCard = ({ className = '' }) => (
 );
 
 export const SkeletonTable = ({ rows = 5, cols = 4, className = '' }) => (
-  <div className={`w-full overflow-hidden rounded-2xl border border-[#e5d1d4] bg-white p-4 space-y-4 ${className}`}>
-    <div className="flex gap-4 pb-2 border-b border-[#e5d1d4]">
+  <div className={`w-full overflow-hidden rounded-2xl border border-border bg-card p-4 space-y-4 ${className}`}>
+    <div className="flex gap-4 pb-2 border-b border-border">
       {Array.from({ length: cols }).map((_, c) => (
         <Skeleton key={c} className="h-4 flex-1" />
       ))}

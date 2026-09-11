@@ -8,12 +8,19 @@ export const ConfirmDialog = ({
   onClose,
   onConfirm,
   title = 'Are you sure?',
-  description = 'This action cannot be undone.',
+  // Both naming conventions are supported: every call site in the app uses
+  // `message`/`variant="danger"`, but keep `description`/`isDanger` too.
+  description,
+  message,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
-  isDanger = false,
+  isDanger,
+  variant,
   isLoading = false,
 }) => {
+  const resolvedDescription = message ?? description ?? 'This action cannot be undone.';
+  const resolvedIsDanger = isDanger ?? variant === 'danger';
+
   const footer = (
     <>
       <Button
@@ -25,7 +32,7 @@ export const ConfirmDialog = ({
         {cancelText}
       </Button>
       <Button
-        variant={isDanger ? 'danger' : 'primary'}
+        variant={resolvedIsDanger ? 'danger' : 'primary'}
         size="sm"
         onClick={onConfirm}
         isLoading={isLoading}
@@ -44,13 +51,13 @@ export const ConfirmDialog = ({
     >
       <div className="flex items-start gap-4">
         <div className={`p-2.5 rounded-xl shrink-0 ${
-          isDanger ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-[#f4e7ea] text-[#800020] border border-[#e5d1d4]'
+          resolvedIsDanger ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-muted text-primary border border-border'
         }`}>
-          {isDanger ? <AlertTriangle className="w-5 h-5" /> : <Info className="w-5 h-5" />}
+          {resolvedIsDanger ? <AlertTriangle className="w-5 h-5" /> : <Info className="w-5 h-5" />}
         </div>
         <div>
-          <h4 className="font-bold text-[#3d0a0d] text-sm">{title}</h4>
-          <p className="text-xs text-[#7c5c5f] mt-1 leading-relaxed">{description}</p>
+          <h4 className="font-bold text-foreground text-sm">{title}</h4>
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{resolvedDescription}</p>
         </div>
       </div>
     </Modal>

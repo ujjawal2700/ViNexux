@@ -119,10 +119,10 @@ const HomePage = () => {
   }, [banners.length]);
 
   return (
-    <div className="space-y-16 pb-16 bg-[#fdf8f9] text-[#3d0a0d]">
+    <div className="space-y-16 pb-16 bg-background text-foreground">
       
       {/* 1. HERO BANNER CAROUSEL */}
-      <section className="relative bg-gradient-to-b from-[#f4e7ea] via-[#fdf8f9] to-[#fdf8f9] border-b border-[#e5d1d4] overflow-hidden">
+      <section className="relative bg-gradient-to-b from-muted via-background to-background border-b border-border overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 md:py-20 relative z-10">
           {isBannersLoading ? (
             <div className="space-y-4">
@@ -144,10 +144,10 @@ const HomePage = () => {
                       <Badge variant="primary" icon={<Sparkles className="w-3.5 h-3.5" />}>
                         {banner.subtitle || 'Official B2B CCTV & Security Equipment'}
                       </Badge>
-                      <h1 className="text-3xl sm:text-5xl font-black text-[#3d0a0d] tracking-tight leading-tight">
+                      <h1 className="text-3xl sm:text-5xl font-black text-foreground tracking-tight leading-tight">
                         {banner.title || 'Next-Gen Surveillance Systems'}
                       </h1>
-                      <p className="text-sm sm:text-base text-[#7c5c5f] max-w-xl leading-relaxed">
+                      <p className="text-sm sm:text-base text-muted-foreground max-w-xl leading-relaxed">
                         {banner.description ||
                           'Unlock direct wholesale rates on premium CCTV cameras, DVRs, NVRs, routers, and installation accessories.'}
                       </p>
@@ -187,14 +187,14 @@ const HomePage = () => {
                     onClick={() =>
                       setActiveBannerIndex((prev) => (prev === 0 ? banners.length - 1 : prev - 1))
                     }
-                    className="p-2.5 rounded-xl bg-white hover:bg-[#f4e7ea] border border-[#e5d1d4] text-[#3d0a0d] shadow-sm transition-colors"
+                    className="p-2.5 rounded-xl bg-card hover:bg-muted border border-border text-foreground shadow-sm transition-colors"
                     aria-label="Previous Slide"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setActiveBannerIndex((prev) => (prev + 1) % banners.length)}
-                    className="p-2.5 rounded-xl bg-white hover:bg-[#f4e7ea] border border-[#e5d1d4] text-[#3d0a0d] shadow-sm transition-colors"
+                    className="p-2.5 rounded-xl bg-card hover:bg-muted border border-border text-foreground shadow-sm transition-colors"
                     aria-label="Next Slide"
                   >
                     <ChevronRight className="w-4 h-4" />
@@ -209,10 +209,10 @@ const HomePage = () => {
                 <Badge variant="primary" icon={<ShieldCheck className="w-3.5 h-3.5" />}>
                   Vinexus B2B Platform
                 </Badge>
-                <h1 className="text-3xl sm:text-5xl font-black text-[#3d0a0d] tracking-tight leading-tight">
+                <h1 className="text-3xl sm:text-5xl font-black text-foreground tracking-tight leading-tight">
                   High-Performance Security & CCTV Solutions
                 </h1>
-                <p className="text-sm sm:text-base text-[#7c5c5f] max-w-xl leading-relaxed">
+                <p className="text-sm sm:text-base text-muted-foreground max-w-xl leading-relaxed">
                   Browse India's premier catalog of CCTV cameras, recorders, modems, and network accessories with tier-one pricing for verified dealers.
                 </p>
                 <div className="flex flex-wrap gap-4 pt-2">
@@ -235,12 +235,12 @@ const HomePage = () => {
 
       {/* 2. FEATURED CATEGORIES GRID */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between mb-8 border-b border-[#e5d1d4] pb-4">
+        <div className="flex items-center justify-between mb-8 border-b border-border pb-4">
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-[#800020]">Category Hierarchy</span>
-            <h2 className="text-2xl font-extrabold text-[#3d0a0d] tracking-tight">Featured Categories</h2>
+            <span className="text-xs font-bold uppercase tracking-wider text-primary">Category Hierarchy</span>
+            <h2 className="text-2xl font-extrabold text-foreground tracking-tight">Featured Categories</h2>
           </div>
-          <Link to="/categories" className="text-xs font-bold text-[#800020] hover:text-[#9a1b32] flex items-center gap-1">
+          <Link to="/categories" className="text-xs font-bold text-primary hover:text-accent flex items-center gap-1">
             View All Categories <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
@@ -257,22 +257,22 @@ const HomePage = () => {
               <Link
                 key={cat._id}
                 to={`/products?categoryId=${cat._id}`}
-                className="group glass-panel p-5 rounded-2xl border border-[#e5d1d4] hover:border-[#800020] transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between shadow-sm bg-white"
+                className="group glass-panel p-5 rounded-2xl border border-border hover:border-primary transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between shadow-sm bg-card"
               >
                 <div>
-                  <div className="w-12 h-12 rounded-xl bg-[#f4e7ea] border border-[#e5d1d4] flex items-center justify-center text-[#800020] mb-4 group-hover:bg-[#800020] group-hover:text-white transition-colors">
+                  <div className="w-12 h-12 rounded-xl bg-muted border border-border flex items-center justify-center text-primary mb-4 group-hover:bg-primary group-hover:text-white transition-colors">
                     <Layers className="w-6 h-6" />
                   </div>
-                  <h3 className="font-bold text-[#3d0a0d] text-base group-hover:text-[#800020] transition-colors">
+                  <h3 className="font-bold text-foreground text-base group-hover:text-primary transition-colors">
                     {cat.name}
                   </h3>
                   {cat.description && (
-                    <p className="text-xs text-[#7c5c5f] line-clamp-2 mt-1.5 leading-relaxed">
+                    <p className="text-xs text-muted-foreground line-clamp-2 mt-1.5 leading-relaxed">
                       {cat.description}
                     </p>
                   )}
                 </div>
-                <div className="mt-4 pt-3 border-t border-[#e5d1d4] flex items-center justify-between text-xs text-[#7c5c5f] font-bold group-hover:text-[#800020]">
+                <div className="mt-4 pt-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground font-bold group-hover:text-primary">
                   <span>Browse Products</span>
                   <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                 </div>
@@ -289,12 +289,12 @@ const HomePage = () => {
 
       {/* 3. FEATURED PRODUCTS 3D COVERFLOW SHOWCASE */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 space-y-8">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="flex items-center justify-between border-b border-border pb-4">
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-red-500">3D Interactive Showcase</span>
-            <h2 className="text-2xl font-extrabold text-white tracking-tight">Featured Hardware & Surveillance</h2>
+            <span className="text-xs font-bold uppercase tracking-wider text-primary">3D Interactive Showcase</span>
+            <h2 className="text-2xl font-extrabold text-foreground tracking-tight">Featured Hardware & Surveillance</h2>
           </div>
-          <Link to="/products" className="text-xs font-bold text-red-400 hover:text-red-300 flex items-center gap-1">
+          <Link to="/products" className="text-xs font-bold text-primary hover:text-primary/80 flex items-center gap-1">
             Explore All Products <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
@@ -319,7 +319,7 @@ const HomePage = () => {
 
             {/* Product Cards Grid Below */}
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-6">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-6">
                 All Featured Catalog Items ({featuredProducts.length})
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -342,13 +342,13 @@ const HomePage = () => {
       {/* 4. PROMOTIONAL BANNER STRIP */}
       {promoBanners.length > 0 && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="glass-panel-glow p-8 rounded-3xl border border-crimson-900/40 relative overflow-hidden">
+          <div className="glass-panel-glow p-8 rounded-3xl border border-primary/20 relative overflow-hidden">
             {promoBanners.map((promo, idx) => (
               <div key={promo._id || idx} className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
                 <div className="md:col-span-8 space-y-3 text-left">
                   <Badge variant="warning">Special Wholesale Promotion</Badge>
-                  <h3 className="text-2xl font-extrabold text-white">{promo.title || 'Dealer Bulk Discount Offer'}</h3>
-                  <p className="text-xs sm:text-sm text-slate-300">{promo.description || 'Verified dealers get exclusive commercial discounts on bulk NVR & camera packages.'}</p>
+                  <h3 className="text-2xl font-extrabold text-foreground">{promo.title || 'Dealer Bulk Discount Offer'}</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground">{promo.description || 'Verified dealers get exclusive commercial discounts on bulk NVR & camera packages.'}</p>
                 </div>
                 <div className="md:col-span-4 flex justify-start md:justify-end">
                   <Link to="/products">
@@ -366,52 +366,52 @@ const HomePage = () => {
       {/* 5. WHY VINEXUS / TRUST BADGES */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-crimson-400">Platform Guarantee</span>
-          <h2 className="text-2xl font-extrabold text-white tracking-tight">Why Choose Vinexus</h2>
-          <p className="text-xs text-slate-400">Direct equipment supply with verified dealer pricing and expert support.</p>
+          <span className="text-xs font-bold uppercase tracking-wider text-primary">Platform Guarantee</span>
+          <h2 className="text-2xl font-extrabold text-foreground tracking-tight">Why Choose Vinexus</h2>
+          <p className="text-xs text-muted-foreground">Direct equipment supply with verified dealer pricing and expert support.</p>
         </div>
 
         {trustBadges.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
             {trustBadges.map((badge, idx) => (
-              <div key={badge._id || idx} className="glass-panel p-6 rounded-2xl border border-slate-800/80 space-y-3">
-                <div className="w-10 h-10 rounded-xl bg-crimson-950/60 border border-crimson-800/60 flex items-center justify-center text-crimson-400">
+              <div key={badge._id || idx} className="glass-panel p-6 rounded-2xl border border-border space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-950/60 border border-rose-800/60 flex items-center justify-center text-rose-400">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
-                <h4 className="font-bold text-slate-100 text-sm">{badge.title}</h4>
-                <p className="text-xs text-slate-400 leading-relaxed">{badge.description}</p>
+                <h4 className="font-bold text-foreground text-sm">{badge.title}</h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">{badge.description}</p>
               </div>
             ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-            <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-crimson-950/60 border border-crimson-800/60 flex items-center justify-center text-crimson-400">
+            <div className="glass-panel p-6 rounded-2xl border border-border space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-950/60 border border-rose-800/60 flex items-center justify-center text-rose-400">
                 <Award className="w-5 h-5" />
               </div>
-              <h4 className="font-bold text-slate-100 text-sm">100% Genuine Products</h4>
-              <p className="text-xs text-slate-400 leading-relaxed">Direct authorized supply from Hikvision, CP Plus, TrueView & leading brands.</p>
+              <h4 className="font-bold text-foreground text-sm">100% Genuine Products</h4>
+              <p className="text-xs text-muted-foreground leading-relaxed">Direct authorized supply from Hikvision, CP Plus, TrueView & leading brands.</p>
             </div>
-            <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-crimson-950/60 border border-crimson-800/60 flex items-center justify-center text-crimson-400">
+            <div className="glass-panel p-6 rounded-2xl border border-border space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-950/60 border border-rose-800/60 flex items-center justify-center text-rose-400">
                 <ShieldCheck className="w-5 h-5" />
               </div>
-              <h4 className="font-bold text-slate-100 text-sm">Verified Wholesale Rates</h4>
-              <p className="text-xs text-slate-400 leading-relaxed">Approved dealers unlock exclusive wholesale price tiers across all catalog items.</p>
+              <h4 className="font-bold text-foreground text-sm">Verified Wholesale Rates</h4>
+              <p className="text-xs text-muted-foreground leading-relaxed">Approved dealers unlock exclusive wholesale price tiers across all catalog items.</p>
             </div>
-            <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-crimson-950/60 border border-crimson-800/60 flex items-center justify-center text-crimson-400">
+            <div className="glass-panel p-6 rounded-2xl border border-border space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-950/60 border border-rose-800/60 flex items-center justify-center text-rose-400">
                 <Truck className="w-5 h-5" />
               </div>
-              <h4 className="font-bold text-slate-100 text-sm">Fast Pan-India Dispatch</h4>
-              <p className="text-xs text-slate-400 leading-relaxed">Swift commercial order dispatch and multi-channel WhatsApp quotation flow.</p>
+              <h4 className="font-bold text-foreground text-sm">Fast Pan-India Dispatch</h4>
+              <p className="text-xs text-muted-foreground leading-relaxed">Swift commercial order dispatch and multi-channel WhatsApp quotation flow.</p>
             </div>
-            <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-crimson-950/60 border border-crimson-800/60 flex items-center justify-center text-crimson-400">
+            <div className="glass-panel p-6 rounded-2xl border border-border space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-950/60 border border-rose-800/60 flex items-center justify-center text-rose-400">
                 <Headphones className="w-5 h-5" />
               </div>
-              <h4 className="font-bold text-slate-100 text-sm">Technical Assistance</h4>
-              <p className="text-xs text-slate-400 leading-relaxed">Expert guidance on camera specs, DVR compatibility, and project requirements.</p>
+              <h4 className="font-bold text-foreground text-sm">Technical Assistance</h4>
+              <p className="text-xs text-muted-foreground leading-relaxed">Expert guidance on camera specs, DVR compatibility, and project requirements.</p>
             </div>
           </div>
         )}

@@ -24,13 +24,13 @@ export const Image = ({
   };
 
   return (
-    <div className={`relative overflow-hidden rounded-xl bg-[#f4e7ea] ${aspectRatio} ${className}`}>
+    <div className={`relative overflow-hidden rounded-xl bg-muted ${aspectRatio} ${className}`}>
       {isLoading && (
         <Skeleton className="absolute inset-0 w-full h-full" />
       )}
 
       {hasError ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#f4e7ea] text-[#9a6870] p-4 text-center">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted text-[#9a6870] p-4 text-center">
           <ImageOff className="w-6 h-6 mb-1 opacity-60" />
           <span className="text-[10px] uppercase font-bold tracking-wider opacity-60">No Preview Available</span>
         </div>

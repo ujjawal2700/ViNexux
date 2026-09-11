@@ -22,7 +22,7 @@ export const SearchInput = React.forwardRef(({
     <button
       type="button"
       onClick={handleClear}
-      className="text-[#9a6870] hover:text-[#3d0a0d] focus:outline-none pointer-events-auto p-1 rounded transition-colors"
+      className="text-[#9a6870] hover:text-foreground focus:outline-none pointer-events-auto p-1 rounded transition-colors"
       title="Clear search"
     >
       <X className="w-4 h-4" />

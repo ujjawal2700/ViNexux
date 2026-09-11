@@ -107,7 +107,7 @@ export function CoverflowCarousel({
 
   return (
     <section
-      className={`relative w-full min-h-[640px] flex items-center justify-center overflow-hidden py-8 select-none rounded-3xl border border-[#e5d1d4] shadow-xl ${className}`}
+      className={`relative w-full min-h-[640px] flex items-center justify-center overflow-hidden py-8 select-none rounded-3xl border border-border shadow-xl ${className}`}
       style={{
         backgroundColor: "#fdf8f9",
         color: "#3d0a0d",

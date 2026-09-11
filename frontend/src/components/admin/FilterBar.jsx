@@ -17,7 +17,7 @@ const FilterBar = ({
   children,
 }) => {
   return (
-    <div className="bg-white border border-[#e5d1d4] rounded-xl p-4 space-y-4 shadow-xs">
+    <div className="bg-card border border-border rounded-xl p-4 space-y-4 shadow-xs">
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
         {onSearchChange && (
           <div className="flex-1 min-w-[240px]">
@@ -51,7 +51,7 @@ const FilterBar = ({
             <button
               onClick={() => onSortChange(sortBy, sortOrder === 'asc' ? 'desc' : 'asc')}
               title={`Sort ${sortOrder === 'asc' ? 'Ascending' : 'Descending'}`}
-              className="px-2.5 py-2 rounded-lg bg-[#f4e7ea] border border-[#e5d1d4] text-xs font-semibold text-[#3d0a0d] hover:bg-[#ebd5da] transition-colors"
+              className="px-2.5 py-2 rounded-lg bg-muted border border-border text-xs font-semibold text-foreground hover:bg-[#ebd5da] transition-colors"
             >
               {sortOrder === 'asc' ? '↑' : '↓'}
             </button>

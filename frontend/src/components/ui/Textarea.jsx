@@ -21,11 +21,11 @@ export const Textarea = React.forwardRef(({
         id={textareaId}
         rows={rows}
         disabled={isDisabled}
-        className={`w-full bg-white border ${
+        className={`w-full bg-card border ${
           error
             ? 'border-rose-500 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-            : 'border-[#e5d1d4] focus:border-[#800020] focus:ring-1 focus:ring-[#800020]/20'
-        } rounded-xl px-4 py-2.5 text-sm text-[#3d0a0d] placeholder-[#9a6870] transition-all focus-ring disabled:opacity-50 disabled:cursor-not-allowed resize-y ${className}`}
+            : 'border-border focus:border-primary focus:ring-1 focus:ring-primary/20'
+        } rounded-xl px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground/70 transition-all focus-ring disabled:opacity-50 disabled:cursor-not-allowed resize-y ${className}`}
         {...props}
       />
     </FormField>

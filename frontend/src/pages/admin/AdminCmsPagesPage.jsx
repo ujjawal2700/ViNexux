@@ -167,7 +167,7 @@ const AdminCmsPagesPage = () => {
 
       {loading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map((n) => <Skeleton key={n} className="h-16 rounded-lg bg-slate-900" />)}
+          {[1, 2, 3].map((n) => <Skeleton key={n} className="h-16 rounded-lg" />)}
         </div>
       ) : error ? (
         <ErrorState title="Failed to load static pages" message={error} onRetry={fetchPages} />
@@ -196,16 +196,16 @@ const AdminCmsPagesPage = () => {
           <Table.Body>
             {pages.map((p) => (
               <Table.Row key={p._id}>
-                <Table.Cell className="font-mono text-xs text-crimson-400 font-bold">
+                <Table.Cell className="font-mono text-xs text-rose-400 font-bold">
                   /content/pages/{p.slug}
                 </Table.Cell>
-                <Table.Cell className="text-xs font-bold text-white">
+                <Table.Cell className="text-xs font-bold text-foreground">
                   {p.title}
                 </Table.Cell>
                 <Table.Cell>
                   <StatusBadge status={p.isPublished ? 'active' : 'inactive'} />
                 </Table.Cell>
-                <Table.Cell className="text-xs text-slate-400">
+                <Table.Cell className="text-xs text-muted-foreground">
                   {new Date(p.updatedAt || p.createdAt).toLocaleDateString('en-IN')}
                 </Table.Cell>
                 <Table.Cell className="text-right">
@@ -220,7 +220,7 @@ const AdminCmsPagesPage = () => {
                       size="sm"
                       onClick={() => handleOpenEdit(p)}
                       title="Edit Page"
-                      className="h-8 w-8 p-0 text-slate-300 hover:text-white"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-white"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </Button>
@@ -293,7 +293,7 @@ const AdminCmsPagesPage = () => {
             />
           </FormField>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button variant="outline" type="button" onClick={() => setIsDrawerOpen(false)}>
               Cancel
             </Button>

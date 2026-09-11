@@ -82,10 +82,10 @@ export const ProductCard = ({ product, onCartUpdated }) => {
   };
 
   return (
-    <Card hoverable className="h-full flex flex-col justify-between overflow-hidden group bg-white border-[#e5d1d4] hover:border-[#800020] transition-all duration-300 shadow-sm hover:shadow-xl">
+    <Card hoverable className="h-full flex flex-col justify-between overflow-hidden group bg-card border-border hover:border-primary transition-all duration-300 shadow-sm hover:shadow-xl">
       <div>
         {/* Product Image & Badges Overlay */}
-        <div className="relative overflow-hidden bg-[#f4e7ea]">
+        <div className="relative overflow-hidden bg-muted">
           <Link to={`/products/${product._id}`} className="block">
             <Image
               src={primaryImage}
@@ -117,53 +117,53 @@ export const ProductCard = ({ product, onCartUpdated }) => {
         {/* Product Content Details */}
         <CardContent className="p-5 space-y-3">
           {/* Category & SKU row */}
-          <div className="flex items-center justify-between text-xs text-[#7c5c5f] font-semibold">
-            <span className="truncate max-w-[60%] text-[#7c5c5f]">
+          <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold">
+            <span className="truncate max-w-[60%] text-muted-foreground">
               {typeof product.categoryId === 'object' ? product.categoryId?.name : 'Security'}
             </span>
-            <span className="font-mono text-[11px] text-[#7c5c5f] uppercase tracking-wider">
+            <span className="font-mono text-[11px] text-muted-foreground uppercase tracking-wider">
               {product.sku}
             </span>
           </div>
 
           {/* Product Name */}
-          <Link to={`/products/${product._id}`} className="block group-hover:text-[#800020] transition-colors">
-            <h3 className="font-bold text-[#3d0a0d] text-base line-clamp-2 leading-snug">
+          <Link to={`/products/${product._id}`} className="block group-hover:text-primary transition-colors">
+            <h3 className="font-bold text-foreground text-base line-clamp-2 leading-snug">
               {product.name}
             </h3>
           </Link>
 
           {/* Short Description */}
           {product.description && (
-            <p className="text-xs text-[#7c5c5f] line-clamp-2 leading-relaxed">
+            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
               {product.description}
             </p>
           )}
 
           {/* Role-Aware Pricing Presentation */}
-          <div className="pt-2 border-t border-[#e5d1d4] flex items-baseline justify-between">
+          <div className="pt-2 border-t border-border flex items-baseline justify-between">
             <div>
               <div className="flex items-baseline gap-2">
-                <span className="text-xl font-black text-[#3d0a0d] tracking-tight">
+                <span className="text-xl font-black text-foreground tracking-tight">
                   {formatCurrency(displayPrice)}
                 </span>
 
                 {/* Show Strike-through Standard Price for Approved Dealers */}
                 {hasDealerDiscount && (
-                  <span className="text-xs text-[#7c5c5f] line-through font-medium">
+                  <span className="text-xs text-muted-foreground line-through font-medium">
                     {formatCurrency(standardPrice)}
                   </span>
                 )}
               </div>
 
               {/* Price level subtitle explanation */}
-              <div className="text-[10px] text-[#7c5c5f] mt-0.5 font-medium">
+              <div className="text-[10px] text-muted-foreground mt-0.5 font-medium">
                 {isApprovedDealer ? (
                   <span className="text-emerald-600 font-bold flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3" /> Dealer Price Unlocked
                   </span>
                 ) : isAdmin ? (
-                  <span className="text-[#7c5c5f]">Standard: {formatCurrency(standardPrice)} | Dealer: {formatCurrency(dealerPrice)}</span>
+                  <span className="text-muted-foreground">Standard: {formatCurrency(standardPrice)} | Dealer: {formatCurrency(dealerPrice)}</span>
                 ) : (
                   <span>Standard Retail Price</span>
                 )}
@@ -192,9 +192,9 @@ export const ProductCard = ({ product, onCartUpdated }) => {
             size="sm"
             iconOnly
             title="View Details"
-            className="hover:border-[#800020]"
+            className="hover:border-primary"
           >
-            <Eye className="w-4 h-4 text-[#800020]" />
+            <Eye className="w-4 h-4 text-primary" />
           </Button>
         </Link>
       </CardFooter>

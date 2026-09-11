@@ -5,7 +5,7 @@ const statusStyles = {
   new: 'bg-emerald-50 text-emerald-800 border-emerald-200',
   contacted: 'bg-blue-50 text-blue-800 border-blue-200',
   'in-progress': 'bg-amber-50 text-amber-800 border-amber-200',
-  closed: 'bg-[#f4e7ea] text-[#7c5c5f] border-[#e5d1d4]',
+  closed: 'bg-muted text-muted-foreground border-border',
   spam: 'bg-rose-50 text-rose-800 border-rose-200',
 
   // KYC & Dealer Statuses
@@ -13,7 +13,7 @@ const statusStyles = {
   approved: 'bg-emerald-50 text-emerald-800 border-emerald-200',
   rejected: 'bg-rose-50 text-rose-800 border-rose-200',
   active: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-  inactive: 'bg-[#f4e7ea] text-[#7c5c5f] border-[#e5d1d4]',
+  inactive: 'bg-muted text-muted-foreground border-border',
 
   // Product Stock Statuses
   'in-stock': 'bg-teal-50 text-teal-800 border-teal-200',
@@ -22,9 +22,9 @@ const statusStyles = {
 };
 
 const variantStyles = {
-  primary: 'bg-[#f4e7ea] text-[#800020] border-[#e5d1d4]',
-  secondary: 'bg-[#f4e7ea] text-[#3d0a0d] border-[#e5d1d4]',
-  outline: 'bg-transparent text-[#7c5c5f] border-[#e5d1d4]',
+  primary: 'bg-muted text-primary border-border',
+  secondary: 'bg-muted text-foreground border-border',
+  outline: 'bg-transparent text-muted-foreground border-border',
   success: 'bg-emerald-50 text-emerald-800 border-emerald-200',
   warning: 'bg-amber-50 text-amber-800 border-amber-200',
   danger: 'bg-rose-50 text-rose-800 border-rose-200',
@@ -51,7 +51,7 @@ export const Badge = ({
 
 export const StatusBadge = ({ status = 'pending', className = '' }) => {
   const normalized = String(status).toLowerCase().replace(/\s+/g, '-');
-  const style = statusStyles[normalized] || 'bg-[#f4e7ea] text-[#3d0a0d] border-[#e5d1d4]';
+  const style = statusStyles[normalized] || 'bg-muted text-foreground border-border';
 
   return (
     <span

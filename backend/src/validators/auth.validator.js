@@ -38,6 +38,9 @@ export const sendOtpSchema = {
         invalid_type_error: 'Purpose must be one of: signup, login, phone-change',
       })
       .default('login'),
+    // Optional login surface hint. When set to 'admin' (the dedicated
+    // /admin/login page), the target account must have the admin role.
+    portal: z.enum(['admin']).optional(),
   }),
 };
 
@@ -56,6 +59,7 @@ export const verifyOtpSchema = {
         invalid_type_error: 'Purpose must be one of: signup, login, phone-change',
       })
       .default('login'),
+    portal: z.enum(['admin']).optional(),
   }),
 };
 

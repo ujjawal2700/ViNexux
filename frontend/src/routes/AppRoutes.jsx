@@ -17,6 +17,7 @@ import { ROLES } from '../constants';
 // Public Pages
 import HomePage from '../pages/public/HomePage';
 import LoginPage from '../pages/auth/LoginPage';
+import AdminLoginPage from '../pages/auth/AdminLoginPage';
 import VerifyOtpPage from '../pages/auth/VerifyOtpPage';
 import ProductsPage from '../pages/public/ProductsPage';
 import ProductDetailPage from '../pages/public/ProductDetailPage';
@@ -42,11 +43,13 @@ import DealerPricingPage from '../pages/dealer/DealerPricingPage';
 import DealerCartPage from '../pages/dealer/DealerCartPage';
 import DealerEnquiriesPage from '../pages/dealer/DealerEnquiriesPage';
 import DealerEnquiryDetailPage from '../pages/dealer/DealerEnquiryDetailPage';
+import DealerProfilePage from '../pages/dealer/DealerProfilePage';
 
 // Admin Pages
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
 import AdminCategoriesPage from '../pages/admin/AdminCategoriesPage';
 import AdminProductsPage from '../pages/admin/AdminProductsPage';
+import AdminProductDetailPage from '../pages/admin/AdminProductDetailPage';
 import AdminDealersPage from '../pages/admin/AdminDealersPage';
 import AdminDealerDetailPage from '../pages/admin/AdminDealerDetailPage';
 import AdminCustomersPage from '../pages/admin/AdminCustomersPage';
@@ -95,6 +98,11 @@ const AppRoutes = () => {
         </Route>
       </Route>
 
+      {/* DEDICATED ADMIN LOGIN (standalone, no storefront chrome) */}
+      <Route element={<PublicRoute restricted={true} />}>
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+      </Route>
+
       {/* DEALER PROTECTED ROUTES (WITH DEALER LAYOUT) */}
       <Route element={<ProtectedRoute />}>
         <Route element={<RoleRoute allowedRoles={[ROLES.DEALER]} />}>
@@ -106,17 +114,20 @@ const AppRoutes = () => {
             <Route path="/dealer/cart" element={<DealerCartPage />} />
             <Route path="/dealer/enquiries" element={<DealerEnquiriesPage />} />
             <Route path="/dealer/enquiries/:id" element={<DealerEnquiryDetailPage />} />
+            <Route path="/dealer/profile" element={<DealerProfilePage />} />
           </Route>
         </Route>
       </Route>
 
       {/* ADMIN PROTECTED ROUTES (WITH ADMIN LAYOUT) */}
-      <Route element={<ProtectedRoute />}>
+      <Route element={<ProtectedRoute loginPath="/admin/login" />}>
         <Route element={<RoleRoute allowedRoles={[ROLES.ADMIN]} />}>
           <Route element={<AdminLayout />}>
             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
             <Route path="/admin/categories" element={<AdminCategoriesPage />} />
             <Route path="/admin/products" element={<AdminProductsPage />} />
+            <Route path="/admin/products/new" element={<AdminProductDetailPage />} />
+            <Route path="/admin/products/:id" element={<AdminProductDetailPage />} />
             <Route path="/admin/dealers" element={<AdminDealersPage />} />
             <Route path="/admin/dealers/:id" element={<AdminDealerDetailPage />} />
             <Route path="/admin/customers" element={<AdminCustomersPage />} />

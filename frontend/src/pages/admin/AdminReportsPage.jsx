@@ -153,9 +153,9 @@ const AdminReportsPage = () => {
       />
 
       {/* Date Filter & Tab Bar */}
-      <div className="bg-white border border-[#e5d1d4] rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+      <div className="bg-card border border-border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
         {/* Navigation Tabs */}
-        <div className="flex flex-wrap items-center gap-1.5 bg-[#fdf8f9] p-1 rounded-lg border border-[#e5d1d4]">
+        <div className="flex flex-wrap items-center gap-1.5 bg-background p-1 rounded-lg border border-border">
           {[
             { id: 'summary', label: 'Platform Summary', icon: BarChart3 },
             { id: 'enquiries', label: 'Enquiry Leads', icon: Inbox },
@@ -170,11 +170,11 @@ const AdminReportsPage = () => {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all duration-200 ${
                   isActive
-                    ? 'bg-[#800020] text-white'
-                    : 'text-[#7c5c5f] hover:text-[#800020] hover:bg-[#f4e7ea]'
+                    ? 'bg-primary text-white'
+                    : 'text-muted-foreground hover:text-primary hover:bg-muted'
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-[#800020]'}`} />
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-primary'}`} />
                 {tab.label}
               </button>
             );
@@ -183,8 +183,8 @@ const AdminReportsPage = () => {
 
         {/* Global Date Range Range Filter */}
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-[#7c5c5f] font-medium flex items-center gap-1">
-            <Calendar className="w-3.5 h-3.5 text-[#800020]" /> Range:
+          <span className="text-muted-foreground font-medium flex items-center gap-1">
+            <Calendar className="w-3.5 h-3.5 text-primary" /> Range:
           </span>
           <Input
             type="date"
@@ -201,7 +201,7 @@ const AdminReportsPage = () => {
           />
           {(startDate || endDate) && (
             <Button variant="ghost" size="sm" iconOnly title="Clear Dates" onClick={() => { setStartDate(''); setEndDate(''); }}>
-              <RefreshCw className="w-3.5 h-3.5 text-[#800020]" />
+              <RefreshCw className="w-3.5 h-3.5 text-primary" />
             </Button>
           )}
         </div>
@@ -254,71 +254,71 @@ const AdminReportsPage = () => {
               {/* Status Breakdown Grids */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Enquiry Breakdown */}
-                <Card className="space-y-3 bg-white border-[#e5d1d4] shadow-sm">
-                  <h4 className="text-xs font-extrabold text-[#3d0a0d] uppercase tracking-wider border-b border-[#e5d1d4] pb-2">
+                <Card className="space-y-3 bg-card border-border shadow-sm">
+                  <h4 className="text-xs font-extrabold text-foreground uppercase tracking-wider border-b border-border pb-2">
                     Enquiry Status Distribution
                   </h4>
                   <div className="space-y-2 text-xs">
-                    <div className="flex justify-between py-1 border-b border-[#e5d1d4]">
-                      <span className="text-[#7c5c5f]">New Unprocessed</span>
+                    <div className="flex justify-between py-1 border-b border-border">
+                      <span className="text-muted-foreground">New Unprocessed</span>
                       <span className="font-bold text-emerald-700">{summaryData?.enquiries?.new || 0}</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-[#e5d1d4]">
-                      <span className="text-[#7c5c5f]">Contacted Leads</span>
+                    <div className="flex justify-between py-1 border-b border-border">
+                      <span className="text-muted-foreground">Contacted Leads</span>
                       <span className="font-bold text-blue-700">{summaryData?.enquiries?.contacted || 0}</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-[#e5d1d4]">
-                      <span className="text-[#7c5c5f]">In-Progress</span>
+                    <div className="flex justify-between py-1 border-b border-border">
+                      <span className="text-muted-foreground">In-Progress</span>
                       <span className="font-bold text-amber-800">{summaryData?.enquiries?.inProgress || 0}</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-[#e5d1d4]">
-                      <span className="text-[#7c5c5f]">Closed / Converted</span>
-                      <span className="font-bold text-[#3d0a0d]">{summaryData?.enquiries?.closed || 0}</span>
+                    <div className="flex justify-between py-1 border-b border-border">
+                      <span className="text-muted-foreground">Closed / Converted</span>
+                      <span className="font-bold text-foreground">{summaryData?.enquiries?.closed || 0}</span>
                     </div>
                     <div className="flex justify-between py-1">
-                      <span className="text-[#7c5c5f]">Spam / Invalid</span>
+                      <span className="text-muted-foreground">Spam / Invalid</span>
                       <span className="font-bold text-rose-700">{summaryData?.enquiries?.spam || 0}</span>
                     </div>
                   </div>
                 </Card>
 
                 {/* Dealer KYC Breakdown */}
-                <Card className="space-y-3 bg-white border-[#e5d1d4] shadow-sm">
-                  <h4 className="text-xs font-extrabold text-[#3d0a0d] uppercase tracking-wider border-b border-[#e5d1d4] pb-2">
+                <Card className="space-y-3 bg-card border-border shadow-sm">
+                  <h4 className="text-xs font-extrabold text-foreground uppercase tracking-wider border-b border-border pb-2">
                     Dealer Onboarding Funnel
                   </h4>
                   <div className="space-y-2 text-xs">
-                    <div className="flex justify-between py-1 border-b border-[#e5d1d4]">
-                      <span className="text-[#7c5c5f]">Pending Review Queue</span>
+                    <div className="flex justify-between py-1 border-b border-border">
+                      <span className="text-muted-foreground">Pending Review Queue</span>
                       <span className="font-bold text-amber-800">{summaryData?.dealers?.pending || 0}</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-[#e5d1d4]">
-                      <span className="text-[#7c5c5f]">Approved Wholesale Dealers</span>
+                    <div className="flex justify-between py-1 border-b border-border">
+                      <span className="text-muted-foreground">Approved Wholesale Dealers</span>
                       <span className="font-bold text-emerald-700">{summaryData?.dealers?.approved || 0}</span>
                     </div>
                     <div className="flex justify-between py-1">
-                      <span className="text-[#7c5c5f]">Rejected Applications</span>
+                      <span className="text-muted-foreground">Rejected Applications</span>
                       <span className="font-bold text-rose-700">{summaryData?.dealers?.rejected || 0}</span>
                     </div>
                   </div>
                 </Card>
 
                 {/* Customer Status Breakdown */}
-                <Card className="space-y-3 bg-white border-[#e5d1d4] shadow-sm">
-                  <h4 className="text-xs font-extrabold text-[#3d0a0d] uppercase tracking-wider border-b border-[#e5d1d4] pb-2">
+                <Card className="space-y-3 bg-card border-border shadow-sm">
+                  <h4 className="text-xs font-extrabold text-foreground uppercase tracking-wider border-b border-border pb-2">
                     Customer Account Status
                   </h4>
                   <div className="space-y-2 text-xs">
-                    <div className="flex justify-between py-1 border-b border-[#e5d1d4]">
-                      <span className="text-[#7c5c5f]">Active Customer Accounts</span>
+                    <div className="flex justify-between py-1 border-b border-border">
+                      <span className="text-muted-foreground">Active Customer Accounts</span>
                       <span className="font-bold text-emerald-700">{summaryData?.customers?.active || 0}</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-[#e5d1d4]">
-                      <span className="text-[#7c5c5f]">Pending Verification</span>
+                    <div className="flex justify-between py-1 border-b border-border">
+                      <span className="text-muted-foreground">Pending Verification</span>
                       <span className="font-bold text-amber-800">{summaryData?.customers?.pending || 0}</span>
                     </div>
                     <div className="flex justify-between py-1">
-                      <span className="text-[#7c5c5f]">Blocked Accounts</span>
+                      <span className="text-muted-foreground">Blocked Accounts</span>
                       <span className="font-bold text-rose-700">{summaryData?.customers?.blocked || 0}</span>
                     </div>
                   </div>
@@ -367,7 +367,7 @@ const AdminReportsPage = () => {
 
           {enquiryLoading ? (
             <div className="space-y-3">
-              {[1, 2, 3, 4].map((n) => <Skeleton key={n} className="h-16 rounded-lg bg-[#f4e7ea]" />)}
+              {[1, 2, 3, 4].map((n) => <Skeleton key={n} className="h-16 rounded-lg bg-muted" />)}
             </div>
           ) : !enquiryReport || enquiryReport.enquiries?.length === 0 ? (
             <EmptyState icon={Inbox} title="No enquiry report data" description="No leads match your selected parameters." />
@@ -376,19 +376,19 @@ const AdminReportsPage = () => {
               {/* Summary Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <Card className="text-center">
-                  <p className="text-[10px] text-[#7c5c5f] uppercase">Filtered Total</p>
-                  <h4 className="text-xl font-extrabold text-[#3d0a0d] mt-1">{enquiryReport.filteredCount || 0}</h4>
+                  <p className="text-[10px] text-muted-foreground uppercase">Filtered Total</p>
+                  <h4 className="text-xl font-extrabold text-foreground mt-1">{enquiryReport.filteredCount || 0}</h4>
                 </Card>
                 <Card className="text-center">
-                  <p className="text-[10px] text-[#7c5c5f] uppercase">New Leads</p>
+                  <p className="text-[10px] text-muted-foreground uppercase">New Leads</p>
                   <h4 className="text-xl font-extrabold text-emerald-700 mt-1">{enquiryReport.statusBreakdown?.new || 0}</h4>
                 </Card>
                 <Card className="text-center">
-                  <p className="text-[10px] text-[#7c5c5f] uppercase">Retail Enquiries</p>
+                  <p className="text-[10px] text-muted-foreground uppercase">Retail Enquiries</p>
                   <h4 className="text-xl font-extrabold text-blue-700 mt-1">{enquiryReport.userTypeBreakdown?.customer || 0}</h4>
                 </Card>
                 <Card className="text-center">
-                  <p className="text-[10px] text-[#7c5c5f] uppercase">B2B Dealer Enquiries</p>
+                  <p className="text-[10px] text-muted-foreground uppercase">B2B Dealer Enquiries</p>
                   <h4 className="text-xl font-extrabold text-purple-800 mt-1">{enquiryReport.userTypeBreakdown?.dealer || 0}</h4>
                 </Card>
               </div>
@@ -408,13 +408,13 @@ const AdminReportsPage = () => {
                 <Table.Body>
                   {enquiryReport.enquiries.map((enq) => (
                     <Table.Row key={enq._id}>
-                      <Table.Cell className="font-mono text-xs font-bold text-[#3d0a0d]">{enq.enquiryNumber}</Table.Cell>
+                      <Table.Cell className="font-mono text-xs font-bold text-foreground">{enq.enquiryNumber}</Table.Cell>
                       <Table.Cell>
-                        <div className="text-xs font-semibold text-[#3d0a0d]">{enq.contactName}</div>
-                        <div className="text-[10px] text-[#7c5c5f]">{enq.contactEmail || enq.contactPhone}</div>
+                        <div className="text-xs font-semibold text-foreground">{enq.contactName}</div>
+                        <div className="text-[10px] text-muted-foreground">{enq.contactEmail || enq.contactPhone}</div>
                       </Table.Cell>
                       <Table.Cell>
-                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-[#f4e7ea] text-[#3d0a0d]">
+                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-muted text-foreground">
                           {enq.userType || 'customer'}
                         </span>
                       </Table.Cell>
@@ -422,7 +422,7 @@ const AdminReportsPage = () => {
                         ₹{Number(enq.totalAmount || 0).toLocaleString('en-IN')}
                       </Table.Cell>
                       <Table.Cell><StatusBadge status={enq.status} /></Table.Cell>
-                      <Table.Cell className="text-xs text-[#7c5c5f]">
+                      <Table.Cell className="text-xs text-muted-foreground">
                         {new Date(enq.createdAt).toLocaleDateString('en-IN')}
                       </Table.Cell>
                     </Table.Row>
@@ -468,7 +468,7 @@ const AdminReportsPage = () => {
 
           {dealerLoading ? (
             <div className="space-y-3">
-              {[1, 2, 3, 4].map((n) => <Skeleton key={n} className="h-16 rounded-lg bg-[#f4e7ea]" />)}
+              {[1, 2, 3, 4].map((n) => <Skeleton key={n} className="h-16 rounded-lg bg-muted" />)}
             </div>
           ) : !dealerReport || dealerReport.dealers?.length === 0 ? (
             <EmptyState icon={Users} title="No dealer report data" description="No dealer profiles match your selected parameters." />
@@ -476,15 +476,15 @@ const AdminReportsPage = () => {
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Card className="text-center">
-                  <p className="text-[10px] text-[#7c5c5f] uppercase">Pending Verification</p>
+                  <p className="text-[10px] text-muted-foreground uppercase">Pending Verification</p>
                   <h4 className="text-xl font-extrabold text-amber-700 mt-1">{dealerReport.statusBreakdown?.pending || 0}</h4>
                 </Card>
                 <Card className="text-center">
-                  <p className="text-[10px] text-[#7c5c5f] uppercase">Approved Dealers</p>
+                  <p className="text-[10px] text-muted-foreground uppercase">Approved Dealers</p>
                   <h4 className="text-xl font-extrabold text-emerald-700 mt-1">{dealerReport.statusBreakdown?.approved || 0}</h4>
                 </Card>
                 <Card className="text-center">
-                  <p className="text-[10px] text-[#7c5c5f] uppercase">Rejected Applications</p>
+                  <p className="text-[10px] text-muted-foreground uppercase">Rejected Applications</p>
                   <h4 className="text-xl font-extrabold text-rose-700 mt-1">{dealerReport.statusBreakdown?.rejected || 0}</h4>
                 </Card>
               </div>
@@ -502,15 +502,15 @@ const AdminReportsPage = () => {
                 <Table.Body>
                   {dealerReport.dealers.map((dlr) => (
                     <Table.Row key={dlr._id}>
-                      <Table.Cell className="text-xs font-bold text-[#3d0a0d]">{dlr.companyName}</Table.Cell>
-                      <Table.Cell className="font-mono text-[11px] text-[#7c5c5f]">
+                      <Table.Cell className="text-xs font-bold text-foreground">{dlr.companyName}</Table.Cell>
+                      <Table.Cell className="font-mono text-[11px] text-muted-foreground">
                         GST: {dlr.gstin || 'N/A'}
                       </Table.Cell>
-                      <Table.Cell className="text-xs text-[#7c5c5f]">
+                      <Table.Cell className="text-xs text-muted-foreground">
                         {[dlr.city, dlr.state].filter(Boolean).join(', ') || 'N/A'}
                       </Table.Cell>
                       <Table.Cell><StatusBadge status={dlr.status} /></Table.Cell>
-                      <Table.Cell className="text-xs text-[#7c5c5f]">
+                      <Table.Cell className="text-xs text-muted-foreground">
                         {new Date(dlr.createdAt).toLocaleDateString('en-IN')}
                       </Table.Cell>
                     </Table.Row>
@@ -556,7 +556,7 @@ const AdminReportsPage = () => {
 
           {customerLoading ? (
             <div className="space-y-3">
-              {[1, 2, 3, 4].map((n) => <Skeleton key={n} className="h-16 rounded-lg bg-[#f4e7ea]" />)}
+              {[1, 2, 3, 4].map((n) => <Skeleton key={n} className="h-16 rounded-lg bg-muted" />)}
             </div>
           ) : !customerReport || customerReport.customers?.length === 0 ? (
             <EmptyState icon={UserCheck} title="No customer report data" description="No customer accounts match your selected parameters." />
@@ -564,15 +564,15 @@ const AdminReportsPage = () => {
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Card className="text-center">
-                  <p className="text-[10px] text-[#7c5c5f] uppercase">Active Accounts</p>
+                  <p className="text-[10px] text-muted-foreground uppercase">Active Accounts</p>
                   <h4 className="text-xl font-extrabold text-emerald-700 mt-1">{customerReport.statusBreakdown?.active || 0}</h4>
                 </Card>
                 <Card className="text-center">
-                  <p className="text-[10px] text-[#7c5c5f] uppercase">Pending Accounts</p>
+                  <p className="text-[10px] text-muted-foreground uppercase">Pending Accounts</p>
                   <h4 className="text-xl font-extrabold text-amber-700 mt-1">{customerReport.statusBreakdown?.pending || 0}</h4>
                 </Card>
                 <Card className="text-center">
-                  <p className="text-[10px] text-[#7c5c5f] uppercase">Blocked Accounts</p>
+                  <p className="text-[10px] text-muted-foreground uppercase">Blocked Accounts</p>
                   <h4 className="text-xl font-extrabold text-rose-700 mt-1">{customerReport.statusBreakdown?.blocked || 0}</h4>
                 </Card>
               </div>
@@ -590,11 +590,11 @@ const AdminReportsPage = () => {
                 <Table.Body>
                   {customerReport.customers.map((cust) => (
                     <Table.Row key={cust._id}>
-                      <Table.Cell className="text-xs font-bold text-[#3d0a0d]">{cust.fullName || cust.name}</Table.Cell>
-                      <Table.Cell className="font-mono text-xs text-[#3d0a0d]">{cust.email || 'N/A'}</Table.Cell>
-                      <Table.Cell className="font-mono text-xs text-[#3d0a0d]">{cust.phone || 'N/A'}</Table.Cell>
+                      <Table.Cell className="text-xs font-bold text-foreground">{cust.fullName || cust.name}</Table.Cell>
+                      <Table.Cell className="font-mono text-xs text-foreground">{cust.email || 'N/A'}</Table.Cell>
+                      <Table.Cell className="font-mono text-xs text-foreground">{cust.phone || 'N/A'}</Table.Cell>
                       <Table.Cell><StatusBadge status={cust.accountStatus || cust.status || 'active'} /></Table.Cell>
-                      <Table.Cell className="text-xs text-[#7c5c5f]">
+                      <Table.Cell className="text-xs text-muted-foreground">
                         {new Date(cust.createdAt).toLocaleDateString('en-IN')}
                       </Table.Cell>
                     </Table.Row>

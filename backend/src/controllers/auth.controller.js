@@ -16,8 +16,8 @@ export const signup = asyncHandler(async (req, res) => {
 });
 
 export const sendOtp = asyncHandler(async (req, res) => {
-  const { identifier, purpose } = req.body;
-  const result = await authService.sendOtp({ identifier, purpose });
+  const { identifier, purpose, portal } = req.body;
+  const result = await authService.sendOtp({ identifier, purpose, portal });
 
   return ApiResponse.success(
     res,
@@ -28,7 +28,7 @@ export const sendOtp = asyncHandler(async (req, res) => {
 });
 
 export const verifyOtp = asyncHandler(async (req, res) => {
-  const { identifier, otp, purpose } = req.body;
+  const { identifier, otp, purpose, portal } = req.body;
   const reqInfo = {
     deviceInfo: {
       userAgent: req.headers['user-agent'] || 'Unknown',
@@ -42,6 +42,7 @@ export const verifyOtp = asyncHandler(async (req, res) => {
     identifier,
     otp,
     purpose,
+    portal,
     reqInfo,
   });
 

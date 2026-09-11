@@ -155,7 +155,7 @@ const AdminSessionsPage = () => {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4, 5].map((n) => (
-            <Skeleton key={n} className="h-16 rounded-lg bg-[#f4e7ea]" />
+            <Skeleton key={n} className="h-16 rounded-lg bg-muted" />
           ))}
         </div>
       ) : error ? (
@@ -189,11 +189,11 @@ const AdminSessionsPage = () => {
                 return (
                   <Table.Row key={sess._id}>
                     <Table.Cell>
-                      <div className="font-mono text-xs text-[#3d0a0d] font-bold truncate max-w-[180px]">
+                      <div className="font-mono text-xs text-foreground font-bold truncate max-w-[180px]">
                         {sess.sessionId || sess._id}
                       </div>
-                      <div className="text-[11px] font-semibold text-[#3d0a0d]">
-                        {userName} <span className="text-[10px] text-[#7c5c5f]">({userObj.email || userObj.phone || 'N/A'})</span>
+                      <div className="text-[11px] font-semibold text-foreground">
+                        {userName} <span className="text-[10px] text-muted-foreground">({userObj.email || userObj.phone || 'N/A'})</span>
                       </div>
                     </Table.Cell>
                     <Table.Cell>
@@ -207,10 +207,10 @@ const AdminSessionsPage = () => {
                         {roleStr}
                       </span>
                     </Table.Cell>
-                    <Table.Cell className="font-mono text-xs text-[#7c5c5f]">
+                    <Table.Cell className="font-mono text-xs text-muted-foreground">
                       {sess.ipAddress || '127.0.0.1'}
                     </Table.Cell>
-                    <Table.Cell className="text-xs text-[#7c5c5f]">
+                    <Table.Cell className="text-xs text-muted-foreground">
                       {new Date(sess.lastActiveAt || sess.updatedAt || sess.createdAt).toLocaleString('en-IN')}
                     </Table.Cell>
                     <Table.Cell>
@@ -221,7 +221,7 @@ const AdminSessionsPage = () => {
                       ) : sess.revokedAt ? (
                         <span className="text-xs font-medium text-rose-700">Revoked</span>
                       ) : (
-                        <span className="text-xs font-medium text-[#7c5c5f]">Expired</span>
+                        <span className="text-xs font-medium text-muted-foreground">Expired</span>
                       )}
                     </Table.Cell>
                     <Table.Cell className="text-right">
@@ -274,32 +274,32 @@ const AdminSessionsPage = () => {
       >
         {inspectSession && (
           <div className="space-y-6 text-xs">
-            <div className="p-4 rounded-xl bg-white border border-[#e5d1d4] space-y-3">
-              <div className="flex items-center justify-between border-b border-[#e5d1d4] pb-2">
-                <span className="text-[#7c5c5f]">Session UUID:</span>
-                <span className="font-mono text-[#3d0a0d] font-bold">{inspectSession.sessionId}</span>
+            <div className="p-4 rounded-xl bg-card border border-border space-y-3">
+              <div className="flex items-center justify-between border-b border-border pb-2">
+                <span className="text-muted-foreground">Session UUID:</span>
+                <span className="font-mono text-foreground font-bold">{inspectSession.sessionId}</span>
               </div>
-              <div className="flex items-center justify-between border-b border-[#e5d1d4] pb-2">
-                <span className="text-[#7c5c5f]">IP Address:</span>
-                <span className="font-mono text-[#3d0a0d]">{inspectSession.ipAddress || '127.0.0.1'}</span>
+              <div className="flex items-center justify-between border-b border-border pb-2">
+                <span className="text-muted-foreground">IP Address:</span>
+                <span className="font-mono text-foreground">{inspectSession.ipAddress || '127.0.0.1'}</span>
               </div>
-              <div className="flex items-center justify-between border-b border-[#e5d1d4] pb-2">
-                <span className="text-[#7c5c5f]">Issued Timestamp:</span>
-                <span className="text-[#3d0a0d]">{new Date(inspectSession.createdAt).toLocaleString('en-IN')}</span>
+              <div className="flex items-center justify-between border-b border-border pb-2">
+                <span className="text-muted-foreground">Issued Timestamp:</span>
+                <span className="text-foreground">{new Date(inspectSession.createdAt).toLocaleString('en-IN')}</span>
               </div>
-              <div className="flex items-center justify-between border-b border-[#e5d1d4] pb-2">
-                <span className="text-[#7c5c5f]">Expiration Timestamp:</span>
-                <span className="text-[#3d0a0d]">{new Date(inspectSession.expiresAt).toLocaleString('en-IN')}</span>
+              <div className="flex items-center justify-between border-b border-border pb-2">
+                <span className="text-muted-foreground">Expiration Timestamp:</span>
+                <span className="text-foreground">{new Date(inspectSession.expiresAt).toLocaleString('en-IN')}</span>
               </div>
               {inspectSession.revokedAt && (
-                <div className="flex items-center justify-between border-b border-[#e5d1d4] pb-2">
-                  <span className="text-[#7c5c5f]">Revocation Timestamp:</span>
+                <div className="flex items-center justify-between border-b border-border pb-2">
+                  <span className="text-muted-foreground">Revocation Timestamp:</span>
                   <span className="text-rose-700 font-semibold">{new Date(inspectSession.revokedAt).toLocaleString('en-IN')}</span>
                 </div>
               )}
               <div className="flex items-center justify-between">
-                <span className="text-[#7c5c5f]">Active State:</span>
-                <span className={`font-bold ${inspectSession.isActive ? 'text-emerald-700' : 'text-[#7c5c5f]'}`}>
+                <span className="text-muted-foreground">Active State:</span>
+                <span className={`font-bold ${inspectSession.isActive ? 'text-emerald-700' : 'text-muted-foreground'}`}>
                   {inspectSession.isActive ? 'Active' : 'Terminated/Revoked'}
                 </span>
               </div>
@@ -308,23 +308,23 @@ const AdminSessionsPage = () => {
             {/* User Details */}
             {inspectSession.userId && (
               <div className="space-y-3">
-                <h4 className="text-xs font-bold text-[#3d0a0d] uppercase tracking-wider">Associated User Profile</h4>
-                <div className="p-4 rounded-xl bg-white border border-[#e5d1d4] space-y-2">
-                  <div className="flex justify-between py-1 border-b border-[#e5d1d4]">
-                    <span className="text-[#7c5c5f]">User Name:</span>
-                    <span className="font-bold text-[#3d0a0d]">{inspectSession.userId.name || inspectSession.userId.fullName}</span>
+                <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Associated User Profile</h4>
+                <div className="p-4 rounded-xl bg-card border border-border space-y-2">
+                  <div className="flex justify-between py-1 border-b border-border">
+                    <span className="text-muted-foreground">User Name:</span>
+                    <span className="font-bold text-foreground">{inspectSession.userId.name || inspectSession.userId.fullName}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-[#e5d1d4]">
-                    <span className="text-[#7c5c5f]">Email:</span>
-                    <span className="font-mono text-[#3d0a0d]">{inspectSession.userId.email || 'N/A'}</span>
+                  <div className="flex justify-between py-1 border-b border-border">
+                    <span className="text-muted-foreground">Email:</span>
+                    <span className="font-mono text-foreground">{inspectSession.userId.email || 'N/A'}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-[#e5d1d4]">
-                    <span className="text-[#7c5c5f]">Phone:</span>
-                    <span className="font-mono text-[#3d0a0d]">{inspectSession.userId.phone || 'N/A'}</span>
+                  <div className="flex justify-between py-1 border-b border-border">
+                    <span className="text-muted-foreground">Phone:</span>
+                    <span className="font-mono text-foreground">{inspectSession.userId.phone || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between py-1">
-                    <span className="text-[#7c5c5f]">Role:</span>
-                    <span className="font-bold uppercase text-[#800020]">{inspectSession.userId.role}</span>
+                    <span className="text-muted-foreground">Role:</span>
+                    <span className="font-bold uppercase text-primary">{inspectSession.userId.role}</span>
                   </div>
                 </div>
               </div>
@@ -333,14 +333,14 @@ const AdminSessionsPage = () => {
             {/* User Agent */}
             {inspectSession.userAgent && (
               <div className="space-y-2">
-                <h4 className="text-xs font-bold text-[#3d0a0d] uppercase tracking-wider">User Agent String</h4>
-                <p className="p-3 rounded-lg bg-[#fdf8f9] border border-[#e5d1d4] font-mono text-[11px] text-[#7c5c5f] break-all">
+                <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">User Agent String</h4>
+                <p className="p-3 rounded-lg bg-background border border-border font-mono text-[11px] text-muted-foreground break-all">
                   {inspectSession.userAgent}
                 </p>
               </div>
             )}
 
-            <div className="pt-4 border-t border-[#e5d1d4] flex justify-end">
+            <div className="pt-4 border-t border-border flex justify-end">
               <Button variant="outline" size="sm" onClick={() => setInspectSession(null)}>
                 Close Drawer
               </Button>

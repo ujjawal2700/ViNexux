@@ -59,12 +59,12 @@ const AdminDashboardPage = () => {
         <AdminPageHeader title="Admin Dashboard" subtitle="Loading system overview..." />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((n) => (
-            <Skeleton key={n} className="h-28 rounded-xl bg-slate-900" />
+            <Skeleton key={n} className="h-28 rounded-xl" />
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Skeleton className="h-64 rounded-xl bg-slate-900" />
-          <Skeleton className="h-64 rounded-xl bg-slate-900" />
+          <Skeleton className="h-64 rounded-xl" />
+          <Skeleton className="h-64 rounded-xl" />
         </div>
       </div>
     );
@@ -140,32 +140,32 @@ const AdminDashboardPage = () => {
       </div>
 
       {/* Quick Action Bar */}
-      <div className="bg-white border border-[#e5d1d4] rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-xs">
+      <div className="bg-card border border-border rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-xs">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-[#f4e7ea] text-[#800020] flex items-center justify-center font-bold">
+          <div className="w-8 h-8 rounded-lg bg-muted text-primary flex items-center justify-center font-bold">
             <Sparkles className="w-4 h-4" />
           </div>
           <div>
-            <h4 className="text-xs font-bold text-[#3d0a0d] uppercase tracking-wider">Quick Control Actions</h4>
-            <p className="text-[11px] text-[#7c5c5f]">Direct shortcuts to critical admin workflows</p>
+            <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Quick Control Actions</h4>
+            <p className="text-[11px] text-muted-foreground">Direct shortcuts to critical admin workflows</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link to="/admin/categories">
             <Button variant="outline" size="sm" className="text-xs">
-              <FolderTree className="w-3.5 h-3.5 mr-1.5 text-[#800020]" />
+              <FolderTree className="w-3.5 h-3.5 mr-1.5 text-primary" />
               Categories
             </Button>
           </Link>
           <Link to="/admin/enquiries">
             <Button variant="outline" size="sm" className="text-xs">
-              <Inbox className="w-3.5 h-3.5 mr-1.5 text-[#800020]" />
+              <Inbox className="w-3.5 h-3.5 mr-1.5 text-primary" />
               Manage Leads
             </Button>
           </Link>
           <Link to="/admin/sessions">
             <Button variant="outline" size="sm" className="text-xs">
-              <Users className="w-3.5 h-3.5 mr-1.5 text-[#800020]" />
+              <Users className="w-3.5 h-3.5 mr-1.5 text-primary" />
               Active Sessions
             </Button>
           </Link>
@@ -175,22 +175,22 @@ const AdminDashboardPage = () => {
       {/* Two Column Layout: Recent Enquiries & Pending Dealer KYC Queue */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Enquiries */}
-        <div className="bg-white border border-[#e5d1d4] rounded-xl p-5 space-y-4 shadow-xs">
-          <div className="flex items-center justify-between border-b border-[#e5d1d4] pb-3">
+        <div className="bg-card border border-border rounded-xl p-5 space-y-4 shadow-xs">
+          <div className="flex items-center justify-between border-b border-border pb-3">
             <div>
-              <h3 className="text-sm font-extrabold text-[#3d0a0d] tracking-wider uppercase flex items-center gap-2">
-                <Inbox className="w-4 h-4 text-[#800020]" />
+              <h3 className="text-sm font-extrabold text-foreground tracking-wider uppercase flex items-center gap-2">
+                <Inbox className="w-4 h-4 text-primary" />
                 Recent Enquiries
               </h3>
-              <p className="text-[11px] text-[#7c5c5f]">Latest 5 leads submitted across portal</p>
+              <p className="text-[11px] text-muted-foreground">Latest 5 leads submitted across portal</p>
             </div>
-            <Link to="/admin/enquiries" className="text-xs text-[#800020] hover:text-[#9a1b32] font-bold flex items-center gap-1">
+            <Link to="/admin/enquiries" className="text-xs text-primary hover:text-accent font-bold flex items-center gap-1">
               View All <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
           {recentEnquiries.length === 0 ? (
-            <p className="text-xs text-[#7c5c5f] py-6 text-center">No recent enquiries found</p>
+            <p className="text-xs text-muted-foreground py-6 text-center">No recent enquiries found</p>
           ) : (
             <Table>
               <Table.Header>
@@ -204,19 +204,19 @@ const AdminDashboardPage = () => {
               <Table.Body>
                 {recentEnquiries.map((enq) => (
                   <Table.Row key={enq._id}>
-                    <Table.Cell className="font-mono text-xs font-bold text-[#3d0a0d]">
+                    <Table.Cell className="font-mono text-xs font-bold text-foreground">
                       {enq.enquiryNumber}
                     </Table.Cell>
                     <Table.Cell>
-                      <div className="text-xs font-bold text-[#3d0a0d]">{enq.contactName}</div>
-                      <div className="text-[10px] text-[#7c5c5f]">{enq.userType}</div>
+                      <div className="text-xs font-bold text-foreground">{enq.contactName}</div>
+                      <div className="text-[10px] text-muted-foreground">{enq.userType}</div>
                     </Table.Cell>
                     <Table.Cell>
                       <StatusBadge status={enq.status} />
                     </Table.Cell>
                     <Table.Cell className="text-right">
                       <Link to={`/admin/enquiries/${enq._id}`}>
-                        <Button variant="ghost" size="sm" className="text-xs h-7 px-2 text-[#800020] hover:bg-[#f4e7ea]">
+                        <Button variant="ghost" size="sm" className="text-xs h-7 px-2 text-primary hover:bg-muted">
                           Inspect
                         </Button>
                       </Link>
@@ -229,14 +229,14 @@ const AdminDashboardPage = () => {
         </div>
 
         {/* Pending Dealer KYC Queue */}
-        <div className="bg-white border border-[#e5d1d4] rounded-xl p-5 space-y-4 shadow-xs">
-          <div className="flex items-center justify-between border-b border-[#e5d1d4] pb-3">
+        <div className="bg-card border border-border rounded-xl p-5 space-y-4 shadow-xs">
+          <div className="flex items-center justify-between border-b border-border pb-3">
             <div>
-              <h3 className="text-sm font-extrabold text-[#3d0a0d] tracking-wider uppercase flex items-center gap-2">
+              <h3 className="text-sm font-extrabold text-foreground tracking-wider uppercase flex items-center gap-2">
                 <Clock className="w-4 h-4 text-amber-600" />
                 Pending Dealer KYC Queue
               </h3>
-              <p className="text-[11px] text-[#7c5c5f]">Dealers awaiting document verification</p>
+              <p className="text-[11px] text-muted-foreground">Dealers awaiting document verification</p>
             </div>
             <Link to="/admin/dealers?status=pending" className="text-xs text-amber-700 hover:text-amber-800 font-bold flex items-center gap-1">
               View Queue <ArrowRight className="w-3.5 h-3.5" />
@@ -244,7 +244,7 @@ const AdminDashboardPage = () => {
           </div>
 
           {pendingDealers.length === 0 ? (
-            <p className="text-xs text-[#7c5c5f] py-6 text-center">No pending dealer KYC applications</p>
+            <p className="text-xs text-muted-foreground py-6 text-center">No pending dealer KYC applications</p>
           ) : (
             <Table>
               <Table.Header>
@@ -258,10 +258,10 @@ const AdminDashboardPage = () => {
               <Table.Body>
                 {pendingDealers.map((dlr) => (
                   <Table.Row key={dlr._id}>
-                    <Table.Cell className="text-xs font-bold text-[#3d0a0d]">
+                    <Table.Cell className="text-xs font-bold text-foreground">
                       {dlr.companyName}
                     </Table.Cell>
-                    <Table.Cell className="font-mono text-[11px] text-[#7c5c5f]">
+                    <Table.Cell className="font-mono text-[11px] text-muted-foreground">
                       {dlr.gstin || 'N/A'}
                     </Table.Cell>
                     <Table.Cell>
@@ -269,7 +269,7 @@ const AdminDashboardPage = () => {
                     </Table.Cell>
                     <Table.Cell className="text-right">
                       <Link to={`/admin/dealers/${dlr._id}`}>
-                        <Button variant="outline" size="sm" className="text-xs h-7 px-2 border-[#e5d1d4] text-[#800020]">
+                        <Button variant="outline" size="sm" className="text-xs h-7 px-2 border-border text-primary">
                           Verify
                         </Button>
                       </Link>

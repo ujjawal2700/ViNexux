@@ -2,9 +2,59 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <title>Vi Nexus | B2B CCTV & Security Equipment Distributor</title>
+
+    <!-- Primary SEO Metadata -->
+    <meta name="title" content="Vi Nexus | B2B CCTV & Security Equipment Distributor" />
+    <meta
+      name="description"
+      content="Vi Nexus is a leading B2B distributor of CCTV cameras, DVRs, NVRs, PoE networking gear, and security accessories in India — wholesale dealer pricing, instant quotations, and nationwide bulk supply."
+    />
+    <meta
+      name="keywords"
+      content="Vi Nexus, Vinexus, CCTV wholesale, security camera distributor, NVR DVR supplier, PoE switches, B2B security hardware, dealer pricing India"
+    />
+    <meta name="author" content="Vi Nexus" />
+    <meta name="theme-color" content="#800020" />
+    <link rel="canonical" href="https://vinexus.com/" />
+
+    <!-- Open Graph / Facebook / WhatsApp -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Vi Nexus" />
+    <meta property="og:title" content="Vi Nexus | B2B CCTV & Security Equipment Distributor" />
+    <meta
+      property="og:description"
+      content="Wholesale CCTV cameras, NVRs, DVRs, PoE switches, and security infrastructure with instant quotations and dealer pricing."
+    />
+    <meta property="og:image" content="/logo.png" />
+    <meta property="og:url" content="https://vinexus.com/" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Vi Nexus | B2B CCTV & Security Equipment Distributor" />
+    <meta
+      name="twitter:description"
+      content="Wholesale CCTV cameras, NVRs, DVRs, PoE switches, and security infrastructure with instant quotations and dealer pricing."
+    />
+    <meta name="twitter:image" content="/logo.png" />
+
+    <!-- Apply the stored/system theme before paint to avoid a flash of the wrong theme -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('vinexus-theme');
+          var isDark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (isDark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

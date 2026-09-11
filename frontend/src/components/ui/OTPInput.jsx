@@ -101,11 +101,11 @@ export const OTPInput = ({
             onChange={(e) => handleChange(e, index)}
             onKeyDown={(e) => handleKeyDown(e, index)}
             onPaste={handlePaste}
-            className={`w-11 h-12 text-center text-xl font-mono font-bold bg-white border ${
+            className={`w-11 h-12 text-center text-xl font-mono font-bold bg-card border ${
               error
                 ? 'border-rose-500 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-                : 'border-[#e5d1d4] focus:border-[#800020] focus:ring-1 focus:ring-[#800020]/20'
-            } rounded-xl text-[#3d0a0d] placeholder-[#9a6870] transition-all focus-ring disabled:opacity-50 disabled:cursor-not-allowed`}
+                : 'border-border focus:border-primary focus:ring-1 focus:ring-primary/20'
+            } rounded-xl text-foreground placeholder-muted-foreground/70 transition-all focus-ring disabled:opacity-50 disabled:cursor-not-allowed`}
           />
         ))}
       </div>

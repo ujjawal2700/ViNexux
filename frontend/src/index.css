@@ -1,4 +1,10 @@
 @import "tailwindcss";
+@plugin "tailwindcss-animate";
+
+/* Tailwind v4 class-based dark mode: toggling `.dark` on <html> flips every
+   `dark:` variant AND every token below (since components consume tokens,
+   not `dark:` variants directly, in most cases). */
+@custom-variant dark (&:is(.dark *));
 
 :root {
   --card: #ffffff;
@@ -55,6 +61,52 @@
   --color-amber-accent: #9a1b32;
 }
 
+/* Dark theme: neutral charcoal surfaces (not a hue-rotated brown) with the
+   brand red kept as a vivid accent. Toggled via a `.dark` class on <html>
+   (see ThemeContext). */
+.dark {
+  --card: #1c1c1f;
+  --ring: #fb3760;
+  --input: #313136;
+  --muted: #262629;
+  --accent: #fb7185;
+  --border: #313136;
+  --chart-1: #fb3760;
+  --chart-2: #fb7185;
+  --chart-3: #fda4af;
+  --chart-4: #fecdd3;
+  --chart-5: #ffe4e6;
+  --popover: #1c1c1f;
+  --primary: #fb3760;
+  --sidebar: #101012;
+  --secondary: #262629;
+  --background: #131315;
+  --foreground: #f2f2f3;
+  --destructive: #fb7185;
+  --shadow-color: #000000;
+  --sidebar-ring: #fb3760;
+  --sidebar-accent: #1c1c1f;
+  --sidebar-border: #232326;
+  --card-foreground: #f2f2f3;
+  --sidebar-primary: #fb3760;
+  --muted-foreground: #9d9da3;
+  --accent-foreground: #131315;
+  --popover-foreground: #f2f2f3;
+  --primary-foreground: #ffffff;
+  --sidebar-foreground: #f2f2f3;
+  --secondary-foreground: #f2f2f3;
+  --destructive-foreground: #131315;
+  --sidebar-accent-foreground: #f2f2f3;
+  --sidebar-primary-foreground: #ffffff;
+
+  --color-bg-primary: #131315;
+  --color-bg-surface: #1c1c1f;
+  --color-bg-card: #1c1c1f;
+  --color-border-subtle: #313136;
+  --color-crimson-primary: #fb3760;
+  --color-amber-accent: #fb7185;
+}
+
 @theme inline {
   --color-card: var(--card);
   --color-ring: var(--ring);
@@ -103,12 +155,19 @@
 }
 
 @layer base {
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
   body {
     background-color: var(--background);
     color: var(--foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 }
 
@@ -119,33 +178,33 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #fdf8f9;
+  background: var(--background);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #e5d1d4;
+  background: var(--border);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #800020;
+  background: var(--primary);
 }
 
-/* Burgundy Wine Light Panel Utilities */
+/* Burgundy Wine Panel Utilities (token-driven, theme-aware) */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.95);
+  background: color-mix(in srgb, var(--card) 95%, transparent);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid #e5d1d4;
-  box-shadow: 0 4px 20px rgba(61, 10, 13, 0.05);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
 .glass-panel-glow {
-  background: #ffffff;
+  background: var(--card);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid #e5d1d4;
-  box-shadow: 0 10px 30px -5px rgba(128, 0, 32, 0.12);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 30px -5px color-mix(in srgb, var(--primary) 12%, transparent);
 }
 
 .glass-card-hover {
@@ -154,18 +213,18 @@
 
 .glass-card-hover:hover {
   transform: translateY(-4px);
-  border-color: #800020;
-  box-shadow: 0 12px 30px -10px rgba(128, 0, 32, 0.2);
+  border-color: var(--primary);
+  box-shadow: 0 12px 30px -10px color-mix(in srgb, var(--primary) 20%, transparent);
 }
 
 .bg-hex-pattern {
-  background-image: radial-gradient(rgba(128, 0, 32, 0.08) 1px, transparent 1px);
+  background-image: radial-gradient(color-mix(in srgb, var(--primary) 8%, transparent) 1px, transparent 1px);
   background-size: 28px 28px;
 }
 
 .bg-grid-pattern {
-  background-image: linear-gradient(to right, rgba(128, 0, 32, 0.05) 1px, transparent 1px),
-                    linear-gradient(to bottom, rgba(128, 0, 32, 0.05) 1px, transparent 1px);
+  background-image: linear-gradient(to right, color-mix(in srgb, var(--primary) 5%, transparent) 1px, transparent 1px),
+                    linear-gradient(to bottom, color-mix(in srgb, var(--primary) 5%, transparent) 1px, transparent 1px);
   background-size: 40px 40px;
 }
 
@@ -174,7 +233,7 @@
   outline: none;
 }
 .focus-ring:focus-visible {
-  outline: 2px solid #800020;
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
@@ -190,19 +249,19 @@
 
 @keyframes pulse-glow {
   0%, 100% {
-    box-shadow: 0 0 15px rgba(128, 0, 32, 0.2);
+    box-shadow: 0 0 15px color-mix(in srgb, var(--primary) 20%, transparent);
   }
   50% {
-    box-shadow: 0 0 30px rgba(128, 0, 32, 0.4);
+    box-shadow: 0 0 30px color-mix(in srgb, var(--primary) 40%, transparent);
   }
 }
 
 .animate-shimmer {
   background: linear-gradient(
     90deg,
-    rgba(244, 231, 234, 0.6) 25%,
-    rgba(229, 209, 212, 0.8) 50%,
-    rgba(244, 231, 234, 0.6) 75%
+    color-mix(in srgb, var(--muted) 60%, transparent) 25%,
+    color-mix(in srgb, var(--border) 80%, transparent) 50%,
+    color-mix(in srgb, var(--muted) 60%, transparent) 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.8s infinite linear;

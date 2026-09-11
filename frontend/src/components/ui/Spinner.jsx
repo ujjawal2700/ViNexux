@@ -10,7 +10,7 @@ const sizeMap = {
 
 export const Spinner = ({ size = 'md', className = '' }) => {
   return (
-    <Loader2 className={`animate-spin text-crimson-500 ${sizeMap[size] || sizeMap.md} ${className}`} />
+    <Loader2 className={`animate-spin text-rose-500 ${sizeMap[size] || sizeMap.md} ${className}`} />
   );
 };
 

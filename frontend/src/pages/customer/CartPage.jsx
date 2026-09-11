@@ -156,7 +156,7 @@ export const CartPage = () => {
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 space-y-6 bg-[#fdf8f9]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 space-y-6 bg-background">
         <Skeleton className="h-8 w-48" />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-8 space-y-4">
@@ -180,14 +180,14 @@ export const CartPage = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 bg-[#fdf8f9] text-[#3d0a0d] min-h-screen">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 bg-background text-foreground min-h-screen">
       
       {/* Header */}
-      <div className="border-b border-[#e5d1d4] pb-6 flex items-center justify-between">
+      <div className="border-b border-border pb-6 flex items-center justify-between">
         <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-[#800020]">Cart & Quotation Builder</span>
-          <h1 className="text-3xl font-extrabold text-[#3d0a0d] tracking-tight flex items-center gap-3">
-            <ShoppingBag className="w-7 h-7 text-[#800020]" />
+          <span className="text-xs font-bold uppercase tracking-wider text-primary">Cart & Quotation Builder</span>
+          <h1 className="text-3xl font-extrabold text-foreground tracking-tight flex items-center gap-3">
+            <ShoppingBag className="w-7 h-7 text-primary" />
             <span>Shopping Cart</span>
           </h1>
         </div>
@@ -220,7 +220,7 @@ export const CartPage = () => {
               return (
                 <Card
                   key={product._id || item._id}
-                  className="p-4 bg-white border-[#e5d1d4] flex flex-col sm:flex-row items-center gap-4 justify-between shadow-sm"
+                  className="p-4 bg-card border-border flex flex-col sm:flex-row items-center gap-4 justify-between shadow-sm"
                 >
                   {/* Thumbnail & Product Details */}
                   <div className="flex items-center gap-4 w-full sm:w-auto">
@@ -229,41 +229,41 @@ export const CartPage = () => {
                         src={imgUrl}
                         alt={product.name || 'Product'}
                         aspectRatio="aspect-square"
-                        className="w-20 h-20 rounded-xl object-cover border border-[#e5d1d4]"
+                        className="w-20 h-20 rounded-xl object-cover border border-border"
                       />
                     </Link>
 
                     <div className="space-y-1">
-                      <Link to={`/products/${product._id}`} className="hover:text-[#800020] transition-colors">
-                        <h4 className="font-bold text-[#3d0a0d] text-sm line-clamp-2">
+                      <Link to={`/products/${product._id}`} className="hover:text-primary transition-colors">
+                        <h4 className="font-bold text-foreground text-sm line-clamp-2">
                           {product.name || 'Vinexus Equipment'}
                         </h4>
                       </Link>
-                      <div className="flex items-center gap-2 text-xs text-[#7c5c5f] font-mono">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
                         <span>SKU: {product.sku || 'N/A'}</span>
                       </div>
                       <div className="text-xs text-[#664448] font-medium">
-                        Unit Price: <span className="text-[#3d0a0d] font-bold">{formatCurrency(price)}</span>
+                        Unit Price: <span className="text-foreground font-bold">{formatCurrency(price)}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Quantity Modifier & Line Total Controls */}
-                  <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-t-0 border-[#e5d1d4]">
+                  <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-t-0 border-border">
                     {/* Quantity Controls */}
-                    <div className="flex items-center bg-[#f4e7ea] border border-[#e5d1d4] rounded-xl overflow-hidden">
+                    <div className="flex items-center bg-muted border border-border rounded-xl overflow-hidden">
                       <button
                         onClick={() => handleUpdateQuantity(product._id, item.quantity - 1)}
                         disabled={item.quantity <= 1 || updatingItemId === product._id}
-                        className="p-2 text-[#7c5c5f] hover:text-[#800020] disabled:opacity-40"
+                        className="p-2 text-muted-foreground hover:text-primary disabled:opacity-40"
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
-                      <span className="px-3 text-xs font-bold text-[#3d0a0d] font-mono">{item.quantity}</span>
+                      <span className="px-3 text-xs font-bold text-foreground font-mono">{item.quantity}</span>
                       <button
                         onClick={() => handleUpdateQuantity(product._id, item.quantity + 1)}
                         disabled={updatingItemId === product._id}
-                        className="p-2 text-[#7c5c5f] hover:text-[#800020] disabled:opacity-40"
+                        className="p-2 text-muted-foreground hover:text-primary disabled:opacity-40"
                       >
                         <Plus className="w-3.5 h-3.5" />
                       </button>
@@ -271,7 +271,7 @@ export const CartPage = () => {
 
                     {/* Line Total */}
                     <div className="text-right">
-                      <div className="text-sm font-extrabold text-[#3d0a0d] font-mono">
+                      <div className="text-sm font-extrabold text-foreground font-mono">
                         {formatCurrency(lineTotal)}
                       </div>
                     </div>
@@ -291,7 +291,7 @@ export const CartPage = () => {
             })}
 
             <div className="pt-2">
-              <Link to="/products" className="text-xs font-semibold text-[#800020] hover:text-[#66001a] inline-flex items-center gap-1">
+              <Link to="/products" className="text-xs font-semibold text-primary hover:text-primary/80 inline-flex items-center gap-1">
                 <ArrowLeft className="w-4 h-4" /> Continue Browsing Catalog
               </Link>
             </div>
@@ -299,23 +299,23 @@ export const CartPage = () => {
 
           {/* Cart Summary & Dual CTAs Column */}
           <div className="lg:col-span-4 space-y-6 sticky top-24">
-            <Card className="bg-white p-6 rounded-2xl border border-[#e5d1d4] space-y-6 shadow-sm">
-              <CardHeader className="p-0 pb-4 border-b border-[#e5d1d4]">
-                <CardTitle className="text-[#3d0a0d]">Cart Summary</CardTitle>
+            <Card className="bg-card p-6 rounded-2xl border border-border space-y-6 shadow-sm">
+              <CardHeader className="p-0 pb-4 border-b border-border">
+                <CardTitle className="text-foreground">Cart Summary</CardTitle>
               </CardHeader>
 
               <CardContent className="p-0 space-y-3 text-xs">
-                <div className="flex justify-between text-[#7c5c5f]">
+                <div className="flex justify-between text-muted-foreground">
                   <span>Unique Items</span>
-                  <span className="font-bold text-[#3d0a0d]">{items.length}</span>
+                  <span className="font-bold text-foreground">{items.length}</span>
                 </div>
-                <div className="flex justify-between text-[#7c5c5f]">
+                <div className="flex justify-between text-muted-foreground">
                   <span>Total Equipment Units</span>
-                  <span className="font-bold text-[#3d0a0d]">{totalQuantity}</span>
+                  <span className="font-bold text-foreground">{totalQuantity}</span>
                 </div>
-                <div className="pt-3 border-t border-[#e5d1d4] flex justify-between text-sm">
-                  <span className="font-bold text-[#3d0a0d]">Estimated Subtotal</span>
-                  <span className="font-extrabold text-[#3d0a0d] text-base">{formatCurrency(subtotal)}</span>
+                <div className="pt-3 border-t border-border flex justify-between text-sm">
+                  <span className="font-bold text-foreground">Estimated Subtotal</span>
+                  <span className="font-extrabold text-foreground text-base">{formatCurrency(subtotal)}</span>
                 </div>
                 <p className="text-[10px] text-[#9a6870]">
                   *Prices shown represent applicable standard or verified dealer rates. Formal quotation confirmed upon submission.
@@ -354,9 +354,9 @@ export const CartPage = () => {
               </CardFooter>
             </Card>
 
-            <div className="p-4 rounded-xl bg-white border border-[#e5d1d4] text-xs text-[#7c5c5f] space-y-1 shadow-sm">
-              <div className="font-bold text-[#3d0a0d] flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-[#800020]" />
+            <div className="p-4 rounded-xl bg-card border border-border text-xs text-muted-foreground space-y-1 shadow-sm">
+              <div className="font-bold text-foreground flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-primary" />
                 <span>Non-Transactional B2B Platform</span>
               </div>
               <p className="text-[11px] leading-relaxed">

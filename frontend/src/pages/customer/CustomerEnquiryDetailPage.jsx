@@ -93,7 +93,7 @@ export const CustomerEnquiryDetailPage = () => {
 
   if (isLoading) {
     return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 space-y-6 bg-slate-950">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 space-y-6 bg-background">
         <Skeleton className="h-6 w-32" />
         <Skeleton className="h-10 w-64" />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -130,24 +130,24 @@ export const CustomerEnquiryDetailPage = () => {
   );
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8 bg-[#fdf8f9] text-[#3d0a0d] min-h-screen">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8 bg-background text-foreground min-h-screen">
       
       {/* Header */}
-      <div className="border-b border-[#e5d1d4] pb-6 space-y-3">
-        <Link to="/customer/enquiries" className="text-xs text-[#7c5c5f] hover:text-[#800020] inline-flex items-center gap-1 font-medium">
+      <div className="border-b border-border pb-6 space-y-3">
+        <Link to="/customer/enquiries" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1 font-medium">
           <ArrowLeft className="w-3.5 h-3.5" /> Back to My Enquiries
         </Link>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-extrabold text-[#3d0a0d] tracking-tight font-mono">
+              <h1 className="text-3xl font-extrabold text-foreground tracking-tight font-mono">
                 #{enquiry.enquiryNumber}
               </h1>
               <StatusBadge status={enquiry.status} />
             </div>
-            <div className="flex items-center gap-2 text-xs text-[#7c5c5f]">
-              <Calendar className="w-3.5 h-3.5 text-[#800020]" />
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Calendar className="w-3.5 h-3.5 text-primary" />
               <span>Submitted on {new Date(enquiry.createdAt).toLocaleString('en-IN')}</span>
             </div>
           </div>
@@ -167,10 +167,10 @@ export const CustomerEnquiryDetailPage = () => {
         <div className="lg:col-span-8 space-y-6">
           
           {/* ITEMS SNAPSHOT TABLE */}
-          <Card className="bg-white p-6 rounded-2xl border border-[#e5d1d4] space-y-4 shadow-sm">
-            <CardHeader className="p-0 pb-3 border-b border-[#e5d1d4]">
-              <CardTitle className="text-sm font-bold flex items-center gap-2 text-[#3d0a0d]">
-                <FileText className="w-4 h-4 text-[#800020]" />
+          <Card className="bg-card p-6 rounded-2xl border border-border space-y-4 shadow-sm">
+            <CardHeader className="p-0 pb-3 border-b border-border">
+              <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                <FileText className="w-4 h-4 text-primary" />
                 <span>Enquired Equipment Items Snapshot</span>
               </CardTitle>
             </CardHeader>
@@ -183,40 +183,40 @@ export const CustomerEnquiryDetailPage = () => {
                 const lineTotal = price * (item.quantity || 1);
 
                 return (
-                  <div key={idx} className="flex items-center justify-between text-xs py-3 border-b border-[#e5d1d4] gap-4">
+                  <div key={idx} className="flex items-center justify-between text-xs py-3 border-b border-border gap-4">
                     <div className="flex items-center gap-3 truncate">
-                      <Image src={imgUrl} alt={item.productName} aspectRatio="aspect-square" className="w-12 h-12 rounded-xl object-cover border border-[#e5d1d4] shrink-0" />
+                      <Image src={imgUrl} alt={item.productName} aspectRatio="aspect-square" className="w-12 h-12 rounded-xl object-cover border border-border shrink-0" />
                       <div className="truncate space-y-0.5">
-                        <span className="font-bold text-[#3d0a0d] block truncate">{item.productName || 'Equipment'}</span>
+                        <span className="font-bold text-foreground block truncate">{item.productName || 'Equipment'}</span>
                         {prod.sku && <span className="font-mono text-[10px] text-[#9a6870] block">SKU: {prod.sku}</span>}
-                        <span className="text-[11px] text-[#7c5c5f]">Qty: {item.quantity} × {formatCurrency(price)}</span>
+                        <span className="text-[11px] text-muted-foreground">Qty: {item.quantity} × {formatCurrency(price)}</span>
                       </div>
                     </div>
 
-                    <div className="text-right font-mono font-bold text-[#3d0a0d] shrink-0">
+                    <div className="text-right font-mono font-bold text-foreground shrink-0">
                       {formatCurrency(lineTotal)}
                     </div>
                   </div>
                 );
               })}
 
-              <div className="pt-3 flex justify-between text-sm font-bold border-t border-[#e5d1d4]">
+              <div className="pt-3 flex justify-between text-sm font-bold border-t border-border">
                 <span className="text-[#664448]">Estimated Total</span>
-                <span className="text-[#3d0a0d] text-base font-mono">{formatCurrency(grandTotal)}</span>
+                <span className="text-foreground text-base font-mono">{formatCurrency(grandTotal)}</span>
               </div>
             </CardContent>
           </Card>
 
           {/* CUSTOMER MESSAGE */}
           {enquiry.message && (
-            <Card className="bg-white p-6 rounded-2xl border border-[#e5d1d4] space-y-3 shadow-sm">
-              <CardHeader className="p-0 pb-2 border-b border-[#e5d1d4]">
-                <CardTitle className="text-xs font-bold text-[#7c5c5f] uppercase flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-[#800020]" />
+            <Card className="bg-card p-6 rounded-2xl border border-border space-y-3 shadow-sm">
+              <CardHeader className="p-0 pb-2 border-b border-border">
+                <CardTitle className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-primary" />
                   <span>Customer Notes / Message</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-0 text-xs text-[#664448] leading-relaxed italic bg-[#fdf8f9] p-3 rounded-xl border border-[#e5d1d4]">
+              <CardContent className="p-0 text-xs text-[#664448] leading-relaxed italic bg-background p-3 rounded-xl border border-border">
                 "{enquiry.message}"
               </CardContent>
             </Card>
@@ -224,22 +224,22 @@ export const CustomerEnquiryDetailPage = () => {
 
           {/* ADMIN NOTES TIMELINE */}
           {enquiry.notes && enquiry.notes.length > 0 && (
-            <Card className="bg-white p-6 rounded-2xl border border-[#e5d1d4] space-y-4 shadow-sm">
-              <CardHeader className="p-0 pb-3 border-b border-[#e5d1d4]">
-                <CardTitle className="text-xs font-bold text-[#7c5c5f] uppercase flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-[#800020]" />
+            <Card className="bg-card p-6 rounded-2xl border border-border space-y-4 shadow-sm">
+              <CardHeader className="p-0 pb-3 border-b border-border">
+                <CardTitle className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-primary" />
                   <span>Vinexus Support Updates & Notes</span>
                 </CardTitle>
               </CardHeader>
 
               <CardContent className="p-0 space-y-3">
                 {enquiry.notes.map((noteItem, idx) => (
-                  <div key={idx} className="bg-[#fdf8f9] p-3.5 rounded-xl border border-[#e5d1d4] text-xs space-y-1">
-                    <div className="flex items-center justify-between text-[11px] text-[#7c5c5f]">
-                      <span className="font-semibold text-[#800020]">Vinexus Commercial Rep</span>
+                  <div key={idx} className="bg-background p-3.5 rounded-xl border border-border text-xs space-y-1">
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span className="font-semibold text-primary">Vinexus Commercial Rep</span>
                       <span>{new Date(noteItem.createdAt).toLocaleString('en-IN')}</span>
                     </div>
-                    <p className="text-[#3d0a0d] leading-relaxed pt-1">{noteItem.note}</p>
+                    <p className="text-foreground leading-relaxed pt-1">{noteItem.note}</p>
                   </div>
                 ))}
               </CardContent>
@@ -249,10 +249,10 @@ export const CustomerEnquiryDetailPage = () => {
 
         {/* Right Column: Contact & Address Snapshot */}
         <div className="lg:col-span-4 space-y-6">
-          <Card className="bg-white p-6 rounded-2xl border border-[#e5d1d4] space-y-4 text-xs shadow-sm">
-            <CardHeader className="p-0 pb-3 border-b border-[#e5d1d4]">
-              <CardTitle className="text-sm font-bold flex items-center gap-2 text-[#3d0a0d]">
-                <User className="w-4 h-4 text-[#800020]" />
+          <Card className="bg-card p-6 rounded-2xl border border-border space-y-4 text-xs shadow-sm">
+            <CardHeader className="p-0 pb-3 border-b border-border">
+              <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                <User className="w-4 h-4 text-primary" />
                 <span>Contact & Delivery Snapshot</span>
               </CardTitle>
             </CardHeader>
@@ -261,18 +261,18 @@ export const CustomerEnquiryDetailPage = () => {
               <div className="space-y-2">
                 <span className="text-[10px] font-bold uppercase text-[#9a6870] tracking-wider">Contact Person</span>
                 <div className="space-y-1 text-[#664448]">
-                  <div className="font-bold text-[#3d0a0d] text-sm">{enquiry.contactName}</div>
+                  <div className="font-bold text-foreground text-sm">{enquiry.contactName}</div>
                   <div className="flex items-center gap-1.5 font-mono"><Mail className="w-3.5 h-3.5 text-[#9a6870]" /> {enquiry.contactEmail}</div>
                   <div className="flex items-center gap-1.5 font-mono"><Phone className="w-3.5 h-3.5 text-[#9a6870]" /> {enquiry.contactPhone}</div>
                 </div>
               </div>
 
               {enquiry.deliveryAddress && (
-                <div className="space-y-2 pt-3 border-t border-[#e5d1d4]">
+                <div className="space-y-2 pt-3 border-t border-border">
                   <span className="text-[10px] font-bold uppercase text-[#9a6870] tracking-wider flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-[#800020]" /> Delivery Address
+                    <MapPin className="w-3 h-3 text-primary" /> Delivery Address
                   </span>
-                  <div className="text-[#664448] leading-relaxed bg-[#fdf8f9] p-3 rounded-xl border border-[#e5d1d4]">
+                  <div className="text-[#664448] leading-relaxed bg-background p-3 rounded-xl border border-border">
                     <div>{enquiry.deliveryAddress.line1}</div>
                     {enquiry.deliveryAddress.line2 && <div>{enquiry.deliveryAddress.line2}</div>}
                     <div>

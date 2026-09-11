@@ -63,12 +63,12 @@ export const DealerKycStatusPage = () => {
   if (!profile) {
     return (
       <div className="max-w-3xl mx-auto py-12 text-center space-y-6">
-        <div className="w-16 h-16 rounded-2xl bg-[#f4e7ea] border border-[#e5d1d4] flex items-center justify-center text-[#800020] mx-auto">
+        <div className="w-16 h-16 rounded-2xl bg-muted border border-border flex items-center justify-center text-primary mx-auto">
           <FileCheck className="w-8 h-8" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl font-extrabold text-[#3d0a0d]">No KYC Profile Created Yet</h2>
-          <p className="text-xs text-[#7c5c5f] max-w-md mx-auto">
+          <h2 className="text-2xl font-extrabold text-foreground">No KYC Profile Created Yet</h2>
+          <p className="text-xs text-muted-foreground max-w-md mx-auto">
             Please submit your company profile details and GST/PAN verification documents to unlock dealer wholesale pricing.
           </p>
         </div>
@@ -85,14 +85,14 @@ export const DealerKycStatusPage = () => {
   const kycDocs = profile.kycDocuments || [];
 
   return (
-    <div className="space-y-8 text-[#3d0a0d] max-w-4xl mx-auto">
+    <div className="space-y-8 text-foreground max-w-4xl mx-auto">
       
       {/* Header */}
-      <div className="border-b border-[#e5d1d4] pb-6 flex items-center justify-between">
+      <div className="border-b border-border pb-6 flex items-center justify-between">
         <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-[#800020]">Account Audit Center</span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#3d0a0d] tracking-tight flex items-center gap-3">
-            <ShieldCheck className="w-7 h-7 text-[#800020]" />
+          <span className="text-xs font-bold uppercase tracking-wider text-primary">Account Audit Center</span>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight flex items-center gap-3">
+            <ShieldCheck className="w-7 h-7 text-primary" />
             <span>KYC Verification Status</span>
           </h1>
         </div>
@@ -111,7 +111,7 @@ export const DealerKycStatusPage = () => {
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-[#3d0a0d] text-base">KYC Status: Approved</h3>
+                <h3 className="font-bold text-foreground text-base">KYC Status: Approved</h3>
                 <span className="text-xs text-emerald-700 font-semibold">Tier 1 Wholesale Rates Unlocked</span>
               </div>
             </div>
@@ -129,16 +129,16 @@ export const DealerKycStatusPage = () => {
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-[#3d0a0d] text-base">KYC Status: Rejected</h3>
+                <h3 className="font-bold text-foreground text-base">KYC Status: Rejected</h3>
                 <span className="text-xs text-rose-700 font-semibold">Action Required</span>
               </div>
             </div>
             <StatusBadge status="rejected" />
           </div>
 
-          <div className="p-4 rounded-xl bg-white border border-rose-200 text-xs space-y-1">
+          <div className="p-4 rounded-xl bg-card border border-rose-200 text-xs space-y-1">
             <span className="font-bold text-rose-700 block uppercase text-[10px]">Rejection Reason</span>
-            <p className="text-[#3d0a0d] font-medium">
+            <p className="text-foreground font-medium">
               "{profile.rejectionReason || 'Submitted documentation was incomplete or invalid.'}"
             </p>
           </div>
@@ -159,7 +159,7 @@ export const DealerKycStatusPage = () => {
                 <Clock className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-[#3d0a0d] text-base">KYC Status: Under Review</h3>
+                <h3 className="font-bold text-foreground text-base">KYC Status: Under Review</h3>
                 <span className="text-xs text-amber-800 font-semibold">Standard Rates Apply</span>
               </div>
             </div>
@@ -172,10 +172,10 @@ export const DealerKycStatusPage = () => {
       )}
 
       {/* SUBMITTED PROFILE DATA SUMMARY */}
-      <Card className="bg-white p-6 rounded-2xl border border-[#e5d1d4] space-y-4 shadow-sm">
-        <CardHeader className="p-0 pb-3 border-b border-[#e5d1d4] flex items-center justify-between">
-          <CardTitle className="text-sm font-bold flex items-center gap-2 text-[#3d0a0d]">
-            <Building2 className="w-4 h-4 text-[#800020]" />
+      <Card className="bg-card p-6 rounded-2xl border border-border space-y-4 shadow-sm">
+        <CardHeader className="p-0 pb-3 border-b border-border flex items-center justify-between">
+          <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+            <Building2 className="w-4 h-4 text-primary" />
             <span>Submitted Business Telemetry</span>
           </CardTitle>
           <Link to="/dealer/kyc">
@@ -186,24 +186,24 @@ export const DealerKycStatusPage = () => {
         </CardHeader>
 
         <CardContent className="p-0 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-          <div className="space-y-1 bg-[#fdf8f9] p-3 rounded-xl border border-[#e5d1d4]">
+          <div className="space-y-1 bg-background p-3 rounded-xl border border-border">
             <span className="text-[#9a6870] block text-[10px]">Company Name</span>
-            <span className="font-bold text-[#3d0a0d] block">{profile.companyName}</span>
+            <span className="font-bold text-foreground block">{profile.companyName}</span>
           </div>
 
-          <div className="space-y-1 bg-[#fdf8f9] p-3 rounded-xl border border-[#e5d1d4]">
+          <div className="space-y-1 bg-background p-3 rounded-xl border border-border">
             <span className="text-[#9a6870] block text-[10px]">GSTIN Number</span>
-            <span className="font-mono font-bold text-[#3d0a0d] block">{profile.gstin || 'Not Provided'}</span>
+            <span className="font-mono font-bold text-foreground block">{profile.gstin || 'Not Provided'}</span>
           </div>
 
-          <div className="space-y-1 bg-[#fdf8f9] p-3 rounded-xl border border-[#e5d1d4]">
+          <div className="space-y-1 bg-background p-3 rounded-xl border border-border">
             <span className="text-[#9a6870] block text-[10px]">PAN Number</span>
-            <span className="font-mono font-bold text-[#3d0a0d] block">{profile.pan || 'Not Provided'}</span>
+            <span className="font-mono font-bold text-foreground block">{profile.pan || 'Not Provided'}</span>
           </div>
 
-          <div className="space-y-1 bg-[#fdf8f9] p-3 rounded-xl border border-[#e5d1d4]">
+          <div className="space-y-1 bg-background p-3 rounded-xl border border-border">
             <span className="text-[#9a6870] block text-[10px]">Registered Location</span>
-            <span className="font-bold text-[#3d0a0d] block">
+            <span className="font-bold text-foreground block">
               {profile.city ? `${profile.city}, ${profile.state || ''} ${profile.pincode || ''}` : 'Not Provided'}
             </span>
           </div>
@@ -211,10 +211,10 @@ export const DealerKycStatusPage = () => {
       </Card>
 
       {/* SUBMITTED DOCUMENTS CHECKLIST */}
-      <Card className="bg-white p-6 rounded-2xl border border-[#e5d1d4] space-y-4 shadow-sm">
-        <CardHeader className="p-0 pb-3 border-b border-[#e5d1d4]">
-          <CardTitle className="text-sm font-bold flex items-center gap-2 text-[#3d0a0d]">
-            <FileText className="w-4 h-4 text-[#800020]" />
+      <Card className="bg-card p-6 rounded-2xl border border-border space-y-4 shadow-sm">
+        <CardHeader className="p-0 pb-3 border-b border-border">
+          <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+            <FileText className="w-4 h-4 text-primary" />
             <span>Submitted KYC Verification Files</span>
           </CardTitle>
         </CardHeader>
@@ -223,22 +223,22 @@ export const DealerKycStatusPage = () => {
           {['gst', 'pan', 'aadhaar'].map((docType) => {
             const doc = kycDocs.find((d) => d.type === docType);
             return (
-              <div key={docType} className="flex items-center justify-between p-3 rounded-xl bg-[#fdf8f9] border border-[#e5d1d4]">
+              <div key={docType} className="flex items-center justify-between p-3 rounded-xl bg-background border border-border">
                 <div className="flex items-center gap-3">
-                  <FileText className="w-4 h-4 text-[#800020]" />
-                  <span className="font-bold uppercase text-[#3d0a0d]">{docType} Document</span>
+                  <FileText className="w-4 h-4 text-primary" />
+                  <span className="font-bold uppercase text-foreground">{docType} Document</span>
                 </div>
 
                 {doc ? (
                   <div className="flex items-center gap-3">
-                    <span className="text-[11px] text-[#7c5c5f]">
+                    <span className="text-[11px] text-muted-foreground">
                       Uploaded {new Date(doc.uploadedAt || profile.updatedAt).toLocaleDateString()}
                     </span>
                     <a
                       href={doc.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[#800020] hover:underline flex items-center gap-1 font-semibold"
+                      className="text-primary hover:underline flex items-center gap-1 font-semibold"
                     >
                       View <ExternalLink className="w-3 h-3" />
                     </a>

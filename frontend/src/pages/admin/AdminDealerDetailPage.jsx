@@ -129,9 +129,9 @@ const AdminDealerDetailPage = () => {
   if (loading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-10 w-48 bg-[#f4e7ea]" />
-        <Skeleton className="h-64 rounded-xl bg-[#f4e7ea]" />
-        <Skeleton className="h-48 rounded-xl bg-[#f4e7ea]" />
+        <Skeleton className="h-10 w-48 bg-muted" />
+        <Skeleton className="h-64 rounded-xl bg-muted" />
+        <Skeleton className="h-48 rounded-xl bg-muted" />
       </div>
     );
   }
@@ -158,13 +158,13 @@ const AdminDealerDetailPage = () => {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Header & Actions */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#e5d1d4]">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border">
         <div>
-          <Link to="/admin/dealers" className="inline-flex items-center gap-1.5 text-xs text-[#7c5c5f] hover:text-[#3d0a0d] transition-colors mb-2">
+          <Link to="/admin/dealers" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2">
             <ArrowLeft className="w-3.5 h-3.5" /> Back to Dealer Directory
           </Link>
           <div className="flex items-center gap-3">
-            <h1 className="text-xl md:text-2xl font-extrabold text-[#3d0a0d]">{profile.companyName}</h1>
+            <h1 className="text-xl md:text-2xl font-extrabold text-foreground">{profile.companyName}</h1>
             <StatusBadge status={profile.status} />
           </div>
         </div>
@@ -204,59 +204,59 @@ const AdminDealerDetailPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Company Profile Card */}
         <Card className="space-y-4">
-          <h3 className="text-xs font-extrabold text-[#3d0a0d] uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-[#e5d1d4]">
-            <Building2 className="w-4 h-4 text-[#800020]" />
+          <h3 className="text-xs font-extrabold text-foreground uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-border">
+            <Building2 className="w-4 h-4 text-primary" />
             Company Information
           </h3>
 
           <div className="space-y-2.5 text-xs">
-            <div className="flex justify-between py-1 border-b border-[#e5d1d4]">
-              <span className="text-[#7c5c5f]">Company Name</span>
-              <span className="font-bold text-[#3d0a0d]">{profile.companyName}</span>
+            <div className="flex justify-between py-1 border-b border-border">
+              <span className="text-muted-foreground">Company Name</span>
+              <span className="font-bold text-foreground">{profile.companyName}</span>
             </div>
 
-            <div className="flex justify-between py-1 border-b border-[#e5d1d4]">
-              <span className="text-[#7c5c5f]">GSTIN Number</span>
-              <span className="font-mono font-bold text-[#3d0a0d]">{profile.gstin || 'Not Provided'}</span>
+            <div className="flex justify-between py-1 border-b border-border">
+              <span className="text-muted-foreground">GSTIN Number</span>
+              <span className="font-mono font-bold text-foreground">{profile.gstin || 'Not Provided'}</span>
             </div>
 
-            <div className="flex justify-between py-1 border-b border-[#e5d1d4]">
-              <span className="text-[#7c5c5f]">PAN Number</span>
-              <span className="font-mono font-bold text-[#3d0a0d]">{profile.pan || 'Not Provided'}</span>
+            <div className="flex justify-between py-1 border-b border-border">
+              <span className="text-muted-foreground">PAN Number</span>
+              <span className="font-mono font-bold text-foreground">{profile.pan || 'Not Provided'}</span>
             </div>
 
             <div className="flex justify-between py-1">
-              <span className="text-[#7c5c5f]">Business Address</span>
-              <span className="text-right text-[#3d0a0d] max-w-xs">{addressStr || 'Not Provided'}</span>
+              <span className="text-muted-foreground">Business Address</span>
+              <span className="text-right text-foreground max-w-xs">{addressStr || 'Not Provided'}</span>
             </div>
           </div>
         </Card>
 
         {/* User Account Info Card */}
         <Card className="space-y-4">
-          <h3 className="text-xs font-extrabold text-[#3d0a0d] uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-[#e5d1d4]">
+          <h3 className="text-xs font-extrabold text-foreground uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-border">
             <UserCheck className="w-4 h-4 text-emerald-700" />
             Applicant Account Details
           </h3>
 
           <div className="space-y-2.5 text-xs">
-            <div className="flex justify-between py-1 border-b border-[#e5d1d4]">
-              <span className="text-[#7c5c5f]">Applicant Name</span>
-              <span className="font-bold text-[#3d0a0d]">{userObj.name || userObj.fullName || 'N/A'}</span>
+            <div className="flex justify-between py-1 border-b border-border">
+              <span className="text-muted-foreground">Applicant Name</span>
+              <span className="font-bold text-foreground">{userObj.name || userObj.fullName || 'N/A'}</span>
             </div>
 
-            <div className="flex justify-between py-1 border-b border-[#e5d1d4]">
-              <span className="text-[#7c5c5f]">Email Address</span>
-              <span className="font-mono text-[#3d0a0d]">{userObj.email || 'N/A'}</span>
+            <div className="flex justify-between py-1 border-b border-border">
+              <span className="text-muted-foreground">Email Address</span>
+              <span className="font-mono text-foreground">{userObj.email || 'N/A'}</span>
             </div>
 
-            <div className="flex justify-between py-1 border-b border-[#e5d1d4]">
-              <span className="text-[#7c5c5f]">Phone Number</span>
-              <span className="font-mono text-[#3d0a0d]">{userObj.phone || 'N/A'}</span>
+            <div className="flex justify-between py-1 border-b border-border">
+              <span className="text-muted-foreground">Phone Number</span>
+              <span className="font-mono text-foreground">{userObj.phone || 'N/A'}</span>
             </div>
 
             <div className="flex justify-between py-1">
-              <span className="text-[#7c5c5f]">Account Status</span>
+              <span className="text-muted-foreground">Account Status</span>
               <StatusBadge status={userObj.accountStatus || 'active'} />
             </div>
           </div>
@@ -265,27 +265,27 @@ const AdminDealerDetailPage = () => {
 
       {/* Submitted KYC Documents Gallery */}
       <Card className="space-y-4">
-        <h3 className="text-xs font-extrabold text-[#3d0a0d] uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-[#e5d1d4]">
+        <h3 className="text-xs font-extrabold text-foreground uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-border">
           <FileText className="w-4 h-4 text-blue-700" />
           Submitted KYC Verification Documents ({kycDocs.length})
         </h3>
 
         {kycDocs.length === 0 ? (
-          <p className="text-xs text-[#7c5c5f] py-6 text-center">No verification files uploaded by dealer yet.</p>
+          <p className="text-xs text-muted-foreground py-6 text-center">No verification files uploaded by dealer yet.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {kycDocs.map((doc, idx) => (
-              <div key={idx} className="p-4 rounded-xl bg-white border border-[#e5d1d4] space-y-3">
+              <div key={idx} className="p-4 rounded-xl bg-card border border-border space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#3d0a0d] uppercase tracking-wider">
+                  <span className="text-xs font-bold text-foreground uppercase tracking-wider">
                     {doc.type || 'Document'}
                   </span>
-                  <span className="text-[10px] text-[#7c5c5f] font-mono">FILE</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">FILE</span>
                 </div>
 
-                <div className="h-32 bg-[#fdf8f9] rounded-lg border border-[#e5d1d4] overflow-hidden flex items-center justify-center relative">
+                <div className="h-32 bg-background rounded-lg border border-border overflow-hidden flex items-center justify-center relative">
                   {doc.url?.toLowerCase().endsWith('.pdf') ? (
-                    <FileText className="w-10 h-10 text-crimson-400" />
+                    <FileText className="w-10 h-10 text-rose-400" />
                   ) : (
                     <img src={doc.url} alt={doc.type} className="w-full h-full object-cover" />
                   )}
@@ -344,7 +344,7 @@ const AdminDealerDetailPage = () => {
             />
           </FormField>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button variant="outline" type="button" onClick={() => setIsRejectOpen(false)}>
               Cancel
             </Button>
@@ -371,7 +371,7 @@ const AdminDealerDetailPage = () => {
             />
           </FormField>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button variant="outline" onClick={() => setIsRevokeOpen(false)}>
               Cancel
             </Button>

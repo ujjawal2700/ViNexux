@@ -47,7 +47,7 @@ const UiPreviewPage = () => {
 
   // Table sample data
   const columns = [
-    { header: 'Order ID', key: 'id', className: 'font-mono text-[#800020]' },
+    { header: 'Order ID', key: 'id', className: 'font-mono text-primary' },
     { header: 'Customer', key: 'customer' },
     { header: 'Date', key: 'date' },
     {
@@ -55,7 +55,7 @@ const UiPreviewPage = () => {
       key: 'status',
       render: (val) => <StatusBadge status={val} />,
     },
-    { header: 'Total', key: 'total', align: 'right', className: 'font-bold text-[#3d0a0d]' },
+    { header: 'Total', key: 'total', align: 'right', className: 'font-bold text-foreground' },
   ];
 
   const tableData = [
@@ -66,15 +66,15 @@ const UiPreviewPage = () => {
   ];
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-12 bg-[#fdf8f9] text-[#3d0a0d]">
+    <div className="p-8 max-w-7xl mx-auto space-y-12 bg-background text-foreground">
       {/* Header Title */}
-      <div className="border-b border-[#e5d1d4] pb-6 flex items-center justify-between">
+      <div className="border-b border-border pb-6 flex items-center justify-between">
         <div>
-          <span className="px-3 py-1 text-xs font-semibold tracking-wider text-[#800020] bg-[#f4e7ea] border border-[#e5d1d4] rounded-full uppercase mb-3 inline-block">
+          <span className="px-3 py-1 text-xs font-semibold tracking-wider text-primary bg-muted border border-border rounded-full uppercase mb-3 inline-block">
             Internal Component Library
           </span>
-          <h1 className="text-3xl font-extrabold text-[#3d0a0d] tracking-tight">Vinexus Shared Design System Showcase</h1>
-          <p className="text-xs text-[#7c5c5f] mt-1">
+          <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Vinexus Shared Design System Showcase</h1>
+          <p className="text-xs text-muted-foreground mt-1">
             Phase 12 interactive component showcase & verification panel.
           </p>
         </div>
@@ -85,7 +85,7 @@ const UiPreviewPage = () => {
 
       {/* 1. BUTTONS */}
       <section className="space-y-4">
-        <h2 className="text-lg font-bold text-[#3d0a0d] border-b border-[#e5d1d4] pb-2">1. Buttons & Variants</h2>
+        <h2 className="text-lg font-bold text-foreground border-b border-border pb-2">1. Buttons & Variants</h2>
         <div className="flex flex-wrap gap-4 items-center">
           <Button variant="primary">Primary Button</Button>
           <Button variant="secondary">Secondary</Button>
@@ -107,7 +107,7 @@ const UiPreviewPage = () => {
 
       {/* 2. FORM INPUTS */}
       <section className="space-y-4">
-        <h2 className="text-lg font-bold text-[#3d0a0d] border-b border-[#e5d1d4] pb-2">2. Form Inputs & Controls</h2>
+        <h2 className="text-lg font-bold text-foreground border-b border-border pb-2">2. Form Inputs & Controls</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Input label="Standard Text Input" placeholder="Enter company name..." helperText="Used for business entity name" />
           <Input label="With Left Icon" leftIcon={<Phone className="w-4 h-4" />} placeholder="+91 98765 43210" />
@@ -131,7 +131,7 @@ const UiPreviewPage = () => {
 
       {/* 3. CARDS & BADGES */}
       <section className="space-y-4">
-        <h2 className="text-lg font-bold text-[#3d0a0d] border-b border-[#e5d1d4] pb-2">3. Cards & Status Badges</h2>
+        <h2 className="text-lg font-bold text-foreground border-b border-border pb-2">3. Cards & Status Badges</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card hoverable>
             <CardHeader>
@@ -139,7 +139,7 @@ const UiPreviewPage = () => {
               <StatusBadge status="approved" />
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-extrabold text-[#3d0a0d]">₹148,920.00</p>
+              <p className="text-3xl font-extrabold text-foreground">₹148,920.00</p>
               <CardDescription>Total wholesale quarterly transactions</CardDescription>
             </CardContent>
             <CardFooter>
@@ -154,14 +154,14 @@ const UiPreviewPage = () => {
               <Badge variant="primary">Featured</Badge>
             </CardHeader>
             <CardContent>
-              <p className="text-xs text-[#7c5c5f]">
+              <p className="text-xs text-muted-foreground">
                 Light burgundy glowing container designed for featured equipment, tier announcements, or critical system notices.
               </p>
             </CardContent>
           </Card>
 
-          <div className="bg-white p-6 rounded-2xl border border-[#e5d1d4] space-y-4 shadow-sm">
-            <h4 className="text-sm font-bold text-[#3d0a0d]">Status Badges Taxonomy</h4>
+          <div className="bg-card p-6 rounded-2xl border border-border space-y-4 shadow-sm">
+            <h4 className="text-sm font-bold text-foreground">Status Badges Taxonomy</h4>
             <div className="flex flex-wrap gap-2">
               <StatusBadge status="new" />
               <StatusBadge status="contacted" />
@@ -181,7 +181,7 @@ const UiPreviewPage = () => {
 
       {/* 4. MODALS, DIALOGS, DRAWERS & TOASTS */}
       <section className="space-y-4">
-        <h2 className="text-lg font-bold text-[#3d0a0d] border-b border-[#e5d1d4] pb-2">4. Overlays & Interactive Feedback</h2>
+        <h2 className="text-lg font-bold text-foreground border-b border-border pb-2">4. Overlays & Interactive Feedback</h2>
         <div className="flex flex-wrap gap-4">
           <Button variant="primary" onClick={() => setIsModalOpen(true)}>Open Modal</Button>
           <Button variant="danger" onClick={() => setIsConfirmOpen(true)}>Open Danger Confirmation</Button>
@@ -203,7 +203,7 @@ const UiPreviewPage = () => {
             </Button>
           }
         >
-          <p className="text-xs text-[#7c5c5f] leading-relaxed">
+          <p className="text-xs text-muted-foreground leading-relaxed">
             This modal supports custom headers, footers, body contents, click-outside dismissal, and keyboard accessibility.
           </p>
         </Modal>
@@ -234,7 +234,7 @@ const UiPreviewPage = () => {
             </Button>
           }
         >
-          <p className="text-xs text-[#7c5c5f] leading-relaxed">
+          <p className="text-xs text-muted-foreground leading-relaxed">
             Drawers are ideal for mobile filters, cart previews, and admin detailed sidebar panels.
           </p>
         </Drawer>
@@ -242,14 +242,14 @@ const UiPreviewPage = () => {
 
       {/* 5. TABLE & PAGINATION */}
       <section className="space-y-4">
-        <h2 className="text-lg font-bold text-[#3d0a0d] border-b border-[#e5d1d4] pb-2">5. Data Table & Pagination</h2>
+        <h2 className="text-lg font-bold text-foreground border-b border-border pb-2">5. Data Table & Pagination</h2>
         <Table columns={columns} data={tableData} />
         <Pagination currentPage={currentPage} totalPages={5} onPageChange={setCurrentPage} />
       </section>
 
       {/* 6. LOADING, SKELETONS, EMPTY & ERROR STATES */}
       <section className="space-y-4">
-        <h2 className="text-lg font-bold text-[#3d0a0d] border-b border-[#e5d1d4] pb-2">6. Feedback & Placeholder States</h2>
+        <h2 className="text-lg font-bold text-foreground border-b border-border pb-2">6. Feedback & Placeholder States</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <LoadingState message="Fetching live wholesale inventory stream..." />
           <SkeletonCard />
@@ -271,10 +271,10 @@ const UiPreviewPage = () => {
 
       {/* 7. IMAGE & FALLBACK */}
       <section className="space-y-4 pb-12">
-        <h2 className="text-lg font-bold text-[#3d0a0d] border-b border-[#e5d1d4] pb-2">7. Image Component & Fallback Handling</h2>
+        <h2 className="text-lg font-bold text-foreground border-b border-border pb-2">7. Image Component & Fallback Handling</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
           <div>
-            <span className="text-xs font-semibold text-[#7c5c5f] block mb-2">Valid Image</span>
+            <span className="text-xs font-semibold text-muted-foreground block mb-2">Valid Image</span>
             <Image
               src="https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=400&q=80"
               alt="Security Camera"
@@ -282,7 +282,7 @@ const UiPreviewPage = () => {
             />
           </div>
           <div>
-            <span className="text-xs font-semibold text-[#7c5c5f] block mb-2">Broken Image (Fallback UI)</span>
+            <span className="text-xs font-semibold text-muted-foreground block mb-2">Broken Image (Fallback UI)</span>
             <Image
               src="invalid-image-url-path.png"
               alt="Broken Image Demo"

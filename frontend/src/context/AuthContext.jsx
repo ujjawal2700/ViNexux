@@ -66,14 +66,14 @@ export const AuthProvider = ({ children }) => {
     restoreSession();
   }, [handleAuthSuccess]);
 
-  // Send OTP
-  const sendOtp = async (identifier) => {
-    return await authService.sendOtp(identifier);
+  // Send OTP. Pass portal='admin' from the dedicated admin login page.
+  const sendOtp = async (identifier, portal) => {
+    return await authService.sendOtp(identifier, portal);
   };
 
   // Verify OTP
-  const verifyOtp = async (identifier, otpCode) => {
-    const response = await authService.verifyOtp(identifier, otpCode);
+  const verifyOtp = async (identifier, otpCode, portal) => {
+    const response = await authService.verifyOtp(identifier, otpCode, portal);
 
     // Check for session conflict returned by backend
     if (response.data?.sessionConflict || response.sessionConflict) {

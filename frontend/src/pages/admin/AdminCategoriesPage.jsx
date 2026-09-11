@@ -257,7 +257,7 @@ const AdminCategoriesPage = () => {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4, 5].map((n) => (
-            <Skeleton key={n} className="h-14 rounded-lg bg-[#f4e7ea]" />
+            <Skeleton key={n} className="h-14 rounded-lg bg-muted" />
           ))}
         </div>
       ) : error ? (
@@ -295,21 +295,21 @@ const AdminCategoriesPage = () => {
 
                 return (
                   <Table.Row key={cat._id}>
-                    <Table.Cell className="font-mono text-xs text-[#7c5c5f] font-bold">
+                    <Table.Cell className="font-mono text-xs text-muted-foreground font-bold">
                       #{cat.sortOrder || 0}
                     </Table.Cell>
-                    <Table.Cell className="font-bold text-[#3d0a0d] text-xs">
+                    <Table.Cell className="font-bold text-foreground text-xs">
                       {cat.name}
                       {cat.description && (
-                        <div className="text-[10px] text-[#7c5c5f] font-normal truncate max-w-xs">
+                        <div className="text-[10px] text-muted-foreground font-normal truncate max-w-xs">
                           {cat.description}
                         </div>
                       )}
                     </Table.Cell>
-                    <Table.Cell className="font-mono text-[11px] text-[#7c5c5f]">
+                    <Table.Cell className="font-mono text-[11px] text-muted-foreground">
                       {cat.slug}
                     </Table.Cell>
-                    <Table.Cell className="text-xs text-[#7c5c5f]">
+                    <Table.Cell className="text-xs text-muted-foreground">
                       {parentName}
                     </Table.Cell>
                     <Table.Cell>
@@ -321,7 +321,7 @@ const AdminCategoriesPage = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleOpenEdit(cat)}
-                          className="h-8 w-8 p-0 text-[#7c5c5f] hover:text-[#800020]"
+                          className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </Button>
@@ -429,7 +429,7 @@ const AdminCategoriesPage = () => {
             </FormField>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-[#e5d1d4]">
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>

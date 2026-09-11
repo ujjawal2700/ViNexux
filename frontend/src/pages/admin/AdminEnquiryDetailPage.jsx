@@ -134,9 +134,9 @@ const AdminEnquiryDetailPage = () => {
   if (loading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-10 w-48 bg-[#f4e7ea]" />
-        <Skeleton className="h-64 rounded-xl bg-[#f4e7ea]" />
-        <Skeleton className="h-48 rounded-xl bg-[#f4e7ea]" />
+        <Skeleton className="h-10 w-48 bg-muted" />
+        <Skeleton className="h-64 rounded-xl bg-muted" />
+        <Skeleton className="h-48 rounded-xl bg-muted" />
       </div>
     );
   }
@@ -172,13 +172,13 @@ const AdminEnquiryDetailPage = () => {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#e5d1d4]">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border">
         <div>
-          <Link to="/admin/enquiries" className="inline-flex items-center gap-1.5 text-xs text-[#7c5c5f] hover:text-[#3d0a0d] transition-colors mb-2">
+          <Link to="/admin/enquiries" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2">
             <ArrowLeft className="w-3.5 h-3.5" /> Back to Enquiries
           </Link>
           <div className="flex items-center gap-3">
-            <h1 className="text-xl md:text-2xl font-extrabold text-[#3d0a0d] font-mono">{enquiry.enquiryNumber}</h1>
+            <h1 className="text-xl md:text-2xl font-extrabold text-foreground font-mono">{enquiry.enquiryNumber}</h1>
             <StatusBadge status={enquiry.status} />
             <span className="text-xs text-purple-800 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200 uppercase font-bold">
               {enquiry.userType || 'customer'}
@@ -202,35 +202,35 @@ const AdminEnquiryDetailPage = () => {
         <div className="space-y-6 lg:col-span-2">
           {/* Contact Details Card */}
           <Card className="space-y-4">
-            <h3 className="text-xs font-extrabold text-[#3d0a0d] uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-[#e5d1d4]">
-              <User className="w-4 h-4 text-[#800020]" />
+            <h3 className="text-xs font-extrabold text-foreground uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-border">
+              <User className="w-4 h-4 text-primary" />
               Contact & Delivery Information
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
               <div className="space-y-2">
-                <div className="flex justify-between py-1 border-b border-[#e5d1d4]">
-                  <span className="text-[#7c5c5f]">Contact Name:</span>
-                  <span className="font-bold text-[#3d0a0d]">{enquiry.contactName}</span>
+                <div className="flex justify-between py-1 border-b border-border">
+                  <span className="text-muted-foreground">Contact Name:</span>
+                  <span className="font-bold text-foreground">{enquiry.contactName}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-[#e5d1d4]">
-                  <span className="text-[#7c5c5f]">Email Address:</span>
-                  <span className="font-mono text-[#3d0a0d]">{enquiry.contactEmail || 'N/A'}</span>
+                <div className="flex justify-between py-1 border-b border-border">
+                  <span className="text-muted-foreground">Email Address:</span>
+                  <span className="font-mono text-foreground">{enquiry.contactEmail || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between py-1">
-                  <span className="text-[#7c5c5f]">Phone Number:</span>
-                  <span className="font-mono text-[#3d0a0d]">{enquiry.contactPhone || 'N/A'}</span>
+                  <span className="text-muted-foreground">Phone Number:</span>
+                  <span className="font-mono text-foreground">{enquiry.contactPhone || 'N/A'}</span>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <div className="flex justify-between py-1 border-b border-[#e5d1d4]">
-                  <span className="text-[#7c5c5f]">User Account Role:</span>
+                <div className="flex justify-between py-1 border-b border-border">
+                  <span className="text-muted-foreground">User Account Role:</span>
                   <span className="font-bold text-purple-800 uppercase">{enquiry.userType || 'customer'}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-[#e5d1d4]">
-                  <span className="text-[#7c5c5f]">Submission Date:</span>
-                  <span className="text-[#3d0a0d]">
+                <div className="flex justify-between py-1 border-b border-border">
+                  <span className="text-muted-foreground">Submission Date:</span>
+                  <span className="text-foreground">
                     {new Date(enquiry.createdAt).toLocaleString('en-IN')}
                   </span>
                 </div>
@@ -238,22 +238,22 @@ const AdminEnquiryDetailPage = () => {
             </div>
 
             {addressStr && (
-              <div className="pt-2 border-t border-[#e5d1d4]">
-                <span className="text-xs font-bold text-[#7c5c5f] flex items-center gap-1.5 mb-1">
-                  <MapPin className="w-3.5 h-3.5 text-[#800020]" /> Delivery Address:
+              <div className="pt-2 border-t border-border">
+                <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5 mb-1">
+                  <MapPin className="w-3.5 h-3.5 text-primary" /> Delivery Address:
                 </span>
-                <p className="text-xs text-[#3d0a0d] bg-white p-2.5 rounded-lg border border-[#e5d1d4]">
+                <p className="text-xs text-foreground bg-card p-2.5 rounded-lg border border-border">
                   {addressStr}
                 </p>
               </div>
             )}
 
             {enquiry.message && (
-              <div className="pt-2 border-t border-[#e5d1d4]">
-                <span className="text-xs font-bold text-[#7c5c5f] flex items-center gap-1.5 mb-1">
+              <div className="pt-2 border-t border-border">
+                <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5 mb-1">
                   <MessageSquare className="w-3.5 h-3.5 text-blue-700" /> Customer Message / Instructions:
                 </span>
-                <p className="text-xs text-[#3d0a0d] bg-[#fdf8f9] p-2.5 rounded-lg border border-[#e5d1d4] italic">
+                <p className="text-xs text-foreground bg-background p-2.5 rounded-lg border border-border italic">
                   "{enquiry.message}"
                 </p>
               </div>
@@ -262,7 +262,7 @@ const AdminEnquiryDetailPage = () => {
 
           {/* Itemized Price Snapshot Table */}
           <Card className="space-y-4">
-            <h3 className="text-xs font-extrabold text-[#3d0a0d] uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-[#e5d1d4]">
+            <h3 className="text-xs font-extrabold text-foreground uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-border">
               <Inbox className="w-4 h-4 text-emerald-700" />
               Itemized Order & Price Snapshot ({items.length} Unique Items)
             </h3>
@@ -286,16 +286,16 @@ const AdminEnquiryDetailPage = () => {
 
                   return (
                     <Table.Row key={idx}>
-                      <Table.Cell className="font-bold text-[#3d0a0d] text-xs">
+                      <Table.Cell className="font-bold text-foreground text-xs">
                         {productName}
                       </Table.Cell>
-                      <Table.Cell className="font-mono text-[11px] text-[#7c5c5f]">
+                      <Table.Cell className="font-mono text-[11px] text-muted-foreground">
                         {prod.sku || 'N/A'}
                       </Table.Cell>
-                      <Table.Cell className="text-center font-mono text-xs font-bold text-[#3d0a0d]">
+                      <Table.Cell className="text-center font-mono text-xs font-bold text-foreground">
                         {qty}
                       </Table.Cell>
-                      <Table.Cell className="text-right font-mono text-xs text-[#3d0a0d]">
+                      <Table.Cell className="text-right font-mono text-xs text-foreground">
                         ₹{Number(price).toLocaleString('en-IN')}
                       </Table.Cell>
                       <Table.Cell className="text-right font-mono text-xs font-extrabold text-emerald-700">
@@ -307,9 +307,9 @@ const AdminEnquiryDetailPage = () => {
               </Table.Body>
             </Table>
 
-            <div className="flex justify-end pt-3 border-t border-[#e5d1d4]">
+            <div className="flex justify-end pt-3 border-t border-border">
               <div className="text-right">
-                <span className="text-xs text-[#7c5c5f]">Grand Total Amount:</span>
+                <span className="text-xs text-muted-foreground">Grand Total Amount:</span>
                 <h4 className="text-xl font-extrabold text-emerald-700 mt-0.5">
                   ₹{Number(enquiry.totalAmount || 0).toLocaleString('en-IN')}
                 </h4>
@@ -322,7 +322,7 @@ const AdminEnquiryDetailPage = () => {
         <div className="space-y-6">
           {/* Status Control Card */}
           <Card className="space-y-4">
-            <h3 className="text-xs font-extrabold text-[#3d0a0d] uppercase tracking-wider pb-2 border-b border-[#e5d1d4]">
+            <h3 className="text-xs font-extrabold text-foreground uppercase tracking-wider pb-2 border-b border-border">
               Lead Workflow Control
             </h3>
 
@@ -337,32 +337,32 @@ const AdminEnquiryDetailPage = () => {
 
           {/* Internal Admin Notes Feed */}
           <Card className="space-y-4">
-            <h3 className="text-xs font-extrabold text-[#3d0a0d] uppercase tracking-wider flex items-center justify-between pb-2 border-b border-[#e5d1d4]">
+            <h3 className="text-xs font-extrabold text-foreground uppercase tracking-wider flex items-center justify-between pb-2 border-b border-border">
               <span>Internal Admin Notes ({notes.length})</span>
-              <span className="text-[10px] text-[#7c5c5f] font-normal">Private Timeline</span>
+              <span className="text-[10px] text-muted-foreground font-normal">Private Timeline</span>
             </h3>
 
             {/* Note History List */}
             {notes.length === 0 ? (
-              <p className="text-xs text-[#7c5c5f] py-3 text-center">No internal admin notes added yet.</p>
+              <p className="text-xs text-muted-foreground py-3 text-center">No internal admin notes added yet.</p>
             ) : (
               <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
                 {notes.map((n, idx) => (
-                  <div key={idx} className="p-3 rounded-lg bg-[#fdf8f9] border border-[#e5d1d4] space-y-1">
-                    <div className="flex items-center justify-between text-[10px] text-[#7c5c5f]">
-                      <span className="font-bold text-[#800020]">
+                  <div key={idx} className="p-3 rounded-lg bg-background border border-border space-y-1">
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                      <span className="font-bold text-primary">
                         {n.adminId?.fullName || n.adminId?.email || 'Admin'}
                       </span>
                       <span>{new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
-                    <p className="text-xs text-[#3d0a0d] whitespace-pre-wrap">{n.note}</p>
+                    <p className="text-xs text-foreground whitespace-pre-wrap">{n.note}</p>
                   </div>
                 ))}
               </div>
             )}
 
             {/* Add Note Form */}
-            <form onSubmit={handleAddInternalNote} className="space-y-3 pt-2 border-t border-[#e5d1d4]">
+            <form onSubmit={handleAddInternalNote} className="space-y-3 pt-2 border-t border-border">
               <FormError message={formError} />
               <FormField label="Append Internal Note">
                 <Textarea

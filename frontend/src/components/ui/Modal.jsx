@@ -1,7 +1,22 @@
-import React, { useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import React from 'react';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
+import { cn } from '../../lib/utils';
 
+const sizeClasses = {
+  sm: 'max-w-sm',
+  md: 'max-w-lg',
+  lg: 'max-w-2xl',
+  xl: 'max-w-4xl',
+  full: 'max-w-6xl',
+};
+
+/**
+ * Modal - shadcn/Radix Dialog under the hood, same external API as before
+ * (isOpen/onClose/title/description/children/footer/size/closeOnOutsideClick)
+ * so no call site needs to change. Gets a real focus trap, ESC handling,
+ * scroll lock, and ARIA wiring for free from Radix.
+ */
 export const Modal = ({
   isOpen,
   onClose,
@@ -13,82 +28,62 @@ export const Modal = ({
   closeOnOutsideClick = true,
   className = '',
 }) => {
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      window.addEventListener('keydown', handleKeyDown);
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
-  const sizeClasses = {
-    sm: 'max-w-sm',
-    md: 'max-w-lg',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl',
-    full: 'max-w-6xl',
-  };
-
-  const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget && closeOnOutsideClick) {
-      onClose();
-    }
-  };
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#3d0a0d]/40 backdrop-blur-sm transition-opacity duration-200 animate-fadeIn"
-      onClick={handleBackdropClick}
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        className={`w-full ${sizeClasses[size] || sizeClasses.md} bg-white rounded-2xl border border-[#e5d1d4] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${className}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        {(title || onClose) && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-[#e5d1d4]">
-            <div>
-              {title && <h3 className="text-base font-bold text-[#3d0a0d]">{title}</h3>}
-              {description && <p className="text-xs text-[#7c5c5f] mt-0.5">{description}</p>}
+  return (
+    <DialogPrimitive.Root open={isOpen} onOpenChange={(open) => !open && onClose?.()}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0" />
+        <DialogPrimitive.Content
+          onPointerDownOutside={(e) => {
+            if (!closeOnOutsideClick) e.preventDefault();
+          }}
+          onInteractOutside={(e) => {
+            if (!closeOnOutsideClick) e.preventDefault();
+          }}
+          className={cn(
+            'fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)]',
+            sizeClasses[size] || sizeClasses.md,
+            'bg-card rounded-2xl border border-border shadow-2xl overflow-hidden flex flex-col max-h-[90vh]',
+            'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
+            className
+          )}
+        >
+          {(title || description || onClose) && (
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <div>
+                {title && (
+                  <DialogPrimitive.Title className="text-base font-bold text-foreground">
+                    {title}
+                  </DialogPrimitive.Title>
+                )}
+                {description && (
+                  <DialogPrimitive.Description className="text-xs text-muted-foreground mt-0.5">
+                    {description}
+                  </DialogPrimitive.Description>
+                )}
+              </div>
+              <DialogPrimitive.Close asChild>
+                <button
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  title="Close modal"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </DialogPrimitive.Close>
             </div>
-            {onClose && (
-              <button
-                onClick={onClose}
-                className="p-1.5 rounded-lg text-[#7c5c5f] hover:text-[#3d0a0d] hover:bg-[#f4e7ea] transition-colors"
-                title="Close modal"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        )}
+          )}
 
-        {/* Content Body */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-4 text-sm text-[#3d0a0d]">
-          {children}
-        </div>
-
-        {/* Footer */}
-        {footer && (
-          <div className="px-6 py-4 border-t border-[#e5d1d4] bg-[#fdf8f9] flex items-center justify-end gap-3">
-            {footer}
+          <div className="p-6 overflow-y-auto flex-1 space-y-4 text-sm text-foreground">
+            {children}
           </div>
-        )}
-      </div>
-    </div>,
-    document.body
+
+          {footer && (
+            <div className="px-6 py-4 border-t border-border bg-background flex items-center justify-end gap-3">
+              {footer}
+            </div>
+          )}
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 };
 

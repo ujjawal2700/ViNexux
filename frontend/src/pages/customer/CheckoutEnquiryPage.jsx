@@ -174,7 +174,7 @@ export const CheckoutEnquiryPage = () => {
 
   if (isLoading) {
     return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 space-y-6 bg-[#fdf8f9]">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 space-y-6 bg-background">
         <Skeleton className="h-8 w-64" />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-7 space-y-4">
@@ -198,16 +198,16 @@ export const CheckoutEnquiryPage = () => {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8 bg-[#fdf8f9] text-[#3d0a0d] min-h-screen">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8 bg-background text-foreground min-h-screen">
       
       {/* Header */}
-      <div className="border-b border-[#e5d1d4] pb-6 flex items-center justify-between">
+      <div className="border-b border-border pb-6 flex items-center justify-between">
         <div>
-          <Link to="/customer/cart" className="text-xs text-[#7c5c5f] hover:text-[#800020] inline-flex items-center gap-1 mb-2 font-medium">
+          <Link to="/customer/cart" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1 mb-2 font-medium">
             <ArrowLeft className="w-3.5 h-3.5" /> Return to Cart
           </Link>
-          <h1 className="text-3xl font-extrabold text-[#3d0a0d] tracking-tight flex items-center gap-3">
-            <FileCheck className="w-7 h-7 text-[#800020]" />
+          <h1 className="text-3xl font-extrabold text-foreground tracking-tight flex items-center gap-3">
+            <FileCheck className="w-7 h-7 text-primary" />
             <span>Submit Quotation Enquiry</span>
           </h1>
         </div>
@@ -219,31 +219,31 @@ export const CheckoutEnquiryPage = () => {
         <div className="lg:col-span-7 space-y-6">
           
           {/* SECTION 1: VERIFIED CONTACT INFO (READ-ONLY) */}
-          <Card className="bg-white p-6 rounded-2xl border border-[#e5d1d4] space-y-4 shadow-sm">
-            <CardHeader className="p-0 pb-3 border-b border-[#e5d1d4] flex items-center justify-between">
-              <CardTitle className="text-sm font-bold flex items-center gap-2 text-[#3d0a0d]">
-                <User className="w-4 h-4 text-[#800020]" />
+          <Card className="bg-card p-6 rounded-2xl border border-border space-y-4 shadow-sm">
+            <CardHeader className="p-0 pb-3 border-b border-border flex items-center justify-between">
+              <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                <User className="w-4 h-4 text-primary" />
                 <span>Verified Contact Information (Read-Only)</span>
               </CardTitle>
-              <Lock className="w-3.5 h-3.5 text-[#7c5c5f]" />
+              <Lock className="w-3.5 h-3.5 text-muted-foreground" />
             </CardHeader>
 
             <CardContent className="p-0 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-              <div className="space-y-1 bg-[#fdf8f9] p-3 rounded-xl border border-[#e5d1d4]">
+              <div className="space-y-1 bg-background p-3 rounded-xl border border-border">
                 <span className="text-[#9a6870] block text-[10px]">Contact Person</span>
-                <span className="font-bold text-[#3d0a0d] truncate block">
+                <span className="font-bold text-foreground truncate block">
                   {user?.fullName || user?.name || 'Vinexus Account'}
                 </span>
               </div>
-              <div className="space-y-1 bg-[#fdf8f9] p-3 rounded-xl border border-[#e5d1d4]">
+              <div className="space-y-1 bg-background p-3 rounded-xl border border-border">
                 <span className="text-[#9a6870] block text-[10px]">Email Address</span>
-                <span className="font-mono font-medium text-[#3d0a0d] truncate block">
+                <span className="font-mono font-medium text-foreground truncate block">
                   {user?.email || 'N/A'}
                 </span>
               </div>
-              <div className="space-y-1 bg-[#fdf8f9] p-3 rounded-xl border border-[#e5d1d4]">
+              <div className="space-y-1 bg-background p-3 rounded-xl border border-border">
                 <span className="text-[#9a6870] block text-[10px]">Phone Number</span>
-                <span className="font-mono font-medium text-[#3d0a0d] truncate block">
+                <span className="font-mono font-medium text-foreground truncate block">
                   {user?.phone || 'N/A'}
                 </span>
               </div>
@@ -251,10 +251,10 @@ export const CheckoutEnquiryPage = () => {
           </Card>
 
           {/* SECTION 2: DELIVERY ADDRESS FORM */}
-          <Card className="bg-white p-6 rounded-2xl border border-[#e5d1d4] space-y-4 shadow-sm">
-            <CardHeader className="p-0 pb-3 border-b border-[#e5d1d4]">
-              <CardTitle className="text-sm font-bold flex items-center gap-2 text-[#3d0a0d]">
-                <MapPin className="w-4 h-4 text-[#800020]" />
+          <Card className="bg-card p-6 rounded-2xl border border-border space-y-4 shadow-sm">
+            <CardHeader className="p-0 pb-3 border-b border-border">
+              <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                <MapPin className="w-4 h-4 text-primary" />
                 <span>Delivery Address & Location Details</span>
               </CardTitle>
             </CardHeader>
@@ -307,10 +307,10 @@ export const CheckoutEnquiryPage = () => {
           </Card>
 
           {/* SECTION 3: OPTIONAL CUSTOMER MESSAGE */}
-          <Card className="bg-white p-6 rounded-2xl border border-[#e5d1d4] space-y-4 shadow-sm">
-            <CardHeader className="p-0 pb-3 border-b border-[#e5d1d4]">
-              <CardTitle className="text-sm font-bold flex items-center gap-2 text-[#3d0a0d]">
-                <MessageSquare className="w-4 h-4 text-[#800020]" />
+          <Card className="bg-card p-6 rounded-2xl border border-border space-y-4 shadow-sm">
+            <CardHeader className="p-0 pb-3 border-b border-border">
+              <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                <MessageSquare className="w-4 h-4 text-primary" />
                 <span>Project Notes / Additional Message</span>
               </CardTitle>
             </CardHeader>
@@ -329,9 +329,9 @@ export const CheckoutEnquiryPage = () => {
 
         {/* Right Column: Order Items Summary & Submit Button */}
         <div className="lg:col-span-5 space-y-6 sticky top-24">
-          <Card className="bg-white p-6 rounded-2xl border border-[#e5d1d4] space-y-6 shadow-sm">
-            <CardHeader className="p-0 pb-4 border-b border-[#e5d1d4]">
-              <CardTitle className="text-sm font-bold text-[#3d0a0d]">Items Snapshot</CardTitle>
+          <Card className="bg-card p-6 rounded-2xl border border-border space-y-6 shadow-sm">
+            <CardHeader className="p-0 pb-4 border-b border-border">
+              <CardTitle className="text-sm font-bold text-foreground">Items Snapshot</CardTitle>
             </CardHeader>
 
             {/* Items List */}
@@ -342,15 +342,15 @@ export const CheckoutEnquiryPage = () => {
                 const imgUrl = product.images?.[0]?.url || product.image || '';
 
                 return (
-                  <div key={idx} className="flex items-center justify-between text-xs py-2 border-b border-[#e5d1d4] gap-3">
+                  <div key={idx} className="flex items-center justify-between text-xs py-2 border-b border-border gap-3">
                     <div className="flex items-center gap-3 truncate">
                       <Image src={imgUrl} alt={product.name} aspectRatio="aspect-square" className="w-10 h-10 rounded-lg object-cover shrink-0" />
                       <div className="truncate">
-                        <span className="font-bold text-[#3d0a0d] block truncate">{product.name || 'Equipment'}</span>
-                        <span className="text-[11px] text-[#7c5c5f]">Qty: {item.quantity} × {formatCurrency(price)}</span>
+                        <span className="font-bold text-foreground block truncate">{product.name || 'Equipment'}</span>
+                        <span className="text-[11px] text-muted-foreground">Qty: {item.quantity} × {formatCurrency(price)}</span>
                       </div>
                     </div>
-                    <span className="font-mono font-bold text-[#3d0a0d] shrink-0">
+                    <span className="font-mono font-bold text-foreground shrink-0">
                       {formatCurrency(price * item.quantity)}
                     </span>
                   </div>
@@ -359,14 +359,14 @@ export const CheckoutEnquiryPage = () => {
             </CardContent>
 
             {/* Totals */}
-            <div className="pt-3 border-t border-[#e5d1d4] space-y-2 text-xs">
-              <div className="flex justify-between text-[#7c5c5f]">
+            <div className="pt-3 border-t border-border space-y-2 text-xs">
+              <div className="flex justify-between text-muted-foreground">
                 <span>Total Items</span>
-                <span className="font-bold text-[#3d0a0d]">{items.length}</span>
+                <span className="font-bold text-foreground">{items.length}</span>
               </div>
-              <div className="flex justify-between text-sm pt-2 border-t border-[#e5d1d4]">
-                <span className="font-bold text-[#3d0a0d]">Estimated Subtotal</span>
-                <span className="font-extrabold text-[#3d0a0d] text-base">{formatCurrency(subtotal)}</span>
+              <div className="flex justify-between text-sm pt-2 border-t border-border">
+                <span className="font-bold text-foreground">Estimated Subtotal</span>
+                <span className="font-extrabold text-foreground text-base">{formatCurrency(subtotal)}</span>
               </div>
             </div>
 
@@ -385,8 +385,8 @@ export const CheckoutEnquiryPage = () => {
             </CardFooter>
           </Card>
 
-          <div className="p-4 rounded-xl bg-white border border-[#e5d1d4] text-xs text-[#7c5c5f] space-y-1 shadow-sm">
-            <div className="font-bold text-[#3d0a0d] flex items-center gap-1.5">
+          <div className="p-4 rounded-xl bg-card border border-border text-xs text-muted-foreground space-y-1 shadow-sm">
+            <div className="font-bold text-foreground flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-700" />
               <span>Automated Google Sheet & Admin Alert</span>
             </div>

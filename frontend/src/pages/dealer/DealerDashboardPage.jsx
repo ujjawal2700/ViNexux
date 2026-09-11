@@ -78,7 +78,7 @@ export const DealerDashboardPage = () => {
   const kycStatus = profile?.status || 'pending';
 
   return (
-    <div className="space-y-8 text-[#3d0a0d]">
+    <div className="space-y-8 text-foreground">
       
       {/* 1. DYNAMIC KYC STATUS BANNER */}
       {isLoading ? (
@@ -91,10 +91,10 @@ export const DealerDashboardPage = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-[#3d0a0d] text-base">Verified Dealer Account</span>
+                <span className="font-bold text-foreground text-base">Verified Dealer Account</span>
                 <Badge variant="success">Wholesale Pricing Unlocked</Badge>
               </div>
-              <p className="text-xs text-[#7c5c5f] mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Verified Commercial Account! Exclusive dealer pricing is active across all CCTV & security catalog items.
               </p>
             </div>
@@ -113,10 +113,10 @@ export const DealerDashboardPage = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-[#3d0a0d] text-base">KYC Verification Rejected</span>
+                <span className="font-bold text-foreground text-base">KYC Verification Rejected</span>
                 <Badge variant="danger">Action Required</Badge>
               </div>
-              <p className="text-xs text-[#7c5c5f] mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Reason: <span className="text-rose-700 font-semibold">{profile?.rejectionReason || 'Documents require resubmission'}</span>. Please update your profile or documents.
               </p>
             </div>
@@ -135,10 +135,10 @@ export const DealerDashboardPage = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-[#3d0a0d] text-base">KYC Verification Under Review</span>
+                <span className="font-bold text-foreground text-base">KYC Verification Under Review</span>
                 <Badge variant="warning">Standard Rates Apply</Badge>
               </div>
-              <p className="text-xs text-[#7c5c5f] mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Your KYC profile & documents are currently under review by Vinexus Admin. Standard pricing applies until verified.
               </p>
             </div>
@@ -156,38 +156,38 @@ export const DealerDashboardPage = () => {
         
         {/* Profile Card */}
         <div className="lg:col-span-8 space-y-6">
-          <Card className="bg-white p-6 rounded-2xl border border-[#e5d1d4] space-y-4 shadow-sm">
-            <div className="flex items-center justify-between border-b border-[#e5d1d4] pb-3">
+          <Card className="bg-card p-6 rounded-2xl border border-border space-y-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#f4e7ea] border border-[#e5d1d4] flex items-center justify-center text-[#800020]">
+                <div className="w-10 h-10 rounded-xl bg-muted border border-border flex items-center justify-center text-primary">
                   <Building2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-[#3d0a0d] text-base">
+                  <h3 className="font-extrabold text-foreground text-base">
                     {profile?.companyName || 'Business Entity Profile'}
                   </h3>
-                  <span className="text-xs text-[#7c5c5f]">Registered Partner Account</span>
+                  <span className="text-xs text-muted-foreground">Registered Partner Account</span>
                 </div>
               </div>
               <StatusBadge status={kycStatus} />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-              <div className="bg-[#fdf8f9] p-3 rounded-xl border border-[#e5d1d4]">
-                <span className="text-[#9a6870] block text-[10px]">GSTIN Number</span>
-                <span className="font-mono font-bold text-[#3d0a0d] block truncate">
+              <div className="bg-background p-3 rounded-xl border border-border">
+                <span className="text-muted-foreground block text-[10px]">GSTIN Number</span>
+                <span className="font-mono font-bold text-foreground block truncate">
                   {profile?.gstin || 'Not Provided'}
                 </span>
               </div>
-              <div className="bg-[#fdf8f9] p-3 rounded-xl border border-[#e5d1d4]">
-                <span className="text-[#9a6870] block text-[10px]">PAN Number</span>
-                <span className="font-mono font-bold text-[#3d0a0d] block truncate">
+              <div className="bg-background p-3 rounded-xl border border-border">
+                <span className="text-muted-foreground block text-[10px]">PAN Number</span>
+                <span className="font-mono font-bold text-foreground block truncate">
                   {profile?.pan || 'Not Provided'}
                 </span>
               </div>
-              <div className="bg-[#fdf8f9] p-3 rounded-xl border border-[#e5d1d4]">
-                <span className="text-[#9a6870] block text-[10px]">Location</span>
-                <span className="font-bold text-[#3d0a0d] block truncate">
+              <div className="bg-background p-3 rounded-xl border border-border">
+                <span className="text-muted-foreground block text-[10px]">Location</span>
+                <span className="font-bold text-foreground block truncate">
                   {profile?.city ? `${profile.city}, ${profile.state || ''}` : 'India'}
                 </span>
               </div>
@@ -204,12 +204,12 @@ export const DealerDashboardPage = () => {
 
           {/* RECENT WHOLESALE ENQUIRIES FEED */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-[#e5d1d4] pb-3">
-              <h3 className="text-lg font-bold text-[#3d0a0d] flex items-center gap-2">
-                <Send className="w-4 h-4 text-[#800020]" />
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                <Send className="w-4 h-4 text-primary" />
                 <span>Recent Wholesale Enquiries</span>
               </h3>
-              <Link to="/dealer/enquiries" className="text-xs text-[#800020] hover:text-[#66001a] font-semibold">
+              <Link to="/dealer/enquiries" className="text-xs text-primary hover:text-primary/80 font-semibold">
                 View All Enquiries →
               </Link>
             </div>
@@ -221,27 +221,27 @@ export const DealerDashboardPage = () => {
                 {recentEnquiries.map((enq) => (
                   <div
                     key={enq._id}
-                    className="bg-white p-4 rounded-xl border border-[#e5d1d4] flex items-center justify-between gap-4 shadow-sm"
+                    className="bg-card p-4 rounded-xl border border-border flex items-center justify-between gap-4 shadow-sm"
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-3">
-                        <span className="font-mono font-bold text-[#3d0a0d] text-sm">#{enq.enquiryNumber}</span>
+                        <span className="font-mono font-bold text-foreground text-sm">#{enq.enquiryNumber}</span>
                         <StatusBadge status={enq.status} />
                       </div>
-                      <div className="text-xs text-[#7c5c5f]">
+                      <div className="text-xs text-muted-foreground">
                         {new Date(enq.createdAt).toLocaleDateString('en-IN')} • {enq.items?.length || 0} item(s)
                       </div>
                     </div>
                     <Link to={`/dealer/enquiries/${enq._id}`}>
                       <Button variant="outline" size="sm" iconOnly title="View Enquiry">
-                        <Eye className="w-4 h-4 text-[#7c5c5f]" />
+                        <Eye className="w-4 h-4 text-muted-foreground" />
                       </Button>
                     </Link>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="p-6 text-center bg-white rounded-xl text-xs text-[#7c5c5f] border border-[#e5d1d4]">
+              <div className="p-6 text-center bg-card rounded-xl text-xs text-muted-foreground border border-border">
                 No wholesale commercial enquiries submitted yet.
               </div>
             )}
@@ -251,18 +251,18 @@ export const DealerDashboardPage = () => {
         {/* Right Column: Quick Stats & Navigation */}
         <div className="lg:col-span-4 space-y-6">
           <div className="grid grid-cols-1 gap-4">
-            <Card className="bg-white p-5 rounded-2xl border border-[#e5d1d4] shadow-sm">
-              <span className="text-xs font-bold uppercase text-[#7c5c5f]">Commercial Cart Units</span>
-              <p className="text-3xl font-extrabold text-[#3d0a0d] mt-1">{cartCount}</p>
-              <Link to="/dealer/cart" className="text-xs text-[#800020] hover:text-[#66001a] font-semibold block mt-2">
+            <Card className="bg-card p-5 rounded-2xl border border-border shadow-sm">
+              <span className="text-xs font-bold uppercase text-muted-foreground">Commercial Cart Units</span>
+              <p className="text-3xl font-extrabold text-foreground mt-1">{cartCount}</p>
+              <Link to="/dealer/cart" className="text-xs text-primary hover:text-primary/80 font-semibold block mt-2">
                 Open Commercial Cart →
               </Link>
             </Card>
 
-            <Card className="bg-white p-5 rounded-2xl border border-[#e5d1d4] shadow-sm">
-              <span className="text-xs font-bold uppercase text-[#7c5c5f]">KYC Verification State</span>
-              <p className="text-xl font-extrabold text-[#3d0a0d] mt-1 uppercase">{kycStatus}</p>
-              <Link to="/dealer/kyc/status" className="text-xs text-[#800020] hover:text-[#66001a] font-semibold block mt-2">
+            <Card className="bg-card p-5 rounded-2xl border border-border shadow-sm">
+              <span className="text-xs font-bold uppercase text-muted-foreground">KYC Verification State</span>
+              <p className="text-xl font-extrabold text-foreground mt-1 uppercase">{kycStatus}</p>
+              <Link to="/dealer/kyc/status" className="text-xs text-primary hover:text-primary/80 font-semibold block mt-2">
                 View Verification Details →
               </Link>
             </Card>
@@ -270,24 +270,24 @@ export const DealerDashboardPage = () => {
 
           {/* Quick Navigation Cards */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold uppercase text-[#7c5c5f]">Dealer Quick Actions</h4>
+            <h4 className="text-xs font-bold uppercase text-muted-foreground">Dealer Quick Actions</h4>
             <Link to="/dealer/pricing" className="block">
-              <div className="bg-white p-4 rounded-xl border border-[#e5d1d4] hover:border-[#800020] transition-all flex items-center justify-between group shadow-sm">
+              <div className="bg-card p-4 rounded-xl border border-border hover:border-primary transition-all flex items-center justify-between group shadow-sm">
                 <div className="flex items-center gap-3">
-                  <Tag className="w-5 h-5 text-[#800020]" />
-                  <span className="text-xs font-bold text-[#3d0a0d]">Wholesale Price Catalog</span>
+                  <Tag className="w-5 h-5 text-primary" />
+                  <span className="text-xs font-bold text-foreground">Wholesale Price Catalog</span>
                 </div>
-                <ArrowRight className="w-4 h-4 text-[#9a6870] group-hover:text-[#800020] group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>
 
             <Link to="/dealer/kyc" className="block">
-              <div className="bg-white p-4 rounded-xl border border-[#e5d1d4] hover:border-[#800020] transition-all flex items-center justify-between group shadow-sm">
+              <div className="bg-card p-4 rounded-xl border border-border hover:border-primary transition-all flex items-center justify-between group shadow-sm">
                 <div className="flex items-center gap-3">
-                  <FileCheck className="w-5 h-5 text-[#800020]" />
-                  <span className="text-xs font-bold text-[#3d0a0d]">Upload KYC Documents</span>
+                  <FileCheck className="w-5 h-5 text-primary" />
+                  <span className="text-xs font-bold text-foreground">Upload KYC Documents</span>
                 </div>
-                <ArrowRight className="w-4 h-4 text-[#9a6870] group-hover:text-[#800020] group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>
           </div>

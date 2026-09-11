@@ -231,14 +231,14 @@ export const DealerKycPage = () => {
   const getDoc = (type) => kycDocs.find((d) => d.type === type);
 
   return (
-    <div className="space-y-8 text-[#3d0a0d] max-w-5xl mx-auto">
+    <div className="space-y-8 text-foreground max-w-5xl mx-auto">
       
       {/* Header */}
-      <div className="border-b border-[#e5d1d4] pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="border-b border-border pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-[#800020]">Onboarding & Verification</span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#3d0a0d] tracking-tight flex items-center gap-3">
-            <FileCheck className="w-7 h-7 text-[#800020]" />
+          <span className="text-xs font-bold uppercase tracking-wider text-primary">Onboarding & Verification</span>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight flex items-center gap-3">
+            <FileCheck className="w-7 h-7 text-primary" />
             <span>KYC Profile & Document Submission</span>
           </h1>
         </div>
@@ -250,7 +250,7 @@ export const DealerKycPage = () => {
       <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-3 shadow-sm">
         <ShieldAlert className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
         <div>
-          <span className="font-bold block text-[#3d0a0d]">Automatic KYC Status Notice</span>
+          <span className="font-bold block text-foreground">Automatic KYC Status Notice</span>
           <p className="text-[#664448] leading-relaxed">
             Updating GSTIN, PAN, or replacing KYC document files will automatically reset your verification status to <span className="font-bold text-amber-800 font-mono">pending</span> review for admin audit.
           </p>
@@ -259,10 +259,10 @@ export const DealerKycPage = () => {
 
       {/* SECTION 1: BUSINESS PROFILE FORM */}
       <form onSubmit={handleSubmitProfile} className="space-y-6">
-        <Card className="bg-white p-6 rounded-2xl border border-[#e5d1d4] space-y-6 shadow-sm">
-          <CardHeader className="p-0 pb-4 border-b border-[#e5d1d4] flex items-center justify-between">
-            <CardTitle className="text-base font-bold flex items-center gap-2 text-[#3d0a0d]">
-              <Building2 className="w-5 h-5 text-[#800020]" />
+        <Card className="bg-card p-6 rounded-2xl border border-border space-y-6 shadow-sm">
+          <CardHeader className="p-0 pb-4 border-b border-border flex items-center justify-between">
+            <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
+              <Building2 className="w-5 h-5 text-primary" />
               <span>Company & Tax Information</span>
             </CardTitle>
             <Badge variant="primary">Step 1</Badge>
@@ -331,7 +331,7 @@ export const DealerKycPage = () => {
             </div>
           </CardContent>
 
-          <CardFooter className="p-0 pt-4 border-t border-[#e5d1d4] flex justify-end">
+          <CardFooter className="p-0 pt-4 border-t border-border flex justify-end">
             <Button
               type="submit"
               variant="primary"
@@ -346,9 +346,9 @@ export const DealerKycPage = () => {
 
       {/* SECTION 2: KYC DOCUMENT UPLOADERS */}
       <div className="space-y-6">
-        <div className="border-b border-[#e5d1d4] pb-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-[#3d0a0d] flex items-center gap-2">
-            <FileText className="w-5 h-5 text-[#800020]" />
+        <div className="border-b border-border pb-3 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+            <FileText className="w-5 h-5 text-primary" />
             <span>Required KYC Verification Documents</span>
           </h2>
           <Badge variant="primary">Step 2</Badge>
@@ -368,11 +368,11 @@ export const DealerKycPage = () => {
             return (
               <Card
                 key={docType}
-                className="bg-white p-5 rounded-2xl border border-[#e5d1d4] flex flex-col justify-between space-y-4 shadow-sm"
+                className="bg-card p-5 rounded-2xl border border-border flex flex-col justify-between space-y-4 shadow-sm"
               >
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-[#800020]">
+                    <span className="text-xs font-bold uppercase tracking-wider text-primary">
                       {docType.toUpperCase()} Doc
                     </span>
                     {doc ? (
@@ -384,19 +384,19 @@ export const DealerKycPage = () => {
                     )}
                   </div>
 
-                  <h3 className="font-bold text-[#3d0a0d] text-sm mb-1">{typeTitle}</h3>
-                  <p className="text-[11px] text-[#7c5c5f]">Accepted formats: JPG, PNG, WEBP, PDF (Max 5 MB)</p>
+                  <h3 className="font-bold text-foreground text-sm mb-1">{typeTitle}</h3>
+                  <p className="text-[11px] text-muted-foreground">Accepted formats: JPG, PNG, WEBP, PDF (Max 5 MB)</p>
                 </div>
 
                 {doc ? (
-                  <div className="space-y-3 pt-3 border-t border-[#e5d1d4]">
-                    <div className="flex items-center gap-2 text-xs bg-[#fdf8f9] p-2.5 rounded-xl border border-[#e5d1d4] truncate">
-                      <File className="w-4 h-4 text-[#800020] shrink-0" />
+                  <div className="space-y-3 pt-3 border-t border-border">
+                    <div className="flex items-center gap-2 text-xs bg-background p-2.5 rounded-xl border border-border truncate">
+                      <File className="w-4 h-4 text-primary shrink-0" />
                       <a
                         href={doc.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[#800020] hover:underline truncate font-mono"
+                        className="text-primary hover:underline truncate font-mono"
                       >
                         View Uploaded File
                       </a>
@@ -435,7 +435,7 @@ export const DealerKycPage = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="pt-3 border-t border-[#e5d1d4]">
+                  <div className="pt-3 border-t border-border">
                     <label className="block w-full">
                       <input
                         type="file"

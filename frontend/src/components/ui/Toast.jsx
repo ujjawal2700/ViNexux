@@ -20,8 +20,8 @@ const toastConfig = {
   },
   info: {
     icon: Info,
-    style: 'bg-[#f4e7ea] border-[#e5d1d4] text-[#3d0a0d]',
-    iconStyle: 'text-[#800020]',
+    style: 'bg-muted border-border text-foreground',
+    iconStyle: 'text-primary',
   },
 };
 
@@ -44,7 +44,7 @@ export const ToastContainer = ({ toasts = [], onDismiss }) => {
             <p className="flex-1 text-xs font-semibold leading-relaxed">{toast.message}</p>
             <button
               onClick={() => onDismiss(toast.id)}
-              className="text-slate-400 hover:text-white p-0.5 rounded transition-colors"
+              className="text-muted-foreground hover:text-foreground p-0.5 rounded transition-colors"
               title="Dismiss notification"
             >
               <X className="w-3.5 h-3.5" />

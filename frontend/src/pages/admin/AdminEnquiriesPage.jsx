@@ -184,7 +184,7 @@ const AdminEnquiriesPage = () => {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4, 5].map((n) => (
-            <Skeleton key={n} className="h-16 rounded-lg bg-[#f4e7ea]" />
+            <Skeleton key={n} className="h-16 rounded-lg bg-muted" />
           ))}
         </div>
       ) : error ? (
@@ -223,8 +223,8 @@ const AdminEnquiriesPage = () => {
                 return (
                   <Table.Row key={enq._id}>
                     <Table.Cell>
-                      <div className="font-mono text-xs font-bold text-[#3d0a0d]">{enq.enquiryNumber}</div>
-                      <div className="text-[10px] text-[#7c5c5f]">
+                      <div className="font-mono text-xs font-bold text-foreground">{enq.enquiryNumber}</div>
+                      <div className="text-[10px] text-muted-foreground">
                         {new Date(enq.createdAt).toLocaleDateString('en-IN', {
                           day: 'numeric',
                           month: 'short',
@@ -233,8 +233,8 @@ const AdminEnquiriesPage = () => {
                       </div>
                     </Table.Cell>
                     <Table.Cell>
-                      <div className="text-xs font-bold text-[#3d0a0d]">{enq.contactName}</div>
-                      <div className="text-[10px] text-[#7c5c5f]">{enq.contactEmail || enq.contactPhone}</div>
+                      <div className="text-xs font-bold text-foreground">{enq.contactName}</div>
+                      <div className="text-[10px] text-muted-foreground">{enq.contactEmail || enq.contactPhone}</div>
                     </Table.Cell>
                     <Table.Cell>
                       <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
@@ -246,7 +246,7 @@ const AdminEnquiriesPage = () => {
                       </span>
                     </Table.Cell>
                     <Table.Cell>
-                      <div className="text-xs font-semibold text-[#3d0a0d]">{totalItemsCount} Item(s)</div>
+                      <div className="text-xs font-semibold text-foreground">{totalItemsCount} Item(s)</div>
                       <div className="text-[11px] font-extrabold text-emerald-700">
                         ₹{Number(enq.totalAmount || 0).toLocaleString('en-IN')}
                       </div>

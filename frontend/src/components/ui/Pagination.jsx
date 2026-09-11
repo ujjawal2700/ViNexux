@@ -38,9 +38,9 @@ export const Pagination = ({
 
   return (
     <div className={`flex items-center justify-between gap-4 py-4 px-2 ${className}`}>
-      <span className="text-xs text-[#7c5c5f]">
-        Page <strong className="text-[#3d0a0d]">{currentPage}</strong> of{' '}
-        <strong className="text-[#3d0a0d]">{totalPages}</strong>
+      <span className="text-xs text-muted-foreground">
+        Page <strong className="text-foreground">{currentPage}</strong> of{' '}
+        <strong className="text-foreground">{totalPages}</strong>
       </span>
 
       <div className="flex items-center gap-1.5">
@@ -66,8 +66,8 @@ export const Pagination = ({
               onClick={() => onPageChange && onPageChange(p)}
               className={`w-8 h-8 rounded-lg text-xs font-semibold transition-all ${
                 currentPage === p
-                  ? 'bg-[#800020] text-white shadow-md font-bold'
-                  : 'text-[#7c5c5f] hover:text-[#3d0a0d] hover:bg-[#f4e7ea]'
+                  ? 'bg-primary text-white shadow-md font-bold'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
               }`}
             >
               {p}

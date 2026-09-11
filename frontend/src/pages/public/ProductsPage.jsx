@@ -152,14 +152,14 @@ export const ProductsPage = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 bg-[#fdf8f9] text-[#3d0a0d] min-h-screen">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 bg-background text-foreground min-h-screen">
       
       {/* 1. CATALOG PAGE HEADER */}
-      <div className="border-b border-[#e5d1d4] pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="border-b border-border pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-[#800020]">Security & CCTV Catalog</span>
-          <h1 className="text-3xl font-black text-[#3d0a0d] tracking-tight">Product Catalog</h1>
-          <p className="text-xs text-[#7c5c5f] mt-1 font-medium">
+          <span className="text-xs font-bold uppercase tracking-wider text-primary">Security & CCTV Catalog</span>
+          <h1 className="text-3xl font-black text-foreground tracking-tight">Product Catalog</h1>
+          <p className="text-xs text-muted-foreground mt-1 font-medium">
             Browse high-definition security equipment, DVRs/NVRs, cables, and routers.
           </p>
         </div>
@@ -178,7 +178,7 @@ export const ProductsPage = () => {
           <Button
             variant="outline"
             size="md"
-            className="lg:hidden shrink-0 border-[#e5d1d4] text-[#800020]"
+            className="lg:hidden shrink-0 border-border text-primary"
             leftIcon={<SlidersHorizontal className="w-4 h-4" />}
             onClick={() => setIsMobileFilterOpen(true)}
           >
@@ -191,16 +191,16 @@ export const ProductsPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
         {/* DESKTOP SIDEBAR FILTER PANEL */}
-        <aside className="hidden lg:block lg:col-span-3 space-y-6 sticky top-24 glass-panel p-6 rounded-2xl border border-[#e5d1d4] bg-white shadow-xs">
-          <div className="flex items-center justify-between border-b border-[#e5d1d4] pb-4">
-            <div className="flex items-center gap-2 text-[#3d0a0d] font-bold text-sm">
-              <Filter className="w-4 h-4 text-[#800020]" />
+        <aside className="hidden lg:block lg:col-span-3 space-y-6 sticky top-24 glass-panel p-6 rounded-2xl border border-border bg-card shadow-xs">
+          <div className="flex items-center justify-between border-b border-border pb-4">
+            <div className="flex items-center gap-2 text-foreground font-bold text-sm">
+              <Filter className="w-4 h-4 text-primary" />
               <span>Catalog Filters</span>
             </div>
             {(selectedCategory || searchTerm) && (
               <button
                 onClick={handleResetFilters}
-                className="text-[11px] font-bold text-[#800020] hover:text-[#9a1b32] flex items-center gap-1"
+                className="text-[11px] font-bold text-primary hover:text-accent flex items-center gap-1"
               >
                 <RefreshCw className="w-3 h-3" /> Reset
               </button>
@@ -209,14 +209,14 @@ export const ProductsPage = () => {
 
           {/* Category Selector Tree */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-[#7c5c5f]">Categories</h4>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Categories</h4>
             <div className="space-y-1 max-h-80 overflow-y-auto pr-1">
               <button
                 onClick={() => handleCategorySelect('')}
                 className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between ${
                   !selectedCategory
-                    ? 'bg-[#f4e7ea] text-[#800020] border border-[#e5d1d4] font-bold shadow-xs'
-                    : 'text-[#7c5c5f] hover:text-[#3d0a0d] hover:bg-[#f4e7ea]/50'
+                    ? 'bg-muted text-primary border border-border font-bold shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                 }`}
               >
                 <span>All Categories</span>
@@ -229,8 +229,8 @@ export const ProductsPage = () => {
                   onClick={() => handleCategorySelect(cat._id)}
                   className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between ${
                     selectedCategory === cat._id
-                      ? 'bg-[#f4e7ea] text-[#800020] border border-[#e5d1d4] font-bold shadow-xs'
-                      : 'text-[#7c5c5f] hover:text-[#3d0a0d] hover:bg-[#f4e7ea]/50'
+                      ? 'bg-muted text-primary border border-border font-bold shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                   }`}
                 >
                   <span className="truncate">{cat.name}</span>
@@ -250,23 +250,23 @@ export const ProductsPage = () => {
           size="sm"
         >
           <div className="space-y-6 pt-2">
-            <div className="flex justify-between items-center pb-2 border-b border-slate-800">
-              <span className="text-xs font-bold text-slate-300">Active Filters</span>
+            <div className="flex justify-between items-center pb-2 border-b border-border">
+              <span className="text-xs font-bold text-muted-foreground">Active Filters</span>
               <button
                 onClick={handleResetFilters}
-                className="text-xs text-crimson-400 hover:text-crimson-300"
+                className="text-xs text-rose-400 hover:text-rose-300"
               >
                 Clear All
               </button>
             </div>
 
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-slate-400 uppercase">Categories</h4>
+              <h4 className="text-xs font-bold text-muted-foreground uppercase">Categories</h4>
               <div className="space-y-1">
                 <button
                   onClick={() => handleCategorySelect('')}
                   className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium ${
-                    !selectedCategory ? 'bg-crimson-900/40 text-crimson-400 font-bold' : 'text-slate-300'
+                    !selectedCategory ? 'bg-rose-900/40 text-rose-400 font-bold' : 'text-muted-foreground'
                   }`}
                 >
                   All Categories
@@ -276,7 +276,7 @@ export const ProductsPage = () => {
                     key={cat._id}
                     onClick={() => handleCategorySelect(cat._id)}
                     className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium ${
-                      selectedCategory === cat._id ? 'bg-crimson-900/40 text-crimson-400 font-bold' : 'text-slate-300'
+                      selectedCategory === cat._id ? 'bg-rose-900/40 text-rose-400 font-bold' : 'text-muted-foreground'
                     }`}
                   >
                     {cat.name}
@@ -291,11 +291,11 @@ export const ProductsPage = () => {
         <main className="col-span-1 lg:col-span-9 space-y-6">
           
           {/* Top Grid Info Bar: Result count & Sort dropdown */}
-          <div className="glass-panel p-4 rounded-2xl border border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-xs text-slate-400">
-              Showing <span className="font-bold text-white">{products.length}</span> of{' '}
-              <span className="font-bold text-white">{pagination.total || products.length}</span> products
-              {searchTerm && <span> for "<span className="text-crimson-400">{searchTerm}</span>"</span>}
+          <div className="glass-panel p-4 rounded-2xl border border-border/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-xs text-muted-foreground">
+              Showing <span className="font-bold text-foreground">{products.length}</span> of{' '}
+              <span className="font-bold text-foreground">{pagination.total || products.length}</span> products
+              {searchTerm && <span> for "<span className="text-rose-400">{searchTerm}</span>"</span>}
             </div>
 
             {/* Sort Select */}
@@ -335,7 +335,7 @@ export const ProductsPage = () => {
 
               {/* BACKEND PAGINATION */}
               {pagination.totalPages > 1 && (
-                <div className="pt-6 border-t border-slate-800/80 flex justify-center">
+                <div className="pt-6 border-t border-border/80 flex justify-center">
                   <Pagination
                     currentPage={currentPage}
                     totalPages={pagination.totalPages}

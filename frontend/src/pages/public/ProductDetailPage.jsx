@@ -133,7 +133,7 @@ export const ProductDetailPage = () => {
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 space-y-8 bg-[#fdf8f9]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 space-y-8 bg-background">
         <Skeleton className="h-6 w-32" />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-6 space-y-4">
@@ -173,17 +173,17 @@ export const ProductDetailPage = () => {
   const currentImage = images[selectedImageIndex]?.url || '';
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-12 bg-[#fdf8f9] text-[#3d0a0d] min-h-screen">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-12 bg-background text-foreground min-h-screen">
       
       {/* 1. BREADCRUMB HEADER */}
-      <div className="flex items-center justify-between text-xs text-[#7c5c5f] border-b border-[#e5d1d4] pb-4">
-        <Link to="/products" className="hover:text-[#800020] inline-flex items-center gap-1.5 font-medium transition-colors">
+      <div className="flex items-center justify-between text-xs text-muted-foreground border-b border-border pb-4">
+        <Link to="/products" className="hover:text-primary inline-flex items-center gap-1.5 font-medium transition-colors">
           <ArrowLeft className="w-3.5 h-3.5" /> Back to Product Catalog
         </Link>
         <div className="flex items-center gap-2 text-[#9a6870]">
-          <Layers className="w-3.5 h-3.5 text-[#800020]" />
+          <Layers className="w-3.5 h-3.5 text-primary" />
           <span>Category:</span>
-          <span className="text-[#3d0a0d] font-semibold">
+          <span className="text-foreground font-semibold">
             {typeof product.categoryId === 'object' ? product.categoryId?.name : 'Security Equipment'}
           </span>
         </div>
@@ -194,7 +194,7 @@ export const ProductDetailPage = () => {
         
         {/* Left Column: Image Gallery & Thumbnails */}
         <div className="lg:col-span-6 space-y-4">
-          <div className="bg-white p-2 rounded-3xl border border-[#e5d1d4] overflow-hidden relative group shadow-sm">
+          <div className="bg-card p-2 rounded-3xl border border-border overflow-hidden relative group shadow-sm">
             <Image
               src={currentImage}
               alt={product.name}
@@ -216,7 +216,7 @@ export const ProductDetailPage = () => {
                   key={index}
                   onClick={() => setSelectedImageIndex(index)}
                   className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${
-                    selectedImageIndex === index ? 'border-[#800020] scale-95 shadow-md' : 'border-[#e5d1d4] opacity-60 hover:opacity-100'
+                    selectedImageIndex === index ? 'border-primary scale-95 shadow-md' : 'border-border opacity-60 hover:opacity-100'
                   }`}
                 >
                   <Image src={img.url} alt={`Thumbnail ${index}`} aspectRatio="aspect-square" />
@@ -232,28 +232,28 @@ export const ProductDetailPage = () => {
           {/* Header Titles */}
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-4">
-              <span className="font-mono text-xs text-[#800020] font-bold uppercase tracking-wider">
+              <span className="font-mono text-xs text-primary font-bold uppercase tracking-wider">
                 SKU: {product.sku}
               </span>
               <StatusBadge status={product.isActive ? 'in-stock' : 'out-of-stock'} />
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#3d0a0d] tracking-tight leading-snug">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight leading-snug">
               {product.name}
             </h1>
           </div>
 
           {/* Description */}
           {product.description && (
-            <p className="text-xs sm:text-sm text-[#664448] leading-relaxed border-t border-[#e5d1d4] pt-4">
+            <p className="text-xs sm:text-sm text-[#664448] leading-relaxed border-t border-border pt-4">
               {product.description}
             </p>
           )}
 
           {/* Role-Aware Pricing Block */}
-          <div className="bg-white p-5 rounded-2xl border border-[#e5d1d4] space-y-2 shadow-sm">
+          <div className="bg-card p-5 rounded-2xl border border-border space-y-2 shadow-sm">
             <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-extrabold text-[#3d0a0d] tracking-tight">
+              <span className="text-3xl font-extrabold text-foreground tracking-tight">
                 {formatCurrency(displayPrice)}
               </span>
 
@@ -270,12 +270,12 @@ export const ProductDetailPage = () => {
                   <CheckCircle2 className="w-4 h-4" /> Verified Dealer Wholesale Price Applied
                 </span>
               ) : isAdmin ? (
-                <span className="text-[#7c5c5f]">
+                <span className="text-muted-foreground">
                   Standard: {formatCurrency(standardPrice)} | Dealer: {formatCurrency(dealerPrice)}
                 </span>
               ) : (
-                <span className="text-[#7c5c5f] flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-[#800020]" /> Standard Retail Price (Log in as Approved Dealer for wholesale rates)
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-primary" /> Standard Retail Price (Log in as Approved Dealer for wholesale rates)
                 </span>
               )}
             </div>
@@ -284,19 +284,19 @@ export const ProductDetailPage = () => {
           {/* Quantity Selector & Add to Cart Controls */}
           <div className="space-y-4 pt-2">
             <div className="flex items-center gap-4">
-              <span className="text-xs font-bold text-[#3d0a0d] uppercase tracking-wider">Quantity:</span>
-              <div className="flex items-center bg-[#f4e7ea] border border-[#e5d1d4] rounded-xl overflow-hidden">
+              <span className="text-xs font-bold text-foreground uppercase tracking-wider">Quantity:</span>
+              <div className="flex items-center bg-muted border border-border rounded-xl overflow-hidden">
                 <button
                   onClick={handleDecrement}
                   disabled={quantity <= 1}
-                  className="p-2.5 text-[#7c5c5f] hover:text-[#800020] disabled:opacity-40 transition-colors"
+                  className="p-2.5 text-muted-foreground hover:text-primary disabled:opacity-40 transition-colors"
                 >
                   <Minus className="w-4 h-4" />
                 </button>
-                <span className="px-4 text-sm font-bold text-[#3d0a0d] font-mono">{quantity}</span>
+                <span className="px-4 text-sm font-bold text-foreground font-mono">{quantity}</span>
                 <button
                   onClick={handleIncrement}
-                  className="p-2.5 text-[#7c5c5f] hover:text-[#800020] transition-colors"
+                  className="p-2.5 text-muted-foreground hover:text-primary transition-colors"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -319,9 +319,9 @@ export const ProductDetailPage = () => {
           </div>
 
           {/* Brand/Support Highlights */}
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[#e5d1d4] text-xs text-[#7c5c5f]">
+          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border text-xs text-muted-foreground">
             <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-[#800020]" />
+              <ShieldCheck className="w-4 h-4 text-primary" />
               <span>Authentic Brand Guarantee</span>
             </div>
             <div className="flex items-center gap-2">
@@ -334,24 +334,24 @@ export const ProductDetailPage = () => {
 
       {/* 3. DETAILED SPECIFICATIONS TABLE */}
       {product.specifications && product.specifications.length > 0 && (
-        <div className="space-y-4 border-t border-[#e5d1d4] pt-10">
-          <h3 className="text-xl font-bold text-[#3d0a0d] tracking-tight flex items-center gap-2">
-            <Layers className="w-5 h-5 text-[#800020]" />
+        <div className="space-y-4 border-t border-border pt-10">
+          <h3 className="text-xl font-bold text-foreground tracking-tight flex items-center gap-2">
+            <Layers className="w-5 h-5 text-primary" />
             <span>Technical Specifications</span>
           </h3>
 
-          <div className="bg-white rounded-2xl border border-[#e5d1d4] overflow-hidden shadow-sm">
+          <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
             <table className="w-full text-left border-collapse text-xs">
               <tbody>
                 {product.specifications.map((spec, idx) => (
                   <tr
                     key={idx}
-                    className={idx % 2 === 0 ? 'bg-[#fdf8f9]' : 'bg-white'}
+                    className={idx % 2 === 0 ? 'bg-background' : 'bg-card'}
                   >
-                    <td className="px-6 py-3.5 font-bold text-[#3d0a0d] w-1/3 border-b border-[#e5d1d4]">
+                    <td className="px-6 py-3.5 font-bold text-foreground w-1/3 border-b border-border">
                       {spec.key}
                     </td>
-                    <td className="px-6 py-3.5 text-[#664448] border-b border-[#e5d1d4] font-mono">
+                    <td className="px-6 py-3.5 text-[#664448] border-b border-border font-mono">
                       {spec.value}
                     </td>
                   </tr>
@@ -364,8 +364,8 @@ export const ProductDetailPage = () => {
 
       {/* 4. RELATED PRODUCTS RECOMMENDATIONS */}
       {relatedProducts.length > 0 && (
-        <div className="space-y-6 border-t border-[#e5d1d4] pt-10">
-          <h3 className="text-xl font-bold text-[#3d0a0d] tracking-tight">Related Category Equipment</h3>
+        <div className="space-y-6 border-t border-border pt-10">
+          <h3 className="text-xl font-bold text-foreground tracking-tight">Related Category Equipment</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
             {relatedProducts.map((relProd) => (
               <ProductCard key={relProd._id} product={relProd} />

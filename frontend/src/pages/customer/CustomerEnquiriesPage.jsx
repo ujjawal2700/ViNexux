@@ -67,7 +67,7 @@ export const CustomerEnquiriesPage = () => {
     {
       header: 'Enquiry No',
       key: 'enquiryNumber',
-      className: 'font-mono text-[#800020] font-bold',
+      className: 'font-mono text-primary font-bold',
       render: (val, row) => (
         <Link to={`/customer/enquiries/${row._id}`} className="hover:underline">
           {val || row.id || 'VNX'}
@@ -78,7 +78,7 @@ export const CustomerEnquiriesPage = () => {
       header: 'Date',
       key: 'createdAt',
       render: (val) => (
-        <span className="text-xs text-[#7c5c5f]">
+        <span className="text-xs text-muted-foreground">
           {new Date(val).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
         </span>
       ),
@@ -92,7 +92,7 @@ export const CustomerEnquiriesPage = () => {
       header: 'Items',
       key: 'items',
       render: (val) => (
-        <span className="text-xs text-[#7c5c5f] font-medium">
+        <span className="text-xs text-muted-foreground font-medium">
           {Array.isArray(val) ? val.length : 0} item(s)
         </span>
       ),
@@ -101,7 +101,7 @@ export const CustomerEnquiriesPage = () => {
       header: 'Est. Total',
       key: 'total',
       align: 'right',
-      className: 'font-mono font-bold text-[#3d0a0d]',
+      className: 'font-mono font-bold text-foreground',
       render: (_, row) => {
         const total = (row.items || []).reduce(
           (sum, item) => sum + (item.priceShown || 0) * (item.quantity || 1),
@@ -117,7 +117,7 @@ export const CustomerEnquiriesPage = () => {
       render: (val) => (
         <Link to={`/customer/enquiries/${val}`}>
           <Button variant="outline" size="sm" iconOnly title="View Details">
-            <Eye className="w-3.5 h-3.5 text-[#7c5c5f]" />
+            <Eye className="w-3.5 h-3.5 text-muted-foreground" />
           </Button>
         </Link>
       ),
@@ -125,14 +125,14 @@ export const CustomerEnquiriesPage = () => {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 bg-[#fdf8f9] text-[#3d0a0d] min-h-screen">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 bg-background text-foreground min-h-screen">
       
       {/* Header */}
-      <div className="border-b border-[#e5d1d4] pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="border-b border-border pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-[#800020]">Quotations & Leads</span>
-          <h1 className="text-3xl font-extrabold text-[#3d0a0d] tracking-tight flex items-center gap-3">
-            <FileText className="w-7 h-7 text-[#800020]" />
+          <span className="text-xs font-bold uppercase tracking-wider text-primary">Quotations & Leads</span>
+          <h1 className="text-3xl font-extrabold text-foreground tracking-tight flex items-center gap-3">
+            <FileText className="w-7 h-7 text-primary" />
             <span>Enquiry History</span>
           </h1>
         </div>
@@ -167,7 +167,7 @@ export const CustomerEnquiriesPage = () => {
 
           {/* Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="pt-4 flex justify-center border-t border-[#e5d1d4]">
+            <div className="pt-4 flex justify-center border-t border-border">
               <Pagination
                 currentPage={currentPage}
                 totalPages={pagination.totalPages}

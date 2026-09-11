@@ -111,14 +111,14 @@ export const DealerPricingPage = () => {
   };
 
   return (
-    <div className="space-y-8 text-[#3d0a0d] max-w-7xl mx-auto">
+    <div className="space-y-8 text-foreground max-w-7xl mx-auto">
       
       {/* 1. HEADER & KYC STATUS ALERT */}
-      <div className="border-b border-[#e5d1d4] pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="border-b border-border pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-[#800020]">B2B Commercial Catalog</span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#3d0a0d] tracking-tight flex items-center gap-3">
-            <Tag className="w-7 h-7 text-[#800020]" />
+          <span className="text-xs font-bold uppercase tracking-wider text-primary">B2B Commercial Catalog</span>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight flex items-center gap-3">
+            <Tag className="w-7 h-7 text-primary" />
             <span>Tiered Wholesale Pricing Matrix</span>
           </h1>
         </div>
@@ -131,7 +131,7 @@ export const DealerPricingPage = () => {
         <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-3 shadow-sm">
           <CheckCircle2 className="w-5 h-5 text-emerald-700 shrink-0" />
           <div>
-            <span className="font-bold block text-[#3d0a0d]">Wholesale Rates Active</span>
+            <span className="font-bold block text-foreground">Wholesale Rates Active</span>
             <p className="text-[#664448]">
               Your account is approved. Exclusive wholesale dealer pricing is active across all catalog items.
             </p>
@@ -141,7 +141,7 @@ export const DealerPricingPage = () => {
         <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-3 shadow-sm">
           <Lock className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
           <div>
-            <span className="font-bold block text-[#3d0a0d]">Wholesale Pricing Locked</span>
+            <span className="font-bold block text-foreground">Wholesale Pricing Locked</span>
             <p className="text-[#664448]">
               Standard prices are currently displayed. Complete your KYC profile submission and await admin approval to unlock B2B wholesale rates.
             </p>
@@ -150,7 +150,7 @@ export const DealerPricingPage = () => {
       )}
 
       {/* 2. CATALOG CONTROLS BAR */}
-      <div className="bg-white p-4 rounded-2xl border border-[#e5d1d4] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+      <div className="bg-card p-4 rounded-2xl border border-border flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-3 w-full sm:w-auto flex-1">
           <div className="w-full sm:w-72">
             <SearchInput
@@ -195,7 +195,7 @@ export const DealerPricingPage = () => {
 
           {(searchTerm || selectedCategory) && (
             <Button variant="ghost" size="sm" iconOnly title="Reset Filters" onClick={handleResetFilters}>
-              <RefreshCw className="w-4 h-4 text-[#800020]" />
+              <RefreshCw className="w-4 h-4 text-primary" />
             </Button>
           )}
         </div>
@@ -219,7 +219,7 @@ export const DealerPricingPage = () => {
           </div>
 
           {pagination.totalPages > 1 && (
-            <div className="pt-6 border-t border-[#e5d1d4] flex justify-center">
+            <div className="pt-6 border-t border-border flex justify-center">
               <Pagination
                 currentPage={currentPage}
                 totalPages={pagination.totalPages}

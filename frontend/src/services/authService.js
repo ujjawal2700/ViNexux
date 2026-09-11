@@ -1,17 +1,20 @@
 import apiClient from '../api/axios';
 
 export const authService = {
-  // Send OTP (supports email or phone number identifier)
-  sendOtp: async (identifier) => {
-    const response = await apiClient.post('/auth/send-otp', { identifier });
+  // Send OTP (supports email or phone number identifier).
+  // `portal: 'admin'` scopes this to the dedicated admin login page -
+  // the backend rejects non-admin accounts for that portal.
+  sendOtp: async (identifier, portal) => {
+    const response = await apiClient.post('/auth/send-otp', { identifier, ...(portal ? { portal } : {}) });
     return response.data;
   },
 
   // Verify OTP
-  verifyOtp: async (identifier, otpCode) => {
+  verifyOtp: async (identifier, otpCode, portal) => {
     const response = await apiClient.post('/auth/verify-otp', {
       identifier,
       otp: otpCode,
+      ...(portal ? { portal } : {}),
     });
     return response.data;
   },

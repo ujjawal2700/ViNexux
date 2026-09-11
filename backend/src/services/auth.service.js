@@ -101,7 +101,7 @@ export const authService = {
   /**
    * Generates and dispatches an OTP for signup, login, or phone-change.
    */
-  async sendOtp({ identifier, purpose = 'login' }) {
+  async sendOtp({ identifier, purpose = 'login', portal }) {
     const normalized = normalizeIdentifier(identifier);
     if (!normalized) {
       throw new AppError('Identifier is required', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
@@ -121,6 +121,15 @@ export const authService = {
       if (user.accountStatus === 'blocked' || user.status === 'blocked') {
         throw new AppError(
           'Your account has been blocked. Please contact support.',
+          HTTP_STATUS.FORBIDDEN,
+          ERROR_CODES.FORBIDDEN
+        );
+      }
+      // Dedicated admin login surface (/admin/login): reject non-admin accounts
+      // server-side, regardless of what the client claims.
+      if (portal === 'admin' && user.role !== 'admin') {
+        throw new AppError(
+          'This sign-in page is reserved for administrators. Please use the standard login page.',
           HTTP_STATUS.FORBIDDEN,
           ERROR_CODES.FORBIDDEN
         );
@@ -169,7 +178,7 @@ export const authService = {
   /**
    * Verifies OTP. Handles session creation or single active session conflict.
    */
-  async verifyOtp({ identifier, otp, purpose = 'login', reqInfo }) {
+  async verifyOtp({ identifier, otp, purpose = 'login', portal, reqInfo }) {
     const normalized = normalizeIdentifier(identifier);
     if (!normalized || !otp) {
       throw new AppError('Identifier and OTP are required', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
@@ -225,6 +234,17 @@ export const authService = {
 
     if (user.accountStatus === 'blocked' || user.status === 'blocked') {
       throw new AppError('Your account has been blocked. Please contact support.', HTTP_STATUS.FORBIDDEN, ERROR_CODES.FORBIDDEN);
+    }
+
+    // Dedicated admin login surface (/admin/login): reject non-admin accounts
+    // server-side even if they somehow got this far (e.g. requested the OTP
+    // via the general endpoint, then hit this endpoint with portal='admin').
+    if (portal === 'admin' && user.role !== 'admin') {
+      throw new AppError(
+        'This sign-in page is reserved for administrators. Please use the standard login page.',
+        HTTP_STATUS.FORBIDDEN,
+        ERROR_CODES.FORBIDDEN
+      );
     }
 
     // Activate user upon successful phone verification

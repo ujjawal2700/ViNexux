@@ -141,7 +141,7 @@ const AdminCustomersPage = () => {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4, 5].map((n) => (
-            <Skeleton key={n} className="h-16 rounded-lg bg-[#f4e7ea]" />
+            <Skeleton key={n} className="h-16 rounded-lg bg-muted" />
           ))}
         </div>
       ) : error ? (
@@ -173,16 +173,16 @@ const AdminCustomersPage = () => {
                 return (
                   <Table.Row key={cust._id}>
                     <Table.Cell>
-                      <div className="text-xs font-bold text-[#3d0a0d]">{nameStr}</div>
-                      <div className="text-[10px] text-[#7c5c5f] font-mono">ID: {cust._id}</div>
+                      <div className="text-xs font-bold text-foreground">{nameStr}</div>
+                      <div className="text-[10px] text-muted-foreground font-mono">ID: {cust._id}</div>
                     </Table.Cell>
-                    <Table.Cell className="font-mono text-xs text-[#3d0a0d]">
+                    <Table.Cell className="font-mono text-xs text-foreground">
                       {cust.email || 'N/A'}
                     </Table.Cell>
-                    <Table.Cell className="font-mono text-xs text-[#3d0a0d]">
+                    <Table.Cell className="font-mono text-xs text-foreground">
                       {cust.phone || 'N/A'}
                     </Table.Cell>
-                    <Table.Cell className="text-xs text-[#7c5c5f]">
+                    <Table.Cell className="text-xs text-muted-foreground">
                       {new Date(cust.createdAt).toLocaleDateString('en-IN', {
                         day: 'numeric',
                         month: 'short',
@@ -252,44 +252,44 @@ const AdminCustomersPage = () => {
       >
         {inspectCustomer && (
           <div className="space-y-6 text-xs">
-            <div className="p-4 rounded-xl bg-white border border-[#e5d1d4] space-y-3">
-              <div className="flex items-center justify-between border-b border-[#e5d1d4] pb-2">
-                <span className="text-[#7c5c5f]">Account ID:</span>
-                <span className="font-mono text-[#3d0a0d]">{inspectCustomer._id}</span>
+            <div className="p-4 rounded-xl bg-card border border-border space-y-3">
+              <div className="flex items-center justify-between border-b border-border pb-2">
+                <span className="text-muted-foreground">Account ID:</span>
+                <span className="font-mono text-foreground">{inspectCustomer._id}</span>
               </div>
-              <div className="flex items-center justify-between border-b border-[#e5d1d4] pb-2">
-                <span className="text-[#7c5c5f]">Full Name:</span>
-                <span className="font-bold text-[#3d0a0d]">{inspectCustomer.fullName || inspectCustomer.name}</span>
+              <div className="flex items-center justify-between border-b border-border pb-2">
+                <span className="text-muted-foreground">Full Name:</span>
+                <span className="font-bold text-foreground">{inspectCustomer.fullName || inspectCustomer.name}</span>
               </div>
-              <div className="flex items-center justify-between border-b border-[#e5d1d4] pb-2">
-                <span className="text-[#7c5c5f]">Account Role:</span>
+              <div className="flex items-center justify-between border-b border-border pb-2">
+                <span className="text-muted-foreground">Account Role:</span>
                 <span className="font-bold text-blue-700 uppercase">{inspectCustomer.role}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[#7c5c5f]">Account Status:</span>
+                <span className="text-muted-foreground">Account Status:</span>
                 <StatusBadge status={inspectCustomer.accountStatus || inspectCustomer.status || 'active'} />
               </div>
             </div>
 
             <div className="space-y-3">
-              <h4 className="text-xs font-bold text-[#3d0a0d] uppercase tracking-wider">Contact Details</h4>
-              <div className="p-4 rounded-xl bg-white border border-[#e5d1d4] space-y-2">
-                <div className="flex items-center gap-2 text-[#3d0a0d]">
-                  <Mail className="w-4 h-4 text-[#800020]" />
+              <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Contact Details</h4>
+              <div className="p-4 rounded-xl bg-card border border-border space-y-2">
+                <div className="flex items-center gap-2 text-foreground">
+                  <Mail className="w-4 h-4 text-primary" />
                   <span className="font-mono">{inspectCustomer.email || 'No email associated'}</span>
                 </div>
-                <div className="flex items-center gap-2 text-[#3d0a0d]">
+                <div className="flex items-center gap-2 text-foreground">
                   <Phone className="w-4 h-4 text-emerald-700" />
                   <span className="font-mono">{inspectCustomer.phone || 'No mobile associated'}</span>
                 </div>
-                <div className="flex items-center gap-2 text-[#7c5c5f] pt-1">
+                <div className="flex items-center gap-2 text-muted-foreground pt-1">
                   <Calendar className="w-4 h-4 text-blue-700" />
                   <span>Joined on {new Date(inspectCustomer.createdAt).toLocaleString('en-IN')}</span>
                 </div>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-[#e5d1d4] flex justify-end">
+            <div className="pt-4 border-t border-border flex justify-end">
               <Button variant="outline" size="sm" onClick={() => setInspectCustomer(null)}>
                 Close Drawer
               </Button>

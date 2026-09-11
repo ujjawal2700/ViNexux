@@ -188,7 +188,7 @@ const AdminCmsBannersPage = () => {
 
       {loading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map((n) => <Skeleton key={n} className="h-20 rounded-lg bg-[#f4e7ea]" />)}
+          {[1, 2, 3].map((n) => <Skeleton key={n} className="h-20 rounded-lg bg-muted" />)}
         </div>
       ) : error ? (
         <ErrorState title="Failed to load hero banners" message={error} onRetry={fetchBanners} />
@@ -219,24 +219,24 @@ const AdminCmsBannersPage = () => {
           <Table.Body>
             {banners.map((b) => (
               <Table.Row key={b._id}>
-                <Table.Cell className="font-mono text-xs text-[#7c5c5f] font-bold">#{b.sortOrder || 0}</Table.Cell>
+                <Table.Cell className="font-mono text-xs text-muted-foreground font-bold">#{b.sortOrder || 0}</Table.Cell>
                 <Table.Cell>
-                  <div className="w-24 h-12 rounded-lg border border-[#e5d1d4] bg-white overflow-hidden">
+                  <div className="w-24 h-12 rounded-lg border border-border bg-card overflow-hidden">
                     <img src={b.image?.url || 'https://via.placeholder.com/300x150'} alt={b.title || 'Banner'} className="w-full h-full object-cover" />
                   </div>
                 </Table.Cell>
                 <Table.Cell>
-                  <div className="text-xs font-bold text-[#3d0a0d]">{b.title || 'Untitled Slide'}</div>
-                  {b.subtitle && <div className="text-[10px] text-[#7c5c5f] truncate max-w-xs">{b.subtitle}</div>}
+                  <div className="text-xs font-bold text-foreground">{b.title || 'Untitled Slide'}</div>
+                  {b.subtitle && <div className="text-[10px] text-muted-foreground truncate max-w-xs">{b.subtitle}</div>}
                 </Table.Cell>
-                <Table.Cell className="font-mono text-[11px] text-[#7c5c5f]">
+                <Table.Cell className="font-mono text-[11px] text-muted-foreground">
                   {b.link ? (
-                    <a href={b.link} target="_blank" rel="noopener noreferrer" className="hover:text-[#800020] inline-flex items-center gap-1">
+                    <a href={b.link} target="_blank" rel="noopener noreferrer" className="hover:text-primary inline-flex items-center gap-1">
                       {b.link} <ExternalLink className="w-3 h-3" />
                     </a>
                   ) : 'N/A'}
                 </Table.Cell>
-                <Table.Cell className="text-xs font-semibold text-[#3d0a0d]">{b.buttonText || 'Explore'}</Table.Cell>
+                <Table.Cell className="text-xs font-semibold text-foreground">{b.buttonText || 'Explore'}</Table.Cell>
                 <Table.Cell><StatusBadge status={b.isActive ? 'active' : 'inactive'} /></Table.Cell>
                 <Table.Cell className="text-right">
                   <div className="flex items-center justify-end gap-1">
@@ -254,7 +254,7 @@ const AdminCmsBannersPage = () => {
                       size="sm"
                       onClick={() => handleOpenEdit(b)}
                       title="Edit Banner"
-                      className="h-8 w-8 p-0 text-[#7c5c5f] hover:text-[#800020]"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </Button>
@@ -336,7 +336,7 @@ const AdminCmsBannersPage = () => {
             </FormField>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-[#e5d1d4]">
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
@@ -355,12 +355,12 @@ const AdminCmsBannersPage = () => {
               type="file"
               accept="image/jpeg,image/jpg,image/png,image/webp"
               onChange={(e) => setImageFile(e.target.files[0])}
-              className="block w-full text-xs text-[#7c5c5f] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#f4e7ea] file:text-[#3d0a0d] hover:file:bg-[#ebd5da] cursor-pointer"
+              className="block w-full text-xs text-muted-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-muted file:text-foreground hover:file:bg-[#ebd5da] cursor-pointer"
               required
             />
           </FormField>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-[#e5d1d4]">
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button variant="outline" type="button" onClick={() => setUploadBannerTarget(null)}>
               Cancel
             </Button>

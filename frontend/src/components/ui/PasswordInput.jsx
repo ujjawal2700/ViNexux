@@ -16,7 +16,7 @@ export const PasswordInput = React.forwardRef(({
     <button
       type="button"
       onClick={toggleVisibility}
-      className="text-[#9a6870] hover:text-[#3d0a0d] focus:outline-none pointer-events-auto p-1 rounded transition-colors"
+      className="text-[#9a6870] hover:text-foreground focus:outline-none pointer-events-auto p-1 rounded transition-colors"
       title={showPassword ? 'Hide password' : 'Show password'}
       tabIndex={-1}
     >
