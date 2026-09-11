@@ -44,6 +44,18 @@ app.use(httpLogger);
 // 7. API Routes
 app.use(config.apiBaseUrl, apiRouter);
 
+// Root route: hosting platforms (Render, etc.) commonly health-check the
+// bare "/" path. Respond with 200 instead of letting it fall through to a
+// 404, which otherwise shows up as a false "error" in the platform logs
+// on every health-check ping.
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Vinexus API is running.',
+    healthCheck: `${config.apiBaseUrl}/health`,
+  });
+});
+
 // 8. Resource Not Found (404) Handler
 app.use(notFoundHandler);
 

@@ -1,7 +1,15 @@
 import axios from 'axios';
 import { getStoredRefreshToken, setStoredRefreshToken, clearStoredRefreshToken } from '../utils/tokenStorage';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+// Normalize VITE_API_BASE_URL so a misconfigured value (missing "/api",
+// or with a trailing slash) still resolves correctly, instead of silently
+// hitting the wrong path (e.g. "/auth/send-otp" instead of "/api/auth/send-otp").
+const normalizeApiBaseUrl = (raw) => {
+  const trimmed = (raw || 'http://localhost:5000/api').replace(/\/+$/, '');
+  return /\/api$/.test(trimmed) ? trimmed : `${trimmed}/api`;
+};
+
+const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
 
 // Token memory store for access token
 let inMemoryAccessToken = null;
