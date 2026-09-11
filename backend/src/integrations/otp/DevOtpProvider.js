@@ -18,8 +18,8 @@ export class DevOtpProvider extends OtpProvider {
       success: true,
       provider: 'development',
       messageId: `dev-msg-${Date.now()}`,
-      // Return devOtp only if in development or explicitly configured
-      devOtp: config.nodeEnv !== 'production' ? otp : undefined,
+      // Return devOtp in demo mode or outside production
+      devOtp: config.demoMode || config.nodeEnv !== 'production' ? otp : undefined,
     };
   }
 }

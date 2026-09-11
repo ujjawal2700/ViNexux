@@ -34,7 +34,7 @@ const hashOtp = (otp) => {
 };
 
 const generateOtp = () => {
-  if (config.nodeEnv === 'development' && config.devOtp) {
+  if (config.demoMode && config.devOtp) {
     return config.devOtp;
   }
   return crypto.randomInt(100000, 999999).toString();
@@ -156,7 +156,7 @@ export const authService = {
     let devOtp;
     if (normalized.includes('@')) {
       const emailResult = await emailService.sendOtpEmail({ email: normalized, otp, purpose });
-      devOtp = config.nodeEnv !== 'production' ? otp : undefined;
+      devOtp = config.demoMode || config.nodeEnv !== 'production' ? otp : undefined;
     } else {
       const provider = getOtpProvider();
       const dispatchResult = await provider.sendOtp({
