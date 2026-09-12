@@ -262,26 +262,26 @@ const AdminProductsPage = () => {
                       <StatusBadge status={prod.isActive ? 'active' : 'inactive'} />
                     </Table.Cell>
                     <Table.Cell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-1.5">
+                      <div className="flex items-center justify-end gap-2">
                         <Button
                           variant="ghost"
-                          size="md"
+                          size="sm"
                           iconOnly
                           onClick={() => navigate(`/admin/products/${prod._id}`)}
                           title="Edit Product"
-                          className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                          className="bg-muted/80 hover:bg-primary/20 text-foreground hover:text-primary border border-border hover:border-primary/40 transition-all shadow-xs"
                         >
-                          <Edit2 className="w-4 h-4" />
+                          <Edit2 className="w-4 h-4 shrink-0" />
                         </Button>
                         <Button
                           variant="ghost"
-                          size="md"
+                          size="sm"
                           iconOnly
                           onClick={() => setDeleteTarget(prod)}
                           title="Deactivate Product"
-                          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          className="bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-600 dark:hover:bg-rose-600 text-rose-700 dark:text-rose-300 hover:text-white dark:hover:text-white border border-rose-200 dark:border-rose-800/60 transition-all shadow-xs"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-4 h-4 shrink-0" />
                         </Button>
                       </div>
                     </Table.Cell>

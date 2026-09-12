@@ -3,19 +3,17 @@ import { Link } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import enquiryService from '../../services/enquiryService';
 import cartService from '../../services/cartService';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../../components/ui/Card';
+import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge, Badge } from '../../components/ui/Badge';
 import { Skeleton } from '../../components/ui/Skeleton';
-import { ErrorState } from '../../components/ui/ErrorState';
 import {
   User,
-  ShoppingBag,
+  ShoppingCart,
   FileText,
   Grid,
   ArrowRight,
   ShieldCheck,
-  Plus,
   Eye,
   Clock,
   Sparkles,
@@ -26,12 +24,10 @@ export const CustomerDashboardPage = () => {
   const [recentEnquiries, setRecentEnquiries] = useState([]);
   const [cartCount, setCartCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     const loadDashboardData = async () => {
       setIsLoading(true);
-      setError(null);
 
       // Fetch Recent Enquiries
       try {
@@ -62,15 +58,15 @@ export const CustomerDashboardPage = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 bg-background text-foreground min-h-screen">
       
       {/* 1. WELCOME HERO HEADER */}
-      <div className="bg-muted p-8 rounded-3xl border border-border relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm">
+      <div className="bg-card p-8 rounded-3xl border border-border relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm">
         <div className="space-y-2 relative z-10">
           <Badge variant="primary" icon={<Sparkles className="w-3.5 h-3.5" />}>
             Customer Account Portal
           </Badge>
-          <h1 className="text-3xl font-extrabold text-foreground tracking-tight">
+          <h1 className="text-3xl font-black text-foreground tracking-tight">
             Welcome back, {user?.fullName || user?.name || 'Customer'}!
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-xl font-medium">
             Manage your quotation enquiries, track response status, and build commercial equipment orders.
           </p>
         </div>
@@ -82,7 +78,7 @@ export const CustomerDashboardPage = () => {
             </Button>
           </Link>
           <Link to="/customer/cart">
-            <Button variant="secondary" size="md" leftIcon={<ShoppingBag className="w-4 h-4" />}>
+            <Button variant="outline" size="md" leftIcon={<ShoppingCart className="w-4 h-4" />}>
               View Cart ({cartCount})
             </Button>
           </Link>
@@ -94,34 +90,34 @@ export const CustomerDashboardPage = () => {
         <Card hoverable className="bg-card p-6 rounded-2xl border border-border shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase text-muted-foreground">Total Enquiries</span>
-            <div className="w-10 h-10 rounded-xl bg-muted border border-border flex items-center justify-center text-primary">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
               <FileText className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-3xl font-extrabold text-foreground mt-2">{recentEnquiries.length}</p>
-          <span className="text-[11px] text-muted-foreground">Submitted quotations</span>
+          <p className="text-3xl font-black text-foreground mt-2">{recentEnquiries.length}</p>
+          <span className="text-[11px] text-muted-foreground font-medium">Submitted quotations</span>
         </Card>
 
         <Card hoverable className="bg-card p-6 rounded-2xl border border-border shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase text-muted-foreground">Active Cart Items</span>
-            <div className="w-10 h-10 rounded-xl bg-muted border border-border flex items-center justify-center text-primary">
-              <ShoppingBag className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+              <ShoppingCart className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-3xl font-extrabold text-foreground mt-2">{cartCount}</p>
-          <span className="text-[11px] text-muted-foreground">Units in current cart</span>
+          <p className="text-3xl font-black text-foreground mt-2">{cartCount}</p>
+          <span className="text-[11px] text-muted-foreground font-medium">Units in current cart</span>
         </Card>
 
         <Card hoverable className="bg-card p-6 rounded-2xl border border-border shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase text-muted-foreground">Account Role</span>
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-600">
               <ShieldCheck className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-xl font-extrabold text-foreground mt-2 uppercase">{user?.role || 'Customer'}</p>
-          <span className="text-[11px] text-muted-foreground">Standard Pricing Access</span>
+          <p className="text-xl font-black text-foreground mt-2 uppercase">{user?.role || 'Customer'}</p>
+          <span className="text-[11px] text-muted-foreground font-medium">Standard Pricing Access</span>
         </Card>
       </div>
 
@@ -132,7 +128,7 @@ export const CustomerDashboardPage = () => {
             <Clock className="w-5 h-5 text-primary" />
             <span>Recent Quotation Enquiries</span>
           </h2>
-          <Link to="/customer/enquiries" className="text-xs font-semibold text-primary hover:text-primary/80">
+          <Link to="/customer/enquiries" className="text-xs font-bold text-primary hover:text-primary/80">
             View All Enquiries →
           </Link>
         </div>
@@ -154,7 +150,7 @@ export const CustomerDashboardPage = () => {
                     <span className="font-mono font-bold text-foreground text-sm">#{enq.enquiryNumber}</span>
                     <StatusBadge status={enq.status} />
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground font-medium">
                     {new Date(enq.createdAt).toLocaleDateString('en-IN')} • {enq.items?.length || 0} item(s)
                   </div>
                 </div>
@@ -168,7 +164,7 @@ export const CustomerDashboardPage = () => {
             ))}
           </div>
         ) : (
-          <Card className="p-8 text-center bg-card border border-border text-muted-foreground text-xs">
+          <Card className="p-8 text-center bg-card border border-border text-muted-foreground text-xs font-medium">
             No quotation enquiries submitted yet.
           </Card>
         )}
@@ -180,15 +176,15 @@ export const CustomerDashboardPage = () => {
           <Card hoverable className="bg-card p-5 rounded-2xl border border-border space-y-3 h-full shadow-sm">
             <Grid className="w-6 h-6 text-primary group-hover:scale-110 transition-transform" />
             <h4 className="font-bold text-foreground text-sm">Product Catalog</h4>
-            <p className="text-xs text-muted-foreground">Browse CCTV cameras, DVRs, and security accessories.</p>
+            <p className="text-xs text-muted-foreground font-medium">Browse CCTV cameras, DVRs, and security accessories.</p>
           </Card>
         </Link>
 
         <Link to="/customer/cart" className="group">
           <Card hoverable className="bg-card p-5 rounded-2xl border border-border space-y-3 h-full shadow-sm">
-            <ShoppingBag className="w-6 h-6 text-primary group-hover:scale-110 transition-transform" />
+            <ShoppingCart className="w-6 h-6 text-primary group-hover:scale-110 transition-transform" />
             <h4 className="font-bold text-foreground text-sm">Shopping Cart</h4>
-            <p className="text-xs text-muted-foreground">Review selected equipment and build WhatsApp quotes.</p>
+            <p className="text-xs text-muted-foreground font-medium">Review selected equipment and build WhatsApp quotes.</p>
           </Card>
         </Link>
 
@@ -196,7 +192,7 @@ export const CustomerDashboardPage = () => {
           <Card hoverable className="bg-card p-5 rounded-2xl border border-border space-y-3 h-full shadow-sm">
             <FileText className="w-6 h-6 text-primary group-hover:scale-110 transition-transform" />
             <h4 className="font-bold text-foreground text-sm">Enquiry History</h4>
-            <p className="text-xs text-muted-foreground">Track response status and admin note timelines.</p>
+            <p className="text-xs text-muted-foreground font-medium">Track response status and admin note timelines.</p>
           </Card>
         </Link>
 
@@ -204,7 +200,7 @@ export const CustomerDashboardPage = () => {
           <Card hoverable className="bg-card p-5 rounded-2xl border border-border space-y-3 h-full shadow-sm">
             <User className="w-6 h-6 text-primary group-hover:scale-110 transition-transform" />
             <h4 className="font-bold text-foreground text-sm">Account Profile</h4>
-            <p className="text-xs text-muted-foreground">View user account information and phone details.</p>
+            <p className="text-xs text-muted-foreground font-medium">View user account information and phone details.</p>
           </Card>
         </Link>
       </div>

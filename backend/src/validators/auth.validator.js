@@ -19,11 +19,30 @@ export const signupSchema = {
     password: z
       .string({ required_error: 'Password is required' })
       .min(6, { message: 'Password must be at least 6 characters' }),
+    dob: z.string().optional(),
     role: z
       .enum(['customer', 'dealer'], {
         invalid_type_error: 'Role must be either customer or dealer',
       })
       .default('customer'),
+    // Dealer KYC fields (optional for customer, validated for dealer)
+    companyName: z.string().trim().optional(),
+    gstin: z.string().trim().optional(),
+    pan: z.string().trim().optional(),
+    address: z.string().trim().optional(),
+    city: z.string().trim().optional(),
+    state: z.string().trim().optional(),
+    pincode: z.string().trim().optional(),
+  }),
+};
+
+export const googleAuthSchema = {
+  body: z.object({
+    credential: z.string().optional(),
+    email: z.string().email().optional(),
+    name: z.string().optional(),
+    googleId: z.string().optional(),
+    picture: z.string().optional(),
   }),
 };
 

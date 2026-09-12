@@ -209,29 +209,31 @@ const AdminCmsPagesPage = () => {
                   {new Date(p.updatedAt || p.createdAt).toLocaleDateString('en-IN')}
                 </Table.Cell>
                 <Table.Cell className="text-right">
-                  <div className="flex items-center justify-end gap-1">
+                  <div className="flex items-center justify-end gap-2">
                     <Link to={`/content/pages/${p.slug}`} target="_blank">
-                      <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" title="Preview Public Page">
+                      <Button variant="secondary" size="sm" className="text-xs" title="Preview Public Page">
                         <ExternalLink className="w-3.5 h-3.5 mr-1" /> Preview
                       </Button>
                     </Link>
                     <Button
                       variant="ghost"
                       size="sm"
+                      iconOnly
                       onClick={() => handleOpenEdit(p)}
                       title="Edit Page"
-                      className="h-8 w-8 p-0 text-muted-foreground hover:text-white"
+                      className="bg-muted/80 hover:bg-primary/20 text-foreground hover:text-primary border border-border hover:border-primary/40 transition-all shadow-xs"
                     >
-                      <Edit2 className="w-3.5 h-3.5" />
+                      <Edit2 className="w-4 h-4 shrink-0" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
+                      iconOnly
                       onClick={() => setDeleteTarget(p)}
                       title="Delete Page"
-                      className="h-8 w-8 p-0 text-rose-400 hover:text-rose-300 hover:bg-rose-950/30"
+                      className="bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-600 dark:hover:bg-rose-600 text-rose-700 dark:text-rose-300 hover:text-white dark:hover:text-white border border-rose-200 dark:border-rose-800/60 transition-all shadow-xs"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-4 h-4 shrink-0" />
                     </Button>
                   </div>
                 </Table.Cell>

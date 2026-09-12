@@ -15,7 +15,7 @@ import {
   Clock,
   Tag,
   FileCheck,
-  ShoppingBag,
+  ShoppingCart,
   Send,
   Building2,
   ArrowRight,

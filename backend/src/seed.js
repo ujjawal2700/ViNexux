@@ -93,570 +93,550 @@ async function seed() {
     }
   }
 
-  // --- 2. CATEGORIES ---
-  console.log('[Seed] Seeding Product Categories...');
-  const categoriesData = [
+  // --- 2. CATEGORIES CLEANUP & SEEDING ---
+  console.log('[Seed] Wiping old category database & seeding requested Top Categories & Subcategories...');
+  await Category.deleteMany({});
+  await Product.deleteMany({});
+
+  const parentCategoriesData = [
     {
-      name: 'CCTV Cameras',
+      name: 'CCTV Cameras & Security Systems',
       slug: 'cctv-cameras',
-      image: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=600&q=80',
-      description: 'High-definition IP dome, bullet, and PTZ security cameras with night vision and smart AI detection.',
+      image: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80',
+      description: 'High-definition IP dome, bullet, PTZ security cameras, and smart AI surveillance tech.',
       sortOrder: 1,
       isActive: true,
+      parentId: null,
     },
     {
-      name: 'DVRs & NVRs',
-      slug: 'dvrs-nvrs',
-      image: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=600&q=80',
-      description: '4-channel to 64-channel Network Video Recorders and Digital Video Recorders with H.265+ compression.',
+      name: 'Routers & Network Hardware',
+      slug: 'routers-networking',
+      image: 'https://images.unsplash.com/photo-1606904825846-647eb07f5be2?auto=format&fit=crop&w=800&q=80',
+      description: 'Dual-band Wi-Fi 6 routers, mesh systems, and industrial cellular gateways.',
       sortOrder: 2,
       isActive: true,
+      parentId: null,
     },
     {
-      name: 'Network Switches & Cables',
-      slug: 'switches-cables',
-      image: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=600&q=80',
-      description: 'Gigabit PoE+ switches, CAT6 ethernet copper cabling, and fiber optic network extenders.',
+      name: 'Enterprise Gigabit PoE Switches',
+      slug: 'switches-poe',
+      image: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80',
+      description: 'Managed and unmanaged PoE+ switches for high-density IP camera networks.',
       sortOrder: 3,
       isActive: true,
+      parentId: null,
     },
     {
-      name: 'Accessories & Power Supplies',
-      slug: 'accessories',
-      image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=600&q=80',
-      description: 'SMPS power supply units, BNC connectors, PoE injectors, brackets, and surveillance hard drives.',
+      name: 'Video & Photo Shooting Cameras',
+      slug: 'shooting-cameras',
+      image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=800&q=80',
+      description: 'Professional DSLR, mirrorless, and cinema cameras from Canon, Nikon, and Sony.',
       sortOrder: 4,
       isActive: true,
+      parentId: null,
     },
   ];
 
   const categoryMap = {};
-  for (const catData of categoriesData) {
-    let cat = await Category.findOne({ slug: catData.slug });
-    if (cat) {
-      Object.assign(cat, catData);
-      cat = await cat.save();
-    } else {
-      cat = await Category.create(catData);
-    }
+
+  for (const catData of parentCategoriesData) {
+    const cat = await Category.create(catData);
     categoryMap[cat.slug] = cat._id;
-    console.log(`  ✓ Category: ${cat.name} (${cat.slug})`);
+    console.log(`  ✓ Top Category: ${cat.name} (${cat.slug})`);
   }
 
-  // --- 3. PRODUCTS ---
-  console.log('[Seed] Seeding Products...');
+  const subCategoriesData = [
+    // --- Subcategories under CCTV Cameras ---
+    {
+      name: 'Dahua Security Cameras',
+      slug: 'cctv-dahua',
+      parentId: categoryMap['cctv-cameras'],
+      image: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80',
+      description: 'Official Dahua Starlight & WizSense IP security cameras.',
+      sortOrder: 1,
+      isActive: true,
+    },
+    {
+      name: 'Hikvision Surveillance',
+      slug: 'cctv-hikvision',
+      parentId: categoryMap['cctv-cameras'],
+      image: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?auto=format&fit=crop&w=800&q=80',
+      description: 'Hikvision AcuSense and ColorVu high-resolution surveillance systems.',
+      sortOrder: 2,
+      isActive: true,
+    },
+    {
+      name: 'CP PLUS IP Cameras',
+      slug: 'cctv-cpplus',
+      parentId: categoryMap['cctv-cameras'],
+      image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=800&q=80',
+      description: 'CP PLUS Guard+ and Indigo series CCTV cameras.',
+      sortOrder: 3,
+      isActive: true,
+    },
+
+    // --- Subcategories under Routers & Network Hardware ---
+    {
+      name: 'Dual-Band Wi-Fi 6 Routers',
+      slug: 'routers-wifi6',
+      parentId: categoryMap['routers-networking'],
+      image: 'https://images.unsplash.com/photo-1606904825846-647eb07f5be2?auto=format&fit=crop&w=800&q=80',
+      description: 'Next-gen Wi-Fi 6 wireless mesh and high-speed routers.',
+      sortOrder: 1,
+      isActive: true,
+    },
+    {
+      name: '4G/5G Industrial Modems',
+      slug: 'modems-4g5g',
+      parentId: categoryMap['routers-networking'],
+      image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=800&q=80',
+      description: 'Heavy-duty 4G LTE and 5G cellular SIM routers for remote sites.',
+      sortOrder: 2,
+      isActive: true,
+    },
+
+    // --- Subcategories under Enterprise Gigabit PoE Switches ---
+    {
+      name: 'Managed Enterprise Switches',
+      slug: 'switches-managed',
+      parentId: categoryMap['switches-poe'],
+      image: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80',
+      description: 'L2+ managed 16, 24, and 48-port PoE+ switches with SFP+ uplinks.',
+      sortOrder: 1,
+      isActive: true,
+    },
+    {
+      name: 'Unmanaged Industrial Switches',
+      slug: 'switches-unmanaged',
+      parentId: categoryMap['switches-poe'],
+      image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80',
+      description: 'Plug-and-play PoE switches for CCTV installation networks.',
+      sortOrder: 2,
+      isActive: true,
+    },
+
+    // --- Subcategories under Video & Photo Shooting Cameras ---
+    {
+      name: 'Canon DSLR & Mirrorless Series',
+      slug: 'cameras-canon',
+      parentId: categoryMap['shooting-cameras'],
+      image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=800&q=80',
+      description: 'Canon EOS R cinema mirrorless and EOS DSLR camera bodies.',
+      sortOrder: 1,
+      isActive: true,
+    },
+    {
+      name: 'Nikon Full-Frame Cameras',
+      slug: 'cameras-nikon',
+      parentId: categoryMap['shooting-cameras'],
+      image: 'https://images.unsplash.com/photo-1512790182412-b19e6d611397?auto=format&fit=crop&w=800&q=80',
+      description: 'Nikon Z series mirrorless and FX-format professional DSLRs.',
+      sortOrder: 2,
+      isActive: true,
+    },
+    {
+      name: 'Sony Alpha Cine Cameras',
+      slug: 'cameras-sony',
+      parentId: categoryMap['shooting-cameras'],
+      image: 'https://images.unsplash.com/photo-1519638399535-1b036603ac77?auto=format&fit=crop&w=800&q=80',
+      description: 'Sony Alpha 7 IV and Cinema Line FX full-frame video cameras.',
+      sortOrder: 3,
+      isActive: true,
+    },
+  ];
+
+  for (const subCatData of subCategoriesData) {
+    const subCat = await Category.create(subCatData);
+    categoryMap[subCat.slug] = subCat._id;
+    console.log(`  ✓ Subcategory: ${subCat.name} (${subCat.slug})`);
+  }
+
+  // --- 3. PRODUCTS SEEDING (5 Products Per Top Category = 20 Total) ---
+  console.log('[Seed] Seeding exactly 5 products per category (20 curated products)...');
   const productsData = [
+    // ==========================================
+    // 1. CCTV CAMERAS & SECURITY SYSTEMS (5 Products)
+    // ==========================================
     {
-      sku: 'CAM-4K-DOME-01',
-      name: 'Vinexus 4K UltraHD AI IP Dome Camera',
-      slug: 'vinexus-4k-ultrahd-ai-ip-dome-camera',
-      categoryId: categoryMap['cctv-cameras'],
-      description: 'Industrial-grade 4K 8MP outdoor IP dome camera featuring Sony Starvis sensor, 30m IR night vision, IP67 weatherproof housing, and built-in AI perimeter protection with human/vehicle classification.',
-      standardPrice: 4999,
-      dealerPrice: 3499,
-      isFeatured: true,
-      isActive: true,
-      images: [
-        {
-          url: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80',
-          altText: 'Vinexus 4K UltraHD AI IP Dome Camera Front View',
-          sortOrder: 0,
-        },
-      ],
-      specifications: [
-        { key: 'Resolution', value: '4K UltraHD (3840 x 2160 @ 30fps)' },
-        { key: 'Sensor', value: '1/2.8" Sony STARVIS CMOS' },
-        { key: 'Lens', value: '2.8mm Fixed Lens (108° Field of View)' },
-        { key: 'Night Vision', value: 'Smart IR Up to 30 Meters' },
-        { key: 'Protection', value: 'IP67 Water resistant, IK10 Vandal-proof' },
-        { key: 'Power Input', value: 'PoE (802.3af) / 12V DC' },
-      ],
-    },
-    {
-      sku: 'CAM-PTZ-5MP-02',
-      name: 'Vinexus 5MP 30x Optical Zoom Speed Dome PTZ',
-      slug: 'vinexus-5mp-30x-optical-zoom-speed-dome-ptz',
-      categoryId: categoryMap['cctv-cameras'],
-      description: 'Professional high-speed PTZ camera with 30x optical zoom, auto-tracking AI smart guard, 150m laser IR night vision, and pan/tilt speed up to 240°/sec.',
-      standardPrice: 18999,
-      dealerPrice: 13999,
-      isFeatured: true,
-      isActive: true,
-      images: [
-        {
-          url: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80',
-          altText: 'Vinexus PTZ Speed Dome Camera',
-          sortOrder: 0,
-        },
-      ],
-      specifications: [
-        { key: 'Resolution', value: '5MP (2560 x 1920)' },
-        { key: 'Zoom', value: '30x Optical Zoom, 16x Digital Zoom' },
-        { key: 'Laser IR Distance', value: 'Up to 150 Meters' },
-        { key: 'Features', value: 'Auto-tracking, Line Crossing, Intrusion Alert' },
-      ],
-    },
-    {
-      sku: 'NVR-16CH-4K-01',
-      name: 'Vinexus 16-Channel 4K NVR with 16 PoE Ports',
-      slug: 'vinexus-16-channel-4k-nvr-16-poe-ports',
-      categoryId: categoryMap['dvrs-nvrs'],
-      description: 'Commercial 16-channel Standalone NVR supporting up to 12MP resolution recording per channel, dual SATA slots up to 20TB, H.265+ compression, and 16 Plug-and-Play PoE ports.',
-      standardPrice: 14999,
-      dealerPrice: 10499,
-      isFeatured: true,
-      isActive: true,
-      images: [
-        {
-          url: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80',
-          altText: 'Vinexus 16-Channel 4K PoE NVR Back Panel',
-          sortOrder: 0,
-        },
-      ],
-      specifications: [
-        { key: 'Channels', value: '16 Channels Plug-and-Play' },
-        { key: 'PoE Ports', value: '16 Ports (Max 200W total)' },
-        { key: 'Storage Support', value: '2 SATA HDDs (Up to 10TB per disk)' },
-        { key: 'Video Compression', value: 'H.265+ / H.265 / H.264+' },
-        { key: 'Display Output', value: '1x HDMI (4K), 1x VGA' },
-      ],
-    },
-    {
-      sku: 'SWITCH-POE-16G-01',
-      name: 'Vinexus 16-Port Gigabit PoE+ Managed Switch',
-      slug: 'vinexus-16-port-gigabit-poe-managed-switch',
-      categoryId: categoryMap['switches-cables'],
-      description: 'Heavy-duty 16-port Gigabit PoE+ switch with 2 SFP uplink ports, 250W power budget, CCTV extended mode up to 250m, and IEEE 802.3af/at standard compliance.',
-      standardPrice: 8499,
-      dealerPrice: 5999,
-      isFeatured: false,
-      isActive: true,
-      images: [
-        {
-          url: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80',
-          altText: 'Vinexus 16-Port Gigabit PoE Switch',
-          sortOrder: 0,
-        },
-      ],
-      specifications: [
-        { key: 'Ports', value: '16x 10/100/1000M PoE+, 2x SFP Uplink' },
-        { key: 'PoE Power Budget', value: '250 Watts (Max 30W per port)' },
-        { key: 'Transmission Mode', value: 'Standard / Extend Mode (250m at 10Mbps)' },
-      ],
-    },
-    {
-      sku: 'HDD-WD-PURPLE-4TB',
-      name: 'Western Digital Purple 4TB Surveillance Hard Drive',
-      slug: 'western-digital-purple-4tb-surveillance-hard-drive',
-      categoryId: categoryMap['accessories'],
-      description: 'Purpose-built 24/7 continuous surveillance hard drive optimized for HD video recording up to 64 camera streams with AllFrame AI technology.',
-      standardPrice: 7999,
-      dealerPrice: 6299,
-      isFeatured: false,
-      isActive: true,
-      images: [
-        {
-          url: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80',
-          altText: 'WD Purple 4TB Surveillance HDD',
-          sortOrder: 0,
-        },
-      ],
-      specifications: [
-        { key: 'Capacity', value: '4 Terabytes' },
-        { key: 'Cache', value: '256MB' },
-        { key: 'Workload Rating', value: '180TB/year continuous 24x7 operation' },
-        { key: 'Interface', value: 'SATA 6 Gb/s' },
-      ],
-    },
-
-    // --- Additional CCTV Cameras ---
-    {
-      sku: 'CAM-BULLET-2MP-03',
-      name: 'Vinexus 2MP IP66 Outdoor Bullet Camera',
-      slug: 'vinexus-2mp-ip66-outdoor-bullet-camera',
-      categoryId: categoryMap['cctv-cameras'],
-      description: 'Entry-level 2MP fixed-lens bullet camera for perimeter monitoring, IP66 weatherproof rating, and 20m IR night vision.',
-      standardPrice: 1999,
-      dealerPrice: 1399,
-      isFeatured: false,
-      isActive: true,
-      images: [
-        { url: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80', altText: 'Vinexus 2MP Outdoor Bullet Camera', sortOrder: 0 },
-      ],
-      specifications: [
-        { key: 'Resolution', value: '2MP (1920 x 1080 @ 25fps)' },
-        { key: 'Lens', value: '3.6mm Fixed Lens' },
-        { key: 'Night Vision', value: 'IR Up to 20 Meters' },
-        { key: 'Protection', value: 'IP66 Weatherproof' },
-      ],
-    },
-    {
-      sku: 'CAM-WIFI-3MP-04',
-      name: 'Vinexus 3MP WiFi Indoor Pan-Tilt Camera',
-      slug: 'vinexus-3mp-wifi-indoor-pan-tilt-camera',
-      categoryId: categoryMap['cctv-cameras'],
-      description: 'Smart indoor WiFi camera with 355° pan / 90° tilt coverage, two-way audio, motion tracking, and mobile app push alerts.',
-      standardPrice: 2499,
-      dealerPrice: 1799,
-      isFeatured: true,
-      isActive: true,
-      images: [
-        { url: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80', altText: 'Vinexus WiFi Pan-Tilt Camera', sortOrder: 0 },
-      ],
-      specifications: [
-        { key: 'Resolution', value: '3MP (2048 x 1536)' },
-        { key: 'Coverage', value: '355° Pan / 90° Tilt' },
-        { key: 'Connectivity', value: 'Dual-band WiFi, microSD up to 256GB' },
-        { key: 'Audio', value: 'Built-in Mic & Speaker (Two-way)' },
-      ],
-    },
-    {
-      sku: 'CAM-DOME-8MP-05',
-      name: 'Vinexus 8MP Starlight Low-Light Dome Camera',
-      slug: 'vinexus-8mp-starlight-low-light-dome-camera',
-      categoryId: categoryMap['cctv-cameras'],
-      description: 'Premium 8MP Starlight sensor dome camera delivering full-color footage in near-zero lux conditions, ideal for parking lots and entrances.',
-      standardPrice: 6499,
-      dealerPrice: 4899,
-      isFeatured: false,
-      isActive: false,
-      images: [
-        { url: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80', altText: 'Vinexus 8MP Starlight Dome Camera', sortOrder: 0 },
-      ],
-      specifications: [
-        { key: 'Resolution', value: '8MP (3840 x 2160)' },
-        { key: 'Sensor', value: 'Starlight CMOS, Full-Color Night Mode' },
-        { key: 'Lens', value: '2.8mm Fixed Lens' },
-      ],
-    },
-    {
-      sku: 'CAM-THERMAL-06',
-      name: 'Vinexus Thermal Imaging Perimeter Camera',
-      slug: 'vinexus-thermal-imaging-perimeter-camera',
-      categoryId: categoryMap['cctv-cameras'],
-      description: 'Dual-lens thermal + optical camera for 24/7 perimeter intrusion detection in total darkness, fog, or smoke, with radiometric temperature alarms.',
-      standardPrice: 42999,
-      dealerPrice: 34999,
-      isFeatured: false,
-      isActive: true,
-      images: [
-        { url: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80', altText: 'Vinexus Thermal Imaging Camera', sortOrder: 0 },
-      ],
-      specifications: [
-        { key: 'Thermal Resolution', value: '384 x 288' },
-        { key: 'Detection Range', value: 'Human detection up to 300m' },
-        { key: 'Alarm', value: 'Radiometric temperature threshold alerts' },
-      ],
-    },
-    {
-      sku: 'CAM-DOORBELL-07',
-      name: 'Vinexus Smart WiFi Video Doorbell',
-      slug: 'vinexus-smart-wifi-video-doorbell',
-      categoryId: categoryMap['cctv-cameras'],
-      description: 'Battery or wired smart doorbell with 2K resolution, PIR motion alerts, night vision, and real-time two-way talk via mobile app.',
-      standardPrice: 3499,
-      dealerPrice: 2599,
-      isFeatured: true,
-      isActive: true,
-      images: [
-        { url: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80', altText: 'Vinexus Smart Video Doorbell', sortOrder: 0 },
-      ],
-      specifications: [
-        { key: 'Resolution', value: '2K QHD' },
-        { key: 'Power', value: 'Rechargeable Battery or 16-24V AC Wired' },
-        { key: 'Field of View', value: '166° Diagonal' },
-      ],
-    },
-
-    // --- Additional DVRs & NVRs ---
-    {
-      sku: 'DVR-8CH-1080P-02',
-      name: 'Vinexus 8-Channel 1080P Hybrid DVR',
-      slug: 'vinexus-8-channel-1080p-hybrid-dvr',
-      categoryId: categoryMap['dvrs-nvrs'],
-      description: 'Cost-effective 8-channel hybrid DVR supporting AHD, TVI, CVI, and analog cameras with H.265 compression and remote mobile viewing.',
+      sku: 'DAH-4K-BULLET-01',
+      name: 'Dahua 4K WizSense Outdoor Bullet IP Camera',
+      slug: 'dahua-4k-wizsense-outdoor-bullet-ip-camera',
+      categoryId: categoryMap['cctv-dahua'],
+      description: 'Industrial 4K 8MP outdoor Starlight IP bullet camera featuring Sony STARVIS sensor, 50m Smart IR night vision, IP67 weatherproof housing, and built-in AI perimeter defense.',
       standardPrice: 5999,
       dealerPrice: 4299,
-      isFeatured: false,
-      isActive: true,
-      images: [
-        { url: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80', altText: 'Vinexus 8-Channel Hybrid DVR', sortOrder: 0 },
-      ],
-      specifications: [
-        { key: 'Channels', value: '8 Channels Hybrid (AHD/TVI/CVI/CVBS)' },
-        { key: 'Storage Support', value: '1 SATA HDD (Up to 10TB)' },
-        { key: 'Compression', value: 'H.265' },
-      ],
-    },
-    {
-      sku: 'NVR-32CH-8K-03',
-      name: 'Vinexus 32-Channel 8K Enterprise NVR',
-      slug: 'vinexus-32-channel-8k-enterprise-nvr',
-      categoryId: categoryMap['dvrs-nvrs'],
-      description: 'Enterprise-grade 32-channel NVR with 8K HDMI output, 4 SATA bays up to 40TB, RAID support, and facial recognition search.',
-      standardPrice: 39999,
-      dealerPrice: 31999,
       isFeatured: true,
       isActive: true,
       images: [
-        { url: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80', altText: 'Vinexus 32-Channel 8K NVR', sortOrder: 0 },
+        { url: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80', altText: 'Dahua 4K WizSense Bullet Camera', sortOrder: 0 },
       ],
       specifications: [
-        { key: 'Channels', value: '32 Channels' },
-        { key: 'Storage Support', value: '4 SATA HDDs, RAID 0/1/5/10, up to 40TB' },
-        { key: 'Display Output', value: '1x HDMI (8K), 1x HDMI (4K), 1x VGA' },
-        { key: 'Smart Search', value: 'Facial Recognition, Human/Vehicle Filter' },
+        { key: 'Brand', value: 'Dahua Technology' },
+        { key: 'Resolution', value: '4K Ultra HD (3840 x 2160 @ 30fps)' },
+        { key: 'Night Vision', value: '50m Smart IR Night Vision' },
       ],
     },
     {
-      sku: 'NVR-4CH-POE-04',
-      name: 'Vinexus 4-Channel Mini PoE NVR Kit',
-      slug: 'vinexus-4-channel-mini-poe-nvr-kit',
-      categoryId: categoryMap['dvrs-nvrs'],
-      description: 'Compact 4-channel NVR with built-in 4-port PoE, ideal for home offices and small retail shops. Single SATA bay up to 6TB.',
-      standardPrice: 4499,
-      dealerPrice: 3199,
+      sku: 'DAH-8MP-DOME-02',
+      name: 'Dahua 8MP Starlight Vandal-Proof IP Dome',
+      slug: 'dahua-8mp-starlight-vandal-proof-ip-dome',
+      categoryId: categoryMap['cctv-dahua'],
+      description: '8MP Vandal-proof IK10 IP dome camera with Starlight full-color low light performance, 30m IR, and PoE connectivity.',
+      standardPrice: 6499,
+      dealerPrice: 4699,
+      isFeatured: true,
+      isActive: true,
+      images: [
+        { url: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80', altText: 'Dahua 8MP Starlight Dome Camera', sortOrder: 0 },
+      ],
+      specifications: [
+        { key: 'Brand', value: 'Dahua Technology' },
+        { key: 'Resolution', value: '8MP (3840 x 2160)' },
+      ],
+    },
+    {
+      sku: 'HIK-COLORVU-4K-01',
+      name: 'Hikvision ColorVu 4K Full-Time Color IP Camera',
+      slug: 'hikvision-colorvu-4k-full-time-color-ip-camera',
+      categoryId: categoryMap['cctv-hikvision'],
+      description: 'Hikvision ColorVu technology provides 24/7 vivid colorful images in dark environments with F1.0 advanced super-aperture lens.',
+      standardPrice: 7299,
+      dealerPrice: 5399,
+      isFeatured: true,
+      isActive: true,
+      images: [
+        { url: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?auto=format&fit=crop&w=800&q=80', altText: 'Hikvision ColorVu Camera', sortOrder: 0 },
+      ],
+      specifications: [
+        { key: 'Brand', value: 'Hikvision' },
+        { key: 'Technology', value: 'ColorVu 24/7 Full Color' },
+      ],
+    },
+    {
+      sku: 'HIK-ACUSENSE-DOME-02',
+      name: 'Hikvision AcuSense 5MP Varifocal IP Dome',
+      slug: 'hikvision-acusense-5mp-varifocal-ip-dome',
+      categoryId: categoryMap['cctv-hikvision'],
+      description: 'Empowered by deep learning algorithms, Hikvision AcuSense technology brings human and vehicle target classification alarms.',
+      standardPrice: 8499,
+      dealerPrice: 6199,
       isFeatured: false,
       isActive: true,
       images: [
-        { url: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80', altText: 'Vinexus 4-Channel Mini NVR', sortOrder: 0 },
+        { url: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80', altText: 'Hikvision AcuSense Dome Camera', sortOrder: 0 },
       ],
       specifications: [
-        { key: 'Channels', value: '4 Channels Plug-and-Play' },
-        { key: 'PoE Ports', value: '4 Ports (Max 48W total)' },
-        { key: 'Storage Support', value: '1 SATA HDD (Up to 6TB)' },
+        { key: 'Brand', value: 'Hikvision' },
+        { key: 'AI Classification', value: 'Human & Vehicle Target Filter' },
       ],
     },
     {
-      sku: 'DVR-4CH-AHD-05',
-      name: 'Vinexus 4-Channel AHD Analog DVR',
-      slug: 'vinexus-4-channel-ahd-analog-dvr',
-      categoryId: categoryMap['dvrs-nvrs'],
-      description: 'Legacy-friendly 4-channel AHD DVR for budget analog camera retrofits with basic motion detection recording.',
-      standardPrice: 2999,
-      dealerPrice: 2099,
-      isFeatured: false,
-      isActive: false,
-      images: [
-        { url: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80', altText: 'Vinexus 4-Channel AHD DVR', sortOrder: 0 },
-      ],
-      specifications: [
-        { key: 'Channels', value: '4 Channels AHD' },
-        { key: 'Storage Support', value: '1 SATA HDD (Up to 4TB)' },
-      ],
-    },
-    {
-      sku: 'NVR-CLOUD-06',
-      name: 'Vinexus 8-Channel Cloud-Managed NVR',
-      slug: 'vinexus-8-channel-cloud-managed-nvr',
-      categoryId: categoryMap['dvrs-nvrs'],
-      description: '8-channel NVR with native cloud backup, remote fleet management dashboard for multi-site dealers, and auto-firmware updates.',
-      standardPrice: 12999,
-      dealerPrice: 9499,
-      isFeatured: false,
-      isActive: true,
-      images: [
-        { url: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80', altText: 'Vinexus Cloud-Managed NVR', sortOrder: 0 },
-      ],
-      specifications: [
-        { key: 'Channels', value: '8 Channels Plug-and-Play' },
-        { key: 'Cloud', value: 'Native cloud backup + multi-site dashboard' },
-      ],
-    },
-
-    // --- Additional Network Switches & Cables ---
-    {
-      sku: 'SWITCH-POE-8G-02',
-      name: 'Vinexus 8-Port Gigabit PoE+ Switch',
-      slug: 'vinexus-8-port-gigabit-poe-switch',
-      categoryId: categoryMap['switches-cables'],
-      description: 'Compact 8-port Gigabit PoE+ switch with 120W power budget and 1 SFP uplink, suited for small NVR deployments.',
+      sku: 'CPP-INDIGO-5MP-01',
+      name: 'CP PLUS Indigo 5MP Full HD IP Camera',
+      slug: 'cp-plus-indigo-5mp-full-hd-ip-camera',
+      categoryId: categoryMap['cctv-cpplus'],
+      description: 'CP PLUS Indigo series 5MP IR outdoor security camera with high efficiency H.265+ encoding and long-range illumination.',
       standardPrice: 4299,
       dealerPrice: 2999,
-      isFeatured: false,
-      isActive: true,
-      images: [
-        { url: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80', altText: 'Vinexus 8-Port PoE Switch', sortOrder: 0 },
-      ],
-      specifications: [
-        { key: 'Ports', value: '8x 10/100/1000M PoE+, 1x SFP Uplink' },
-        { key: 'PoE Power Budget', value: '120 Watts' },
-      ],
-    },
-    {
-      sku: 'CABLE-CAT6-305M-03',
-      name: 'Vinexus CAT6 UTP Cable Box (305 Meters)',
-      slug: 'vinexus-cat6-utp-cable-box-305-meters',
-      categoryId: categoryMap['switches-cables'],
-      description: 'Pure copper CAT6 UTP cable, 305m pull box, supports Gigabit Ethernet and long-distance PoE camera runs.',
-      standardPrice: 5499,
-      dealerPrice: 4199,
-      isFeatured: false,
-      isActive: true,
-      images: [
-        { url: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80', altText: 'Vinexus CAT6 Cable Box', sortOrder: 0 },
-      ],
-      specifications: [
-        { key: 'Length', value: '305 Meters (1000ft)' },
-        { key: 'Conductor', value: '100% Pure Copper, 23AWG' },
-      ],
-    },
-    {
-      sku: 'SWITCH-UNMANAGED-5P-04',
-      name: 'Vinexus 5-Port Unmanaged Desktop Switch',
-      slug: 'vinexus-5-port-unmanaged-desktop-switch',
-      categoryId: categoryMap['switches-cables'],
-      description: 'Plug-and-play 5-port Fast Ethernet unmanaged switch for small office and home network expansion.',
-      standardPrice: 599,
-      dealerPrice: 399,
-      isFeatured: false,
-      isActive: true,
-      images: [
-        { url: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80', altText: 'Vinexus 5-Port Unmanaged Switch', sortOrder: 0 },
-      ],
-      specifications: [
-        { key: 'Ports', value: '5x 10/100Mbps' },
-      ],
-    },
-    {
-      sku: 'FIBER-EXT-05',
-      name: 'Vinexus Fiber Optic PoE Extender Kit',
-      slug: 'vinexus-fiber-optic-poe-extender-kit',
-      categoryId: categoryMap['switches-cables'],
-      description: '1-port fiber media converter pair with PoE output, extending camera links up to 20km over single-mode fiber.',
-      standardPrice: 3299,
-      dealerPrice: 2399,
-      isFeatured: false,
-      isActive: true,
-      images: [
-        { url: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80', altText: 'Vinexus Fiber Optic Extender', sortOrder: 0 },
-      ],
-      specifications: [
-        { key: 'Max Distance', value: 'Up to 20km (Single-mode)' },
-        { key: 'PoE Output', value: '802.3af/at, up to 30W' },
-      ],
-    },
-    {
-      sku: 'CONNECTOR-BNC-100PK-06',
-      name: 'Vinexus BNC Connector Pack (100 Pieces)',
-      slug: 'vinexus-bnc-connector-pack-100-pieces',
-      categoryId: categoryMap['switches-cables'],
-      description: 'Crimp-style BNC male connectors for RG59/RG6 coaxial cable, bulk pack of 100 for installer stock.',
-      standardPrice: 899,
-      dealerPrice: 599,
-      isFeatured: false,
-      isActive: true,
-      images: [
-        { url: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80', altText: 'Vinexus BNC Connector Pack', sortOrder: 0 },
-      ],
-      specifications: [
-        { key: 'Quantity', value: '100 Pieces' },
-        { key: 'Compatibility', value: 'RG59 / RG6 Coaxial Cable' },
-      ],
-    },
-
-    // --- Additional Accessories & Power Supplies ---
-    {
-      sku: 'SMPS-12V-10A-02',
-      name: 'Vinexus 12V 10A SMPS Power Supply (CCTV Grade)',
-      slug: 'vinexus-12v-10a-smps-power-supply',
-      categoryId: categoryMap['accessories'],
-      description: 'Metal-body 12V 10A switch-mode power supply with 8-way fused distribution board for multi-camera installations.',
-      standardPrice: 1299,
-      dealerPrice: 899,
-      isFeatured: false,
-      isActive: true,
-      images: [
-        { url: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80', altText: 'Vinexus 12V 10A SMPS', sortOrder: 0 },
-      ],
-      specifications: [
-        { key: 'Output', value: '12V DC, 10A' },
-        { key: 'Distribution', value: '8-Way Fused Output' },
-      ],
-    },
-    {
-      sku: 'BRACKET-CAM-MOUNT-03',
-      name: 'Vinexus Universal Camera Wall Mount Bracket',
-      slug: 'vinexus-universal-camera-wall-mount-bracket',
-      categoryId: categoryMap['accessories'],
-      description: 'Heavy-duty aluminum wall/ceiling mount bracket compatible with most dome and bullet camera housings.',
-      standardPrice: 349,
-      dealerPrice: 229,
-      isFeatured: false,
-      isActive: true,
-      images: [
-        { url: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80', altText: 'Vinexus Camera Mount Bracket', sortOrder: 0 },
-      ],
-      specifications: [
-        { key: 'Material', value: 'Die-cast Aluminum' },
-        { key: 'Load Capacity', value: 'Up to 5kg' },
-      ],
-    },
-    {
-      sku: 'HDD-SEAGATE-SKYHAWK-2TB-04',
-      name: 'Seagate SkyHawk 2TB Surveillance Hard Drive',
-      slug: 'seagate-skyhawk-2tb-surveillance-hard-drive',
-      categoryId: categoryMap['accessories'],
-      description: 'Purpose-built surveillance HDD with ImagePerfect firmware, rated for 24/7 operation across up to 64 HD cameras.',
-      standardPrice: 4499,
-      dealerPrice: 3499,
       isFeatured: true,
       isActive: true,
       images: [
-        { url: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80', altText: 'Seagate SkyHawk 2TB HDD', sortOrder: 0 },
+        { url: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=800&q=80', altText: 'CP PLUS Indigo Camera', sortOrder: 0 },
       ],
       specifications: [
-        { key: 'Capacity', value: '2 Terabytes' },
-        { key: 'Cache', value: '256MB' },
-        { key: 'Interface', value: 'SATA 6 Gb/s' },
+        { key: 'Brand', value: 'CP PLUS' },
+        { key: 'Resolution', value: '5MP HD' },
+      ],
+    },
+
+    // ==========================================
+    // 2. ROUTERS & NETWORK HARDWARE (5 Products)
+    // ==========================================
+    {
+      sku: 'ROUT-TPL-AX73-01',
+      name: 'TP-Link Archer AX73 Dual-Band Wi-Fi 6 Router',
+      slug: 'tp-link-archer-ax73-dual-band-wi-fi-6-router',
+      categoryId: categoryMap['routers-wifi6'],
+      description: 'AX5400 Dual-Band Gigabit Wi-Fi 6 router delivering up to 5.4 Gbps speeds for high-definition 4K streaming and IP security feeds.',
+      standardPrice: 8999,
+      dealerPrice: 6799,
+      isFeatured: true,
+      isActive: true,
+      images: [
+        { url: 'https://images.unsplash.com/photo-1606904825846-647eb07f5be2?auto=format&fit=crop&w=800&q=80', altText: 'TP-Link Archer Wi-Fi 6 Router', sortOrder: 0 },
+      ],
+      specifications: [
+        { key: 'Standard', value: 'Wi-Fi 6 (802.11ax)' },
+        { key: 'Speed', value: '5400 Mbps (5.4 Gbps)' },
       ],
     },
     {
-      sku: 'POE-INJECTOR-05',
-      name: 'Vinexus Single-Port Gigabit PoE Injector',
-      slug: 'vinexus-single-port-gigabit-poe-injector',
-      categoryId: categoryMap['accessories'],
-      description: 'Compact PoE injector adding power to a single non-PoE camera or access point over existing Ethernet cabling, 802.3af/at compliant.',
-      standardPrice: 599,
-      dealerPrice: 399,
-      isFeatured: false,
+      sku: 'ROUT-NET-AX12-02',
+      name: 'Netgear Nighthawk AX12 12-Stream Wi-Fi 6 Router',
+      slug: 'netgear-nighthawk-ax12-12-stream-wi-fi-6-router',
+      categoryId: categoryMap['routers-wifi6'],
+      description: 'High-performance 12-stream Wi-Fi 6 router with 6 Gbps speed and powerful quad-core processor for multi-device network demands.',
+      standardPrice: 24999,
+      dealerPrice: 19999,
+      isFeatured: true,
       isActive: true,
       images: [
-        { url: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80', altText: 'Vinexus PoE Injector', sortOrder: 0 },
+        { url: 'https://images.unsplash.com/photo-1606904825846-647eb07f5be2?auto=format&fit=crop&w=800&q=80', altText: 'Netgear Nighthawk AX12 Router', sortOrder: 0 },
       ],
       specifications: [
-        { key: 'Standard', value: '802.3af/at' },
-        { key: 'Output Power', value: 'Up to 30W' },
+        { key: 'Brand', value: 'Netgear' },
+        { key: 'Streams', value: '12-Stream Wi-Fi 6' },
       ],
     },
     {
-      sku: 'UPS-BACKUP-1KVA-06',
-      name: 'Vinexus 1KVA Line-Interactive UPS Backup',
-      slug: 'vinexus-1kva-line-interactive-ups-backup',
-      categoryId: categoryMap['accessories'],
-      description: '1KVA/600W line-interactive UPS providing 15-30 minutes of backup runtime for NVR and networking equipment during power cuts.',
-      standardPrice: 5999,
-      dealerPrice: 4599,
+      sku: 'MODEM-TELT-RUT950-01',
+      name: 'Teltonika RUT950 Industrial 4G LTE Dual-SIM Router',
+      slug: 'teltonika-rut950-industrial-4g-lte-dual-sim-router',
+      categoryId: categoryMap['modems-4g5g'],
+      description: 'Ruggedized industrial 4G LTE Wi-Fi router with dual SIM failover, 4x Ethernet ports, and metal casing for extreme temperature operation.',
+      standardPrice: 16499,
+      dealerPrice: 12999,
       isFeatured: false,
       isActive: true,
       images: [
-        { url: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80', altText: 'Vinexus 1KVA UPS Backup', sortOrder: 0 },
+        { url: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=800&q=80', altText: 'Teltonika RUT950 Industrial Router', sortOrder: 0 },
       ],
       specifications: [
-        { key: 'Capacity', value: '1KVA / 600W' },
-        { key: 'Backup Runtime', value: '15-30 minutes (typical NVR load)' },
+        { key: 'Connectivity', value: '4G LTE Cat 4, 3G, 2G' },
+        { key: 'Feature', value: 'Dual SIM Auto-Failover' },
+      ],
+    },
+    {
+      sku: 'MODEM-CRADLE-5G-02',
+      name: 'Cradlepoint W1850 5G Industrial Cellular Gateway',
+      slug: 'cradlepoint-w1850-5g-industrial-cellular-gateway',
+      categoryId: categoryMap['modems-4g5g'],
+      description: 'Enterprise 5G wideband adapter offering dual connectivity 5G Sub-6GHz and 4G LTE Gigabit for mission critical CCTV sites.',
+      standardPrice: 48999,
+      dealerPrice: 39999,
+      isFeatured: true,
+      isActive: true,
+      images: [
+        { url: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80', altText: 'Cradlepoint 5G Gateway', sortOrder: 0 },
+      ],
+      specifications: [
+        { key: 'Bandwidth', value: '5G Sub-6GHz & 4G LTE' },
+        { key: 'Security', value: 'NetCloud Enterprise VPN Security' },
+      ],
+    },
+    {
+      sku: 'ROUT-ASUS-AX88U-03',
+      name: 'Asus RT-AX88U Dual-Band Gigabit Wi-Fi 6 Router',
+      slug: 'asus-rt-ax88u-dual-band-gigabit-wi-fi-6-router',
+      categoryId: categoryMap['routers-wifi6'],
+      description: '8-port gigabit LAN router with AiMesh support, Trend Micro commercial security protection, and 6000 Mbps total Wi-Fi speed.',
+      standardPrice: 21999,
+      dealerPrice: 17499,
+      isFeatured: false,
+      isActive: true,
+      images: [
+        { url: 'https://images.unsplash.com/photo-1606904825846-647eb07f5be2?auto=format&fit=crop&w=800&q=80', altText: 'Asus RT-AX88U Router', sortOrder: 0 },
+      ],
+      specifications: [
+        { key: 'Ports', value: '8x Gigabit LAN Ports' },
+        { key: 'Mesh Support', value: 'Asus AiMesh Enabled' },
+      ],
+    },
+
+    // ==========================================
+    // 3. ENTERPRISE GIGABIT POE SWITCHES (5 Products)
+    // ==========================================
+    {
+      sku: 'SW-CISCO-24POE-01',
+      name: 'Cisco Catalyst 24-Port Managed Gigabit PoE+ Switch',
+      slug: 'cisco-catalyst-24-port-managed-gigabit-poe-switch',
+      categoryId: categoryMap['switches-managed'],
+      description: 'Enterprise 24-port PoE+ switch providing 370W total PoE budget, 4x 10G SFP+ uplinks, and L2+ advanced network management.',
+      standardPrice: 28999,
+      dealerPrice: 22999,
+      isFeatured: true,
+      isActive: true,
+      images: [
+        { url: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80', altText: 'Cisco 24-Port PoE Switch', sortOrder: 0 },
+      ],
+      specifications: [
+        { key: 'Ports', value: '24 Gigabit PoE+ Ports' },
+        { key: 'PoE Power Budget', value: '370W' },
+      ],
+    },
+    {
+      sku: 'SW-TPL-16POE-02',
+      name: 'TP-Link JetStream 16-Port Gigabit Smart PoE Switch',
+      slug: 'tp-link-jetstream-16-port-gigabit-smart-poe-switch',
+      categoryId: categoryMap['switches-managed'],
+      description: '16x Gigabit PoE+ ports with 2x SFP slots, 250W power budget, and Omada SDN cloud central management.',
+      standardPrice: 14999,
+      dealerPrice: 11499,
+      isFeatured: true,
+      isActive: true,
+      images: [
+        { url: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80', altText: 'TP-Link 16-Port PoE Switch', sortOrder: 0 },
+      ],
+      specifications: [
+        { key: 'Ports', value: '16 Gigabit PoE+ Ports + 2 SFP' },
+        { key: 'PoE Power Budget', value: '250W' },
+      ],
+    },
+    {
+      sku: 'SW-DLINK-8POE-03',
+      name: 'D-Link 8-Port Industrial Unmanaged PoE Switch',
+      slug: 'd-link-8-port-industrial-unmanaged-poe-switch',
+      categoryId: categoryMap['switches-unmanaged'],
+      description: 'Plug-and-play 8-port 10/100/1000Mbps PoE switch with 96W budget and CCTV long-range mode up to 250 meters.',
+      standardPrice: 4999,
+      dealerPrice: 3499,
+      isFeatured: false,
+      isActive: true,
+      images: [
+        { url: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80', altText: 'D-Link 8-Port PoE Switch', sortOrder: 0 },
+      ],
+      specifications: [
+        { key: 'Extension Mode', value: '250m Extended CCTV Transmission' },
+        { key: 'PoE Budget', value: '96W' },
+      ],
+    },
+    {
+      sku: 'SW-UBI-24POE-04',
+      name: 'Ubiquiti UniFi Switch Pro 24 PoE Managed Switch',
+      slug: 'ubiquiti-unifi-switch-pro-24-poe-managed-switch',
+      categoryId: categoryMap['switches-managed'],
+      description: 'Layer 3 switch with 16x 802.3at PoE+ ports, 8x 802.3bt PoE++ ports, 2x 10G SFP+ ports, and 400W power supply.',
+      standardPrice: 42999,
+      dealerPrice: 34999,
+      isFeatured: true,
+      isActive: true,
+      images: [
+        { url: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80', altText: 'Ubiquiti UniFi Pro 24 Switch', sortOrder: 0 },
+      ],
+      specifications: [
+        { key: 'Brand', value: 'Ubiquiti UniFi' },
+        { key: 'PoE Types', value: 'PoE+ and Ultra PoE++ (60W/port)' },
+      ],
+    },
+    {
+      sku: 'SW-NET-5POE-05',
+      name: 'Netgear 5-Port Gigabit Desktop Unmanaged PoE Switch',
+      slug: 'netgear-5-port-gigabit-desktop-unmanaged-poe-switch',
+      categoryId: categoryMap['switches-unmanaged'],
+      description: 'Compact 5-port gigabit switch with 4 PoE ports (60W total), quiet fanless design, and metal casing.',
+      standardPrice: 2999,
+      dealerPrice: 2199,
+      isFeatured: false,
+      isActive: true,
+      images: [
+        { url: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80', altText: 'Netgear 5-Port PoE Switch', sortOrder: 0 },
+      ],
+      specifications: [
+        { key: 'Ports', value: '4 PoE Ports + 1 Uplink Port' },
+        { key: 'Power Budget', value: '60W' },
+      ],
+    },
+
+    // ==========================================
+    // 4. VIDEO & PHOTO SHOOTING CAMERAS (5 Products)
+    // ==========================================
+    {
+      sku: 'CAM-CANON-EOS-R5',
+      name: 'Canon EOS R5 Full-Frame Mirrorless 8K Camera Body',
+      slug: 'canon-eos-r5-full-frame-mirrorless-8k-camera-body',
+      categoryId: categoryMap['cameras-canon'],
+      description: '45 Megapixel full-frame CMOS sensor, 8K RAW internal video recording up to 30fps, 20fps electronic shutter, and 5-axis in-body image stabilization.',
+      standardPrice: 329999,
+      dealerPrice: 289999,
+      isFeatured: true,
+      isActive: true,
+      images: [
+        { url: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=800&q=80', altText: 'Canon EOS R5 Camera', sortOrder: 0 },
+      ],
+      specifications: [
+        { key: 'Brand', value: 'Canon' },
+        { key: 'Sensor', value: '45MP Full-Frame CMOS' },
+        { key: 'Video', value: '8K RAW / 4K 120fps' },
+      ],
+    },
+    {
+      sku: 'CAM-CANON-5D4',
+      name: 'Canon EOS 5D Mark IV Professional DSLR Camera',
+      slug: 'canon-eos-5d-mark-iv-professional-dslr-camera',
+      categoryId: categoryMap['cameras-canon'],
+      description: '30.4 MP full-frame sensor, 4K video recording, 61-point High Density Reticular AF system, and Dual Pixel CMOS AF.',
+      standardPrice: 215000,
+      dealerPrice: 185000,
+      isFeatured: false,
+      isActive: true,
+      images: [
+        { url: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=800&q=80', altText: 'Canon EOS 5D Mark IV', sortOrder: 0 },
+      ],
+      specifications: [
+        { key: 'Brand', value: 'Canon' },
+        { key: 'Sensor', value: '30.4MP Full-Frame DSLR' },
+      ],
+    },
+    {
+      sku: 'CAM-NIKON-Z9',
+      name: 'Nikon Z9 Flagship Full-Frame Mirrorless Camera',
+      slug: 'nikon-z9-flagship-full-frame-mirrorless-camera',
+      categoryId: categoryMap['cameras-nikon'],
+      description: 'Nikon professional Z mount camera featuring 45.7MP stacked CMOS sensor, 8K/60p video, 120 fps burst shooting, and blackout-free viewfinder.',
+      standardPrice: 475000,
+      dealerPrice: 420000,
+      isFeatured: true,
+      isActive: true,
+      images: [
+        { url: 'https://images.unsplash.com/photo-1512790182412-b19e6d611397?auto=format&fit=crop&w=800&q=80', altText: 'Nikon Z9 Camera', sortOrder: 0 },
+      ],
+      specifications: [
+        { key: 'Brand', value: 'Nikon' },
+        { key: 'Sensor', value: '45.7MP Stacked Full-Frame' },
+        { key: 'Video', value: '8K 60p N-RAW / 4K 120p' },
+      ],
+    },
+    {
+      sku: 'CAM-NIKON-D850',
+      name: 'Nikon D850 FX-Format Digital SLR Camera Body',
+      slug: 'canon-d850-fx-format-digital-slr-camera-body',
+      categoryId: categoryMap['cameras-nikon'],
+      description: '45.7 MP back-illuminated full-frame sensor, 7 fps continuous shooting, 4K UHD video recording, and 153-point AF system.',
+      standardPrice: 224990,
+      dealerPrice: 195000,
+      isFeatured: false,
+      isActive: true,
+      images: [
+        { url: 'https://images.unsplash.com/photo-1512790182412-b19e6d611397?auto=format&fit=crop&w=800&q=80', altText: 'Nikon D850 DSLR', sortOrder: 0 },
+      ],
+      specifications: [
+        { key: 'Brand', value: 'Nikon' },
+        { key: 'Sensor', value: '45.7MP FX BSI Sensor' },
+      ],
+    },
+    {
+      sku: 'CAM-SONY-FX3',
+      name: 'Sony FX3 Cinema Line Full-Frame Camera',
+      slug: 'sony-fx3-cinema-line-full-frame-camera',
+      categoryId: categoryMap['cameras-sony'],
+      description: 'Compact Cinema Line camera with 12.1MP Exmor R sensor, 4K 120p recording, S-Cinetone color science, active cooling fan, and XLR handle unit.',
+      standardPrice: 379990,
+      dealerPrice: 335000,
+      isFeatured: true,
+      isActive: true,
+      images: [
+        { url: 'https://images.unsplash.com/photo-1519638399535-1b036603ac77?auto=format&fit=crop&w=800&q=80', altText: 'Sony FX3 Cinema Camera', sortOrder: 0 },
+      ],
+      specifications: [
+        { key: 'Brand', value: 'Sony' },
+        { key: 'Series', value: 'Cinema Line FX' },
+        { key: 'Video', value: '4K 120p 10-bit 4:2:2' },
       ],
     },
   ];
 
   for (const prodData of productsData) {
-    let prod = await Product.findOne({ sku: prodData.sku });
-    if (prod) {
-      Object.assign(prod, prodData);
-      prod = await prod.save();
-    } else {
-      prod = await Product.create(prodData);
-    }
+    const prod = await Product.create(prodData);
     console.log(`  ✓ Product: ${prod.name} (SKU: ${prod.sku})`);
   }
 

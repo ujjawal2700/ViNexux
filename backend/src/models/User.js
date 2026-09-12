@@ -22,7 +22,13 @@ const userSchema = new mongoose.Schema(
     },
     phone: {
       type: String,
-      required: [true, 'Phone number is required'],
+      trim: true,
+    },
+    dob: {
+      type: Date,
+    },
+    googleId: {
+      type: String,
       trim: true,
     },
     passwordHash: {

@@ -155,205 +155,123 @@ export const ProductsPage = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 bg-background text-foreground min-h-screen">
       
       {/* 1. CATALOG PAGE HEADER */}
-      <div className="border-b border-border pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-primary">Security & CCTV Catalog</span>
-          <h1 className="text-3xl font-black text-foreground tracking-tight">Product Catalog</h1>
-          <p className="text-xs text-muted-foreground mt-1 font-medium">
-            Browse high-definition security equipment, DVRs/NVRs, cables, and routers.
-          </p>
-        </div>
-
-        {/* Top Controls: Search & Mobile Filter Toggle */}
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="flex-1 md:w-72">
-            <SearchInput
-              placeholder="Search SKU or product name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onClear={() => handleSearchSubmit('')}
-            />
+      <div className="border-b border-border pb-5 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-primary">Security & CCTV Catalog</span>
+            <h1 className="text-3xl font-black text-foreground tracking-tight">Product Catalog</h1>
+            <p className="text-xs text-muted-foreground mt-1 font-medium">
+              Browse high-definition security equipment, DVRs/NVRs, cables, and routers.
+            </p>
           </div>
 
-          <Button
-            variant="outline"
-            size="md"
-            className="lg:hidden shrink-0 border-border text-primary"
-            leftIcon={<SlidersHorizontal className="w-4 h-4" />}
-            onClick={() => setIsMobileFilterOpen(true)}
-          >
-            Filters
-          </Button>
-        </div>
-      </div>
-
-      {/* 2. MAIN CATALOG BODY GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
-        {/* DESKTOP SIDEBAR FILTER PANEL */}
-        <aside className="hidden lg:block lg:col-span-3 space-y-6 sticky top-24 glass-panel p-6 rounded-2xl border border-border bg-card shadow-xs">
-          <div className="flex items-center justify-between border-b border-border pb-4">
-            <div className="flex items-center gap-2 text-foreground font-bold text-sm">
-              <Filter className="w-4 h-4 text-primary" />
-              <span>Catalog Filters</span>
-            </div>
-            {(selectedCategory || searchTerm) && (
-              <button
-                onClick={handleResetFilters}
-                className="text-[11px] font-bold text-primary hover:text-accent flex items-center gap-1"
-              >
-                <RefreshCw className="w-3 h-3" /> Reset
-              </button>
-            )}
-          </div>
-
-          {/* Category Selector Tree */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Categories</h4>
-            <div className="space-y-1 max-h-80 overflow-y-auto pr-1">
-              <button
-                onClick={() => handleCategorySelect('')}
-                className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between ${
-                  !selectedCategory
-                    ? 'bg-muted text-primary border border-border font-bold shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                }`}
-              >
-                <span>All Categories</span>
-                {!selectedCategory && <CheckCircle className="w-3.5 h-3.5" />}
-              </button>
-
-              {categories.map((cat) => (
-                <button
-                  key={cat._id}
-                  onClick={() => handleCategorySelect(cat._id)}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between ${
-                    selectedCategory === cat._id
-                      ? 'bg-muted text-primary border border-border font-bold shadow-xs'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                  }`}
-                >
-                  <span className="truncate">{cat.name}</span>
-                  {selectedCategory === cat._id && <CheckCircle className="w-3.5 h-3.5" />}
-                </button>
-              ))}
-            </div>
-          </div>
-        </aside>
-
-        {/* MOBILE FILTER DRAWER */}
-        <Drawer
-          isOpen={isMobileFilterOpen}
-          onClose={() => setIsMobileFilterOpen(false)}
-          title="Filter Catalog"
-          position="left"
-          size="sm"
-        >
-          <div className="space-y-6 pt-2">
-            <div className="flex justify-between items-center pb-2 border-b border-border">
-              <span className="text-xs font-bold text-muted-foreground">Active Filters</span>
-              <button
-                onClick={handleResetFilters}
-                className="text-xs text-rose-400 hover:text-rose-300"
-              >
-                Clear All
-              </button>
+          {/* Search Input, Category Filter Dropdown & Sort Dropdown */}
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <div className="flex-1 min-w-[200px] md:w-60">
+              <SearchInput
+                placeholder="Search SKU or product..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onClear={() => handleSearchSubmit('')}
+              />
             </div>
 
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold text-muted-foreground uppercase">Categories</h4>
-              <div className="space-y-1">
-                <button
-                  onClick={() => handleCategorySelect('')}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium ${
-                    !selectedCategory ? 'bg-rose-900/40 text-rose-400 font-bold' : 'text-muted-foreground'
-                  }`}
-                >
-                  All Categories
-                </button>
-                {categories.map((cat) => (
-                  <button
-                    key={cat._id}
-                    onClick={() => handleCategorySelect(cat._id)}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium ${
-                      selectedCategory === cat._id ? 'bg-rose-900/40 text-rose-400 font-bold' : 'text-muted-foreground'
-                    }`}
-                  >
-                    {cat.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </Drawer>
-
-        {/* MAIN PRODUCT GRID & CONTROLS */}
-        <main className="col-span-1 lg:col-span-9 space-y-6">
-          
-          {/* Top Grid Info Bar: Result count & Sort dropdown */}
-          <div className="glass-panel p-4 rounded-2xl border border-border/80 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-xs text-muted-foreground">
-              Showing <span className="font-bold text-foreground">{products.length}</span> of{' '}
-              <span className="font-bold text-foreground">{pagination.total || products.length}</span> products
-              {searchTerm && <span> for "<span className="text-rose-400">{searchTerm}</span>"</span>}
-            </div>
-
-            {/* Sort Select */}
+            {/* Upper Bar Category Dropdown Filter */}
             <div className="w-full sm:w-56">
+              <Select
+                value={selectedCategory}
+                onChange={(e) => handleCategorySelect(e.target.value)}
+                placeholder={null}
+                options={[
+                  { value: '', label: 'All Categories' },
+                  ...categories.map((cat) => ({
+                    value: cat._id,
+                    label: cat.name,
+                  })),
+                ]}
+              />
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="w-full sm:w-44">
               <Select
                 value={sortOption}
                 onChange={(e) => {
                   setSortOption(e.target.value);
                   setCurrentPage(1);
                 }}
+                placeholder={null}
                 options={[
-                  { value: 'newest', label: 'Sort: Newest Arrival' },
+                  { value: 'newest', label: 'Newest Arrivals' },
                   { value: 'price_asc', label: 'Price: Low to High' },
                   { value: 'price_desc', label: 'Price: High to Low' },
                   { value: 'name_asc', label: 'Name: A-Z' },
                 ]}
               />
             </div>
-          </div>
 
-          {/* PRODUCT CARDS LIST / STATES */}
-          {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <SkeletonCard key={i} />
+            {(selectedCategory || searchTerm) && (
+              <button
+                onClick={handleResetFilters}
+                className="px-3 py-2 rounded-xl text-xs font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 transition-all flex items-center gap-1 shrink-0"
+                title="Reset all filters"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Clear
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 3. MAIN COMPACT PRODUCT CATALOG GRID */}
+      <main className="space-y-6">
+        
+        {/* Info Header Line */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground font-medium border-b border-border/40 pb-2">
+          <div>
+            Showing <span className="font-bold text-foreground">{products.length}</span> of{' '}
+            <span className="font-bold text-foreground">{pagination.total || products.length}</span> items
+            {searchTerm && <span> for "<span className="text-primary font-bold">{searchTerm}</span>"</span>}
+          </div>
+        </div>
+
+        {/* PRODUCT CARDS HIGH-DENSITY GRID (5-6 items per row) */}
+        {isLoading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+            {[...Array(12)].map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        ) : error ? (
+          <ErrorState title="Catalog Error" description={error} onRetry={fetchProducts} />
+        ) : products.length > 0 ? (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+              {products.map((product) => (
+                <ProductCard key={product._id} product={product} onCartUpdated={fetchProducts} />
               ))}
             </div>
-          ) : error ? (
-            <ErrorState title="Catalog Error" description={error} onRetry={fetchProducts} />
-          ) : products.length > 0 ? (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                {products.map((product) => (
-                  <ProductCard key={product._id} product={product} onCartUpdated={fetchProducts} />
-                ))}
-              </div>
 
-              {/* BACKEND PAGINATION */}
-              {pagination.totalPages > 1 && (
-                <div className="pt-6 border-t border-border/80 flex justify-center">
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={pagination.totalPages}
-                    onPageChange={(page) => setCurrentPage(page)}
-                  />
-                </div>
-              )}
-            </>
-          ) : (
-            <EmptyState
-              title="No Products Found"
-              description="No security products match your current search or category filter criteria."
-              actionLabel="Clear Filters"
-              onAction={handleResetFilters}
-            />
-          )}
-        </main>
-      </div>
+            {/* BACKEND PAGINATION */}
+            {pagination.totalPages > 1 && (
+              <div className="pt-6 border-t border-border/80 flex justify-center">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={pagination.totalPages}
+                  onPageChange={(page) => setCurrentPage(page)}
+                />
+              </div>
+            )}
+          </>
+        ) : (
+          <EmptyState
+            title="No Products Found"
+            description="No security products match your current search or category filter criteria."
+            actionLabel="Clear Filters"
+            onAction={handleResetFilters}
+          />
+        )}
+      </main>
     </div>
   );
 };

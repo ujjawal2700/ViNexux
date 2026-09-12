@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ProductCard from '../products/ProductCard';
 
 // Inline Icons (Zero external dependencies)
 const ChevronLeftIcon = () => (
@@ -36,14 +37,29 @@ export function CoverflowCarousel({
 
   // Map products array to carousel items format if provided
   const formattedItems = React.useMemo(() => {
+    const fallbackImages = [
+      'https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&auto=format&fit=crop&q=80',
+    ];
+
     if (products && products.length > 0) {
-      return products.map((prod) => {
+      return products.map((prod, idx) => {
         const catName = typeof prod.categoryId === 'object' ? prod.categoryId?.name : 'SECURITY';
         const priceStr = prod.standardPrice ? `₹${prod.standardPrice.toLocaleString('en-IN')}` : '';
-        const primaryImg = prod.images?.[0]?.url || prod.image || 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=600&auto=format&fit=crop&q=80';
-        
+        let primaryImg = prod.images?.[0]?.url || prod.image;
+        if (!primaryImg || typeof primaryImg !== 'string' || !primaryImg.startsWith('http')) {
+          primaryImg = fallbackImages[idx % fallbackImages.length];
+        }
+
+        const validProduct = {
+          ...prod,
+          images: [{ url: primaryImg }],
+          image: primaryImg,
+        };
+
         return {
-          id: prod._id,
+          id: prod._id || idx,
           tag: `#${catName.toUpperCase()}`,
           titleLine1: prod.name,
           titleLine2: priceStr ? `– MSRP ${priceStr}` : `SKU: ${prod.sku || 'VNX'}`,
@@ -51,7 +67,7 @@ export function CoverflowCarousel({
           img: primaryImg,
           ctaText: 'EXPLORE PRODUCT',
           ctaUrl: `/products/${prod._id}`,
-          rawProduct: prod,
+          rawProduct: validProduct,
         };
       });
     }
@@ -211,12 +227,9 @@ export function CoverflowCarousel({
                 onClick={() => !isCenter && goToSlide(idx)}
                 style={{
                   position: "absolute",
-                  width: "310px",
-                  height: "440px",
+                  width: "320px",
                   borderRadius: "20px",
                   overflow: "hidden",
-                  backgroundColor: "#ffffff",
-                  border: isCenter ? "2px solid #800020" : "1px solid #e5d1d4",
                   transform,
                   opacity,
                   zIndex,
@@ -224,180 +237,12 @@ export function CoverflowCarousel({
                   transformOrigin: "center center",
                   transition: "all 750ms cubic-bezier(0.25, 1, 0.5, 1)",
                   boxShadow: isCenter
-                    ? "0 25px 50px rgba(0,0,0,0.9), 0 0 35px rgba(220,38,38,0.3)"
-                    : "0 15px 30px rgba(0,0,0,0.5)",
+                    ? "0 25px 50px rgba(0,0,0,0.5), 0 0 35px rgba(128,0,32,0.3)"
+                    : "0 15px 30px rgba(0,0,0,0.2)",
                   cursor: isCenter ? "default" : "pointer",
                 }}
               >
-                {/* Photo */}
-                <img
-                  src={item.img}
-                  alt={item.titleLine1}
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                  }}
-                />
-
-                {/* Dark Vignette Overlay */}
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    background:
-                      "linear-gradient(180deg, rgba(9,13,22,0.4) 0%, rgba(9,13,22,0.1) 25%, rgba(9,13,22,0.75) 60%, rgba(9,13,22,0.98) 100%)",
-                    pointerEvents: "none",
-                    zIndex: 10,
-                  }}
-                />
-
-                {/* Content Overlay */}
-                <div
-                  style={{
-                    position: "relative",
-                    width: "100%",
-                    height: "100%",
-                    padding: "18px 16px 20px",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "space-between",
-                    textAlign: "center",
-                    zIndex: 20,
-                    opacity: isCenter ? 1 : 0,
-                    transform: isCenter ? "translateY(0px)" : "translateY(16px)",
-                    transition: "opacity 450ms ease, transform 450ms ease",
-                    pointerEvents: isCenter ? "auto" : "none",
-                  }}
-                >
-                  {/* Tag */}
-                  <div style={{ textAlign: "right", width: "100%" }}>
-                    <span
-                      style={{
-                        display: "inline-block",
-                        fontSize: "0.75rem",
-                        fontWeight: 700,
-                        letterSpacing: "0.06em",
-                        color: "#ef4444",
-                        backgroundColor: "rgba(15, 23, 42, 0.75)",
-                        backdropFilter: "blur(8px)",
-                        padding: "3px 10px",
-                        borderRadius: "8px",
-                        border: "1px solid rgba(220, 38, 38, 0.3)",
-                      }}
-                    >
-                      {item.tag}
-                    </span>
-                  </div>
-
-                  {/* Body Content */}
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: "3px",
-                      marginTop: "auto",
-                      paddingBottom: "4px",
-                    }}
-                  >
-                    <h2
-                      style={{
-                        fontSize: "1.35rem",
-                        fontWeight: 900,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.03em",
-                        color: "#ffffff",
-                        margin: 0,
-                        lineHeight: 1.15,
-                        textShadow: "0 3px 12px rgba(0,0,0,0.95)",
-                      }}
-                    >
-                      {item.titleLine1}
-                    </h2>
-
-                    {item.titleLine2 && (
-                      <span
-                        style={{
-                          fontSize: "0.95rem",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.04em",
-                          color: "#f8fafc",
-                          lineHeight: 1.2,
-                          textShadow: "0 3px 10px rgba(0,0,0,0.9)",
-                        }}
-                      >
-                        {item.titleLine2}
-                      </span>
-                    )}
-
-                    <div
-                      style={{
-                        width: "36px",
-                        height: "2px",
-                        backgroundColor: "#dc2626",
-                        borderRadius: "2px",
-                        margin: "6px auto 4px",
-                        boxShadow: "0 0 10px rgba(220,38,38,0.8)",
-                      }}
-                    />
-
-                    {item.desc && (
-                      <p
-                        style={{
-                          fontSize: "0.78rem",
-                          color: "rgba(226, 232, 240, 0.9)",
-                          maxWidth: "270px",
-                          margin: "0 0 10px",
-                          lineHeight: 1.3,
-                          textShadow: "0 2px 8px rgba(0,0,0,0.9)",
-                          display: "-webkit-box",
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: "vertical",
-                          overflow: "hidden",
-                        }}
-                      >
-                        {item.desc}
-                      </p>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (onCtaClick) {
-                          onCtaClick(item);
-                        } else if (item.ctaUrl) {
-                          navigate(item.ctaUrl);
-                        }
-                      }}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        padding: "8px 20px",
-                        borderRadius: "9999px",
-                        background: "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
-                        color: "#ffffff",
-                        fontSize: "0.72rem",
-                        fontWeight: 800,
-                        letterSpacing: "0.14em",
-                        textTransform: "uppercase",
-                        border: "none",
-                        boxShadow: "0 4px 14px rgba(0,0,0,0.5), 0 0 20px rgba(220,38,38,0.4)",
-                        cursor: "pointer",
-                        transition: "transform 200ms ease, box-shadow 200ms ease",
-                      }}
-                    >
-                      <span>{item.ctaText || "VIEW DETAILS"}</span>
-                      <ArrowRightIcon />
-                    </button>
-                  </div>
-                </div>
+                <ProductCard product={item.rawProduct} />
               </div>
             );
           })}

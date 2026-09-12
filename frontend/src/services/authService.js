@@ -1,6 +1,18 @@
 import apiClient from '../api/axios';
 
 export const authService = {
+  // Signup customer / user
+  signup: async (signupData) => {
+    const response = await apiClient.post('/auth/signup', signupData);
+    return response.data;
+  },
+
+  // Google Login / Registration
+  googleLogin: async (googleData) => {
+    const response = await apiClient.post('/auth/google', googleData);
+    return response.data;
+  },
+
   // Send OTP (supports email or phone number identifier).
   // `portal: 'admin'` scopes this to the dedicated admin login page -
   // the backend rejects non-admin accounts for that portal.
@@ -34,6 +46,12 @@ export const authService = {
   // Fetch Current Logged-in User Profile
   getMe: async () => {
     const response = await apiClient.get('/auth/me');
+    return response.data;
+  },
+
+  // Update Profile & Password
+  updateProfile: async (profileData) => {
+    const response = await apiClient.put('/auth/profile', profileData);
     return response.data;
   },
 

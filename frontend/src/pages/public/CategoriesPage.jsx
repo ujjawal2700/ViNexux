@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import categoryService from '../../services/categoryService';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/Card';
+import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Badge } from '../../components/ui/Badge';
 import { SkeletonCard } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
-import { Image } from '../../components/ui/Image';
-import { Layers, ArrowRight, Grid } from 'lucide-react';
+import { ArrowRight, Grid, Layers } from 'lucide-react';
+import CategoryIcon, { getCategoryProductImage } from '../../components/ui/CategoryIcon';
 
 export const CategoriesPage = () => {
   const [categories, setCategories] = useState([]);
@@ -72,39 +71,45 @@ export const CategoriesPage = () => {
                 <Card
                   key={cat._id}
                   hoverable
-                  className="h-full flex flex-col justify-between group bg-card border-border hover:border-primary transition-all duration-300 shadow-sm"
+                  className="h-full flex flex-col justify-between group bg-card border-border hover:border-primary/50 transition-all duration-300 shadow-sm p-4 sm:p-5 space-y-4 overflow-hidden"
                 >
-                  <div>
-                    {/* Category Image if present */}
-                    {cat.image ? (
-                      <div className="overflow-hidden bg-muted">
-                        <Image src={cat.image} alt={cat.name} aspectRatio="aspect-video" />
-                      </div>
-                    ) : (
-                      <div className="p-6 bg-muted border-b border-border flex items-center justify-center text-primary">
-                        <Grid className="w-10 h-10 group-hover:scale-110 transition-transform" />
-                      </div>
-                    )}
+                  <div className="space-y-3">
+                    {/* Header Row with Colorful Icon & Badge */}
+                    <div className="flex items-center justify-between">
+                      <CategoryIcon name={cat.name} containerClassName="w-11 h-11" className="w-5.5 h-5.5" />
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-muted text-muted-foreground">
+                        Catalog
+                      </span>
+                    </div>
 
-                    <CardContent className="p-5 space-y-2">
-                      <h3 className="font-bold text-foreground text-lg group-hover:text-primary transition-colors">
+                    {/* Category Product Photo Preview Frame */}
+                    <div className="relative h-32 w-full rounded-2xl overflow-hidden bg-muted/40 border border-border/60 group-hover:border-primary/40 transition-colors">
+                      <img
+                        src={getCategoryProductImage(cat.name, cat.image)}
+                        alt={cat.name}
+                        className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+
+                    <div>
+                      <h3 className="font-bold text-foreground text-base group-hover:text-primary transition-colors leading-snug">
                         {cat.name}
                       </h3>
                       {cat.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
+                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed mt-1 font-medium">
                           {cat.description}
                         </p>
                       )}
-                    </CardContent>
+                    </div>
                   </div>
 
-                  <CardFooter className="p-5 pt-0">
+                  <div className="pt-3 border-t border-border/60">
                     <Link to={`/products?categoryId=${cat._id}`} className="w-full">
                       <Button variant="outline" size="sm" fullWidth rightIcon={<ArrowRight className="w-4 h-4" />}>
-                        Explore Products
+                        Browse Products
                       </Button>
                     </Link>
-                  </CardFooter>
+                  </div>
                 </Card>
               ))}
             </div>
@@ -118,18 +123,33 @@ export const CategoriesPage = () => {
                 <span>Specialized Subcategories</span>
               </h2>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {subCategories.map((sub) => (
                   <Link
                     key={sub._id}
                     to={`/products?categoryId=${sub._id}`}
-                    className="bg-card p-4 rounded-xl border border-border hover:border-primary transition-all flex items-center justify-between group shadow-sm"
+                    className="bg-card p-3 rounded-2xl border border-border hover:border-primary/50 transition-all flex items-center justify-between group shadow-xs gap-3"
                   >
-                    <div className="truncate">
-                      <span className="font-bold text-xs text-foreground group-hover:text-primary truncate block">
-                        {sub.name}
-                      </span>
+                    <div className="flex items-center gap-3 min-w-0">
+                      {/* Subcategory Small Product Thumbnail */}
+                      <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0 border border-border bg-muted/40 relative">
+                        <img
+                          src={getCategoryProductImage(sub.name, sub.image)}
+                          alt={sub.name}
+                          className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        />
+                      </div>
+
+                      <div className="truncate">
+                        <span className="font-bold text-xs text-foreground group-hover:text-primary truncate block leading-tight">
+                          {sub.name}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground truncate block font-medium mt-0.5">
+                          Explore Sub-Catalog
+                        </span>
+                      </div>
                     </div>
+                    
                     <ArrowRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-transform shrink-0" />
                   </Link>
                 ))}

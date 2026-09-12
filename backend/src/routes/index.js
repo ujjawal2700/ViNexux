@@ -16,6 +16,7 @@ import adminSessionRoutes from './adminSession.routes.js';
 import adminReportRoutes from './adminReport.routes.js';
 import adminCmsRoutes from './adminCms.routes.js';
 import publicCmsRoutes from './publicCms.routes.js';
+import uploadRoutes from './upload.routes.js';
 
 const router = Router();
 
@@ -24,6 +25,9 @@ router.use('/', healthRoutes);
 
 // Mount authentication module
 router.use('/auth', authRoutes);
+
+// Mount image upload module
+router.use('/upload', uploadRoutes);
 
 // Mount catalog modules
 router.use('/categories', categoryRoutes);
@@ -42,6 +46,7 @@ router.use('/admin/customers', adminCustomerRoutes);
 router.use('/admin/sessions', adminSessionRoutes);
 router.use('/admin/reports', adminReportRoutes);
 router.use('/admin/cms', adminCmsRoutes);
+router.use('/admin/upload', uploadRoutes);
 
 // Mount dealer module
 router.use('/dealers', dealerRoutes);

@@ -240,7 +240,7 @@ export const getMyEnquiryById = async (userId, enquiryId) => {
  * List all enquiries across all users (Admin only)
  */
 export const listAllEnquiries = async (query = {}) => {
-  const { page = 1, limit = 20, status, userType, search, sortBy = 'createdAt', sortOrder = 'desc' } = query;
+  const { page = 1, limit = 20, status, userType, search, userId, sortBy = 'createdAt', sortOrder = 'desc' } = query;
 
   const filter = {};
   if (status) {
@@ -248,6 +248,9 @@ export const listAllEnquiries = async (query = {}) => {
   }
   if (userType) {
     filter.userType = userType;
+  }
+  if (userId) {
+    filter.userId = userId;
   }
 
   if (search) {

@@ -70,12 +70,14 @@ export const Button = React.forwardRef(({
       {...props}
     >
       {isLoading ? (
-        <Loader2 className={cn('animate-spin shrink-0 text-current', iconOnly ? 'w-4 h-4' : 'w-4 h-4')} />
+        <Loader2 className="w-4 h-4 animate-spin shrink-0 text-current" />
       ) : (
-        leftIcon && <span className="shrink-0">{leftIcon}</span>
+        <>
+          {leftIcon && <span className="shrink-0">{leftIcon}</span>}
+          {children}
+          {rightIcon && <span className="shrink-0">{rightIcon}</span>}
+        </>
       )}
-      {!iconOnly && children}
-      {!isLoading && rightIcon && <span className="shrink-0">{rightIcon}</span>}
     </button>
   );
 });

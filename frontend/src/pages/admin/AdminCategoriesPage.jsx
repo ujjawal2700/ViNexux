@@ -18,6 +18,7 @@ import EmptyState from '../../components/ui/EmptyState';
 import ErrorState from '../../components/ui/ErrorState';
 import Toast from '../../components/ui/Toast';
 import { Plus, Edit2, Trash2, FolderTree, RefreshCw } from 'lucide-react';
+import CategoryIcon from '../../components/ui/CategoryIcon';
 
 const AdminCategoriesPage = () => {
   const [categories, setCategories] = useState([]);
@@ -299,12 +300,17 @@ const AdminCategoriesPage = () => {
                       #{cat.sortOrder || 0}
                     </Table.Cell>
                     <Table.Cell className="font-bold text-foreground text-xs">
-                      {cat.name}
-                      {cat.description && (
-                        <div className="text-[10px] text-muted-foreground font-normal truncate max-w-xs">
-                          {cat.description}
+                      <div className="flex items-center gap-2.5">
+                        <CategoryIcon name={cat.name} containerClassName="w-8 h-8 rounded-xl" className="w-4 h-4" />
+                        <div>
+                          <div className="font-bold text-foreground text-xs">{cat.name}</div>
+                          {cat.description && (
+                            <div className="text-[10px] text-muted-foreground font-normal truncate max-w-xs">
+                              {cat.description}
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </Table.Cell>
                     <Table.Cell className="font-mono text-[11px] text-muted-foreground">
                       {cat.slug}
@@ -316,22 +322,26 @@ const AdminCategoriesPage = () => {
                       <StatusBadge status={cat.isActive ? 'active' : 'inactive'} />
                     </Table.Cell>
                     <Table.Cell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
+                          iconOnly
                           onClick={() => handleOpenEdit(cat)}
-                          className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
+                          title="Edit Category"
+                          className="bg-muted/80 hover:bg-primary/20 text-foreground hover:text-primary border border-border hover:border-primary/40 transition-all shadow-xs"
                         >
-                          <Edit2 className="w-3.5 h-3.5" />
+                          <Edit2 className="w-4 h-4 shrink-0" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
+                          iconOnly
                           onClick={() => setDeleteTarget(cat)}
-                          className="h-8 w-8 p-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                          title="Deactivate Category"
+                          className="bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-600 dark:hover:bg-rose-600 text-rose-700 dark:text-rose-300 hover:text-white dark:hover:text-white border border-rose-200 dark:border-rose-800/60 transition-all shadow-xs"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4 shrink-0" />
                         </Button>
                       </div>
                     </Table.Cell>

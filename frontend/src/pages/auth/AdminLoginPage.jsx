@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import { ArrowRight, ShieldCheck, ShieldAlert, Lock } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
@@ -79,7 +79,7 @@ const AdminLoginPage = () => {
               type="text"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="admin@vinexus.com"
+              placeholder="Enter Email Address or Phone Number"
               className="w-full bg-muted/60 border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-xl px-4 py-3 text-sm text-foreground placeholder-muted-foreground outline-none transition-all font-medium"
               disabled={loading}
             />
@@ -100,12 +100,6 @@ const AdminLoginPage = () => {
         <div className="mt-6 text-center text-[11px] text-muted-foreground flex items-center justify-center gap-1.5">
           <Lock className="w-3 h-3" />
           <span>Non-administrator accounts are rejected by this sign-in page</span>
-        </div>
-
-        <div className="mt-4 text-center">
-          <Link to="/login" className="text-[11px] font-semibold text-muted-foreground hover:text-primary transition-colors">
-            &larr; Back to customer / dealer login
-          </Link>
         </div>
       </div>
     </div>

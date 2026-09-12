@@ -34,6 +34,7 @@ import CheckoutEnquiryPage from '../pages/customer/CheckoutEnquiryPage';
 import CustomerEnquiriesPage from '../pages/customer/CustomerEnquiriesPage';
 import CustomerEnquiryDetailPage from '../pages/customer/CustomerEnquiryDetailPage';
 import CustomerProfilePage from '../pages/customer/CustomerProfilePage';
+import CustomerProfileUpdatePage from '../pages/customer/CustomerProfileUpdatePage';
 
 // Dealer Pages
 import DealerDashboardPage from '../pages/dealer/DealerDashboardPage';
@@ -44,6 +45,7 @@ import DealerCartPage from '../pages/dealer/DealerCartPage';
 import DealerEnquiriesPage from '../pages/dealer/DealerEnquiriesPage';
 import DealerEnquiryDetailPage from '../pages/dealer/DealerEnquiryDetailPage';
 import DealerProfilePage from '../pages/dealer/DealerProfilePage';
+import DealerProfileUpdatePage from '../pages/dealer/DealerProfileUpdatePage';
 
 // Admin Pages
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
@@ -62,6 +64,8 @@ import AdminCmsPromoPage from '../pages/admin/AdminCmsPromoPage';
 import AdminCmsPagesPage from '../pages/admin/AdminCmsPagesPage';
 import AdminCmsBadgesPage from '../pages/admin/AdminCmsBadgesPage';
 import AdminCmsFooterPage from '../pages/admin/AdminCmsFooterPage';
+import AdminProfilePage from '../pages/admin/AdminProfilePage';
+import AdminProfileUpdatePage from '../pages/admin/AdminProfileUpdatePage';
 
 const AppRoutes = () => {
   return (
@@ -82,6 +86,9 @@ const AppRoutes = () => {
         {/* Guest Auth Routes */}
         <Route element={<PublicRoute restricted={true} />}>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<LoginPage initialTab="signup" />} />
+          <Route path="/signup" element={<LoginPage initialTab="signup" />} />
+          <Route path="/customer/login" element={<Navigate to="/login" replace />} />
           <Route path="/verify-otp" element={<VerifyOtpPage />} />
         </Route>
 
@@ -94,6 +101,7 @@ const AppRoutes = () => {
             <Route path="/customer/enquiries" element={<CustomerEnquiriesPage />} />
             <Route path="/customer/enquiries/:id" element={<CustomerEnquiryDetailPage />} />
             <Route path="/customer/profile" element={<CustomerProfilePage />} />
+            <Route path="/customer/profile/update" element={<CustomerProfileUpdatePage />} />
           </Route>
         </Route>
       </Route>
@@ -115,6 +123,7 @@ const AppRoutes = () => {
             <Route path="/dealer/enquiries" element={<DealerEnquiriesPage />} />
             <Route path="/dealer/enquiries/:id" element={<DealerEnquiryDetailPage />} />
             <Route path="/dealer/profile" element={<DealerProfilePage />} />
+            <Route path="/dealer/profile/update" element={<DealerProfileUpdatePage />} />
           </Route>
         </Route>
       </Route>
@@ -140,6 +149,8 @@ const AppRoutes = () => {
             <Route path="/admin/cms/pages" element={<AdminCmsPagesPage />} />
             <Route path="/admin/cms/trust-badges" element={<AdminCmsBadgesPage />} />
             <Route path="/admin/cms/footer-content" element={<AdminCmsFooterPage />} />
+            <Route path="/admin/profile" element={<AdminProfilePage />} />
+            <Route path="/admin/profile/update" element={<AdminProfileUpdatePage />} />
           </Route>
         </Route>
       </Route>

@@ -4,14 +4,80 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 
 export const signup = asyncHandler(async (req, res) => {
-  const { fullName, email, phone, password, role } = req.body;
-  const result = await authService.signup({ fullName, email, phone, password, role });
+  const {
+    fullName,
+    email,
+    phone,
+    password,
+    dob,
+    role,
+    companyName,
+    gstin,
+    pan,
+    address,
+    city,
+    state,
+    pincode,
+  } = req.body;
+
+  const reqInfo = {
+    deviceInfo: {
+      userAgent: req.headers['user-agent'] || 'Unknown',
+      platform: req.headers['sec-ch-ua-platform'] || 'Unknown Platform',
+      browser: req.headers['sec-ch-ua'] || 'Unknown Browser',
+    },
+    ipAddress: req.ip || req.connection.remoteAddress || '127.0.0.1',
+  };
+
+  const result = await authService.signup({
+    fullName,
+    email,
+    phone,
+    password,
+    dob,
+    role,
+    companyName,
+    gstin,
+    pan,
+    address,
+    city,
+    state,
+    pincode,
+    reqInfo,
+  });
 
   return ApiResponse.success(
     res,
     result.message,
     result,
     HTTP_STATUS.CREATED
+  );
+});
+
+export const googleLogin = asyncHandler(async (req, res) => {
+  const { credential, email, name, googleId } = req.body;
+  const reqInfo = {
+    deviceInfo: {
+      userAgent: req.headers['user-agent'] || 'Unknown',
+      platform: req.headers['sec-ch-ua-platform'] || 'Unknown Platform',
+      browser: req.headers['sec-ch-ua'] || 'Unknown Browser',
+    },
+    ipAddress: req.ip || req.connection.remoteAddress || '127.0.0.1',
+  };
+
+  const result = await authService.googleLogin({
+    credential,
+    email,
+    name,
+    googleId,
+    reqInfo,
+  });
+
+  return ApiResponse.success(
+    res,
+    'Google authentication successful',
+    result,
+    HTTP_STATUS.OK
   );
 });
 
@@ -118,12 +184,25 @@ export const getCurrentUser = asyncHandler(async (req, res) => {
   );
 });
 
+export const updateProfile = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const result = await authService.updateProfile(userId, req.body);
+  return ApiResponse.success(
+    res,
+    result.message || 'Profile updated successfully',
+    result,
+    HTTP_STATUS.OK
+  );
+});
+
 export default {
   signup,
+  googleLogin,
   sendOtp,
   verifyOtp,
   forceLogin,
   refreshToken,
   logout,
   getCurrentUser,
+  updateProfile,
 };

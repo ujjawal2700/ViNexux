@@ -37,6 +37,7 @@ const AdminLayout = () => {
     { label: 'B2B Enquiries', path: '/admin/enquiries', icon: Inbox },
     { label: 'Active User Sessions', path: '/admin/sessions', icon: ShieldAlert },
     { label: 'Analytics Reports', path: '/admin/reports', icon: BarChart3 },
+    { label: 'My Admin Profile', path: '/admin/profile', icon: UserCheck },
   ];
 
   const cmsNav = [
@@ -169,7 +170,9 @@ const AdminLayout = () => {
             </div>
           </div>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span>Admin: <strong className="text-foreground font-bold">{user?.name || user?.fullName || user?.email}</strong></span>
+            <Link to="/admin/profile" className="hover:text-primary transition-colors">
+              Admin: <strong className="text-foreground font-bold underline decoration-primary/30 underline-offset-4">{user?.fullName || user?.name || user?.email}</strong>
+            </Link>
             <ThemeToggle />
           </div>
         </header>

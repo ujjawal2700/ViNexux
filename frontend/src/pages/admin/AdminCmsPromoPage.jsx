@@ -253,33 +253,36 @@ const AdminCmsPromoPage = () => {
                   </Table.Cell>
                   <Table.Cell><StatusBadge status={p.isActive ? 'active' : 'inactive'} /></Table.Cell>
                   <Table.Cell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex items-center justify-end gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
+                        iconOnly
                         onClick={() => setUploadPromoTarget(p)}
                         title="Upload Image"
-                        className="h-8 w-8 p-0 text-blue-700 hover:text-blue-800 hover:bg-blue-50"
+                        className="bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-600 text-blue-700 dark:text-blue-300 hover:text-white border border-blue-200 dark:border-blue-800/60 transition-all shadow-xs"
                       >
-                        <Upload className="w-3.5 h-3.5" />
+                        <Upload className="w-4 h-4 shrink-0" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
+                        iconOnly
                         onClick={() => handleOpenEdit(p)}
                         title="Edit Promo"
-                        className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
+                        className="bg-muted/80 hover:bg-primary/20 text-foreground hover:text-primary border border-border hover:border-primary/40 transition-all shadow-xs"
                       >
-                        <Edit2 className="w-3.5 h-3.5" />
+                        <Edit2 className="w-4 h-4 shrink-0" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
+                        iconOnly
                         onClick={() => setDeleteTarget(p)}
                         title="Delete Promo"
-                        className="h-8 w-8 p-0 text-rose-700 hover:text-rose-800 hover:bg-rose-50"
+                        className="bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-600 dark:hover:bg-rose-600 text-rose-700 dark:text-rose-300 hover:text-white dark:hover:text-white border border-rose-200 dark:border-rose-800/60 transition-all shadow-xs"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4 shrink-0" />
                       </Button>
                     </div>
                   </Table.Cell>

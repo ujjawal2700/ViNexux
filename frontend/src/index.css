@@ -1,6 +1,23 @@
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
 
+@theme inline {
+  --shadow-custom: var(--shadow-custom);
+  --color-brand-secondary: var(--brand-secondary);
+  --color-brand: var(--brand);
+}
+
+:root {
+  --brand: #800020;
+  --brand-secondary: #9a1b32;
+}
+
+.dark {
+  --shadow-custom: 0px -1px 0px 0px hsla(0, 0%, 100%, 0.06),
+    0px 0px 0px 1px hsla(0, 0%, 100%, 0.06), 0px 0px 0px 1px #27272a,
+    0px 1px 2px 0px rgba(0, 0, 0, 0.32), 0px 2px 4px 0px rgba(0, 0, 0, 0.32);
+}
+
 /* Tailwind v4 class-based dark mode: toggling `.dark` on <html> flips every
    `dark:` variant AND every token below (since components consume tokens,
    not `dark:` variants directly, in most cases). */
@@ -9,10 +26,10 @@
 :root {
   --card: #ffffff;
   --ring: #800020;
-  --input: #e5d1d4;
-  --muted: #f4e7ea;
+  --input: #dcc8cd;
+  --muted: #e6d8dc;
   --accent: #9a1b32;
-  --border: #e5d1d4;
+  --border: #dcc8cd;
   --radius: 0.75rem;
   --chart-1: #800020;
   --chart-2: #9a1b32;
@@ -25,8 +42,8 @@
   --spacing: 0.25rem;
   --font-mono: 'Fira Code', monospace;
   --font-sans: 'Inter', 'Lora', sans-serif;
-  --secondary: #f4e7ea;
-  --background: #fdf8f9;
+  --secondary: #e6d8dc;
+  --background: #f3eff2;
   --font-serif: 'Lora', serif;
   --foreground: #3d0a0d;
   --destructive: #be123c;
@@ -53,10 +70,10 @@
   --sidebar-primary-foreground: #ffffff;
 
   /* Theme Aliases for Burgundy Wine Light */
-  --color-bg-primary: #fdf8f9;
+  --color-bg-primary: #f3eff2;
   --color-bg-surface: #ffffff;
   --color-bg-card: #ffffff;
-  --color-border-subtle: #e5d1d4;
+  --color-border-subtle: #dcc8cd;
   --color-crimson-primary: #800020;
   --color-amber-accent: #9a1b32;
 }

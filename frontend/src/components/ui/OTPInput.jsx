@@ -88,7 +88,7 @@ export const OTPInput = ({
 
   return (
     <FormField label={label} error={error} helperText={helperText}>
-      <div className={`flex items-center justify-between gap-2 max-w-sm mx-auto ${className}`}>
+      <div className={`flex items-center justify-center gap-2 sm:gap-3 max-w-md mx-auto ${className}`}>
         {Array.from({ length }).map((_, index) => (
           <input
             key={index}
@@ -101,11 +101,11 @@ export const OTPInput = ({
             onChange={(e) => handleChange(e, index)}
             onKeyDown={(e) => handleKeyDown(e, index)}
             onPaste={handlePaste}
-            className={`w-11 h-12 text-center text-xl font-mono font-bold bg-card border ${
+            className={`w-11 h-13 sm:w-13 sm:h-15 text-center text-xl font-mono font-bold bg-slate-100/90 dark:bg-white/5 focus:bg-white dark:focus:bg-white/10 border ${
               error
-                ? 'border-rose-500 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-                : 'border-border focus:border-primary focus:ring-1 focus:ring-primary/20'
-            } rounded-xl text-foreground placeholder-muted-foreground/70 transition-all focus-ring disabled:opacity-50 disabled:cursor-not-allowed`}
+                ? 'border-rose-500 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/40'
+                : 'border-slate-300 dark:border-white/15 focus:border-primary dark:focus:border-rose-500 focus:ring-2 focus:ring-primary/30 dark:focus:ring-rose-500/40'
+            } rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-muted-foreground/50 transition-all shadow-sm dark:shadow-inner outline-none disabled:opacity-50 disabled:cursor-not-allowed`}
           />
         ))}
       </div>

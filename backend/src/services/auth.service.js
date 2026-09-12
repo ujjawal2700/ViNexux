@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { User } from '../models/User.js';
+import { DealerProfile } from '../models/DealerProfile.js';
 import { OtpVerification } from '../models/OtpVerification.js';
 import { Session } from '../models/Session.js';
 import { config } from '../config/env.js';
@@ -45,57 +46,209 @@ export const authService = {
    * Registers a new user account (Customer or Dealer) with password hashing.
    * Account status remains 'pending' until phone OTP verification.
    */
-  async signup({ fullName, email, phone, password, role = 'customer' }) {
+  async signup({
+    fullName,
+    email,
+    phone,
+    password,
+    dob,
+    role = 'customer',
+    companyName,
+    gstin,
+    pan,
+    address,
+    city,
+    state,
+    pincode,
+    reqInfo,
+  }) {
+    if (role === 'admin') {
+      throw new AppError('This is Not Admin Portal', HTTP_STATUS.FORBIDDEN, ERROR_CODES.FORBIDDEN);
+    }
+
     const normalizedEmail = email.trim().toLowerCase();
-    const normalizedPhone = phone.trim();
-
-    // Check for duplicate registered email or phone
-    const existingEmail = await User.findOne({ email: normalizedEmail });
-    if (existingEmail) {
-      throw new AppError('An account with this email address already exists.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
-    }
-
-    const existingPhone = await User.findOne({ phone: normalizedPhone });
-    if (existingPhone) {
-      throw new AppError('An account with this phone number already exists.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
-    }
+    const normalizedPhone = phone ? phone.trim() : '';
+    const isDealer = role === 'dealer';
 
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Create pending unverified user
-    const user = await User.create({
+    // Check for duplicate registered email
+    let user = await User.findOne({ email: normalizedEmail });
+
+    if (user) {
+      if (user.role === 'admin') {
+        throw new AppError('This is Not Admin Portal', HTTP_STATUS.FORBIDDEN, ERROR_CODES.FORBIDDEN);
+      }
+
+      if (isDealer) {
+        const existingDealerProfile = await DealerProfile.findOne({ userId: user._id });
+        if (existingDealerProfile) {
+          throw new AppError(
+            'A Dealer account with this email address already exists. Please Sign In.',
+            HTTP_STATUS.BAD_REQUEST,
+            ERROR_CODES.BAD_REQUEST
+          );
+        }
+
+        // Upgrade existing Customer/User account to Dealer role & create DealerProfile
+        user.role = 'dealer';
+        user.fullName = fullName.trim();
+        user.name = fullName.trim();
+        if (normalizedPhone) user.phone = normalizedPhone;
+        if (dob) user.dob = new Date(dob);
+        user.passwordHash = passwordHash;
+
+        const dealerProfile = await DealerProfile.create({
+          userId: user._id,
+          companyName: companyName ? companyName.trim() : `${fullName.trim()} Enterprise`,
+          gstin: gstin ? gstin.trim().toUpperCase() : undefined,
+          pan: pan ? pan.trim().toUpperCase() : undefined,
+          address: address ? address.trim() : undefined,
+          city: city ? city.trim() : undefined,
+          state: state ? state.trim() : undefined,
+          pincode: pincode ? pincode.trim() : undefined,
+          status: 'pending',
+        });
+
+        user.dealerProfileId = dealerProfile._id;
+        await user.save();
+
+        const sessionData = await this.createSessionAndIssueTokens(user, reqInfo);
+        return {
+          message: 'Dealer registration submitted! Your account status is Pending Review. Admin has been notified for approval.',
+          ...sessionData,
+        };
+      } else {
+        throw new AppError(
+          'An account with this email address already exists.',
+          HTTP_STATUS.BAD_REQUEST,
+          ERROR_CODES.BAD_REQUEST
+        );
+      }
+    }
+
+    // Check if phone number is taken by another account
+    if (normalizedPhone) {
+      const existingPhone = await User.findOne({ phone: normalizedPhone });
+      if (existingPhone) {
+        throw new AppError(
+          'An account with this phone number already exists.',
+          HTTP_STATUS.BAD_REQUEST,
+          ERROR_CODES.BAD_REQUEST
+        );
+      }
+    }
+
+    // Create new user account
+    user = await User.create({
       fullName: fullName.trim(),
       name: fullName.trim(),
       email: normalizedEmail,
       phone: normalizedPhone,
+      dob: dob ? new Date(dob) : undefined,
       passwordHash,
-      role: role === 'dealer' ? 'dealer' : 'customer',
-      isPhoneVerified: false,
-      isEmailVerified: false,
-      accountStatus: 'pending',
-      status: 'pending',
+      role: isDealer ? 'dealer' : 'customer',
+      isPhoneVerified: true,
+      isEmailVerified: true,
+      accountStatus: 'active',
+      status: 'active',
     });
 
-    // Automatically send signup OTP to phone number
-    const otpResult = await this.sendOtp({
-      identifier: normalizedPhone,
-      purpose: 'signup',
-    });
+    let dealerProfile = null;
+
+    // If registering as a Dealer, create DealerProfile with 'pending' status
+    if (isDealer) {
+      dealerProfile = await DealerProfile.create({
+        userId: user._id,
+        companyName: companyName ? companyName.trim() : `${fullName.trim()} Enterprise`,
+        gstin: gstin ? gstin.trim().toUpperCase() : undefined,
+        pan: pan ? pan.trim().toUpperCase() : undefined,
+        address: address ? address.trim() : undefined,
+        city: city ? city.trim() : undefined,
+        state: state ? state.trim() : undefined,
+        pincode: pincode ? pincode.trim() : undefined,
+        status: 'pending',
+      });
+
+      user.dealerProfileId = dealerProfile._id;
+      await user.save();
+    }
+
+    // Create session and issue tokens for immediate login
+    const sessionData = await this.createSessionAndIssueTokens(user, reqInfo);
 
     return {
-      message: 'Signup successful. Please verify your phone number via OTP.',
-      user: {
-        id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        isPhoneVerified: user.isPhoneVerified,
-        accountStatus: user.accountStatus,
-      },
-      devOtp: otpResult.devOtp,
+      message: isDealer
+        ? 'Dealer registration submitted! Your account is in Pending Review. You can browse catalog items with Standard pricing while Admin reviews your KYC.'
+        : 'Account created successfully! Welcome to Vinexus.',
+      ...sessionData,
     };
+  },
+
+  /**
+   * Log in or Register user using Google Auth credentials.
+   */
+  async googleLogin({ credential, email, name, googleId, reqInfo }) {
+    let userEmail = email;
+    let userName = name;
+    let userGoogleId = googleId;
+
+    // If credential (JWT Token from Google Identity Services) is provided, decode payload
+    if (credential) {
+      try {
+        const parts = credential.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
+          userEmail = payload.email || userEmail;
+          userName = payload.name || payload.given_name || userName;
+          userGoogleId = payload.sub || userGoogleId;
+        }
+      } catch (err) {
+        console.warn('Google credential parsing warning:', err);
+      }
+    }
+
+    if (!userEmail) {
+      throw new AppError('Google login failed: Email not provided', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
+    }
+
+    const normalizedEmail = userEmail.trim().toLowerCase();
+
+    // Check if user already exists
+    let user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      // Register new customer account automatically
+      const displayName = (userName && userName.trim()) || normalizedEmail.split('@')[0];
+      user = await User.create({
+        fullName: displayName,
+        name: displayName,
+        email: normalizedEmail,
+        googleId: userGoogleId || `google_${Date.now()}`,
+        role: 'customer',
+        isEmailVerified: true,
+        isPhoneVerified: true,
+        accountStatus: 'active',
+        status: 'active',
+      });
+    } else {
+      if (user.role === 'admin') {
+        throw new AppError('This is Not Admin Portal', HTTP_STATUS.FORBIDDEN, ERROR_CODES.FORBIDDEN);
+      }
+
+      if (user.accountStatus === 'blocked' || user.status === 'blocked') {
+        throw new AppError('Your account has been blocked. Please contact support.', HTTP_STATUS.FORBIDDEN, ERROR_CODES.FORBIDDEN);
+      }
+
+      if (!user.googleId && userGoogleId) {
+        user.googleId = userGoogleId;
+        await user.save();
+      }
+    }
+
+    // Create session & issue tokens
+    return await this.createSessionAndIssueTokens(user, reqInfo);
   },
 
   /**
@@ -125,14 +278,25 @@ export const authService = {
           ERROR_CODES.FORBIDDEN
         );
       }
+
       // Dedicated admin login surface (/admin/login): reject non-admin accounts
-      // server-side, regardless of what the client claims.
-      if (portal === 'admin' && user.role !== 'admin') {
-        throw new AppError(
-          'This sign-in page is reserved for administrators. Please use the standard login page.',
-          HTTP_STATUS.FORBIDDEN,
-          ERROR_CODES.FORBIDDEN
-        );
+      if (portal === 'admin') {
+        if (user.role !== 'admin') {
+          throw new AppError(
+            'This portal is strictly reserved for system administrators. Non-admin accounts cannot sign in here.',
+            HTTP_STATUS.FORBIDDEN,
+            ERROR_CODES.FORBIDDEN
+          );
+        }
+      } else {
+        // Standard customer/dealer login surface (/login): reject admin accounts
+        if (user.role === 'admin') {
+          throw new AppError(
+            'This is Not Admin Portal',
+            HTTP_STATUS.FORBIDDEN,
+            ERROR_CODES.FORBIDDEN
+          );
+        }
       }
     }
 
@@ -237,14 +401,23 @@ export const authService = {
     }
 
     // Dedicated admin login surface (/admin/login): reject non-admin accounts
-    // server-side even if they somehow got this far (e.g. requested the OTP
-    // via the general endpoint, then hit this endpoint with portal='admin').
-    if (portal === 'admin' && user.role !== 'admin') {
-      throw new AppError(
-        'This sign-in page is reserved for administrators. Please use the standard login page.',
-        HTTP_STATUS.FORBIDDEN,
-        ERROR_CODES.FORBIDDEN
-      );
+    if (portal === 'admin') {
+      if (user.role !== 'admin') {
+        throw new AppError(
+          'This portal is strictly reserved for system administrators. Non-admin accounts cannot sign in here.',
+          HTTP_STATUS.FORBIDDEN,
+          ERROR_CODES.FORBIDDEN
+        );
+      }
+    } else {
+      // Standard customer/dealer login surface (/login): reject admin accounts
+      if (user.role === 'admin') {
+        throw new AppError(
+          'This is Not Admin Portal',
+          HTTP_STATUS.FORBIDDEN,
+          ERROR_CODES.FORBIDDEN
+        );
+      }
     }
 
     // Activate user upon successful phone verification
@@ -312,6 +485,13 @@ export const authService = {
       role: user.role,
     });
 
+    // Check dealer status if role is dealer
+    let dealerStatus = null;
+    if (user.role === 'dealer') {
+      const dp = await DealerProfile.findOne({ userId: user._id });
+      dealerStatus = dp?.status || 'pending';
+    }
+
     return {
       sessionConflict: false,
       accessToken,
@@ -324,6 +504,8 @@ export const authService = {
         role: user.role,
         isPhoneVerified: user.isPhoneVerified,
         accountStatus: user.accountStatus,
+        dealerStatus,
+        kycStatus: dealerStatus,
       },
       session: {
         sessionId: session.sessionId,
@@ -461,6 +643,12 @@ export const authService = {
       throw new AppError('User not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
     }
 
+    let dealerStatus = null;
+    if (user.role === 'dealer') {
+      const dp = await DealerProfile.findOne({ userId: user._id });
+      dealerStatus = dp?.status || 'pending';
+    }
+
     return {
       user: {
         id: user._id,
@@ -470,9 +658,121 @@ export const authService = {
         role: user.role,
         isPhoneVerified: user.isPhoneVerified,
         accountStatus: user.accountStatus,
+        dealerStatus,
+        kycStatus: dealerStatus,
         createdAt: user.createdAt,
       },
       sessionId,
+    };
+  },
+
+  /**
+   * Updates user profile (fullName, email, phone, dob, address, password, dealer details)
+   */
+  async updateProfile(userId, data) {
+    const user = await User.findById(userId).select('+passwordHash');
+    if (!user) {
+      throw new AppError('User not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
+    }
+
+    const {
+      fullName,
+      email,
+      phone,
+      dob,
+      address,
+      companyName,
+      gstin,
+      pan,
+      city,
+      state,
+      pincode,
+      currentPassword,
+      newPassword,
+    } = data;
+
+    // Update Name
+    if (fullName && fullName.trim()) {
+      user.fullName = fullName.trim();
+      user.name = fullName.trim();
+    }
+
+    // Update Email (check for duplicates if changed)
+    if (email && email.trim().toLowerCase() !== user.email) {
+      const normalizedEmail = email.trim().toLowerCase();
+      const existingUser = await User.findOne({ email: normalizedEmail, _id: { $ne: userId } });
+      if (existingUser) {
+        throw new AppError('Email address is already in use by another account', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
+      }
+      user.email = normalizedEmail;
+    }
+
+    // Update Phone (check for duplicates if changed)
+    if (phone && phone.trim() !== (user.phone || '')) {
+      const normalizedPhone = phone.trim();
+      const existingUser = await User.findOne({ phone: normalizedPhone, _id: { $ne: userId } });
+      if (existingUser) {
+        throw new AppError('Phone number is already in use by another account', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
+      }
+      user.phone = normalizedPhone;
+    }
+
+    if (dob) {
+      user.dob = new Date(dob);
+    }
+
+    if (address) {
+      user.address = address.trim();
+    }
+
+    // Update Password if newPassword provided
+    if (newPassword) {
+      if (user.passwordHash && currentPassword) {
+        const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+        if (!isMatch) {
+          throw new AppError('Current password is incorrect', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
+        }
+      }
+      user.passwordHash = await bcrypt.hash(newPassword, 10);
+    }
+
+    await user.save();
+
+    // If user is a dealer, update DealerProfile details
+    let dealerProfile = null;
+    let dealerStatus = null;
+    if (user.role === 'dealer') {
+      dealerProfile = await DealerProfile.findOne({ userId: user._id });
+      if (dealerProfile) {
+        if (companyName) dealerProfile.companyName = companyName.trim();
+        if (gstin !== undefined) dealerProfile.gstin = gstin ? gstin.trim().toUpperCase() : '';
+        if (pan !== undefined) dealerProfile.pan = pan ? pan.trim().toUpperCase() : '';
+        if (address) dealerProfile.address = address.trim();
+        if (city) dealerProfile.city = city.trim();
+        if (state) dealerProfile.state = state.trim();
+        if (pincode) dealerProfile.pincode = pincode.trim();
+        await dealerProfile.save();
+        dealerStatus = dealerProfile.status;
+      }
+    }
+
+    return {
+      user: {
+        id: user._id,
+        fullName: user.fullName || user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        isPhoneVerified: user.isPhoneVerified,
+        accountStatus: user.accountStatus,
+        dealerStatus,
+        kycStatus: dealerStatus,
+        address: user.address,
+        dob: user.dob,
+        dealerProfile,
+        createdAt: user.createdAt,
+      },
+      message: 'Profile updated successfully',
     };
   },
 };

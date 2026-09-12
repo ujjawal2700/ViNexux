@@ -1,34 +1,42 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
 import cartService from '../../services/cartService';
-import { Card, CardContent, CardFooter } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { Badge, StatusBadge } from '../ui/Badge';
-import { Image } from '../ui/Image';
-import { ShoppingCart, Eye, Tag, CheckCircle2 } from 'lucide-react';
+import { ShoppingCart, CheckCircle2, Tag } from 'lucide-react';
+import { cn } from '../../lib/utils';
 
-export const ProductCard = ({ product, onCartUpdated }) => {
+export const ProductCard = ({ product, onCartUpdated, className }) => {
   const { user, isAuthenticated } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const [isAdding, setIsAdding] = useState(false);
+  const [isAdded, setIsAdded] = useState(false);
 
   if (!product) return null;
 
-  // Extract primary image
-  const primaryImage = product.images?.[0]?.url || product.image || '';
+  // Fallback high quality Unsplash images
+  const fallbackImages = [
+    'https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&auto=format&fit=crop&q=80',
+  ];
+
+  let primaryImage = product.images?.[0]?.url || product.image;
+  if (!primaryImage || typeof primaryImage !== 'string' || !primaryImage.startsWith('http')) {
+    const hash = (product._id || product.name || '0').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    primaryImage = fallbackImages[hash % fallbackImages.length];
+  }
 
   // Determine user role for pricing presentation
   const isApprovedDealer = user?.role === 'dealer' && (user?.dealerStatus === 'approved' || user?.kycStatus === 'approved');
   const isAdmin = user?.role === 'admin';
 
-  // Pricing calculations for UI presentation
   const standardPrice = product.standardPrice || 0;
   const dealerPrice = product.dealerPrice || 0;
 
-  // Determine displayed main price and savings tag
   let displayPrice = standardPrice;
   let hasDealerDiscount = false;
 
@@ -39,14 +47,25 @@ export const ProductCard = ({ product, onCartUpdated }) => {
     }
   }
 
-  // Format currency helper (INR ₹)
-  const formatCurrency = (amount) => {
+  const formatPrice = (amount) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
-      maximumFractionDigits: 2,
+      maximumFractionDigits: 0,
     }).format(amount);
   };
+
+  const discountPercent = hasDealerDiscount && standardPrice > 0
+    ? Math.round(((standardPrice - dealerPrice) / standardPrice) * 100)
+    : 0;
+
+  const offerText = hasDealerDiscount
+    ? `${discountPercent}% Off (Wholesale)`
+    : product.isFeatured
+    ? 'Featured Deal'
+    : 'Standard Price';
+
+  const tagline = product.description || (typeof product.categoryId === 'object' ? product.categoryId?.name : 'Surveillance Hardware');
 
   // Handle Add to Cart action
   const handleAddToCart = async (e) => {
@@ -59,8 +78,7 @@ export const ProductCard = ({ product, onCartUpdated }) => {
       return;
     }
 
-    // Admins are view-only according to RBAC
-    if (user?.role === 'admin') {
+    if (isAdmin) {
       toast.warning('Admin accounts are view-only and cannot submit cart items.');
       return;
     }
@@ -69,9 +87,11 @@ export const ProductCard = ({ product, onCartUpdated }) => {
       setIsAdding(true);
       await cartService.addItem(product._id, 1);
       toast.success(`"${product.name}" added to cart!`);
+      setIsAdded(true);
       if (onCartUpdated) {
         onCartUpdated();
       }
+      setTimeout(() => setIsAdded(false), 2000);
     } catch (err) {
       console.error('Failed to add item to cart:', err);
       const errMsg = err.response?.data?.message || 'Failed to add product to cart.';
@@ -81,124 +101,93 @@ export const ProductCard = ({ product, onCartUpdated }) => {
     }
   };
 
+  const handleCardClick = () => {
+    navigate(`/products/${product._id}`);
+  };
+
   return (
-    <Card hoverable className="h-full flex flex-col justify-between overflow-hidden group bg-card border-border hover:border-primary transition-all duration-300 shadow-sm hover:shadow-xl">
-      <div>
-        {/* Product Image & Badges Overlay */}
-        <div className="relative overflow-hidden bg-muted">
-          <Link to={`/products/${product._id}`} className="block">
-            <Image
-              src={primaryImage}
-              alt={product.name}
-              aspectRatio="aspect-square"
-              className="group-hover:scale-105 transition-transform duration-500"
-            />
-          </Link>
+    <motion.div
+      onClick={handleCardClick}
+      className={cn(
+        "group relative flex h-full w-full flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card p-3 sm:p-3.5 text-card-foreground shadow-xs transition-all duration-300 ease-in-out hover:shadow-lg hover:border-primary/50 cursor-pointer",
+        className
+      )}
+      whileHover={{ y: -4 }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+    >
+      {/* Top Left Discount / Status Badge */}
+      <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none z-10">
+        {hasDealerDiscount ? (
+          <span className="rounded-md bg-emerald-600 text-white px-1.5 py-0.5 font-extrabold text-[9px] uppercase tracking-wider shadow-sm">
+            {discountPercent}% OFF
+          </span>
+        ) : product.isFeatured ? (
+          <span className="rounded-md bg-primary text-white px-1.5 py-0.5 font-bold text-[9px] uppercase tracking-wider shadow-sm">
+            Featured
+          </span>
+        ) : <div />}
 
-          {/* Top Floating Badges */}
-          <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 pointer-events-none">
-            <div className="flex flex-col gap-1">
-              {product.isFeatured && (
-                <Badge variant="warning" className="shadow-md backdrop-blur-md">
-                  Featured
-                </Badge>
-              )}
-              {hasDealerDiscount && (
-                <Badge variant="success" icon={<Tag className="w-3 h-3" />} className="shadow-md backdrop-blur-md">
-                  Wholesale Price
-                </Badge>
-              )}
-            </div>
-
-            <StatusBadge status={product.isActive ? 'in-stock' : 'out-of-stock'} />
-          </div>
-        </div>
-
-        {/* Product Content Details */}
-        <CardContent className="p-5 space-y-3">
-          {/* Category & SKU row */}
-          <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold">
-            <span className="truncate max-w-[60%] text-muted-foreground">
-              {typeof product.categoryId === 'object' ? product.categoryId?.name : 'Security'}
-            </span>
-            <span className="font-mono text-[11px] text-muted-foreground uppercase tracking-wider">
-              {product.sku}
-            </span>
-          </div>
-
-          {/* Product Name */}
-          <Link to={`/products/${product._id}`} className="block group-hover:text-primary transition-colors">
-            <h3 className="font-bold text-foreground text-base line-clamp-2 leading-snug">
-              {product.name}
-            </h3>
-          </Link>
-
-          {/* Short Description */}
-          {product.description && (
-            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-              {product.description}
-            </p>
-          )}
-
-          {/* Role-Aware Pricing Presentation */}
-          <div className="pt-2 border-t border-border flex items-baseline justify-between">
-            <div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-xl font-black text-foreground tracking-tight">
-                  {formatCurrency(displayPrice)}
-                </span>
-
-                {/* Show Strike-through Standard Price for Approved Dealers */}
-                {hasDealerDiscount && (
-                  <span className="text-xs text-muted-foreground line-through font-medium">
-                    {formatCurrency(standardPrice)}
-                  </span>
-                )}
-              </div>
-
-              {/* Price level subtitle explanation */}
-              <div className="text-[10px] text-muted-foreground mt-0.5 font-medium">
-                {isApprovedDealer ? (
-                  <span className="text-emerald-600 font-bold flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> Dealer Price Unlocked
-                  </span>
-                ) : isAdmin ? (
-                  <span className="text-muted-foreground">Standard: {formatCurrency(standardPrice)} | Dealer: {formatCurrency(dealerPrice)}</span>
-                ) : (
-                  <span>Standard Retail Price</span>
-                )}
-              </div>
-            </div>
-          </div>
-        </CardContent>
+        {!product.isActive && (
+          <span className="rounded-md bg-rose-600 text-white px-1.5 py-0.5 font-bold text-[9px] shadow-sm">
+            Out of Stock
+          </span>
+        )}
       </div>
 
-      {/* Card Action Buttons */}
-      <CardFooter className="p-5 pt-0 gap-2 border-t-0">
+      {/* Product Image Box */}
+      <div className="relative mb-2.5 flex h-28 sm:h-34 w-full items-center justify-center overflow-hidden rounded-xl bg-muted/30 p-2">
+        <img
+          src={primaryImage}
+          alt={product.name}
+          className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+          draggable={false}
+        />
+      </div>
+
+      {/* Tagline / Stock Status */}
+      <div className="flex flex-col text-left gap-1 w-full flex-grow">
+        <div className="text-[10px] font-bold text-muted-foreground flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+          <span className="truncate">{typeof product.categoryId === 'object' ? product.categoryId?.name : 'Surveillance'}</span>
+        </div>
+
+        {/* Product Name */}
+        <h3 className="font-bold text-foreground text-xs leading-snug group-hover:text-primary transition-colors line-clamp-2 text-left">
+          {product.name}
+        </h3>
+      </div>
+
+      {/* Pricing & ADD Action Button Row */}
+      <div className="mt-3 pt-2.5 border-t border-border/60 flex items-center justify-between gap-2 w-full">
+        <div className="flex flex-col text-left">
+          <span className="text-sm sm:text-base font-black tracking-tight text-foreground">
+            {formatPrice(displayPrice)}
+          </span>
+          {hasDealerDiscount && (
+            <span className="text-[10px] font-bold text-muted-foreground line-through">
+              {formatPrice(standardPrice)}
+            </span>
+          )}
+        </div>
+
+        {/* Action Button */}
         <Button
-          variant="primary"
+          variant={isAdded ? "success" : "outline"}
           size="sm"
-          fullWidth
           isLoading={isAdding}
-          isDisabled={!product.isActive}
-          leftIcon={<ShoppingCart className="w-4 h-4" />}
+          isDisabled={!product.isActive || isAdded}
           onClick={handleAddToCart}
+          className={cn(
+            "px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wider rounded-xl transition-all shadow-xs shrink-0",
+            isAdded
+              ? "bg-emerald-600 text-white border-emerald-600"
+              : "border-primary text-primary hover:bg-primary hover:text-white"
+          )}
         >
-          {product.isActive ? 'Add to Cart' : 'Out of Stock'}
+          {isAdded ? 'ADDED' : 'ADD'}
         </Button>
-        <Link to={`/products/${product._id}`}>
-          <Button
-            variant="outline"
-            size="sm"
-            iconOnly
-            title="View Details"
-            className="hover:border-primary"
-          >
-            <Eye className="w-4 h-4 text-primary" />
-          </Button>
-        </Link>
-      </CardFooter>
-    </Card>
+      </div>
+    </motion.div>
   );
 };
 

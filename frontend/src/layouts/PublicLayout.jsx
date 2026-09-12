@@ -20,7 +20,7 @@ import {
 } from '../components/ui/DropdownMenu';
 import {
   Shield,
-  ShoppingBag,
+  ShoppingCart,
   Search,
   User,
   UserCircle,
@@ -133,26 +133,6 @@ const PublicLayout = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary selection:text-white bg-grid-pattern">
-      {/* 0. TOP UTILITY BANNER */}
-      <div className="bg-muted border-b border-border px-4 py-1.5 text-[11px] text-muted-foreground font-medium">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1.5 text-foreground">
-              <Phone className="w-3 h-3 text-primary" /> Helpline: <strong className="text-foreground">+91 89499 40610</strong>
-            </span>
-            <span className="hidden sm:inline-block text-border">|</span>
-            <span className="hidden sm:inline-flex items-center gap-1 text-muted-foreground">
-              <Shield className="w-3 h-3 text-primary" /> Authorized CCTV & Security Hardware Distributor
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link to="/login" className="hover:text-primary transition-colors flex items-center gap-1 font-semibold text-foreground">
-              <Lock className="w-3 h-3 text-primary" /> Dealer Portal Access
-            </Link>
-          </div>
-        </div>
-      </div>
-
       {/* 1. PUBLIC HEADER NAVIGATION */}
       <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-xl border-b border-border px-4 sm:px-6 py-3 transition-all shadow-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
@@ -245,7 +225,7 @@ const PublicLayout = () => {
                 className="relative p-2.5 text-foreground hover:text-primary bg-muted hover:bg-border border border-border rounded-xl transition-all duration-200 flex items-center justify-center group"
                 title="Enquiry Cart"
               >
-                <ShoppingBag className="w-4.5 h-4.5 group-hover:text-primary transition-colors" />
+                <ShoppingCart className="w-4.5 h-4.5 group-hover:text-primary transition-colors" />
                 {cartCount > 0 && (
                   <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-primary text-white text-[11px] font-extrabold rounded-full flex items-center justify-center shadow-md animate-pulse">
                     {cartCount > 99 ? '99+' : cartCount}
@@ -400,7 +380,26 @@ const PublicLayout = () => {
       </main>
 
       {/* 4. CMS-DRIVEN PUBLIC FOOTER */}
-      <footer className="bg-muted border-t border-border pt-12 pb-8 px-6 text-muted-foreground text-xs">
+      <footer className="bg-muted border-t border-border pt-8 pb-8 px-6 text-muted-foreground text-xs">
+        {/* UTILITY FOOTER BANNER */}
+        <div className="max-w-7xl mx-auto mb-8 pb-6 border-b border-border text-[11px] text-muted-foreground font-medium">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-4">
+              <span className="flex items-center gap-1.5 text-foreground">
+                <Phone className="w-3.5 h-3.5 text-primary" /> Helpline: <strong className="text-foreground">+91 89499 40610</strong>
+              </span>
+              <span className="hidden sm:inline-block text-border">|</span>
+              <span className="hidden sm:inline-flex items-center gap-1 text-muted-foreground">
+                <Shield className="w-3.5 h-3.5 text-primary" /> Authorized CCTV & Security Hardware Distributor
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link to="/login" className="hover:text-primary transition-colors flex items-center gap-1 font-semibold text-foreground">
+                <Lock className="w-3.5 h-3.5 text-primary" /> Dealer & Customer Portal Access
+              </Link>
+            </div>
+          </div>
+        </div>
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 pb-10 border-b border-border">
           
           {/* Col 1: Brand Info */}
@@ -465,7 +464,7 @@ const PublicLayout = () => {
               </li>
               <li>
                 <Link to="/login" className="hover:text-primary transition-colors">
-                  Dealer Onboarding / Login
+                  Customer & Dealer Login
                 </Link>
               </li>
             </ul>

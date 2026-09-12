@@ -11,7 +11,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { Image } from '../../components/ui/Image';
 import {
-  ShoppingBag,
+  ShoppingCart,
   Trash2,
   Plus,
   Minus,
@@ -187,7 +187,7 @@ export const CartPage = () => {
         <div>
           <span className="text-xs font-bold uppercase tracking-wider text-primary">Cart & Quotation Builder</span>
           <h1 className="text-3xl font-extrabold text-foreground tracking-tight flex items-center gap-3">
-            <ShoppingBag className="w-7 h-7 text-primary" />
+            <ShoppingCart className="w-7 h-7 text-primary" />
             <span>Shopping Cart</span>
           </h1>
         </div>

@@ -66,6 +66,24 @@ export const AuthProvider = ({ children }) => {
     restoreSession();
   }, [handleAuthSuccess]);
 
+  // Register Customer
+  const signup = async (signupData) => {
+    const response = await authService.signup(signupData);
+    if (response.success && response.data?.accessToken) {
+      await handleAuthSuccess(response.data);
+    }
+    return response;
+  };
+
+  // Google Login / Registration
+  const googleLogin = async (googleData) => {
+    const response = await authService.googleLogin(googleData);
+    if (response.success && response.data?.accessToken) {
+      await handleAuthSuccess(response.data);
+    }
+    return response;
+  };
+
   // Send OTP. Pass portal='admin' from the dedicated admin login page.
   const sendOtp = async (identifier, portal) => {
     return await authService.sendOtp(identifier, portal);
@@ -132,6 +150,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Update Profile
+  const updateUserProfile = async (profileData) => {
+    const response = await authService.updateProfile(profileData);
+    if (response.success && response.data?.user) {
+      setUser((prevUser) => ({
+        ...prevUser,
+        ...response.data.user,
+      }));
+    }
+    return response;
+  };
+
   const value = {
     user,
     accessToken,
@@ -139,10 +169,13 @@ export const AuthProvider = ({ children }) => {
     isLoading,
     sessionConflict,
     conflictTicket,
+    signup,
+    googleLogin,
     sendOtp,
     verifyOtp,
     forceLogin,
     logout,
+    updateProfile: updateUserProfile,
     clearConflictState,
   };
 
