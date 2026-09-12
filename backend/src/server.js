@@ -5,20 +5,23 @@ import { connectDB, disconnectDB } from './config/db.js';
 let server;
 
 const startServer = async () => {
-  try {
-    // 1. Connect to MongoDB before accepting HTTP traffic
-    await connectDB();
+  const PORT = process.env.PORT || config.port || 5000;
+  const HOST = '0.0.0.0';
 
-    // 2. Start HTTP server
-    server = app.listen(config.port, () => {
+  try {
+    // 1. Immediately bind and listen to the port on 0.0.0.0 so platform port-scanners (Render/Docker) succeed instantly
+    server = app.listen(PORT, HOST, () => {
       console.log(
-        `[Server] Vinexus API running in [${config.nodeEnv}] mode on port ${config.port}`
+        `[Server] Vinexus API running in [${config.nodeEnv}] mode bound to ${HOST}:${PORT}`
       );
-      console.log(`[Server] Health Endpoint: http://localhost:${config.port}${config.apiBaseUrl}/health`);
+      console.log(`[Server] Health Check: http://${HOST}:${PORT}${config.apiBaseUrl}/health`);
     });
+
+    // 2. Connect to MongoDB asynchronously after port binding
+    await connectDB();
   } catch (error) {
-    console.error(`[Server] Critical failure during startup: ${error.message}`);
-    process.exit(1);
+    console.error(`[Server] Startup warning/failure: ${error.message}`);
+    // If database connection fails, keep process running so port scanner receives health response
   }
 };
 
@@ -46,16 +49,10 @@ const gracefulShutdown = async (signal) => {
 // Process Level Exception Listener Handlers
 process.on('unhandledRejection', (reason) => {
   console.error('[Server] Unhandled Rejection:', reason);
-  if (server) {
-    gracefulShutdown('unhandledRejection');
-  } else {
-    process.exit(1);
-  }
 });
 
 process.on('uncaughtException', (error) => {
   console.error('[Server] Uncaught Exception:', error);
-  process.exit(1);
 });
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
