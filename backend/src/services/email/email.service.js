@@ -73,6 +73,44 @@ export const emailService = {
       html,
     });
   },
+
+  /**
+   * Notifies a dealer that their KYC submission was rejected, with the
+   * reason (if provided) and a link to resubmit.
+   *
+   * @param {Object} params
+   * @param {string} params.email - Dealer's account email address
+   * @param {string} params.companyName - Dealer's registered company name
+   * @param {string} [params.rejectionReason] - Admin-provided rejection reason
+   * @param {string} [params.resubmitUrl] - Frontend URL to resubmit KYC
+   */
+  async sendDealerKycRejectedEmail({ email, companyName, rejectionReason, resubmitUrl }) {
+    const subject = 'Vinexus Dealer KYC — Action Required';
+    const reason = rejectionReason?.trim() || 'Submitted documentation was incomplete or invalid.';
+    const link = resubmitUrl || 'https://vi-nexux.vercel.app/dealer/kyc';
+
+    const text = `Hello ${companyName || 'Dealer'},\n\nYour Vinexus dealer KYC submission was not approved.\n\nReason: ${reason}\n\nPlease resubmit your KYC documents here: ${link}\n\n— Vinexus Team`;
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <h2 style="color: #800020; text-align: center;">Vinexus</h2>
+        <p>Hello${companyName ? ` <strong>${companyName}</strong>` : ''},</p>
+        <p>Your dealer KYC submission was <strong style="color: #be123c;">not approved</strong> by our verification team.</p>
+        <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 15px; margin: 20px 0;">
+          <span style="font-size: 12px; font-weight: bold; color: #991b1b; text-transform: uppercase;">Reason</span>
+          <p style="margin: 6px 0 0; color: #7f1d1d;">${reason}</p>
+        </div>
+        <p style="text-align: center; margin: 24px 0;">
+          <a href="${link}" style="background-color: #800020; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px;">Resubmit KYC Documents</a>
+        </p>
+        <p style="font-size: 13px; color: #666;">Please correct the issue above and resubmit — your account will be re-reviewed as soon as new documents are uploaded.</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+        <p style="font-size: 11px; color: #999; text-align: center;">&copy; ${new Date().getFullYear()} Vinexus Inc. All rights reserved.</p>
+      </div>
+    `;
+
+    return await this.sendEmail({ to: email, subject, text, html });
+  },
 };
 
 export default emailService;

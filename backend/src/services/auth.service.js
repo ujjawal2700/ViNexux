@@ -56,6 +56,7 @@ export const authService = {
     companyName,
     gstin,
     pan,
+    aadhaarNumber,
     address,
     city,
     state,
@@ -69,6 +70,27 @@ export const authService = {
     const normalizedEmail = email.trim().toLowerCase();
     const normalizedPhone = phone ? phone.trim() : '';
     const isDealer = role === 'dealer';
+
+    // Require OTP-verified contact before creating the account: customers
+    // verify their email, dealers verify their phone (see verifySignupOtp).
+    const otpIdentifier = isDealer ? normalizedPhone : normalizedEmail;
+    const normalizedOtpIdentifier = normalizeIdentifier(otpIdentifier);
+    const verifiedOtp = await OtpVerification.findOne({
+      identifier: normalizedOtpIdentifier,
+      purpose: 'signup',
+      isVerified: true,
+    });
+    if (!verifiedOtp) {
+      throw new AppError(
+        isDealer
+          ? 'Please verify your phone number via OTP before completing registration.'
+          : 'Please verify your email address via OTP before completing registration.',
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.VALIDATION_ERROR
+      );
+    }
+    // Consumed only once account creation actually succeeds below (not here) -
+    // so a duplicate-email/phone rejection doesn't burn a valid verified OTP.
 
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
@@ -104,6 +126,7 @@ export const authService = {
           companyName: companyName ? companyName.trim() : `${fullName.trim()} Enterprise`,
           gstin: gstin ? gstin.trim().toUpperCase() : undefined,
           pan: pan ? pan.trim().toUpperCase() : undefined,
+          aadhaarNumber: aadhaarNumber ? aadhaarNumber.trim() : undefined,
           address: address ? address.trim() : undefined,
           city: city ? city.trim() : undefined,
           state: state ? state.trim() : undefined,
@@ -113,6 +136,7 @@ export const authService = {
 
         user.dealerProfileId = dealerProfile._id;
         await user.save();
+        await OtpVerification.deleteOne({ _id: verifiedOtp._id });
 
         const sessionData = await this.createSessionAndIssueTokens(user, reqInfo);
         return {
@@ -164,6 +188,7 @@ export const authService = {
         companyName: companyName ? companyName.trim() : `${fullName.trim()} Enterprise`,
         gstin: gstin ? gstin.trim().toUpperCase() : undefined,
         pan: pan ? pan.trim().toUpperCase() : undefined,
+        aadhaarNumber: aadhaarNumber ? aadhaarNumber.trim() : undefined,
         address: address ? address.trim() : undefined,
         city: city ? city.trim() : undefined,
         state: state ? state.trim() : undefined,
@@ -174,6 +199,8 @@ export const authService = {
       user.dealerProfileId = dealerProfile._id;
       await user.save();
     }
+
+    await OtpVerification.deleteOne({ _id: verifiedOtp._id });
 
     // Create session and issue tokens for immediate login
     const sessionData = await this.createSessionAndIssueTokens(user, reqInfo);
@@ -317,19 +344,32 @@ export const authService = {
       { upsert: true, new: true, runValidators: true }
     );
 
-    let devOtp;
-    if (normalized.includes('@')) {
-      const emailResult = await emailService.sendOtpEmail({ email: normalized, otp, purpose });
-      devOtp = config.demoMode || config.nodeEnv !== 'production' ? otp : undefined;
-    } else {
-      const provider = getOtpProvider();
-      const dispatchResult = await provider.sendOtp({
-        identifier: normalized,
-        otp,
-        purpose,
-      });
-      devOtp = dispatchResult.devOtp;
+    try {
+      if (normalized.includes('@')) {
+        await emailService.sendOtpEmail({ email: normalized, otp, purpose });
+      } else {
+        const provider = getOtpProvider();
+        await provider.sendOtp({ identifier: normalized, otp, purpose });
+      }
+    } catch (dispatchErr) {
+      // In demo mode, real delivery is a nice-to-have, not a requirement -
+      // the OTP is always the fixed devOtp anyway (see generateOtp above),
+      // so an unconfigured or misbehaving SMS/email provider must never
+      // block signup/login. Outside demo mode this is a real failure.
+      if (!config.demoMode) {
+        throw dispatchErr;
+      }
+      console.warn(
+        `[AuthService] OTP dispatch to '${normalized}' failed, continuing in demo mode:`,
+        dispatchErr.message
+      );
     }
+
+    // Expose the OTP whenever it's the fixed demo code (or outside
+    // production) regardless of what the active provider's response
+    // happened to look like - the real, always-true fact is "the OTP is
+    // 123456 right now", not whatever a provider's success payload says.
+    const devOtp = config.demoMode || config.nodeEnv !== 'production' ? otp : undefined;
 
     return {
       identifier: normalized,
@@ -451,6 +491,55 @@ export const authService = {
 
     // No existing active session -> create brand new session & issue tokens
     return await this.createSessionAndIssueTokens(user, reqInfo);
+  },
+
+  /**
+   * Verifies a pre-account "signup" OTP (email for customers, phone for
+   * dealers) so the multi-step signup wizard can confirm contact ownership
+   * BEFORE the account exists. Unlike verifyOtp(), this never requires (or
+   * touches) a User record and never issues session tokens - it only marks
+   * the OtpVerification record verified so authService.signup() can check
+   * for it. The actual account is created by a separate /auth/signup call
+   * right after this succeeds.
+   */
+  async verifySignupOtp({ identifier, otp }) {
+    const normalized = normalizeIdentifier(identifier);
+    if (!normalized || !otp) {
+      throw new AppError('Identifier and OTP are required', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+    }
+
+    const otpRecord = await OtpVerification.findOne({ identifier: normalized, purpose: 'signup' });
+    if (!otpRecord || otpRecord.isVerified) {
+      throw new AppError(
+        'No pending OTP request found for this identifier. Please request a new OTP.',
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.BAD_REQUEST
+      );
+    }
+
+    if (otpRecord.expiresAt < new Date()) {
+      throw new AppError('OTP has expired. Please request a new OTP.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
+    }
+
+    if (otpRecord.attempts >= config.otpMaxAttempts) {
+      throw new AppError(
+        'Maximum verification attempts exceeded. Please request a new OTP.',
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.BAD_REQUEST
+      );
+    }
+
+    const computedHash = hashOtp(otp);
+    if (otpRecord.otpHash !== computedHash) {
+      otpRecord.attempts += 1;
+      await otpRecord.save();
+      throw new AppError('Invalid OTP. Please check and try again.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_CREDENTIALS);
+    }
+
+    otpRecord.isVerified = true;
+    await otpRecord.save();
+
+    return { verified: true, identifier: normalized };
   },
 
   /**

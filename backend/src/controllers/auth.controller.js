@@ -14,6 +14,7 @@ export const signup = asyncHandler(async (req, res) => {
     companyName,
     gstin,
     pan,
+    aadhaarNumber,
     address,
     city,
     state,
@@ -39,6 +40,7 @@ export const signup = asyncHandler(async (req, res) => {
     companyName,
     gstin,
     pan,
+    aadhaarNumber,
     address,
     city,
     state,
@@ -79,6 +81,13 @@ export const googleLogin = asyncHandler(async (req, res) => {
     result,
     HTTP_STATUS.OK
   );
+});
+
+export const verifySignupOtp = asyncHandler(async (req, res) => {
+  const { identifier, otp } = req.body;
+  const result = await authService.verifySignupOtp({ identifier, otp });
+
+  return ApiResponse.success(res, 'Contact verified successfully', result, HTTP_STATUS.OK);
 });
 
 export const sendOtp = asyncHandler(async (req, res) => {
@@ -200,6 +209,7 @@ export default {
   googleLogin,
   sendOtp,
   verifyOtp,
+  verifySignupOtp,
   forceLogin,
   refreshToken,
   logout,

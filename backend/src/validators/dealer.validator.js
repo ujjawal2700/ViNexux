@@ -6,11 +6,12 @@ const isValidObjectId = (val) => mongoose.Types.ObjectId.isValid(val);
 const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
 const pincodeRegex = /^\d{6}$/;
+const aadhaarRegex = /^\d{12}$/;
 
 const kycDocumentSchema = z.object({
-  type: z.enum(['gst', 'pan', 'aadhaar'], {
+  type: z.enum(['gst', 'pan', 'aadhaar', 'msme'], {
     required_error: 'KYC document type is required',
-    invalid_type_error: 'KYC document type must be gst, pan, or aadhaar',
+    invalid_type_error: 'KYC document type must be gst, pan, aadhaar, or msme',
   }),
   url: z
     .string({ required_error: 'KYC document URL is required' })
@@ -40,6 +41,13 @@ export const createDealerProfileSchema = {
       .transform((val) => val.toUpperCase())
       .refine((val) => !val || panRegex.test(val), {
         message: 'Please enter a valid 10-character PAN format',
+      })
+      .optional(),
+    aadhaarNumber: z
+      .string()
+      .trim()
+      .refine((val) => !val || aadhaarRegex.test(val), {
+        message: 'Please enter a valid 12-digit Aadhaar number',
       })
       .optional(),
     address: z
@@ -91,6 +99,14 @@ export const updateDealerProfileSchema = {
       .transform((val) => (typeof val === 'string' ? val.trim().toUpperCase() : val))
       .refine((val) => val === undefined || val === null || val === '' || panRegex.test(val), {
         message: 'Please enter a valid 10-character PAN format',
+      }),
+    aadhaarNumber: z
+      .string()
+      .nullable()
+      .optional()
+      .transform((val) => (typeof val === 'string' ? val.trim() : val))
+      .refine((val) => val === undefined || val === null || val === '' || aadhaarRegex.test(val), {
+        message: 'Please enter a valid 12-digit Aadhaar number',
       }),
     address: z
       .string()

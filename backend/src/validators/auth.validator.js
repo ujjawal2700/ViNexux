@@ -1,39 +1,48 @@
 import { z } from 'zod';
 
 export const signupSchema = {
-  body: z.object({
-    fullName: z
-      .string({ required_error: 'Full name is required' })
-      .trim()
-      .min(2, { message: 'Full name must be at least 2 characters' })
-      .max(100, { message: 'Full name cannot exceed 100 characters' }),
-    email: z
-      .string({ required_error: 'Email address is required' })
-      .trim()
-      .email({ message: 'Invalid email address format' })
-      .toLowerCase(),
-    phone: z
-      .string({ required_error: 'Phone number is required' })
-      .trim()
-      .min(10, { message: 'Phone number must be at least 10 digits' }),
-    password: z
-      .string({ required_error: 'Password is required' })
-      .min(6, { message: 'Password must be at least 6 characters' }),
-    dob: z.string().optional(),
-    role: z
-      .enum(['customer', 'dealer'], {
-        invalid_type_error: 'Role must be either customer or dealer',
-      })
-      .default('customer'),
-    // Dealer KYC fields (optional for customer, validated for dealer)
-    companyName: z.string().trim().optional(),
-    gstin: z.string().trim().optional(),
-    pan: z.string().trim().optional(),
-    address: z.string().trim().optional(),
-    city: z.string().trim().optional(),
-    state: z.string().trim().optional(),
-    pincode: z.string().trim().optional(),
-  }),
+  body: z
+    .object({
+      fullName: z
+        .string({ required_error: 'Full name is required' })
+        .trim()
+        .min(2, { message: 'Full name must be at least 2 characters' })
+        .max(100, { message: 'Full name cannot exceed 100 characters' }),
+      email: z
+        .string({ required_error: 'Email address is required' })
+        .trim()
+        .email({ message: 'Invalid email address format' })
+        .toLowerCase(),
+      // Required for dealers (phone OTP + KYC contact), optional for customers
+      // (who verify via email OTP instead) - enforced below via .refine().
+      phone: z
+        .string()
+        .trim()
+        .min(10, { message: 'Phone number must be at least 10 digits' })
+        .optional(),
+      password: z
+        .string({ required_error: 'Password is required' })
+        .min(6, { message: 'Password must be at least 6 characters' }),
+      dob: z.string().optional(),
+      role: z
+        .enum(['customer', 'dealer'], {
+          invalid_type_error: 'Role must be either customer or dealer',
+        })
+        .default('customer'),
+      // Dealer KYC fields (optional for customer, validated for dealer)
+      companyName: z.string().trim().optional(),
+      gstin: z.string().trim().optional(),
+      pan: z.string().trim().optional(),
+      aadhaarNumber: z.string().trim().optional(),
+      address: z.string().trim().optional(),
+      city: z.string().trim().optional(),
+      state: z.string().trim().optional(),
+      pincode: z.string().trim().optional(),
+    })
+    .refine((data) => data.role !== 'dealer' || (data.phone && data.phone.trim().length >= 10), {
+      message: 'Phone number is required for dealer registration',
+      path: ['phone'],
+    }),
 };
 
 export const googleAuthSchema = {
@@ -79,6 +88,19 @@ export const verifyOtpSchema = {
       })
       .default('login'),
     portal: z.enum(['admin']).optional(),
+  }),
+};
+
+export const verifySignupOtpSchema = {
+  body: z.object({
+    identifier: z
+      .string({ required_error: 'Identifier (email or phone) is required' })
+      .trim()
+      .min(3, { message: 'Identifier must be at least 3 characters' }),
+    otp: z
+      .string({ required_error: 'OTP is required' })
+      .trim()
+      .regex(/^\d{6}$/, { message: 'OTP must be exactly 6 numeric digits' }),
   }),
 };
 

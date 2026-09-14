@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import adminService from '../../services/adminService';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import StatsCard from '../../components/admin/StatsCard';
@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 
 const AdminDashboardPage = () => {
+  const navigate = useNavigate();
   const [summary, setSummary] = useState(null);
   const [recentEnquiries, setRecentEnquiries] = useState([]);
   const [pendingDealers, setPendingDealers] = useState([]);
@@ -119,9 +120,15 @@ const AdminDashboardPage = () => {
         <StatsCard
           title="Pending KYC Queue"
           value={summary?.dealers?.pending || 0}
-          subtext={`${summary?.dealers?.approved || 0} Verified Dealers Active`}
+          subtext={
+            summary?.dealers?.pending > 0
+              ? 'Awaiting your review'
+              : `${summary?.dealers?.approved || 0} Verified Dealers Active`
+          }
           icon={Clock}
           color="amber"
+          attention={(summary?.dealers?.pending || 0) > 0}
+          onClick={() => navigate('/admin/dealers?status=pending')}
         />
         <StatsCard
           title="Customer Accounts"

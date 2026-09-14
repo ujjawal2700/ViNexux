@@ -4,7 +4,7 @@ const kycDocumentSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: ['gst', 'pan', 'aadhaar'],
+      enum: ['gst', 'pan', 'aadhaar', 'msme'],
       required: [true, 'KYC document type is required'],
     },
     url: {
@@ -52,6 +52,12 @@ const dealerProfileSchema = new mongoose.Schema(
       trim: true,
       uppercase: true,
       match: [/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, 'Please enter a valid PAN format'],
+    },
+    aadhaarNumber: {
+      type: String,
+      trim: true,
+      match: [/^\d{12}$/, 'Please enter a valid 12-digit Aadhaar number'],
+      select: false,
     },
     address: {
       type: String,

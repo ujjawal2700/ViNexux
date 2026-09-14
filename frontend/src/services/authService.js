@@ -16,8 +16,14 @@ export const authService = {
   // Send OTP (supports email or phone number identifier).
   // `portal: 'admin'` scopes this to the dedicated admin login page -
   // the backend rejects non-admin accounts for that portal.
-  sendOtp: async (identifier, portal) => {
-    const response = await apiClient.post('/auth/send-otp', { identifier, ...(portal ? { portal } : {}) });
+  // `purpose` defaults to 'login' server-side; pass 'signup' for pre-account
+  // contact verification during registration.
+  sendOtp: async (identifier, portal, purpose) => {
+    const response = await apiClient.post('/auth/send-otp', {
+      identifier,
+      ...(portal ? { portal } : {}),
+      ...(purpose ? { purpose } : {}),
+    });
     return response.data;
   },
 
@@ -28,6 +34,14 @@ export const authService = {
       otp: otpCode,
       ...(portal ? { portal } : {}),
     });
+    return response.data;
+  },
+
+  // Verifies a pre-account "signup" OTP (email for customers, phone for
+  // dealers) so the multi-step signup wizard can confirm contact ownership
+  // before the account is actually created.
+  verifySignupOtp: async (identifier, otpCode) => {
+    const response = await apiClient.post('/auth/verify-signup-otp', { identifier, otp: otpCode });
     return response.data;
   },
 

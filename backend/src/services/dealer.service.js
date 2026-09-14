@@ -2,6 +2,8 @@ import { DealerProfile } from '../models/DealerProfile.js';
 import { User } from '../models/User.js';
 import { storageService } from './storage/storage.service.js';
 import { whatsAppService } from './whatsapp/whatsapp.service.js';
+import { emailService } from './email/email.service.js';
+import { pushService } from './push/push.service.js';
 import { AppError } from '../utils/AppError.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../constants/errorCodes.js';
@@ -331,6 +333,35 @@ export const rejectDealerKyc = async (dealerId, rejectionReason, adminId = null)
     console.error('[DealerService] WhatsApp KYC rejected notification failed silently:', err.message);
   }
 
+  // Attempt email notification (Isolated operation; does not throw if fails)
+  const dealerUser = updatedProfile.userId;
+  if (dealerUser?.email) {
+    try {
+      await emailService.sendDealerKycRejectedEmail({
+        email: dealerUser.email,
+        companyName: updatedProfile.companyName,
+        rejectionReason: updatedProfile.rejectionReason,
+      });
+    } catch (err) {
+      console.error('[DealerService] Email KYC rejected notification failed silently:', err.message);
+    }
+  }
+
+  // Attempt push notification (Isolated operation; does not throw if fails)
+  if (dealerUser?._id) {
+    try {
+      await pushService.sendToUser(dealerUser._id, {
+        title: 'Vinexus KYC Rejected',
+        body: updatedProfile.rejectionReason
+          ? `Your dealer KYC was rejected: ${updatedProfile.rejectionReason}`
+          : 'Your dealer KYC was rejected. Tap to resubmit your documents.',
+        data: { type: 'kyc_rejected', link: '/dealer/kyc' },
+      });
+    } catch (err) {
+      console.error('[DealerService] Push KYC rejected notification failed silently:', err.message);
+    }
+  }
+
   return updatedProfile;
 };
 
@@ -366,7 +397,7 @@ export const revokeDealerStatus = async (dealerId, reason, adminId = null) => {
  * Upload or replace a KYC document for authenticated dealer
  */
 export const uploadKycDocument = async (userId, { type, file }) => {
-  const allowedTypes = ['gst', 'pan', 'aadhaar'];
+  const allowedTypes = ['gst', 'pan', 'aadhaar', 'msme'];
   if (!allowedTypes.includes(type)) {
     throw new AppError(
       `Invalid KYC document type '${type}'. Allowed types: ${allowedTypes.join(', ')}`,

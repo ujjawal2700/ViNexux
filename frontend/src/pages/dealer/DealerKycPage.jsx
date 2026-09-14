@@ -20,6 +20,12 @@ import {
   File,
 } from 'lucide-react';
 
+const KYC_DOCUMENT_TYPES = [
+  { type: 'gst', title: 'GST Certificate', required: true },
+  { type: 'aadhaar', title: 'Aadhaar Card', required: true },
+  { type: 'msme', title: 'MSME Certificate', required: false },
+];
+
 export const DealerKycPage = () => {
   const toast = useToast();
 
@@ -354,16 +360,45 @@ export const DealerKycPage = () => {
           <Badge variant="primary">Step 2</Badge>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          
+        {/* Mandatory documents completion progress */}
+        {(() => {
+          const mandatoryTypes = KYC_DOCUMENT_TYPES.filter((d) => d.required);
+          const uploadedMandatory = mandatoryTypes.filter((d) => getDoc(d.type)).length;
+          const isComplete = uploadedMandatory === mandatoryTypes.length;
+          return (
+            <div
+              className={`p-4 rounded-xl border text-xs flex items-start gap-3 shadow-sm ${
+                isComplete
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                  : 'bg-rose-50 border-rose-200 text-rose-800'
+              }`}
+            >
+              {isComplete ? (
+                <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
+              ) : (
+                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+              )}
+              <div>
+                <span className="font-bold block text-foreground">
+                  {uploadedMandatory} of {mandatoryTypes.length} mandatory documents uploaded
+                </span>
+                <p className="leading-relaxed">
+                  {isComplete
+                    ? 'GST Certificate and Aadhaar Card are on file. Your registration is complete and pending admin review.'
+                    : 'GST Certificate and Aadhaar Card are mandatory to complete your dealer registration. MSME Certificate is optional.'}
+                </p>
+              </div>
+            </div>
+          );
+        })()}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+
           {/* Document Card Helper Function */}
-          {['gst', 'pan', 'aadhaar'].map((docType) => {
+          {KYC_DOCUMENT_TYPES.map(({ type: docType, title: typeTitle, required }) => {
             const doc = getDoc(docType);
             const isUploading = uploadingType === docType;
             const isDeleting = deletingType === docType;
-
-            const typeTitle =
-              docType === 'gst' ? 'GST Certificate' : docType === 'pan' ? 'PAN Card' : 'Aadhaar Card';
 
             return (
               <Card
@@ -379,12 +414,17 @@ export const DealerKycPage = () => {
                       <Badge variant="success" icon={<CheckCircle2 className="w-3 h-3" />}>
                         Uploaded
                       </Badge>
-                    ) : (
+                    ) : required ? (
                       <Badge variant="warning">Missing</Badge>
+                    ) : (
+                      <Badge variant="secondary">Optional</Badge>
                     )}
                   </div>
 
-                  <h3 className="font-bold text-foreground text-sm mb-1">{typeTitle}</h3>
+                  <h3 className="font-bold text-foreground text-sm mb-1">
+                    {typeTitle}
+                    {required && <span className="text-rose-600"> *</span>}
+                  </h3>
                   <p className="text-[11px] text-muted-foreground">Accepted formats: JPG, PNG, WEBP, PDF (Max 5 MB)</p>
                 </div>
 

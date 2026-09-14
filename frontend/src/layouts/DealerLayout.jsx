@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
+import usePushNotifications from '../hooks/usePushNotifications';
 import dealerService from '../services/dealerService';
 import { StatusBadge } from '../components/ui/Badge';
 import ThemeToggle from '../components/ui/ThemeToggle';
@@ -10,6 +11,7 @@ import { LayoutDashboard, FileCheck, Tag, ShoppingCart, Send, LogOut, ArrowLeft,
 const DealerLayout = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  usePushNotifications();
 
   const [dealerStatus, setDealerStatus] = useState('pending');
 

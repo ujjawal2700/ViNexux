@@ -34,7 +34,7 @@ const AdminLoginPage = () => {
     try {
       const response = await sendOtp(identifier, 'admin');
       if (response.success) {
-        navigate('/verify-otp', { state: { identifier, portal: 'admin' } });
+        navigate('/admin/verify-otp', { state: { identifier, portal: 'admin' } });
       } else {
         setError(response.message || 'Failed to send OTP code');
       }

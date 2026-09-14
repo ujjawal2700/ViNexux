@@ -84,9 +84,16 @@ export const AuthProvider = ({ children }) => {
     return response;
   };
 
-  // Send OTP. Pass portal='admin' from the dedicated admin login page.
-  const sendOtp = async (identifier, portal) => {
-    return await authService.sendOtp(identifier, portal);
+  // Send OTP. Pass portal='admin' from the dedicated admin login page, or
+  // purpose='signup' for pre-account contact verification during registration.
+  const sendOtp = async (identifier, portal, purpose) => {
+    return await authService.sendOtp(identifier, portal, purpose);
+  };
+
+  // Verifies a pre-account "signup" OTP (see authService.verifySignupOtp) -
+  // does not create a session; the signup() call right after does that.
+  const verifySignupOtp = async (identifier, otpCode) => {
+    return await authService.verifySignupOtp(identifier, otpCode);
   };
 
   // Verify OTP
@@ -170,6 +177,7 @@ export const AuthProvider = ({ children }) => {
     sessionConflict,
     conflictTicket,
     signup,
+    verifySignupOtp,
     googleLogin,
     sendOtp,
     verifyOtp,

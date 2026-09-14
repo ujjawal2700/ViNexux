@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
+import adminService from '../services/adminService';
 import ThemeToggle from '../components/ui/ThemeToggle';
 import Logo from '../components/ui/Logo';
 import { 
@@ -27,12 +28,33 @@ const AdminLayout = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [pendingKycCount, setPendingKycCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchPendingCount = async () => {
+      try {
+        const res = await adminService.getDashboardSummary();
+        const count = res.data?.dealers?.pending ?? res.dealers?.pending ?? 0;
+        if (!cancelled) setPendingKycCount(count);
+      } catch {
+        // Non-critical - sidebar badge simply stays hidden on failure
+      }
+    };
+    fetchPendingCount();
+    // Re-check periodically so the flag clears/appears without a full reload
+    const interval = setInterval(fetchPendingCount, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [location.pathname]);
 
   const mainNav = [
     { label: 'Overview Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
     { label: 'Category Management', path: '/admin/categories', icon: FolderTree },
     { label: 'Product Catalog', path: '/admin/products', icon: Package },
-    { label: 'Dealer Verification', path: '/admin/dealers', icon: Users },
+    { label: 'Dealer Verification', path: '/admin/dealers', icon: Users, badgeCount: pendingKycCount },
     { label: 'Customer Accounts', path: '/admin/customers', icon: UserCheck },
     { label: 'B2B Enquiries', path: '/admin/enquiries', icon: Inbox },
     { label: 'Active User Sessions', path: '/admin/sessions', icon: ShieldAlert },
@@ -101,7 +123,12 @@ const AdminLayout = () => {
                     }`}
                   >
                     <Icon className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
-                    {item.label}
+                    <span className="flex-1">{item.label}</span>
+                    {!!item.badgeCount && (
+                      <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] font-bold animate-pulse">
+                        {item.badgeCount > 99 ? '99+' : item.badgeCount}
+                      </span>
+                    )}
                   </Link>
                 );
               })}

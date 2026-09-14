@@ -109,6 +109,7 @@ const AppRoutes = () => {
       {/* DEDICATED ADMIN LOGIN (standalone, no storefront chrome) */}
       <Route element={<PublicRoute restricted={true} />}>
         <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/admin/verify-otp" element={<VerifyOtpPage />} />
       </Route>
 
       {/* DEALER PROTECTED ROUTES (WITH DEALER LAYOUT) */}

@@ -220,13 +220,19 @@ export const DealerKycStatusPage = () => {
         </CardHeader>
 
         <CardContent className="p-0 space-y-3 text-xs">
-          {['gst', 'pan', 'aadhaar'].map((docType) => {
+          {[
+            { type: 'gst', required: true },
+            { type: 'aadhaar', required: true },
+            { type: 'msme', required: false },
+          ].map(({ type: docType, required }) => {
             const doc = kycDocs.find((d) => d.type === docType);
             return (
               <div key={docType} className="flex items-center justify-between p-3 rounded-xl bg-background border border-border">
                 <div className="flex items-center gap-3">
                   <FileText className="w-4 h-4 text-primary" />
-                  <span className="font-bold uppercase text-foreground">{docType} Document</span>
+                  <span className="font-bold uppercase text-foreground">
+                    {docType} Document{!required && <span className="text-muted-foreground normal-case font-normal"> (Optional)</span>}
+                  </span>
                 </div>
 
                 {doc ? (
@@ -243,8 +249,10 @@ export const DealerKycStatusPage = () => {
                       View <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
-                ) : (
+                ) : required ? (
                   <span className="text-rose-600 font-semibold italic">Missing</span>
+                ) : (
+                  <span className="text-muted-foreground font-medium italic">Not uploaded</span>
                 )}
               </div>
             );

@@ -17,6 +17,7 @@ import adminReportRoutes from './adminReport.routes.js';
 import adminCmsRoutes from './adminCms.routes.js';
 import publicCmsRoutes from './publicCms.routes.js';
 import uploadRoutes from './upload.routes.js';
+import pushRoutes from './push.routes.js';
 
 const router = Router();
 
@@ -54,6 +55,9 @@ router.use('/dealers', dealerRoutes);
 // Mount cart and enquiry modules
 router.use('/cart', cartRoutes);
 router.use('/enquiries', enquiryRoutes);
+
+// Mount push notification token registration (any authenticated role)
+router.use('/push', pushRoutes);
 
 export default router;
 
