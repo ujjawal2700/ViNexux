@@ -15,6 +15,8 @@ import {
   hashToken,
   generateConflictTicket,
   verifyConflictTicket,
+  generatePasswordResetTicket,
+  verifyPasswordResetTicket,
 } from '../utils/token.util.js';
 
 import { normalizePhoneNumber } from '../utils/phone.util.js';
@@ -287,13 +289,15 @@ export const authService = {
       throw new AppError('Identifier is required', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
     }
 
-    // For login purpose: ensure user exists
-    if (purpose === 'login') {
+    // For login and password-reset purposes: ensure user exists
+    if (purpose === 'login' || purpose === 'password-reset') {
       const isEmail = normalized.includes('@');
       const user = await User.findOne(isEmail ? { email: normalized } : { phone: normalized });
       if (!user) {
         throw new AppError(
-          'No registered user account found with this email or phone number. Please signup first.',
+          purpose === 'password-reset'
+            ? 'No registered user account found with this email or phone number.'
+            : 'No registered user account found with this email or phone number. Please signup first.',
           HTTP_STATUS.NOT_FOUND,
           ERROR_CODES.NOT_FOUND
         );
@@ -306,23 +310,27 @@ export const authService = {
         );
       }
 
-      // Dedicated admin login surface (/admin/login): reject non-admin accounts
-      if (portal === 'admin') {
-        if (user.role !== 'admin') {
-          throw new AppError(
-            'This portal is strictly reserved for system administrators. Non-admin accounts cannot sign in here.',
-            HTTP_STATUS.FORBIDDEN,
-            ERROR_CODES.FORBIDDEN
-          );
-        }
-      } else {
-        // Standard customer/dealer login surface (/login): reject admin accounts
-        if (user.role === 'admin') {
-          throw new AppError(
-            'This is Not Admin Portal',
-            HTTP_STATUS.FORBIDDEN,
-            ERROR_CODES.FORBIDDEN
-          );
+      // Admin-portal-specific role gating only applies to the login flow -
+      // password-reset is available to any account regardless of surface.
+      if (purpose === 'login') {
+        // Dedicated admin login surface (/admin/login): reject non-admin accounts
+        if (portal === 'admin') {
+          if (user.role !== 'admin') {
+            throw new AppError(
+              'This portal is strictly reserved for system administrators. Non-admin accounts cannot sign in here.',
+              HTTP_STATUS.FORBIDDEN,
+              ERROR_CODES.FORBIDDEN
+            );
+          }
+        } else {
+          // Standard customer/dealer login surface (/login): reject admin accounts
+          if (user.role === 'admin') {
+            throw new AppError(
+              'This is Not Admin Portal',
+              HTTP_STATUS.FORBIDDEN,
+              ERROR_CODES.FORBIDDEN
+            );
+          }
         }
       }
     }
@@ -540,6 +548,115 @@ export const authService = {
     await otpRecord.save();
 
     return { verified: true, identifier: normalized };
+  },
+
+  /**
+   * Verifies a "forgot password" OTP for an existing account and, on
+   * success, issues a short-lived single-purpose reset ticket. The ticket
+   * (not the OTP again) is what authorizes the actual password change in
+   * resetPassword() below - this keeps the OTP itself single-use.
+   */
+  async verifyResetOtp({ identifier, otp }) {
+    const normalized = normalizeIdentifier(identifier);
+    if (!normalized || !otp) {
+      throw new AppError('Identifier and OTP are required', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+    }
+
+    const otpRecord = await OtpVerification.findOne({ identifier: normalized, purpose: 'password-reset' });
+    if (!otpRecord || otpRecord.isVerified) {
+      throw new AppError(
+        'No pending OTP request found for this identifier. Please request a new OTP.',
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.BAD_REQUEST
+      );
+    }
+
+    if (otpRecord.expiresAt < new Date()) {
+      throw new AppError('OTP has expired. Please request a new OTP.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
+    }
+
+    if (otpRecord.attempts >= config.otpMaxAttempts) {
+      throw new AppError(
+        'Maximum verification attempts exceeded. Please request a new OTP.',
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.BAD_REQUEST
+      );
+    }
+
+    const computedHash = hashOtp(otp);
+    if (otpRecord.otpHash !== computedHash) {
+      otpRecord.attempts += 1;
+      await otpRecord.save();
+      throw new AppError('Invalid OTP. Please check and try again.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_CREDENTIALS);
+    }
+
+    otpRecord.isVerified = true;
+    await otpRecord.save();
+
+    const isEmail = normalized.includes('@');
+    const user = await User.findOne(isEmail ? { email: normalized } : { phone: normalized });
+    if (!user) {
+      throw new AppError('No registered user account found with this email or phone number.', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
+    }
+
+    const resetToken = generatePasswordResetTicket({ userId: user._id, identifier: normalized });
+
+    return { verified: true, identifier: normalized, resetToken };
+  },
+
+  /**
+   * Completes a password reset: verifies the single-purpose reset ticket
+   * issued by verifyResetOtp(), sets the new password, and revokes every
+   * currently active session for the account so a stolen device is logged
+   * out the moment the password changes.
+   */
+  async resetPassword({ resetToken, newPassword }) {
+    if (!resetToken || !newPassword) {
+      throw new AppError('Reset token and new password are required', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+    }
+
+    let decoded;
+    try {
+      decoded = verifyPasswordResetTicket(resetToken);
+    } catch (err) {
+      throw new AppError('Invalid or expired reset session. Please start over.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
+    }
+
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      throw new AppError('User not found.', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
+    }
+    if (user.accountStatus === 'blocked' || user.status === 'blocked') {
+      throw new AppError('Your account has been blocked. Please contact support.', HTTP_STATUS.FORBIDDEN, ERROR_CODES.FORBIDDEN);
+    }
+
+    // The signed JWT alone is stateless and would remain valid (and
+    // replayable) for its whole 10-minute window even after being used
+    // once. Tie it to the specific verified OTP record it was issued for
+    // and consume that record here, so the same resetToken cannot reset
+    // the password a second time.
+    const otpRecord = await OtpVerification.findOne({
+      identifier: decoded.identifier,
+      purpose: 'password-reset',
+      isVerified: true,
+    });
+    if (!otpRecord) {
+      throw new AppError('Invalid or expired reset session. Please start over.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    // Consume the OTP record so this resetToken can't be replayed.
+    await OtpVerification.deleteOne({ _id: otpRecord._id });
+
+    // Log every active session out - the password just changed.
+    await Session.updateMany(
+      { userId: user._id, isActive: true },
+      { isActive: false, revokedAt: new Date() }
+    );
+
+    return { success: true };
   },
 
   /**

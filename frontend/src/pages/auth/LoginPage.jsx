@@ -136,9 +136,9 @@ export const LoginPage = ({ initialTab = 'login' }) => {
                 <span>Remember me</span>
               </label>
 
-              <a href="#" onClick={(e) => e.preventDefault()} className="text-muted-foreground hover:text-primary transition-colors font-medium">
+              <Link to="/forgot-password" className="text-muted-foreground hover:text-primary transition-colors font-medium">
                 Forgot password?
-              </a>
+              </Link>
             </div>
 
             {/* Submit Sign In Button */}

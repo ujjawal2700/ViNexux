@@ -129,6 +129,20 @@ export const verifyOtp = asyncHandler(async (req, res) => {
   );
 });
 
+export const verifyResetOtp = asyncHandler(async (req, res) => {
+  const { identifier, otp } = req.body;
+  const result = await authService.verifyResetOtp({ identifier, otp });
+
+  return ApiResponse.success(res, 'OTP verified successfully', result, HTTP_STATUS.OK);
+});
+
+export const resetPassword = asyncHandler(async (req, res) => {
+  const { resetToken, newPassword } = req.body;
+  const result = await authService.resetPassword({ resetToken, newPassword });
+
+  return ApiResponse.success(res, 'Password reset successfully', result, HTTP_STATUS.OK);
+});
+
 export const forceLogin = asyncHandler(async (req, res) => {
   const { conflictTicket } = req.body;
   const reqInfo = {
@@ -210,6 +224,8 @@ export default {
   sendOtp,
   verifyOtp,
   verifySignupOtp,
+  verifyResetOtp,
+  resetPassword,
   forceLogin,
   refreshToken,
   logout,

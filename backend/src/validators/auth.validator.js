@@ -62,8 +62,8 @@ export const sendOtpSchema = {
       .trim()
       .min(3, { message: 'Identifier must be at least 3 characters' }),
     purpose: z
-      .enum(['signup', 'login', 'phone-change'], {
-        invalid_type_error: 'Purpose must be one of: signup, login, phone-change',
+      .enum(['signup', 'login', 'phone-change', 'password-reset'], {
+        invalid_type_error: 'Purpose must be one of: signup, login, phone-change, password-reset',
       })
       .default('login'),
     // Optional login surface hint. When set to 'admin' (the dedicated
@@ -101,6 +101,31 @@ export const verifySignupOtpSchema = {
       .string({ required_error: 'OTP is required' })
       .trim()
       .regex(/^\d{6}$/, { message: 'OTP must be exactly 6 numeric digits' }),
+  }),
+};
+
+export const verifyResetOtpSchema = {
+  body: z.object({
+    identifier: z
+      .string({ required_error: 'Identifier (email or phone) is required' })
+      .trim()
+      .min(3, { message: 'Identifier must be at least 3 characters' }),
+    otp: z
+      .string({ required_error: 'OTP is required' })
+      .trim()
+      .regex(/^\d{6}$/, { message: 'OTP must be exactly 6 numeric digits' }),
+  }),
+};
+
+export const resetPasswordSchema = {
+  body: z.object({
+    resetToken: z
+      .string({ required_error: 'Reset token is required' })
+      .trim()
+      .min(1, { message: 'Reset token is required' }),
+    newPassword: z
+      .string({ required_error: 'New password is required' })
+      .min(6, { message: 'Password must be at least 6 characters' }),
   }),
 };
 

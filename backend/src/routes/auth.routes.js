@@ -5,6 +5,8 @@ import {
   sendOtp,
   verifyOtp,
   verifySignupOtp,
+  verifyResetOtp,
+  resetPassword,
   forceLogin,
   refreshToken,
   logout,
@@ -20,6 +22,8 @@ import {
   sendOtpSchema,
   verifyOtpSchema,
   verifySignupOtpSchema,
+  verifyResetOtpSchema,
+  resetPasswordSchema,
   forceLoginSchema,
   refreshTokenSchema,
 } from '../validators/auth.validator.js';
@@ -32,6 +36,8 @@ router.post('/google', validate(googleAuthSchema), googleLogin);
 router.post('/send-otp', otpRateLimiter, validate(sendOtpSchema), sendOtp);
 router.post('/verify-otp', otpRateLimiter, validate(verifyOtpSchema), verifyOtp);
 router.post('/verify-signup-otp', otpRateLimiter, validate(verifySignupOtpSchema), verifySignupOtp);
+router.post('/verify-reset-otp', otpRateLimiter, validate(verifyResetOtpSchema), verifyResetOtp);
+router.post('/reset-password', validate(resetPasswordSchema), resetPassword);
 router.post('/force-login', validate(forceLoginSchema), forceLogin);
 router.post('/refresh-token', validate(refreshTokenSchema), refreshToken);
 

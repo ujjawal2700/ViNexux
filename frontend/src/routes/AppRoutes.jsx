@@ -19,6 +19,8 @@ import HomePage from '../pages/public/HomePage';
 import LoginPage from '../pages/auth/LoginPage';
 import AdminLoginPage from '../pages/auth/AdminLoginPage';
 import VerifyOtpPage from '../pages/auth/VerifyOtpPage';
+import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
 import ProductsPage from '../pages/public/ProductsPage';
 import ProductDetailPage from '../pages/public/ProductDetailPage';
 import CategoriesPage from '../pages/public/CategoriesPage';
@@ -90,6 +92,8 @@ const AppRoutes = () => {
           <Route path="/signup" element={<LoginPage initialTab="signup" />} />
           <Route path="/customer/login" element={<Navigate to="/login" replace />} />
           <Route path="/verify-otp" element={<VerifyOtpPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
         </Route>
 
         {/* CUSTOMER PROTECTED ROUTES */}

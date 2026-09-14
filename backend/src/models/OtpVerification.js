@@ -13,7 +13,7 @@ const otpVerificationSchema = new mongoose.Schema(
     },
     purpose: {
       type: String,
-      enum: ['signup', 'login', 'phone-change'],
+      enum: ['signup', 'login', 'phone-change', 'password-reset'],
       required: [true, 'OTP purpose is required'],
     },
     expiresAt: {

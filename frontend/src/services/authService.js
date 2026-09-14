@@ -45,6 +45,19 @@ export const authService = {
     return response.data;
   },
 
+  // Verifies the OTP sent for a "forgot password" request. On success the
+  // backend returns a short-lived resetToken that authorizes resetPassword.
+  verifyResetOtp: async (identifier, otpCode) => {
+    const response = await apiClient.post('/auth/verify-reset-otp', { identifier, otp: otpCode });
+    return response.data;
+  },
+
+  // Completes a password reset using the resetToken from verifyResetOtp.
+  resetPassword: async (resetToken, newPassword) => {
+    const response = await apiClient.post('/auth/reset-password', { resetToken, newPassword });
+    return response.data;
+  },
+
   // Force login when single active session conflict occurs
   forceLogin: async (conflictTicket) => {
     const response = await apiClient.post('/auth/force-login', { conflictTicket });

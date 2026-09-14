@@ -5,11 +5,11 @@ import dealerService from '../../services/dealerService';
 import useToast from '../../hooks/useToast';
 import { INDIA_STATES, getCitiesForState } from '../../data/indiaStatesCities';
 import { OTPInput } from '../../components/ui/OTPInput';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
+import { cn } from '../../lib/utils';
 import {
   Mail,
   Lock,
-  Eye,
-  EyeOff,
   ArrowRight,
   ArrowLeft,
   ShieldCheck,
@@ -33,8 +33,6 @@ const inputClass =
   'w-full bg-muted/40 border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-2xl pl-11 pr-4 py-3 text-xs text-foreground placeholder-muted-foreground outline-none transition-all font-medium';
 const plainInputClass =
   'w-full bg-muted/40 border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-2xl px-4 py-3 text-xs text-foreground placeholder-muted-foreground outline-none transition-all font-medium';
-const selectClass =
-  'w-full bg-muted/40 border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-2xl px-4 py-3 text-xs text-foreground outline-none transition-all font-medium disabled:opacity-50';
 
 const FileDropField = ({ label, required, file, onChange, disabled }) => (
   <label className="block">
@@ -98,6 +96,7 @@ const SignupWizard = ({ onSwitchToLogin }) => {
   const [custName, setCustName] = useState('');
   const [custEmail, setCustEmail] = useState('');
   const [custPassword, setCustPassword] = useState('');
+  const [custConfirmPassword, setCustConfirmPassword] = useState('');
   const [showCustPassword, setShowCustPassword] = useState(false);
 
   // Dealer fields
@@ -105,6 +104,7 @@ const SignupWizard = ({ onSwitchToLogin }) => {
   const [dealerEmail, setDealerEmail] = useState('');
   const [dealerPhone, setDealerPhone] = useState('');
   const [dealerPassword, setDealerPassword] = useState('');
+  const [dealerConfirmPassword, setDealerConfirmPassword] = useState('');
   const [showDealerPassword, setShowDealerPassword] = useState(false);
   const [companyName, setCompanyName] = useState('');
   const [gstin, setGstin] = useState('');
@@ -149,6 +149,9 @@ const SignupWizard = ({ onSwitchToLogin }) => {
       if (custPassword.length < 6) {
         return 'Password must be at least 6 characters long.';
       }
+      if (custPassword !== custConfirmPassword) {
+        return "Passwords don't match.";
+      }
       return null;
     }
 
@@ -157,6 +160,9 @@ const SignupWizard = ({ onSwitchToLogin }) => {
     }
     if (dealerPassword.length < 6) {
       return 'Password must be at least 6 characters long.';
+    }
+    if (dealerPassword !== dealerConfirmPassword) {
+      return "Passwords don't match.";
     }
     if (!PHONE_REGEX.test(dealerPhone.trim())) {
       return 'Please enter a valid 10-digit Indian mobile number.';
@@ -420,17 +426,39 @@ const SignupWizard = ({ onSwitchToLogin }) => {
               value={custPassword}
               onChange={(e) => setCustPassword(e.target.value)}
               placeholder="Create password"
-              className={`${inputClass} pr-11`}
+              className={inputClass}
               disabled={loading}
             />
-            <button
-              type="button"
-              onClick={() => setShowCustPassword(!showCustPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {showCustPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
           </div>
+          <div>
+            <div className="relative">
+              <Lock className="w-4 h-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type={showCustPassword ? 'text' : 'password'}
+                required
+                value={custConfirmPassword}
+                onChange={(e) => setCustConfirmPassword(e.target.value)}
+                placeholder="Confirm password"
+                className={cn(
+                  inputClass,
+                  custConfirmPassword && custPassword !== custConfirmPassword && 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20'
+                )}
+                disabled={loading}
+              />
+            </div>
+            {custConfirmPassword && custPassword !== custConfirmPassword && (
+              <p className="text-[10px] text-rose-600 font-semibold mt-1.5">Passwords don't match.</p>
+            )}
+          </div>
+          <label className="flex items-center gap-2 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showCustPassword}
+              onChange={(e) => setShowCustPassword(e.target.checked)}
+              className="rounded-md border-border bg-muted text-primary focus:ring-primary/20 w-3.5 h-3.5"
+            />
+            <span>Show passwords</span>
+          </label>
           <p className="text-[10px] text-muted-foreground flex items-center gap-1.5">
             <Mail className="w-3 h-3" /> We'll send a verification code to your email
           </p>
@@ -505,17 +533,41 @@ const SignupWizard = ({ onSwitchToLogin }) => {
               value={dealerPassword}
               onChange={(e) => setDealerPassword(e.target.value)}
               placeholder="Create password"
-              className={`${inputClass} pr-11`}
+              className={inputClass}
               disabled={loading}
             />
-            <button
-              type="button"
-              onClick={() => setShowDealerPassword(!showDealerPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {showDealerPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
           </div>
+
+          <div>
+            <div className="relative">
+              <Lock className="w-4 h-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type={showDealerPassword ? 'text' : 'password'}
+                required
+                value={dealerConfirmPassword}
+                onChange={(e) => setDealerConfirmPassword(e.target.value)}
+                placeholder="Confirm password"
+                className={cn(
+                  inputClass,
+                  dealerConfirmPassword && dealerPassword !== dealerConfirmPassword && 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20'
+                )}
+                disabled={loading}
+              />
+            </div>
+            {dealerConfirmPassword && dealerPassword !== dealerConfirmPassword && (
+              <p className="text-[10px] text-rose-600 font-semibold mt-1.5">Passwords don't match.</p>
+            )}
+          </div>
+
+          <label className="flex items-center gap-2 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showDealerPassword}
+              onChange={(e) => setShowDealerPassword(e.target.checked)}
+              className="rounded-md border-border bg-muted text-primary focus:ring-primary/20 w-3.5 h-3.5"
+            />
+            <span>Show passwords</span>
+          </label>
 
           <div className="space-y-3 pt-3 border-t border-border">
             <div className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -560,33 +612,26 @@ const SignupWizard = ({ onSwitchToLogin }) => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              <select
-                required
+              <SearchableSelect
                 value={selectedState}
-                onChange={(e) => {
-                  setSelectedState(e.target.value);
+                onChange={(val) => {
+                  setSelectedState(val);
                   setSelectedCity('');
                 }}
-                className={selectClass}
+                options={INDIA_STATES}
+                placeholder="Select State *"
+                searchPlaceholder="Search states..."
                 disabled={loading}
-              >
-                <option value="">Select State *</option>
-                {INDIA_STATES.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-              <select
-                required
+              />
+              <SearchableSelect
                 value={selectedCity}
-                onChange={(e) => setSelectedCity(e.target.value)}
-                className={selectClass}
+                onChange={setSelectedCity}
+                options={getCitiesForState(selectedState)}
+                placeholder={selectedState ? 'Select City *' : 'Select state first'}
+                searchPlaceholder="Search cities..."
+                emptyMessage="No matching cities."
                 disabled={loading || !selectedState}
-              >
-                <option value="">{selectedState ? 'Select City *' : 'Select state first'}</option>
-                {getCitiesForState(selectedState).map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+              />
               <input
                 type="text"
                 required

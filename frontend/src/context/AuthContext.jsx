@@ -96,6 +96,18 @@ export const AuthProvider = ({ children }) => {
     return await authService.verifySignupOtp(identifier, otpCode);
   };
 
+  // Verifies the OTP sent for a "forgot password" request; returns a
+  // short-lived resetToken (see authService.verifyResetOtp) that authorizes
+  // the actual password change - does not create a session.
+  const verifyResetOtp = async (identifier, otpCode) => {
+    return await authService.verifyResetOtp(identifier, otpCode);
+  };
+
+  // Completes a password reset using the resetToken from verifyResetOtp.
+  const resetPassword = async (resetToken, newPassword) => {
+    return await authService.resetPassword(resetToken, newPassword);
+  };
+
   // Verify OTP
   const verifyOtp = async (identifier, otpCode, portal) => {
     const response = await authService.verifyOtp(identifier, otpCode, portal);
@@ -181,6 +193,8 @@ export const AuthProvider = ({ children }) => {
     googleLogin,
     sendOtp,
     verifyOtp,
+    verifyResetOtp,
+    resetPassword,
     forceLogin,
     logout,
     updateProfile: updateUserProfile,

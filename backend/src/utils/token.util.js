@@ -85,6 +85,43 @@ export const verifyConflictTicket = (ticket) => {
   return decoded;
 };
 
+/**
+ * Generate a short-lived, tamper-resistant ticket proving a user just
+ * completed OTP verification for a "forgot password" request. Presenting
+ * this ticket (instead of the OTP again) is what authorizes the actual
+ * password change - it is single-purpose and expires quickly.
+ * @param {Object} params
+ * @param {string} params.userId
+ * @returns {string} Signed JWT password-reset ticket
+ */
+export const generatePasswordResetTicket = ({ userId, identifier }) => {
+  return jwt.sign(
+    {
+      userId: userId.toString(),
+      identifier,
+      type: 'password-reset',
+      jti: crypto.randomUUID(),
+    },
+    config.jwtSecret,
+    {
+      expiresIn: '10m',
+    }
+  );
+};
+
+/**
+ * Verify password-reset ticket token.
+ * @param {string} ticket
+ * @returns {Object} Decoded payload
+ */
+export const verifyPasswordResetTicket = (ticket) => {
+  const decoded = jwt.verify(ticket, config.jwtSecret);
+  if (decoded.type !== 'password-reset') {
+    throw new Error('Invalid ticket type');
+  }
+  return decoded;
+};
+
 export default {
   generateAccessToken,
   verifyAccessToken,
@@ -92,4 +129,6 @@ export default {
   hashToken,
   generateConflictTicket,
   verifyConflictTicket,
+  generatePasswordResetTicket,
+  verifyPasswordResetTicket,
 };
