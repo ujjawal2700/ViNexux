@@ -15,15 +15,12 @@ const PublicRoute = ({ restricted = false }) => {
   }
 
   if (isAuthenticated && restricted) {
-    switch (user?.role) {
-      case ROLES.ADMIN:
-        return <Navigate to="/admin/dashboard" replace />;
-      case ROLES.DEALER:
-        return <Navigate to="/dealer/dashboard" replace />;
-      case ROLES.CUSTOMER:
-      default:
-        return <Navigate to="/customer/dashboard" replace />;
+    // No dedicated dashboard for customer/dealer roles - both land on the
+    // storefront, exactly like a normal post-OTP login (see VerifyOtpPage).
+    if (user?.role === ROLES.ADMIN) {
+      return <Navigate to="/admin/dashboard" replace />;
     }
+    return <Navigate to="/" replace />;
   }
 
   return <Outlet />;

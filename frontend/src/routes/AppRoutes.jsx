@@ -1,9 +1,8 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 
 // Layouts
 import PublicLayout from '../layouts/PublicLayout';
-import DealerLayout from '../layouts/DealerLayout';
 import AdminLayout from '../layouts/AdminLayout';
 
 // Route Guards
@@ -29,25 +28,14 @@ import UnauthorizedPage from '../pages/public/UnauthorizedPage';
 import NotFoundPage from '../pages/public/NotFoundPage';
 import UiPreviewPage from '../pages/public/UiPreviewPage';
 
-// Customer Pages
-import CustomerDashboardPage from '../pages/customer/CustomerDashboardPage';
-import CartPage from '../pages/customer/CartPage';
-import CheckoutEnquiryPage from '../pages/customer/CheckoutEnquiryPage';
-import CustomerEnquiriesPage from '../pages/customer/CustomerEnquiriesPage';
-import CustomerEnquiryDetailPage from '../pages/customer/CustomerEnquiryDetailPage';
-import CustomerProfilePage from '../pages/customer/CustomerProfilePage';
-import CustomerProfileUpdatePage from '../pages/customer/CustomerProfileUpdatePage';
-
-// Dealer Pages
-import DealerDashboardPage from '../pages/dealer/DealerDashboardPage';
-import DealerKycPage from '../pages/dealer/DealerKycPage';
-import DealerKycStatusPage from '../pages/dealer/DealerKycStatusPage';
-import DealerPricingPage from '../pages/dealer/DealerPricingPage';
-import DealerCartPage from '../pages/dealer/DealerCartPage';
-import DealerEnquiriesPage from '../pages/dealer/DealerEnquiriesPage';
-import DealerEnquiryDetailPage from '../pages/dealer/DealerEnquiryDetailPage';
-import DealerProfilePage from '../pages/dealer/DealerProfilePage';
-import DealerProfileUpdatePage from '../pages/dealer/DealerProfileUpdatePage';
+// Account Pages (shared by customer & dealer roles - no more separate
+// dealer portal; see pages/account/)
+import CartPage from '../pages/account/CartPage';
+import CheckoutEnquiryPage from '../pages/account/CheckoutEnquiryPage';
+import EnquiriesPage from '../pages/account/EnquiriesPage';
+import EnquiryDetailPage from '../pages/account/EnquiryDetailPage';
+import ProfilePage from '../pages/account/ProfilePage';
+import ProfileUpdatePage from '../pages/account/ProfileUpdatePage';
 
 // Admin Pages
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
@@ -57,6 +45,7 @@ import AdminProductDetailPage from '../pages/admin/AdminProductDetailPage';
 import AdminDealersPage from '../pages/admin/AdminDealersPage';
 import AdminDealerDetailPage from '../pages/admin/AdminDealerDetailPage';
 import AdminCustomersPage from '../pages/admin/AdminCustomersPage';
+import AdminCustomerDetailPage from '../pages/admin/AdminCustomerDetailPage';
 import AdminEnquiriesPage from '../pages/admin/AdminEnquiriesPage';
 import AdminEnquiryDetailPage from '../pages/admin/AdminEnquiryDetailPage';
 import AdminSessionsPage from '../pages/admin/AdminSessionsPage';
@@ -68,6 +57,13 @@ import AdminCmsBadgesPage from '../pages/admin/AdminCmsBadgesPage';
 import AdminCmsFooterPage from '../pages/admin/AdminCmsFooterPage';
 import AdminProfilePage from '../pages/admin/AdminProfilePage';
 import AdminProfileUpdatePage from '../pages/admin/AdminProfileUpdatePage';
+
+// Tiny helper so the one dynamic-param legacy redirect
+// (/customer/enquiries/:id) can interpolate :id - <Navigate> alone can't.
+const EnquiryDetailRedirect = () => {
+  const { id } = useParams();
+  return <Navigate to={`/account/enquiries/${id}`} replace />;
+};
 
 const AppRoutes = () => {
   return (
@@ -81,7 +77,7 @@ const AppRoutes = () => {
         <Route path="/content/pages/:slug" element={<CmsPage />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
         <Route path="/not-found" element={<NotFoundPage />} />
-        
+
         {/* Internal Component Library Showcase */}
         <Route path="/ui-preview" element={<UiPreviewPage />} />
 
@@ -96,41 +92,46 @@ const AppRoutes = () => {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
         </Route>
 
-        {/* CUSTOMER PROTECTED ROUTES */}
+        {/* ACCOUNT ROUTES - shared by customer & dealer roles. No dedicated
+            dealer portal: both roles use the exact same storefront chrome
+            and pages, differentiated only by role-aware content within them
+            (e.g. the Business & KYC section on Profile is dealer-only). */}
         <Route element={<ProtectedRoute />}>
-          <Route element={<RoleRoute allowedRoles={[ROLES.CUSTOMER]} />}>
-            <Route path="/customer/dashboard" element={<CustomerDashboardPage />} />
-            <Route path="/customer/cart" element={<CartPage />} />
-            <Route path="/customer/checkout-enquiry" element={<CheckoutEnquiryPage />} />
-            <Route path="/customer/enquiries" element={<CustomerEnquiriesPage />} />
-            <Route path="/customer/enquiries/:id" element={<CustomerEnquiryDetailPage />} />
-            <Route path="/customer/profile" element={<CustomerProfilePage />} />
-            <Route path="/customer/profile/update" element={<CustomerProfileUpdatePage />} />
+          <Route element={<RoleRoute allowedRoles={[ROLES.CUSTOMER, ROLES.DEALER]} />}>
+            <Route path="/account/cart" element={<CartPage />} />
+            <Route path="/account/checkout-enquiry" element={<CheckoutEnquiryPage />} />
+            <Route path="/account/enquiries" element={<EnquiriesPage />} />
+            <Route path="/account/enquiries/:id" element={<EnquiryDetailPage />} />
+            <Route path="/account/profile" element={<ProfilePage />} />
+            <Route path="/account/profile/update" element={<ProfileUpdatePage />} />
           </Route>
         </Route>
+
+        {/* Legacy /customer/* and /dealer/* link redirects - the dealer
+            portal and the old /customer/* prefix were retired in favor of
+            the unified /account/* routes above. Kept so old bookmarks and
+            any stray hardcoded links still resolve instead of 404ing. */}
+        <Route path="/customer/dashboard" element={<Navigate to="/" replace />} />
+        <Route path="/customer/cart" element={<Navigate to="/account/cart" replace />} />
+        <Route path="/customer/checkout-enquiry" element={<Navigate to="/account/checkout-enquiry" replace />} />
+        <Route path="/customer/enquiries" element={<Navigate to="/account/enquiries" replace />} />
+        <Route path="/customer/enquiries/:id" element={<EnquiryDetailRedirect />} />
+        <Route path="/customer/profile" element={<Navigate to="/account/profile" replace />} />
+        <Route path="/customer/profile/update" element={<Navigate to="/account/profile/update" replace />} />
+        <Route path="/dealer/dashboard" element={<Navigate to="/" replace />} />
+        <Route path="/dealer/cart" element={<Navigate to="/account/cart" replace />} />
+        <Route path="/dealer/enquiries" element={<Navigate to="/account/enquiries" replace />} />
+        <Route path="/dealer/profile" element={<Navigate to="/account/profile" replace />} />
+        <Route path="/dealer/profile/update" element={<Navigate to="/account/profile/update" replace />} />
+        <Route path="/dealer/kyc" element={<Navigate to="/account/profile/update" replace />} />
+        <Route path="/dealer/kyc/status" element={<Navigate to="/account/profile" replace />} />
+        <Route path="/dealer/pricing" element={<Navigate to="/products" replace />} />
       </Route>
 
       {/* DEDICATED ADMIN LOGIN (standalone, no storefront chrome) */}
       <Route element={<PublicRoute restricted={true} />}>
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/admin/verify-otp" element={<VerifyOtpPage />} />
-      </Route>
-
-      {/* DEALER PROTECTED ROUTES (WITH DEALER LAYOUT) */}
-      <Route element={<ProtectedRoute />}>
-        <Route element={<RoleRoute allowedRoles={[ROLES.DEALER]} />}>
-          <Route element={<DealerLayout />}>
-            <Route path="/dealer/dashboard" element={<DealerDashboardPage />} />
-            <Route path="/dealer/kyc" element={<DealerKycPage />} />
-            <Route path="/dealer/kyc/status" element={<DealerKycStatusPage />} />
-            <Route path="/dealer/pricing" element={<DealerPricingPage />} />
-            <Route path="/dealer/cart" element={<DealerCartPage />} />
-            <Route path="/dealer/enquiries" element={<DealerEnquiriesPage />} />
-            <Route path="/dealer/enquiries/:id" element={<DealerEnquiryDetailPage />} />
-            <Route path="/dealer/profile" element={<DealerProfilePage />} />
-            <Route path="/dealer/profile/update" element={<DealerProfileUpdatePage />} />
-          </Route>
-        </Route>
       </Route>
 
       {/* ADMIN PROTECTED ROUTES (WITH ADMIN LAYOUT) */}
@@ -145,7 +146,16 @@ const AppRoutes = () => {
             <Route path="/admin/dealers" element={<AdminDealersPage />} />
             <Route path="/admin/dealers/:id" element={<AdminDealerDetailPage />} />
             <Route path="/admin/customers" element={<AdminCustomersPage />} />
-            <Route path="/admin/enquiries" element={<AdminEnquiriesPage />} />
+            <Route path="/admin/customers/:id" element={<AdminCustomerDetailPage />} />
+            {/* B2C / B2B enquiry split - both routes render the same
+                AdminEnquiriesPage, locked to a userType via prop. */}
+            {/* key forces a fresh mount when switching scopes directly via
+                nav (userTypeFilter etc. are initialized once from the
+                forcedUserType prop, so a remount - not just a re-render -
+                is what resets them correctly). */}
+            <Route path="/admin/enquiries/customers" element={<AdminEnquiriesPage key="customer" forcedUserType="customer" />} />
+            <Route path="/admin/enquiries/dealers" element={<AdminEnquiriesPage key="dealer" forcedUserType="dealer" />} />
+            <Route path="/admin/enquiries" element={<Navigate to="/admin/enquiries/dealers" replace />} />
             <Route path="/admin/enquiries/:id" element={<AdminEnquiryDetailPage />} />
             <Route path="/admin/sessions" element={<AdminSessionsPage />} />
             <Route path="/admin/reports" element={<AdminReportsPage />} />

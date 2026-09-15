@@ -330,7 +330,7 @@ export const CartPage = () => {
                   size="lg"
                   fullWidth
                   rightIcon={<ArrowRight className="w-4 h-4" />}
-                  onClick={() => navigate('/customer/checkout-enquiry')}
+                  onClick={() => navigate('/account/checkout-enquiry')}
                 >
                   Send Official Enquiry
                 </Button>

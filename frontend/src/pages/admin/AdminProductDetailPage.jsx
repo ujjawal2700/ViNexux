@@ -58,6 +58,24 @@ const AdminProductDetailPage = () => {
   const [imageDeleteTarget, setImageDeleteTarget] = useState(null);
   const [imageDeleteLoading, setImageDeleteLoading] = useState(false);
 
+  // Create-mode only: images picked before the product exists yet (no ID to
+  // upload against). Held client-side as {file, altText, previewUrl}, then
+  // uploaded one-by-one via the existing single-image endpoint right after
+  // the product is created.
+  const [stagedImages, setStagedImages] = useState([]);
+  const stagedImagesRef = React.useRef([]);
+
+  useEffect(() => {
+    stagedImagesRef.current = stagedImages;
+  }, [stagedImages]);
+
+  useEffect(() => {
+    // Revoke any staged preview URLs on unmount to avoid leaking blob URLs.
+    return () => {
+      stagedImagesRef.current.forEach((img) => img.previewUrl && URL.revokeObjectURL(img.previewUrl));
+    };
+  }, []);
+
   const [toast, setToast] = useState(null);
 
   const loadCategories = useCallback(async () => {
@@ -139,8 +157,22 @@ const AdminProductDetailPage = () => {
 
       if (isCreateMode) {
         const res = await adminService.createProduct(payload);
-        setToast({ message: 'Product created successfully!', type: 'success' });
         const newId = res.data?._id;
+
+        // Upload any images staged before the product existed, reusing the
+        // same single-image endpoint the edit-mode gallery already uses.
+        if (newId && stagedImages.length > 0) {
+          for (const staged of stagedImages) {
+            try {
+              await adminService.uploadProductImage(newId, staged.file, staged.altText);
+            } catch (imgErr) {
+              console.error('Staged image upload failed:', imgErr);
+              setToast({ message: `Product created, but "${staged.file.name}" failed to upload.`, type: 'error' });
+            }
+          }
+        }
+
+        setToast({ message: 'Product created successfully!', type: 'success' });
         if (newId) {
           navigate(`/admin/products/${newId}`, { replace: true });
         }
@@ -176,6 +208,25 @@ const AdminProductDetailPage = () => {
     } finally {
       setImageUploading(false);
     }
+  };
+
+  const handleStageImage = (e) => {
+    e.preventDefault();
+    if (!imageFile) return;
+    const previewUrl = URL.createObjectURL(imageFile);
+    setStagedImages((prev) => [...prev, { file: imageFile, altText: imageAltText, previewUrl }]);
+    setImageFile(null);
+    setImageAltText('');
+    const fileInput = document.getElementById('product-image-input');
+    if (fileInput) fileInput.value = '';
+  };
+
+  const handleRemoveStagedImage = (idx) => {
+    setStagedImages((prev) => {
+      const target = prev[idx];
+      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((_, i) => i !== idx);
+    });
   };
 
   const handleImageDeleteConfirm = async () => {
@@ -399,72 +450,109 @@ const AdminProductDetailPage = () => {
       </form>
 
       {/* Image Gallery */}
-      {!isCreateMode && (
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-5 shadow-xs">
-          <div>
-            <h3 className="text-sm font-bold text-foreground">Image Gallery</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {product?.images?.length || 0} image{(product?.images?.length || 0) === 1 ? '' : 's'} uploaded for this product
-            </p>
+      <div className="bg-card border border-border rounded-2xl p-6 space-y-5 shadow-xs">
+        <div>
+          <h3 className="text-sm font-bold text-foreground">Image Gallery</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {isCreateMode
+              ? `${stagedImages.length} image${stagedImages.length === 1 ? '' : 's'} staged - uploaded once you create the product`
+              : `${product?.images?.length || 0} image${(product?.images?.length || 0) === 1 ? '' : 's'} uploaded for this product`}
+          </p>
+        </div>
+
+        <form
+          onSubmit={isCreateMode ? handleStageImage : handleImageUpload}
+          className="p-4 rounded-xl bg-muted/60 border border-dashed border-border space-y-4"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+            <FormField label="Select File (JPEG, PNG, WebP)">
+              <input
+                id="product-image-input"
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                onChange={(e) => setImageFile(e.target.files[0])}
+                className="block w-full text-xs text-muted-foreground file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90 cursor-pointer"
+              />
+            </FormField>
+
+            <FormField label="Alt Text (Optional)">
+              <Input
+                value={imageAltText}
+                onChange={(e) => setImageAltText(e.target.value)}
+                placeholder="e.g. Front View"
+              />
+            </FormField>
+
+            <Button
+              variant="primary"
+              type="submit"
+              isLoading={imageUploading}
+              isDisabled={!imageFile}
+              leftIcon={<ImagePlus className="w-4 h-4" />}
+            >
+              {isCreateMode ? 'Add to Gallery' : 'Upload'}
+            </Button>
           </div>
+        </form>
 
-          <form onSubmit={handleImageUpload} className="p-4 rounded-xl bg-muted/60 border border-dashed border-border space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
-              <FormField label="Select File (JPEG, PNG, WebP)">
-                <input
-                  id="product-image-input"
-                  type="file"
-                  accept="image/jpeg,image/jpg,image/png,image/webp"
-                  onChange={(e) => setImageFile(e.target.files[0])}
-                  className="block w-full text-xs text-muted-foreground file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90 cursor-pointer"
-                />
-              </FormField>
-
-              <FormField label="Alt Text (Optional)">
-                <Input
-                  value={imageAltText}
-                  onChange={(e) => setImageAltText(e.target.value)}
-                  placeholder="e.g. Front View"
-                />
-              </FormField>
-
-              <Button variant="primary" type="submit" isLoading={imageUploading} isDisabled={!imageFile} leftIcon={<ImagePlus className="w-4 h-4" />}>
-                Upload
-              </Button>
-            </div>
-          </form>
-
-          {!product?.images || product.images.length === 0 ? (
+        {isCreateMode ? (
+          stagedImages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
               <ImageOff className="w-8 h-8 text-muted-foreground" />
-              <p className="text-xs text-muted-foreground">No images uploaded for this product yet.</p>
+              <p className="text-xs text-muted-foreground">No images staged yet. Add one above.</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-              {product.images.map((img, idx) => (
+              {stagedImages.map((img, idx) => (
                 <div key={idx} className="group relative rounded-xl border border-border bg-muted overflow-hidden aspect-square">
-                  <img src={img.url} alt={img.altText || 'Product'} className="w-full h-full object-cover" />
+                  <img src={img.previewUrl} alt={img.altText || 'Staged product'} className="w-full h-full object-cover" />
                   {idx === 0 && (
                     <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded-md bg-primary text-white text-[9px] font-bold uppercase tracking-wide shadow-sm">
                       Primary
                     </span>
                   )}
-                  {img.publicId && (
-                    <button
-                      type="button"
-                      onClick={() => setImageDeleteTarget(img)}
-                      className="absolute top-2 right-2 p-1.5 bg-destructive/90 hover:bg-destructive text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Delete Image"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveStagedImage(idx)}
+                    className="absolute top-2 right-2 p-1.5 bg-destructive/90 hover:bg-destructive text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Remove Staged Image"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               ))}
             </div>
-          )}
-        </div>
-      )}
+          )
+        ) : !product?.images || product.images.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
+            <ImageOff className="w-8 h-8 text-muted-foreground" />
+            <p className="text-xs text-muted-foreground">No images uploaded for this product yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+            {product.images.map((img, idx) => (
+              <div key={idx} className="group relative rounded-xl border border-border bg-muted overflow-hidden aspect-square">
+                <img src={img.url} alt={img.altText || 'Product'} className="w-full h-full object-cover" />
+                {idx === 0 && (
+                  <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded-md bg-primary text-white text-[9px] font-bold uppercase tracking-wide shadow-sm">
+                    Primary
+                  </span>
+                )}
+                {img.publicId && (
+                  <button
+                    type="button"
+                    onClick={() => setImageDeleteTarget(img)}
+                    className="absolute top-2 right-2 p-1.5 bg-destructive/90 hover:bg-destructive text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Delete Image"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <ConfirmDialog
         isOpen={!!imageDeleteTarget}

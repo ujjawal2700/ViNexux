@@ -47,7 +47,14 @@ export const config = {
   googleSheetsTabName: process.env.GOOGLE_SHEETS_TAB_NAME || 'Enquiries',
   googleServiceAccountEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || '',
   googleServiceAccountPrivateKey: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY || '',
-  storageProvider: process.env.STORAGE_PROVIDER || 'development',
+  // Auto-selects 'cloudinary' once all three Cloudinary credentials are set,
+  // matching the same auto-detect convention as the other providers below -
+  // adding the keys alone is enough, no separate STORAGE_PROVIDER flip needed.
+  storageProvider:
+    process.env.STORAGE_PROVIDER ||
+    (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET
+      ? 'cloudinary'
+      : 'development'),
   cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
   cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || '',
   cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || '',

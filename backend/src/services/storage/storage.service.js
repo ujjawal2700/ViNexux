@@ -1,7 +1,49 @@
+import sharp from 'sharp';
 import { getStorageProvider } from '../../integrations/storage/index.js';
 import { AppError } from '../../utils/AppError.js';
 import { HTTP_STATUS } from '../../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../../constants/errorCodes.js';
+
+// Cap dimensions on the long edge so oversized camera/scan photos don't
+// bloat storage - upscaling is never applied (withoutEnlargement).
+const MAX_IMAGE_DIMENSION = 2000;
+const WEBP_QUALITY = 80;
+
+/**
+ * Compresses and converts an uploaded image to WebP before it ever reaches
+ * a storage provider (Cloudinary or the dev mock alike) - applies uniformly
+ * regardless of which provider is active. Non-image uploads (KYC docs can
+ * be PDFs) pass through completely unchanged. If sharp fails for any reason
+ * (corrupt/unsupported image data), the original buffer is uploaded as-is
+ * rather than blocking the upload entirely.
+ *
+ * @param {Buffer} buffer
+ * @param {string} mimetype
+ * @returns {Promise<{ buffer: Buffer, mimetype: string, extension: string|null }>}
+ */
+const prepareImageBuffer = async (buffer, mimetype) => {
+  if (!mimetype || !mimetype.startsWith('image/')) {
+    return { buffer, mimetype, extension: null };
+  }
+
+  try {
+    const converted = await sharp(buffer)
+      .rotate() // respect EXIF orientation before stripping metadata
+      .resize({
+        width: MAX_IMAGE_DIMENSION,
+        height: MAX_IMAGE_DIMENSION,
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
+      .webp({ quality: WEBP_QUALITY })
+      .toBuffer();
+
+    return { buffer: converted, mimetype: 'image/webp', extension: 'webp' };
+  } catch (err) {
+    console.warn(`[StorageService] Image compression/WebP conversion failed, uploading original: ${err.message}`);
+    return { buffer, mimetype, extension: null };
+  }
+};
 
 /**
  * Centralized Storage Service facade.
@@ -24,12 +66,19 @@ export const storageService = {
       throw new AppError('File content buffer is missing or empty.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
     }
 
+    // Compress + convert to WebP before handing off to the provider (image
+    // uploads only - PDFs and other non-image files pass through untouched).
+    const prepared = await prepareImageBuffer(buffer, mimetype);
+    const preparedName = prepared.extension
+      ? `${(originalname || 'file').replace(/\.[^./]+$/, '')}.${prepared.extension}`
+      : originalname;
+
     const provider = getStorageProvider();
     try {
       const result = await provider.uploadFile({
-        buffer,
-        originalname,
-        mimetype,
+        buffer: prepared.buffer,
+        originalname: preparedName,
+        mimetype: prepared.mimetype,
         folder,
         category,
       });

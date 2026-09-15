@@ -111,6 +111,7 @@ const SignupWizard = ({ onSwitchToLogin }) => {
   const [gstFile, setGstFile] = useState(null);
   const [aadhaarNumber, setAadhaarNumber] = useState('');
   const [aadhaarFile, setAadhaarFile] = useState(null);
+  const [dealerAddress, setDealerAddress] = useState('');
   const [selectedState, setSelectedState] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [pincode, setPincode] = useState('');
@@ -122,17 +123,15 @@ const SignupWizard = ({ onSwitchToLogin }) => {
 
   const isDealer = role === 'dealer';
 
-  const navigateByRole = (userRole) => {
+  const navigateByRole = () => {
     const from = location.state?.from?.pathname;
     if (from && from !== '/login' && from !== '/register' && from !== '/signup') {
       navigate(from, { replace: true });
       return;
     }
-    if (userRole === 'dealer') {
-      navigate('/dealer/dashboard', { replace: true });
-    } else {
-      navigate('/customer/dashboard', { replace: true });
-    }
+    // No dedicated dashboard for customer/dealer roles - land on the
+    // storefront, exactly like a normal post-OTP login (see VerifyOtpPage).
+    navigate('/', { replace: true });
   };
 
   const handleSelectRole = (selected) => {
@@ -181,6 +180,9 @@ const SignupWizard = ({ onSwitchToLogin }) => {
     }
     if (!aadhaarFile) {
       return 'Please upload a photo of your Aadhaar Card.';
+    }
+    if (!dealerAddress.trim()) {
+      return 'Please enter your business address.';
     }
     if (!selectedState) {
       return 'Please select your state.';
@@ -258,6 +260,7 @@ const SignupWizard = ({ onSwitchToLogin }) => {
           companyName,
           gstin: gstin.toUpperCase(),
           aadhaarNumber,
+          address: dealerAddress.trim(),
           city: selectedCity,
           state: selectedState,
           pincode,
@@ -610,6 +613,16 @@ const SignupWizard = ({ onSwitchToLogin }) => {
               <FileDropField label="GST Certificate Photo" required file={gstFile} onChange={setGstFile} disabled={loading} />
               <FileDropField label="Aadhaar Card Photo" required file={aadhaarFile} onChange={setAadhaarFile} disabled={loading} />
             </div>
+
+            <textarea
+              required
+              value={dealerAddress}
+              onChange={(e) => setDealerAddress(e.target.value)}
+              placeholder="Business Address (Street, Area) *"
+              rows={2}
+              className={`${plainInputClass} resize-none`}
+              disabled={loading}
+            />
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <SearchableSelect

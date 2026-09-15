@@ -33,7 +33,6 @@ import {
   ChevronRight,
   ChevronDown,
   Sparkles,
-  LayoutDashboard,
 } from 'lucide-react';
 
 const PublicLayout = () => {
@@ -110,24 +109,11 @@ const PublicLayout = () => {
     }
   };
 
-  // Get user role dashboard route
-  const getDashboardLink = () => {
-    if (!user) return '/login';
-    switch (user.role) {
-      case ROLES.ADMIN:
-        return '/admin/dashboard';
-      case ROLES.DEALER:
-        return '/dealer/dashboard';
-      case ROLES.CUSTOMER:
-      default:
-        return '/customer/dashboard';
-    }
-  };
-
-  // Get user role profile route (admin manages its own account separately)
+  // Get user role profile route. No dedicated dashboard for customer/dealer
+  // roles - both share the same unified /account/profile; admin manages
+  // its own account separately (no link shown here for admin).
   const getProfileLink = () => {
-    if (user?.role === ROLES.DEALER) return '/dealer/profile';
-    if (user?.role === ROLES.CUSTOMER) return '/customer/profile';
+    if (user?.role === ROLES.DEALER || user?.role === ROLES.CUSTOMER) return '/account/profile';
     return null;
   };
 
@@ -221,7 +207,7 @@ const PublicLayout = () => {
             {/* Cart Icon & Indicator Badge */}
             {user?.role !== 'admin' && (
               <Link
-                to={user?.role === 'dealer' ? '/dealer/cart' : '/customer/cart'}
+                to="/account/cart"
                 className="relative p-2.5 text-foreground hover:text-primary bg-muted hover:bg-border border border-border rounded-xl transition-all duration-200 flex items-center justify-center group"
                 title="Enquiry Cart"
               >
@@ -241,7 +227,7 @@ const PublicLayout = () => {
                   <DropdownMenuTrigger asChild>
                     <button className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted hover:bg-border border border-border text-foreground text-xs font-bold transition-colors">
                       <User className="w-3.5 h-3.5 text-primary" />
-                      {user?.role === 'dealer' ? 'Dealer Portal' : user?.role === 'admin' ? 'Admin Panel' : 'My Account'}
+                      {user?.role === 'admin' ? 'Admin Panel' : 'My Account'}
                       <ChevronDown className="w-3 h-3 text-muted-foreground" />
                     </button>
                   </DropdownMenuTrigger>
@@ -251,11 +237,6 @@ const PublicLayout = () => {
                       <div className="truncate font-normal normal-case">{user?.email || user?.phone}</div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link to={getDashboardLink()}>
-                        <LayoutDashboard className="w-3.5 h-3.5 text-muted-foreground" /> Dashboard
-                      </Link>
-                    </DropdownMenuItem>
                     {getProfileLink() && (
                       <DropdownMenuItem asChild>
                         <Link to={getProfileLink()}>
@@ -347,11 +328,6 @@ const PublicLayout = () => {
                     {user?.role}
                   </Badge>
                 </div>
-                <Link to={getDashboardLink()} className="block">
-                  <Button variant="primary" fullWidth leftIcon={<User className="w-4 h-4" />}>
-                    Go to Dashboard
-                  </Button>
-                </Link>
                 {getProfileLink() && (
                   <Link to={getProfileLink()} className="block">
                     <Button variant="secondary" fullWidth leftIcon={<UserCircle className="w-4 h-4" />}>

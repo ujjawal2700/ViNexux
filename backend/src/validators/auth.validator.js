@@ -56,20 +56,28 @@ export const googleAuthSchema = {
 };
 
 export const sendOtpSchema = {
-  body: z.object({
-    identifier: z
-      .string({ required_error: 'Identifier (email or phone) is required' })
-      .trim()
-      .min(3, { message: 'Identifier must be at least 3 characters' }),
-    purpose: z
-      .enum(['signup', 'login', 'phone-change', 'password-reset'], {
-        invalid_type_error: 'Purpose must be one of: signup, login, phone-change, password-reset',
-      })
-      .default('login'),
-    // Optional login surface hint. When set to 'admin' (the dedicated
-    // /admin/login page), the target account must have the admin role.
-    portal: z.enum(['admin']).optional(),
-  }),
+  body: z
+    .object({
+      identifier: z
+        .string({ required_error: 'Identifier (email or phone) is required' })
+        .trim()
+        .min(3, { message: 'Identifier must be at least 3 characters' }),
+      purpose: z
+        .enum(['signup', 'login', 'phone-change', 'password-reset'], {
+          invalid_type_error: 'Purpose must be one of: signup, login, phone-change, password-reset',
+        })
+        .default('login'),
+      // Optional login surface hint. When set to 'admin' (the dedicated
+      // /admin/login page), the target account must have the admin role.
+      portal: z.enum(['admin']).optional(),
+      // Required only for the admin portal login surface - admin sign-in is
+      // password + OTP two-factor, not OTP-only like customer/dealer login.
+      password: z.string().trim().optional(),
+    })
+    .refine((data) => data.portal !== 'admin' || data.purpose !== 'login' || (data.password && data.password.length >= 6), {
+      message: 'Password is required for administrator sign-in',
+      path: ['password'],
+    }),
 };
 
 export const verifyOtpSchema = {

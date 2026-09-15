@@ -3,14 +3,6 @@ import mongoose from 'mongoose';
 
 const isValidObjectId = (val) => mongoose.Types.ObjectId.isValid(val);
 
-const deliveryAddressSchema = z.object({
-  line1: z.string().trim().max(255).optional(),
-  line2: z.string().trim().max(255).optional(),
-  city: z.string().trim().max(100).optional(),
-  state: z.string().trim().max(100).optional(),
-  pincode: z.string().trim().max(10).optional(),
-});
-
 export const createEnquirySchema = {
   body: z.object({
     message: z
@@ -23,7 +15,20 @@ export const createEnquirySchema = {
       .trim()
       .max(1000, { message: 'Customer note cannot exceed 1000 characters' })
       .optional(),
-    deliveryAddress: deliveryAddressSchema.optional(),
+    // References a saved address in the submitting user's address book
+    // (see address.service.js); the server looks it up and snapshots it
+    // into Enquiry.deliveryAddress. Required - an enquiry must always carry
+    // a real delivery address for the admin side to act on.
+    addressId: z
+      .string({ required_error: 'Please select or add a delivery address before submitting an enquiry' })
+      .refine(isValidObjectId, { message: 'Invalid address ID format' }),
+    // The number admin should reach the submitter on via WhatsApp (wa.me
+    // deep link - see admin enquiry pages). May differ from their account
+    // phone, so it's collected explicitly rather than assumed.
+    whatsappNumber: z
+      .string({ required_error: 'Please enter a WhatsApp number' })
+      .trim()
+      .regex(/^[6-9]\d{9}$/, { message: 'Please enter a valid 10-digit Indian mobile number' }),
   }),
 };
 

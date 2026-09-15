@@ -15,14 +15,16 @@ export const authService = {
 
   // Send OTP (supports email or phone number identifier).
   // `portal: 'admin'` scopes this to the dedicated admin login page -
-  // the backend rejects non-admin accounts for that portal.
+  // the backend rejects non-admin accounts for that portal, and requires
+  // `password` (admin sign-in is password + OTP two-factor, not OTP-only).
   // `purpose` defaults to 'login' server-side; pass 'signup' for pre-account
   // contact verification during registration.
-  sendOtp: async (identifier, portal, purpose) => {
+  sendOtp: async (identifier, portal, purpose, password) => {
     const response = await apiClient.post('/auth/send-otp', {
       identifier,
       ...(portal ? { portal } : {}),
       ...(purpose ? { purpose } : {}),
+      ...(password ? { password } : {}),
     });
     return response.data;
   },

@@ -14,17 +14,18 @@ import Skeleton from '../../components/ui/Skeleton';
 import ErrorState from '../../components/ui/ErrorState';
 import Toast from '../../components/ui/Toast';
 import Image from '../../components/ui/Image';
-import { 
-  ArrowLeft, 
-  Inbox, 
-  User, 
-  MapPin, 
-  MessageSquare, 
-  FileSpreadsheet, 
-  Send, 
-  CheckCircle2, 
-  Clock, 
-  UserCheck 
+import { buildEnquiryWhatsAppLink } from '../../lib/whatsapp';
+import {
+  ArrowLeft,
+  Inbox,
+  User,
+  MapPin,
+  MessageSquare,
+  MessageCircle,
+  FileSpreadsheet,
+  CheckCircle2,
+  Clock,
+  UserCheck
 } from 'lucide-react';
 
 const ALLOWED_STATUS_TRANSITIONS = {
@@ -49,7 +50,6 @@ const AdminEnquiryDetailPage = () => {
 
   // Triggers loading
   const [syncing, setSyncing] = useState(false);
-  const [whatsAppSending, setWhatsAppSending] = useState(false);
 
   // Toast Notifications
   const [toast, setToast] = useState(null);
@@ -118,19 +118,6 @@ const AdminEnquiryDetailPage = () => {
     }
   };
 
-  const handleResendWhatsApp = async () => {
-    setWhatsAppSending(true);
-    try {
-      const res = await adminService.resendWhatsApp(id);
-      setToast({ message: res.message || 'WhatsApp notification dispatched!', type: 'success' });
-    } catch (err) {
-      console.error('WhatsApp resend error:', err);
-      setToast({ message: err.response?.data?.message || 'WhatsApp dispatch failed', type: 'error' });
-    } finally {
-      setWhatsAppSending(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="space-y-6">
@@ -158,6 +145,10 @@ const AdminEnquiryDetailPage = () => {
   const address = enquiry.deliveryAddress || {};
   const addressStr = [address.line1, address.line2, address.city, address.state, address.pincode].filter(Boolean).join(', ');
   const notes = enquiry.notes || [];
+  // Always return to the scoped B2C/B2B list matching this enquiry's own
+  // userType - correct regardless of which list the admin navigated from.
+  const backToListPath = enquiry.userType === 'dealer' ? '/admin/enquiries/dealers' : '/admin/enquiries/customers';
+  const waLink = buildEnquiryWhatsAppLink(enquiry);
 
   const allowedNext = ALLOWED_STATUS_TRANSITIONS[enquiry.status] || [enquiry.status];
   const statusOptions = [
@@ -174,7 +165,7 @@ const AdminEnquiryDetailPage = () => {
       {/* Header Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border">
         <div>
-          <Link to="/admin/enquiries" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2">
+          <Link to={backToListPath} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2">
             <ArrowLeft className="w-3.5 h-3.5" /> Back to Enquiries
           </Link>
           <div className="flex items-center gap-3">
@@ -190,9 +181,17 @@ const AdminEnquiryDetailPage = () => {
           <Button variant="outline" size="sm" onClick={handleSyncGoogleSheet} isLoading={syncing} className="text-emerald-700 border-emerald-200">
             <FileSpreadsheet className="w-4 h-4 mr-1.5" /> Sync Sheet
           </Button>
-          <Button variant="outline" size="sm" onClick={handleResendWhatsApp} isLoading={whatsAppSending} className="text-green-700 border-green-200">
-            <Send className="w-4 h-4 mr-1.5" /> Send WhatsApp
-          </Button>
+          {waLink ? (
+            <a href={waLink} target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="sm" className="text-green-700 border-green-200">
+                <MessageCircle className="w-4 h-4 mr-1.5" /> Message on WhatsApp
+              </Button>
+            </a>
+          ) : (
+            <Button variant="outline" size="sm" isDisabled className="text-green-700 border-green-200" title="No WhatsApp number on file for this enquiry">
+              <MessageCircle className="w-4 h-4 mr-1.5" /> Message on WhatsApp
+            </Button>
+          )}
         </div>
       </div>
 
@@ -217,9 +216,13 @@ const AdminEnquiryDetailPage = () => {
                   <span className="text-muted-foreground">Email Address:</span>
                   <span className="font-mono text-foreground">{enquiry.contactEmail || 'N/A'}</span>
                 </div>
-                <div className="flex justify-between py-1">
+                <div className="flex justify-between py-1 border-b border-border">
                   <span className="text-muted-foreground">Phone Number:</span>
                   <span className="font-mono text-foreground">{enquiry.contactPhone || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span className="text-muted-foreground flex items-center gap-1"><MessageCircle className="w-3 h-3 text-green-600" /> WhatsApp Number:</span>
+                  <span className="font-mono text-foreground">{enquiry.whatsappNumber || 'N/A'}</span>
                 </div>
               </div>
 
