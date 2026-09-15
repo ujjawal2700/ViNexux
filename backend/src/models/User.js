@@ -1,5 +1,56 @@
 import mongoose from 'mongoose';
 
+// A user's saved delivery address book. Unlike Enquiry.deliveryAddress (a
+// per-enquiry immutable snapshot) or DealerProfile's single business
+// address, these are reusable, individually manageable entries a customer
+// or dealer picks from at checkout - so (unlike those two) each entry keeps
+// its own auto _id for direct addressing via PUT/DELETE /addresses/:id.
+const savedAddressSchema = new mongoose.Schema(
+  {
+    label: {
+      type: String,
+      trim: true,
+      maxlength: [50, 'Label cannot exceed 50 characters'],
+      default: 'Address',
+    },
+    line1: {
+      type: String,
+      required: [true, 'Address line 1 is required'],
+      trim: true,
+      maxlength: [255, 'Address line 1 cannot exceed 255 characters'],
+    },
+    line2: {
+      type: String,
+      trim: true,
+      maxlength: [255, 'Address line 2 cannot exceed 255 characters'],
+      default: '',
+    },
+    city: {
+      type: String,
+      required: [true, 'City is required'],
+      trim: true,
+      maxlength: [100, 'City cannot exceed 100 characters'],
+    },
+    state: {
+      type: String,
+      required: [true, 'State is required'],
+      trim: true,
+      maxlength: [100, 'State cannot exceed 100 characters'],
+    },
+    pincode: {
+      type: String,
+      required: [true, 'Pincode is required'],
+      trim: true,
+      match: [/^\d{6}$/, 'Please enter a valid 6-digit pincode'],
+    },
+    isDefault: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { timestamps: true }
+);
+
 const userSchema = new mongoose.Schema(
   {
     fullName: {
@@ -77,6 +128,12 @@ const userSchema = new mongoose.Schema(
     // notifications. A user can have several (multiple browsers/devices).
     fcmTokens: {
       type: [String],
+      default: [],
+    },
+    // Reusable saved delivery addresses (customer & dealer). Selected from
+    // at enquiry checkout; see address.service.js.
+    savedAddresses: {
+      type: [savedAddressSchema],
       default: [],
     },
   },

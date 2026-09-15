@@ -10,7 +10,7 @@ const PROHIBITED_EXTENSIONS = [
 ];
 
 const ALLOWED_MIME_TYPES = {
-  kyc: ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'],
+  kyc: ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
   product: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
   cms: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
   general: ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp'],

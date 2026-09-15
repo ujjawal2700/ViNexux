@@ -11,7 +11,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { FileText, Eye, Calendar, RefreshCw } from 'lucide-react';
 
-export const CustomerEnquiriesPage = () => {
+export const EnquiriesPage = () => {
   const [enquiries, setEnquiries] = useState([]);
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -69,7 +69,7 @@ export const CustomerEnquiriesPage = () => {
       key: 'enquiryNumber',
       className: 'font-mono text-primary font-bold',
       render: (val, row) => (
-        <Link to={`/customer/enquiries/${row._id}`} className="hover:underline">
+        <Link to={`/account/enquiries/${row._id}`} className="hover:underline">
           {val || row.id || 'VNX'}
         </Link>
       ),
@@ -115,7 +115,7 @@ export const CustomerEnquiriesPage = () => {
       key: '_id',
       align: 'right',
       render: (val) => (
-        <Link to={`/customer/enquiries/${val}`}>
+        <Link to={`/account/enquiries/${val}`}>
           <Button variant="outline" size="sm" iconOnly title="View Details">
             <Eye className="w-3.5 h-3.5 text-muted-foreground" />
           </Button>
@@ -188,4 +188,4 @@ export const CustomerEnquiriesPage = () => {
   );
 };
 
-export default CustomerEnquiriesPage;
+export default EnquiriesPage;

@@ -89,15 +89,29 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
   const contactPhone = user.phone;
   const userType = user.role === 'dealer' ? 'dealer' : 'customer';
 
-  // 5. Build Delivery Address Snapshot
-  const inputAddress = payload.deliveryAddress || {};
+  // 5. Build Delivery Address Snapshot - resolved from the user's saved
+  // address book (payload.addressId), not typed in ad hoc. Required by the
+  // validator, so an enquiry always carries a real, selected address.
+  const savedAddress = user.savedAddresses.id(payload.addressId);
+  if (!savedAddress) {
+    throw new AppError(
+      'Selected delivery address not found. Please select or add a valid address.',
+      HTTP_STATUS.BAD_REQUEST,
+      ERROR_CODES.BAD_REQUEST
+    );
+  }
   const deliveryAddress = {
-    line1: inputAddress.line1 || user.address || '',
-    line2: inputAddress.line2 || '',
-    city: inputAddress.city || '',
-    state: inputAddress.state || '',
-    pincode: inputAddress.pincode || '',
+    line1: savedAddress.line1,
+    line2: savedAddress.line2 || '',
+    city: savedAddress.city,
+    state: savedAddress.state,
+    pincode: savedAddress.pincode,
   };
+
+  // 5b. WhatsApp number the submitter wants to be reached on - required by
+  // the validator (10-digit Indian mobile), used to build the admin's
+  // wa.me deep link rather than any Business API integration.
+  const whatsappNumber = payload.whatsappNumber;
 
   // 6. Build Message Snapshot
   const rawMessage = payload.message || payload.customerNote || '';
@@ -128,6 +142,7 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
     contactName,
     contactEmail,
     contactPhone,
+    whatsappNumber,
     deliveryAddress,
     userType,
     items: enquiryItems,

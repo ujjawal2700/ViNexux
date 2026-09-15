@@ -15,6 +15,8 @@ import ThemeToggle from '../../components/ui/ThemeToggle';
  */
 const AdminLoginPage = () => {
   const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -27,12 +29,16 @@ const AdminLoginPage = () => {
       setError('Please enter your administrator email address or phone number');
       return;
     }
+    if (!password) {
+      setError('Please enter your administrator password');
+      return;
+    }
 
     setLoading(true);
     setError(null);
 
     try {
-      const response = await sendOtp(identifier, 'admin');
+      const response = await sendOtp(identifier, 'admin', undefined, password);
       if (response.success) {
         navigate('/admin/verify-otp', { state: { identifier, portal: 'admin' } });
       } else {
@@ -83,6 +89,29 @@ const AdminLoginPage = () => {
               className="w-full bg-muted/60 border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-xl px-4 py-3 text-sm text-foreground placeholder-muted-foreground outline-none transition-all font-medium"
               disabled={loading}
             />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-foreground uppercase tracking-wider mb-2">
+              Administrator Password
+            </label>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter Administrator Password"
+              className="w-full bg-muted/60 border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-xl px-4 py-3 text-sm text-foreground placeholder-muted-foreground outline-none transition-all font-medium"
+              disabled={loading}
+            />
+            <label className="flex items-center gap-2 mt-2 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showPassword}
+                onChange={(e) => setShowPassword(e.target.checked)}
+                className="rounded-md border-border bg-muted text-primary focus:ring-primary/20 w-3.5 h-3.5"
+              />
+              <span>Show password</span>
+            </label>
           </div>
 
           <Button

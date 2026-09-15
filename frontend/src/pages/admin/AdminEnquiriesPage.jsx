@@ -12,7 +12,8 @@ import Skeleton from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 import ErrorState from '../../components/ui/ErrorState';
 import Toast from '../../components/ui/Toast';
-import { Inbox, Eye, FileSpreadsheet, Send, RefreshCw } from 'lucide-react';
+import { Inbox, Eye, FileSpreadsheet, MessageCircle } from 'lucide-react';
+import { buildEnquiryWhatsAppLink } from '../../lib/whatsapp';
 
 const ALLOWED_STATUS_TRANSITIONS = {
   new: ['contacted', 'in-progress', 'closed', 'spam'],
@@ -22,7 +23,13 @@ const ALLOWED_STATUS_TRANSITIONS = {
   spam: ['spam'],
 };
 
-const AdminEnquiriesPage = () => {
+/**
+ * `forcedUserType` ('customer' | 'dealer') locks this page to one side of
+ * the B2C/B2B split - see /admin/enquiries/customers and
+ * /admin/enquiries/dealers in AppRoutes.jsx. When set, the "User Type"
+ * filter is hidden entirely (the route itself is the scope, not a dropdown).
+ */
+const AdminEnquiriesPage = ({ forcedUserType }) => {
   const [enquiries, setEnquiries] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, totalPages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
@@ -31,14 +38,13 @@ const AdminEnquiriesPage = () => {
   // Filters & Search
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [userTypeFilter, setUserTypeFilter] = useState('');
+  const [userTypeFilter, setUserTypeFilter] = useState(forcedUserType || '');
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('desc');
 
   // Trigger loading states per enquiry id
   const [syncingId, setSyncingId] = useState(null);
-  const [whatsAppId, setWhatsAppId] = useState(null);
 
   // Toast State
   const [toast, setToast] = useState(null);
@@ -98,25 +104,18 @@ const AdminEnquiriesPage = () => {
     }
   };
 
-  const handleResendWhatsApp = async (enquiryId) => {
-    setWhatsAppId(enquiryId);
-    try {
-      const res = await adminService.resendWhatsApp(enquiryId);
-      setToast({ message: res.message || 'WhatsApp notification resent successfully!', type: 'success' });
-    } catch (err) {
-      console.error('WhatsApp resend error:', err);
-      setToast({ message: err.response?.data?.message || 'WhatsApp notification failed', type: 'error' });
-    } finally {
-      setWhatsAppId(null);
-    }
-  };
-
   return (
     <div className="space-y-6">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <AdminPageHeader
-        title="B2B Enquiry & Lead Management"
+        title={
+          forcedUserType === 'dealer'
+            ? 'B2B Enquiries — Wholesale Dealers'
+            : forcedUserType === 'customer'
+            ? 'B2C Enquiries — Retail Customers'
+            : 'All Enquiries'
+        }
         subtitle="Track submitted product leads, update lead workflow statuses, sync Google Sheets & dispatch WhatsApp alerts"
         badge={`${pagination.total} Leads`}
       />
@@ -142,18 +141,22 @@ const AdminEnquiriesPage = () => {
               { value: 'spam', label: 'Marked as Spam' },
             ],
           },
-          {
-            value: userTypeFilter,
-            onChange: (val) => {
-              setUserTypeFilter(val);
-              setPage(1);
-            },
-            options: [
-              { value: '', label: 'All User Types' },
-              { value: 'customer', label: 'Retail Customers' },
-              { value: 'dealer', label: 'B2B Wholesale Dealers' },
-            ],
-          },
+          ...(forcedUserType
+            ? []
+            : [
+                {
+                  value: userTypeFilter,
+                  onChange: (val) => {
+                    setUserTypeFilter(val);
+                    setPage(1);
+                  },
+                  options: [
+                    { value: '', label: 'All User Types' },
+                    { value: 'customer', label: 'Retail Customers' },
+                    { value: 'dealer', label: 'B2B Wholesale Dealers' },
+                  ],
+                },
+              ]),
         ]}
         sortOptions={[
           { value: 'createdAt', label: 'Sort by Submission Date' },
@@ -169,7 +172,7 @@ const AdminEnquiriesPage = () => {
         onReset={() => {
           setSearch('');
           setStatusFilter('');
-          setUserTypeFilter('');
+          setUserTypeFilter(forcedUserType || '');
           setPage(1);
           setSortBy('createdAt');
           setSortOrder('desc');
@@ -278,16 +281,27 @@ const AdminEnquiriesPage = () => {
                           <FileSpreadsheet className="w-3.5 h-3.5" />
                         </Button>
 
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleResendWhatsApp(enq._id)}
-                          isLoading={whatsAppId === enq._id}
-                          className="h-8 w-8 p-0 text-green-700 hover:text-green-800 hover:bg-green-50"
-                          title="Resend WhatsApp Alert"
-                        >
-                          <Send className="w-3.5 h-3.5" />
-                        </Button>
+                        {(() => {
+                          const waLink = buildEnquiryWhatsAppLink(enq);
+                          const btn = (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              isDisabled={!waLink}
+                              className="h-8 w-8 p-0 text-green-700 hover:text-green-800 hover:bg-green-50"
+                              title={waLink ? 'Message on WhatsApp' : 'No WhatsApp number on file for this enquiry'}
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                            </Button>
+                          );
+                          return waLink ? (
+                            <a href={waLink} target="_blank" rel="noopener noreferrer">
+                              {btn}
+                            </a>
+                          ) : (
+                            btn
+                          );
+                        })()}
                       </div>
                     </Table.Cell>
                   </Table.Row>

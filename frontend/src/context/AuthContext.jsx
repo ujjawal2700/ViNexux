@@ -84,10 +84,11 @@ export const AuthProvider = ({ children }) => {
     return response;
   };
 
-  // Send OTP. Pass portal='admin' from the dedicated admin login page, or
+  // Send OTP. Pass portal='admin' from the dedicated admin login page
+  // (which also requires `password` - admin sign-in is two-factor), or
   // purpose='signup' for pre-account contact verification during registration.
-  const sendOtp = async (identifier, portal, purpose) => {
-    return await authService.sendOtp(identifier, portal, purpose);
+  const sendOtp = async (identifier, portal, purpose, password) => {
+    return await authService.sendOtp(identifier, portal, purpose, password);
   };
 
   // Verifies a pre-account "signup" OTP (see authService.verifySignupOtp) -

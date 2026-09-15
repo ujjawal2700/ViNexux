@@ -283,7 +283,7 @@ export const authService = {
   /**
    * Generates and dispatches an OTP for signup, login, or phone-change.
    */
-  async sendOtp({ identifier, purpose = 'login', portal }) {
+  async sendOtp({ identifier, purpose = 'login', portal, password }) {
     const normalized = normalizeIdentifier(identifier);
     if (!normalized) {
       throw new AppError('Identifier is required', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
@@ -292,7 +292,10 @@ export const authService = {
     // For login and password-reset purposes: ensure user exists
     if (purpose === 'login' || purpose === 'password-reset') {
       const isEmail = normalized.includes('@');
-      const user = await User.findOne(isEmail ? { email: normalized } : { phone: normalized });
+      // +passwordHash: needed below for the admin-portal password check.
+      // Harmless for every other branch - this user document is never
+      // returned to the caller, only used internally to build the response.
+      const user = await User.findOne(isEmail ? { email: normalized } : { phone: normalized }).select('+passwordHash');
       if (!user) {
         throw new AppError(
           purpose === 'password-reset'
@@ -320,6 +323,19 @@ export const authService = {
               'This portal is strictly reserved for system administrators. Non-admin accounts cannot sign in here.',
               HTTP_STATUS.FORBIDDEN,
               ERROR_CODES.FORBIDDEN
+            );
+          }
+
+          // Two-factor admin sign-in: password is verified BEFORE an OTP is
+          // ever generated/sent. No passwordHash set at all (e.g. a freshly
+          // seeded admin who hasn't used /forgot-password yet) is treated
+          // as a hard failure, not an open door.
+          const passwordMatches = user.passwordHash && (await bcrypt.compare(password, user.passwordHash));
+          if (!passwordMatches) {
+            throw new AppError(
+              'Invalid administrator credentials.',
+              HTTP_STATUS.UNAUTHORIZED,
+              ERROR_CODES.UNAUTHORIZED
             );
           }
         } else {

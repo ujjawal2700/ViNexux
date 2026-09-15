@@ -8,18 +8,16 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../../comp
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
-import { FormField } from '../../components/ui/FormField';
-import { FormLabel } from '../../components/ui/FormLabel';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { Image } from '../../components/ui/Image';
+import { AddressPicker } from '../../components/address/AddressPicker';
 import {
   FileCheck,
   User,
-  Mail,
-  Phone,
   MapPin,
   MessageSquare,
+  MessageCircle,
   ShieldCheck,
   ArrowRight,
   ArrowLeft,
@@ -36,22 +34,22 @@ export const CheckoutEnquiryPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  // Delivery Address Form State
-  const [address, setAddress] = useState({
-    line1: '',
-    line2: '',
-    city: '',
-    state: '',
-    pincode: '',
-  });
+  // Delivery address is picked from the saved address book (see
+  // AddressPicker) - no more ad hoc typing at checkout.
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
 
-  // Optional Customer Message
+  // WhatsApp number to reach the submitter on - there's no WhatsApp
+  // Business API integration, so admin follows up via a wa.me deep link
+  // (see admin enquiry pages) instead of an automated send. Pre-filled
+  // from the account phone when it looks like a valid mobile number, but
+  // editable since a customer's WhatsApp number can differ.
+  const [whatsappNumber, setWhatsappNumber] = useState(() =>
+    user?.phone && /^[6-9]\d{9}$/.test(user.phone.trim()) ? user.phone.trim() : ''
+  );
+  const [whatsappError, setWhatsappError] = useState(null);
+
   const [message, setMessage] = useState('');
 
-  // Form Validation Errors
-  const [formErrors, setFormErrors] = useState({});
-
-  // Verify Cart on Load
   const fetchCartAndVerify = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -62,65 +60,23 @@ export const CheckoutEnquiryPage = () => {
 
       if (!items || items.length === 0) {
         toast.info('Your cart is empty. Please add products before checking out.');
-        navigate('/customer/cart');
+        navigate('/account/cart');
         return;
       }
 
       setCart(cartData);
-
-      // Pre-fill user address if stored in user profile
-      if (user?.address) {
-        setAddress((prev) => ({
-          ...prev,
-          line1: typeof user.address === 'string' ? user.address : user.address.line1 || '',
-          city: typeof user.address === 'object' ? user.address.city || '' : '',
-          state: typeof user.address === 'object' ? user.address.state || '' : '',
-          pincode: typeof user.address === 'object' ? user.address.pincode || '' : '',
-        }));
-      }
     } catch (err) {
       console.error('Checkout cart verification error:', err);
       setError('Unable to load cart items for checkout.');
     } finally {
       setIsLoading(false);
     }
-  }, [navigate, toast, user]);
+  }, [navigate, toast]);
 
   useEffect(() => {
     fetchCartAndVerify();
   }, [fetchCartAndVerify]);
 
-  // Handle Input Changes
-  const handleAddressChange = (e) => {
-    const { name, value } = e.target;
-    setAddress((prev) => ({ ...prev, [name]: value }));
-    if (formErrors[name]) {
-      setFormErrors((prev) => ({ ...prev, [name]: null }));
-    }
-  };
-
-  // Form Client-side Validation
-  const validateForm = () => {
-    const errors = {};
-    if (!address.line1.trim()) {
-      errors.line1 = 'Street address (Line 1) is required';
-    }
-    if (!address.city.trim()) {
-      errors.city = 'City is required';
-    }
-    if (!address.state.trim()) {
-      errors.state = 'State is required';
-    }
-    if (!address.pincode.trim()) {
-      errors.pincode = 'Pincode is required';
-    } else if (!/^\d{6}$/.test(address.pincode.trim())) {
-      errors.pincode = 'Enter a valid 6-digit Indian pincode';
-    }
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // Format Currency (INR ₹)
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -129,19 +85,27 @@ export const CheckoutEnquiryPage = () => {
     }).format(amount);
   };
 
-  // Handle Submit Enquiry
   const handleSubmitEnquiry = async (e) => {
     e.preventDefault();
 
-    if (!validateForm()) {
-      toast.error('Please fix the delivery address validation errors.');
+    if (!selectedAddressId) {
+      toast.error('Please select or add a delivery address before submitting your enquiry.');
       return;
     }
+
+    const cleanedWhatsapp = whatsappNumber.replace(/\D/g, '').slice(-10);
+    if (!/^[6-9]\d{9}$/.test(cleanedWhatsapp)) {
+      setWhatsappError('Please enter a valid 10-digit WhatsApp number');
+      toast.error('Please enter a valid WhatsApp number before submitting your enquiry.');
+      return;
+    }
+    setWhatsappError(null);
 
     try {
       setIsSubmitting(true);
       const payload = {
-        deliveryAddress: address,
+        addressId: selectedAddressId,
+        whatsappNumber: cleanedWhatsapp,
         message: message.trim() || undefined,
       };
 
@@ -150,12 +114,11 @@ export const CheckoutEnquiryPage = () => {
 
       toast.success(`Enquiry #${createdEnquiry.enquiryNumber || 'VNX'} submitted successfully!`);
 
-      // Navigate to Enquiry Detail View
       const enquiryId = createdEnquiry._id || createdEnquiry.id;
       if (enquiryId) {
-        navigate(`/customer/enquiries/${enquiryId}`);
+        navigate(`/account/enquiries/${enquiryId}`);
       } else {
-        navigate('/customer/enquiries');
+        navigate('/account/enquiries');
       }
     } catch (err) {
       console.error('Enquiry submission error:', err);
@@ -199,11 +162,11 @@ export const CheckoutEnquiryPage = () => {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8 bg-background text-foreground min-h-screen">
-      
+
       {/* Header */}
       <div className="border-b border-border pb-6 flex items-center justify-between">
         <div>
-          <Link to="/customer/cart" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1 mb-2 font-medium">
+          <Link to="/account/cart" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1 mb-2 font-medium">
             <ArrowLeft className="w-3.5 h-3.5" /> Return to Cart
           </Link>
           <h1 className="text-3xl font-extrabold text-foreground tracking-tight flex items-center gap-3">
@@ -214,10 +177,10 @@ export const CheckoutEnquiryPage = () => {
       </div>
 
       <form onSubmit={handleSubmitEnquiry} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
-        {/* Left Column: Contact Preview & Delivery Address Form */}
+
+        {/* Left Column: Contact Preview & Delivery Address Picker */}
         <div className="lg:col-span-7 space-y-6">
-          
+
           {/* SECTION 1: VERIFIED CONTACT INFO (READ-ONLY) */}
           <Card className="bg-card p-6 rounded-2xl border border-border space-y-4 shadow-sm">
             <CardHeader className="p-0 pb-3 border-b border-border flex items-center justify-between">
@@ -250,59 +213,43 @@ export const CheckoutEnquiryPage = () => {
             </CardContent>
           </Card>
 
-          {/* SECTION 2: DELIVERY ADDRESS FORM */}
+          {/* SECTION 2: DELIVERY ADDRESS - select saved or add new */}
           <Card className="bg-card p-6 rounded-2xl border border-border space-y-4 shadow-sm">
             <CardHeader className="p-0 pb-3 border-b border-border">
               <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
                 <MapPin className="w-4 h-4 text-primary" />
-                <span>Delivery Address & Location Details</span>
+                <span>Delivery Address *</span>
               </CardTitle>
             </CardHeader>
 
-            <CardContent className="p-0 space-y-4">
-              <Input
-                label="Street Address / Line 1 *"
-                name="line1"
-                placeholder="Building No, Street Name, Area..."
-                value={address.line1}
-                onChange={handleAddressChange}
-                error={formErrors.line1}
-              />
+            <CardContent className="p-0">
+              <AddressPicker selectedAddressId={selectedAddressId} onSelect={setSelectedAddressId} />
+            </CardContent>
+          </Card>
 
-              <Input
-                label="Address Line 2 (Optional)"
-                name="line2"
-                placeholder="Landmark, Suite, Unit..."
-                value={address.line2}
-                onChange={handleAddressChange}
-              />
+          {/* SECTION 2b: WHATSAPP CONTACT NUMBER */}
+          <Card className="bg-card p-6 rounded-2xl border border-border space-y-4 shadow-sm">
+            <CardHeader className="p-0 pb-3 border-b border-border">
+              <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                <MessageCircle className="w-4 h-4 text-primary" />
+                <span>WhatsApp Contact Number *</span>
+              </CardTitle>
+            </CardHeader>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Input
-                  label="City *"
-                  name="city"
-                  placeholder="e.g. Mumbai"
-                  value={address.city}
-                  onChange={handleAddressChange}
-                  error={formErrors.city}
-                />
-                <Input
-                  label="State *"
-                  name="state"
-                  placeholder="e.g. Maharashtra"
-                  value={address.state}
-                  onChange={handleAddressChange}
-                  error={formErrors.state}
-                />
-                <Input
-                  label="Pincode *"
-                  name="pincode"
-                  placeholder="6-digit code"
-                  value={address.pincode}
-                  onChange={handleAddressChange}
-                  error={formErrors.pincode}
-                />
-              </div>
+            <CardContent className="p-0 space-y-2">
+              <Input
+                type="tel"
+                placeholder="10-digit WhatsApp number"
+                value={whatsappNumber}
+                onChange={(e) => {
+                  setWhatsappNumber(e.target.value.replace(/\D/g, '').slice(0, 10));
+                  if (whatsappError) setWhatsappError(null);
+                }}
+                error={whatsappError}
+              />
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Our team will reach out to this number directly on WhatsApp regarding your enquiry.
+              </p>
             </CardContent>
           </Card>
 
@@ -378,6 +325,7 @@ export const CheckoutEnquiryPage = () => {
                 size="lg"
                 fullWidth
                 isLoading={isSubmitting}
+                isDisabled={!selectedAddressId || whatsappNumber.replace(/\D/g, '').length !== 10}
                 rightIcon={<ArrowRight className="w-4 h-4" />}
               >
                 Submit Commercial Enquiry

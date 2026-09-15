@@ -91,8 +91,8 @@ export const verifySignupOtp = asyncHandler(async (req, res) => {
 });
 
 export const sendOtp = asyncHandler(async (req, res) => {
-  const { identifier, purpose, portal } = req.body;
-  const result = await authService.sendOtp({ identifier, purpose, portal });
+  const { identifier, purpose, portal, password } = req.body;
+  const result = await authService.sendOtp({ identifier, purpose, portal, password });
 
   return ApiResponse.success(
     res,

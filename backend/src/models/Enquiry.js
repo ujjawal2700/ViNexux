@@ -92,6 +92,15 @@ const enquirySchema = new mongoose.Schema(
       required: [true, 'Contact phone snapshot is required'],
       trim: true,
     },
+    // WhatsApp number the submitter wants to be reached on - may differ
+    // from their account phone. Used to build the admin's wa.me deep link
+    // (see admin enquiry pages) since there's no WhatsApp Business API
+    // integration to send messages automatically.
+    whatsappNumber: {
+      type: String,
+      required: [true, 'WhatsApp number is required'],
+      trim: true,
+    },
     deliveryAddress: {
       type: deliveryAddressSchema,
       default: () => ({}),

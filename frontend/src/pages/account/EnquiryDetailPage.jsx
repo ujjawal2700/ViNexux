@@ -22,7 +22,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 
-export const CustomerEnquiryDetailPage = () => {
+export const EnquiryDetailPage = () => {
   const { id } = useParams();
   const [enquiry, setEnquiry] = useState(null);
   const [supportPhone, setSupportPhone] = useState('919876543210');
@@ -113,7 +113,7 @@ export const CustomerEnquiryDetailPage = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16">
         <ErrorState title="Enquiry Not Found" description={error || "The requested enquiry does not exist or you do not have permission to view it."} />
         <div className="text-center mt-6">
-          <Link to="/customer/enquiries">
+          <Link to="/account/enquiries">
             <Button variant="outline" leftIcon={<ArrowLeft className="w-4 h-4" />}>
               Back to My Enquiries
             </Button>
@@ -134,7 +134,7 @@ export const CustomerEnquiryDetailPage = () => {
       
       {/* Header */}
       <div className="border-b border-border pb-6 space-y-3">
-        <Link to="/customer/enquiries" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1 font-medium">
+        <Link to="/account/enquiries" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1 font-medium">
           <ArrowLeft className="w-3.5 h-3.5" /> Back to My Enquiries
         </Link>
 
@@ -264,6 +264,9 @@ export const CustomerEnquiryDetailPage = () => {
                   <div className="font-bold text-foreground text-sm">{enquiry.contactName}</div>
                   <div className="flex items-center gap-1.5 font-mono"><Mail className="w-3.5 h-3.5 text-[#9a6870]" /> {enquiry.contactEmail}</div>
                   <div className="flex items-center gap-1.5 font-mono"><Phone className="w-3.5 h-3.5 text-[#9a6870]" /> {enquiry.contactPhone}</div>
+                  {enquiry.whatsappNumber && (
+                    <div className="flex items-center gap-1.5 font-mono"><MessageCircle className="w-3.5 h-3.5 text-emerald-600" /> {enquiry.whatsappNumber} (WhatsApp)</div>
+                  )}
                 </div>
               </div>
 
@@ -289,4 +292,4 @@ export const CustomerEnquiryDetailPage = () => {
   );
 };
 
-export default CustomerEnquiryDetailPage;
+export default EnquiryDetailPage;

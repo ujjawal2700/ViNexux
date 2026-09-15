@@ -1,4 +1,9 @@
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
+// Triggers dotenv.config() as a side effect (see config/env.js) - without
+// this, running `node src/seed.js` directly never loads .env at all, so
+// ADMIN_DEFAULT_PASSWORD (and everything else) would silently stay unset.
+import './config/env.js';
 import { User } from './models/User.js';
 import { DealerProfile } from './models/DealerProfile.js';
 import { Category } from './models/Category.js';
@@ -16,6 +21,18 @@ async function seed() {
 
   // --- 1. USER ACCOUNTS ---
   console.log('[Seed] Seeding User Accounts...');
+
+  // Admin sign-in is now password + OTP two-factor (not OTP-only like
+  // customer/dealer login), so the seeded admin account needs a real
+  // passwordHash. ADMIN_DEFAULT_PASSWORD lets a real deployment set its own;
+  // local/dev falls back to a documented default - either way, this is only
+  // the FIRST factor, an OTP is still required after it.
+  const adminDefaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'Admin@12345';
+  const adminPasswordHash = await bcrypt.hash(adminDefaultPassword, 10);
+  if (!process.env.ADMIN_DEFAULT_PASSWORD) {
+    console.log(`  ℹ Demo admin password (set ADMIN_DEFAULT_PASSWORD to override): ${adminDefaultPassword}`);
+  }
+
   const usersData = [
     {
       fullName: 'Customer Account',
@@ -53,17 +70,29 @@ async function seed() {
   ];
 
   for (const uData of usersData) {
-    let existing = await User.findOne({ email: uData.email });
+    // +passwordHash: needed below so a reseed never clobbers an admin's
+    // real password (e.g. one they've already set via /forgot-password) -
+    // select:false would otherwise hide it from `existing`, making it look
+    // unset even when it isn't.
+    let existing = await User.findOne({ email: uData.email }).select('+passwordHash');
     if (!existing) {
-      existing = await User.findOne({ phone: uData.phone });
+      existing = await User.findOne({ phone: uData.phone }).select('+passwordHash');
     }
 
     let user;
     if (existing) {
       Object.assign(existing, uData);
+      // Only set the demo default password if this admin has never had one
+      // set at all - never overwrite a real password on reseed.
+      if (uData.role === 'admin' && !existing.passwordHash) {
+        existing.passwordHash = adminPasswordHash;
+      }
       user = await existing.save();
       console.log(`  ✓ Updated user: ${user.email} (${user.role})`);
     } else {
+      if (uData.role === 'admin') {
+        uData.passwordHash = adminPasswordHash;
+      }
       user = await User.create(uData);
       console.log(`  ✓ Created user: ${user.email} (${user.role})`);
     }

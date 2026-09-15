@@ -3,7 +3,7 @@ import apiClient from '../api/axios';
 export const enquiryService = {
   /**
    * Submit formal quotation enquiry from user's current cart.
-   * @param {Object} payload - { deliveryAddress: { line1, line2, city, state, pincode }, message }
+   * @param {Object} payload - { addressId: string (a saved address from addressService), whatsappNumber: string (10-digit), message }
    */
   async createEnquiry(payload = {}) {
     const response = await apiClient.post('/enquiries', payload);

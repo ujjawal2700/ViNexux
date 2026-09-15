@@ -10,6 +10,7 @@ import adminProductRoutes from './adminProduct.routes.js';
 import adminDealerRoutes from './adminDealer.routes.js';
 import cartRoutes from './cart.routes.js';
 import enquiryRoutes from './enquiry.routes.js';
+import addressRoutes from './address.routes.js';
 import adminEnquiryRoutes from './adminEnquiry.routes.js';
 import adminCustomerRoutes from './adminCustomer.routes.js';
 import adminSessionRoutes from './adminSession.routes.js';
@@ -52,9 +53,10 @@ router.use('/admin/upload', uploadRoutes);
 // Mount dealer module
 router.use('/dealers', dealerRoutes);
 
-// Mount cart and enquiry modules
+// Mount cart, enquiry, and saved-address modules
 router.use('/cart', cartRoutes);
 router.use('/enquiries', enquiryRoutes);
+router.use('/addresses', addressRoutes);
 
 // Mount push notification token registration (any authenticated role)
 router.use('/push', pushRoutes);
