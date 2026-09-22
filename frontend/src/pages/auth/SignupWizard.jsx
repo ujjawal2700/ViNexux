@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import dealerService from '../../services/dealerService';
 import useToast from '../../hooks/useToast';
@@ -20,6 +20,9 @@ import {
   Upload,
   FileCheck,
   CheckCircle2,
+  Check,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
@@ -30,21 +33,24 @@ const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 const inputClass =
-  'w-full bg-muted/40 border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-2xl pl-11 pr-4 py-3 text-xs text-foreground placeholder-muted-foreground outline-none transition-all font-medium';
+  'w-full bg-white border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary rounded pl-10 pr-4 py-2.5 text-xs sm:text-sm text-gray-900 placeholder-gray-400 outline-none transition-all font-medium';
 const plainInputClass =
-  'w-full bg-muted/40 border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-2xl px-4 py-3 text-xs text-foreground placeholder-muted-foreground outline-none transition-all font-medium';
+  'w-full bg-white border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary rounded px-3.5 py-2.5 text-xs sm:text-sm text-gray-900 placeholder-gray-400 outline-none transition-all font-medium';
 
 const FileDropField = ({ label, required, file, onChange, disabled }) => (
-  <label className="block">
-    <span className="text-[11px] font-bold text-foreground mb-1.5 block">
+  <label className="block text-left">
+    <span className="text-[10px] sm:text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1 block">
       {label} {required && <span className="text-rose-600">*</span>}
     </span>
     <div
-      className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl border text-xs cursor-pointer transition-colors ${
-        file ? 'border-emerald-400 bg-emerald-500/5 text-emerald-700' : 'border-dashed border-border bg-muted/40 text-muted-foreground hover:border-primary'
-      }`}
+      className={cn(
+        "flex items-center gap-2.5 px-3.5 py-2.5 rounded border text-xs cursor-pointer transition-colors bg-white",
+        file
+          ? "border-emerald-400 bg-emerald-50 text-emerald-800"
+          : "border-dashed border-gray-300 hover:border-primary text-gray-500"
+      )}
     >
-      {file ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <Upload className="w-4 h-4 shrink-0" />}
+      {file ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <Upload className="w-4 h-4 text-gray-400 shrink-0" />}
       <span className="truncate flex-1 font-medium">{file ? file.name : 'Choose photo or PDF (max 5MB)'}</span>
       <input
         type="file"
@@ -57,44 +63,24 @@ const FileDropField = ({ label, required, file, onChange, disabled }) => (
   </label>
 );
 
-const StepIndicator = ({ step, totalSteps = 3 }) => (
-  <div className="flex items-center justify-center gap-2 mb-6">
-    {Array.from({ length: totalSteps }).map((_, idx) => (
-      <React.Fragment key={idx}>
-        <div
-          className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold border transition-colors ${
-            idx + 1 < step
-              ? 'bg-primary border-primary text-white'
-              : idx + 1 === step
-              ? 'border-primary text-primary bg-primary/10'
-              : 'border-border text-muted-foreground bg-muted/40'
-          }`}
-        >
-          {idx + 1 < step ? <CheckCircle2 className="w-3.5 h-3.5" /> : idx + 1}
-        </div>
-        {idx < totalSteps - 1 && (
-          <div className={`w-8 h-0.5 rounded-full ${idx + 1 < step ? 'bg-primary' : 'bg-border'}`} />
-        )}
-      </React.Fragment>
-    ))}
-  </div>
-);
-
-const SignupWizard = ({ onSwitchToLogin }) => {
+const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
   const { sendOtp, verifySignupOtp, signup } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [step, setStep] = useState(1); // 1: role, 2: details, 3: otp
-  const [role, setRole] = useState(null);
+  const [step, setStep] = useState(2); // directly on details form with sub-tabs
+  const [role, setRole] = useState(initialRole === 'dealer' ? 'dealer' : 'customer');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
+  const [agreedTerms, setAgreedTerms] = useState(false);
 
   // Customer fields
   const [custName, setCustName] = useState('');
+  const [custCompany, setCustCompany] = useState('');
   const [custEmail, setCustEmail] = useState('');
+  const [custPhone, setCustPhone] = useState('');
   const [custPassword, setCustPassword] = useState('');
   const [custConfirmPassword, setCustConfirmPassword] = useState('');
   const [showCustPassword, setShowCustPassword] = useState(false);
@@ -129,39 +115,31 @@ const SignupWizard = ({ onSwitchToLogin }) => {
       navigate(from, { replace: true });
       return;
     }
-    // No dedicated dashboard for customer/dealer roles - land on the
-    // storefront, exactly like a normal post-OTP login (see VerifyOtpPage).
     navigate('/', { replace: true });
   };
 
-  const handleSelectRole = (selected) => {
-    setRole(selected);
+  const handleRoleChange = (newRole) => {
+    setRole(newRole);
     setError(null);
-    setStep(2);
   };
 
   const validateStep2 = () => {
+    if (!agreedTerms) {
+      return 'Please agree to the Terms & Conditions and Privacy Policy to continue.';
+    }
+
     if (!isDealer) {
-      if (!custName.trim() || !custEmail.trim() || !custPassword) {
-        return 'Please fill in your name, email, and password.';
+      if (!custName.trim() || !custEmail.trim() || !custPhone.trim()) {
+        return 'Please fill in your name, email, and mobile number.';
       }
-      if (custPassword.length < 6) {
-        return 'Password must be at least 6 characters long.';
-      }
-      if (custPassword !== custConfirmPassword) {
-        return "Passwords don't match.";
+      if (!PHONE_REGEX.test(custPhone.trim())) {
+        return 'Please enter a valid 10-digit Indian mobile number.';
       }
       return null;
     }
 
-    if (!dealerName.trim() || !dealerEmail.trim() || !dealerPhone.trim() || !dealerPassword) {
-      return 'Please fill in your name, email, phone, and password.';
-    }
-    if (dealerPassword.length < 6) {
-      return 'Password must be at least 6 characters long.';
-    }
-    if (dealerPassword !== dealerConfirmPassword) {
-      return "Passwords don't match.";
+    if (!dealerName.trim() || !dealerEmail.trim() || !dealerPhone.trim()) {
+      return 'Please fill in your name, email, and phone number.';
     }
     if (!PHONE_REGEX.test(dealerPhone.trim())) {
       return 'Please enter a valid 10-digit Indian mobile number.';
@@ -173,13 +151,13 @@ const SignupWizard = ({ onSwitchToLogin }) => {
       return 'A valid 15-character GSTIN is required.';
     }
     if (!gstFile) {
-      return 'Please upload a photo of your GST Certificate.';
+      return 'Please upload a photo or PDF of your GST Certificate.';
     }
     if (!aadhaarNumber.trim() || !AADHAAR_REGEX.test(aadhaarNumber.trim())) {
       return 'A valid 12-digit Aadhaar number is required.';
     }
     if (!aadhaarFile) {
-      return 'Please upload a photo of your Aadhaar Card.';
+      return 'Please upload a photo or PDF of your Aadhaar Card.';
     }
     if (!dealerAddress.trim()) {
       return 'Please enter your business address.';
@@ -252,10 +230,10 @@ const SignupWizard = ({ onSwitchToLogin }) => {
   const finalizeSignup = async () => {
     const payload = isDealer
       ? {
-          fullName: dealerName,
-          email: dealerEmail,
-          phone: dealerPhone,
-          password: dealerPassword,
+          fullName: dealerName.trim(),
+          email: dealerEmail.trim().toLowerCase(),
+          phone: dealerPhone.trim(),
+          password: `VNX@${dealerPhone.trim()}`,
           role: 'dealer',
           companyName,
           gstin: gstin.toUpperCase(),
@@ -266,9 +244,11 @@ const SignupWizard = ({ onSwitchToLogin }) => {
           pincode,
         }
       : {
-          fullName: custName,
-          email: custEmail,
-          password: custPassword,
+          fullName: custName.trim(),
+          email: custEmail.trim().toLowerCase(),
+          phone: custPhone.trim(),
+          companyName: custCompany.trim() || undefined,
+          password: `VNX@${custPhone.trim()}`,
           role: 'customer',
         };
 
@@ -321,10 +301,10 @@ const SignupWizard = ({ onSwitchToLogin }) => {
       const finalRole = await finalizeSignup();
       setSuccessMsg(
         finalRole === 'dealer'
-          ? 'Dealer account created! Redirecting to your dashboard...'
+          ? 'Dealer account created! Redirecting to storefront...'
           : 'Account created successfully! Redirecting...'
       );
-      setTimeout(() => navigateByRole(finalRole), 1200);
+      setTimeout(() => navigateByRole(), 1200);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Verification failed. Please try again.');
     } finally {
@@ -332,397 +312,523 @@ const SignupWizard = ({ onSwitchToLogin }) => {
     }
   };
 
-  const cardWidth = step === 2 && isDealer ? 'max-w-xl' : 'max-w-md';
+  const cardWidth =
+    step === 3
+      ? 'max-w-md'
+      : isDealer
+      ? 'max-w-4xl'
+      : 'max-w-2xl';
 
   return (
-    <div className={`w-full ${cardWidth} bg-card border border-border rounded-3xl p-6 sm:p-8 shadow-2xl relative z-10 transition-all duration-300`}>
-      <div className="flex flex-col items-center text-center mb-6">
-        <p className="text-xs text-muted-foreground font-medium">Join Vinexus as a Customer or B2B Dealer</p>
+    <div className={cn("w-full bg-white border border-gray-200/90 rounded-xl p-6 sm:p-8 shadow-sm relative z-10 transition-all duration-300", cardWidth)}>
+      
+      {/* Top Segmented Tabs: Login | Register (Mega Jaipur Style) */}
+      <div className="grid grid-cols-2 rounded-md overflow-hidden bg-[#f4eff1] p-1 mb-5 border border-gray-200/60">
+        <button
+          type="button"
+          onClick={onSwitchToLogin}
+          className="py-2.5 text-xs sm:text-sm font-bold text-gray-600 hover:text-gray-900 bg-transparent rounded transition-all duration-200 cursor-pointer"
+        >
+          Login
+        </button>
+        <button
+          type="button"
+          className="py-2.5 text-xs sm:text-sm font-bold bg-primary text-white shadow-sm rounded transition-all duration-200 cursor-pointer"
+        >
+          Register
+        </button>
       </div>
 
-      {step > 1 && <StepIndicator step={step} />}
+      {/* Sub-tabs: Dealer / B2B vs Customer (Mega Jaipur Style) */}
+      {step === 2 && (
+        <div className="flex items-center justify-center gap-6 sm:gap-12 border-b border-gray-200 pb-2 mb-6">
+          <button
+            type="button"
+            onClick={() => handleRoleChange('dealer')}
+            className={cn(
+              "flex items-center gap-2 text-xs sm:text-sm font-bold pb-2 transition-all border-b-2 cursor-pointer",
+              role === 'dealer'
+                ? "border-primary text-primary"
+                : "border-transparent text-gray-500 hover:text-gray-800"
+            )}
+          >
+            <Building2 className="w-4 h-4" /> Dealer / B2B
+          </button>
+          <button
+            type="button"
+            onClick={() => handleRoleChange('customer')}
+            className={cn(
+              "flex items-center gap-2 text-xs sm:text-sm font-bold pb-2 transition-all border-b-2 cursor-pointer",
+              role === 'customer'
+                ? "border-primary text-primary"
+                : "border-transparent text-gray-500 hover:text-gray-800"
+            )}
+          >
+            <User className="w-4 h-4" /> Customer
+          </button>
+        </div>
+      )}
 
+      {/* Form Heading */}
+      {step === 2 && (
+        <div className="text-left mb-5">
+          <h2 className="text-base sm:text-lg font-bold text-gray-900">
+            Create Account {isDealer && <span className="text-primary">(Dealer / B2B)</span>}
+          </h2>
+          <p className="text-xs text-gray-500">
+            {isDealer
+              ? 'Fill in your business & KYC details for wholesale dealer access'
+              : 'Fill in your details to get started'}
+          </p>
+        </div>
+      )}
+
+      {/* Error Alert */}
       {error && (
-        <div className="mb-5 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-300 text-xs font-medium flex items-center gap-2.5">
-          <ShieldCheck className="w-4 h-4 text-rose-500 shrink-0" />
+        <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2 text-left">
+          <ShieldCheck className="w-4 h-4 text-rose-600 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
+      {/* Success Alert */}
       {successMsg && (
-        <div className="mb-5 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-300 text-xs font-medium flex items-center gap-2.5">
-          <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" />
+        <div className="mb-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium flex items-center gap-2 text-left">
+          <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{successMsg}</span>
         </div>
       )}
 
-      {/* STEP 1: ROLE SELECTION */}
-      {step === 1 && (
-        <div className="space-y-3">
-          <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            Choose Account Type *
-          </label>
-          <button
-            type="button"
-            onClick={() => handleSelectRole('customer')}
-            className="w-full p-4 rounded-2xl border border-border bg-muted/40 hover:border-primary hover:bg-primary/5 text-left transition-all flex items-center gap-3"
-          >
-            <div className="p-2.5 rounded-xl bg-muted text-primary">
-              <User className="w-5 h-5" />
-            </div>
-            <div className="flex-1">
-              <div className="text-sm font-bold text-foreground">Customer</div>
-              <div className="text-[11px] text-muted-foreground">Retail shopper - browse and enquire on standard pricing</div>
-            </div>
-            <ArrowRight className="w-4 h-4 text-muted-foreground" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSelectRole('dealer')}
-            className="w-full p-4 rounded-2xl border border-border bg-muted/40 hover:border-primary hover:bg-primary/5 text-left transition-all flex items-center gap-3"
-          >
-            <div className="p-2.5 rounded-xl bg-muted text-primary">
-              <Building2 className="w-5 h-5" />
-            </div>
-            <div className="flex-1">
-              <div className="text-sm font-bold text-foreground">Dealer (B2B)</div>
-              <div className="text-[11px] text-muted-foreground">Wholesale pricing - requires business KYC verification</div>
-            </div>
-            <ArrowRight className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </div>
-      )}
-
-      {/* STEP 2: DETAILS FORM */}
+      {/* STEP 2: CUSTOMER DETAILS FORM (Mega Jaipur Image 2 Style) */}
       {step === 2 && !isDealer && (
-        <form onSubmit={handleStep2Submit} className="space-y-3">
-          <div className="relative">
-            <User className="w-4 h-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              required
-              value={custName}
-              onChange={(e) => setCustName(e.target.value)}
-              placeholder="Full Name"
-              className={inputClass}
-              disabled={loading}
-            />
-          </div>
-          <div className="relative">
-            <Mail className="w-4 h-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="email"
-              required
-              value={custEmail}
-              onChange={(e) => setCustEmail(e.target.value)}
-              placeholder="Email address"
-              className={inputClass}
-              disabled={loading}
-            />
-          </div>
-          <div className="relative">
-            <Lock className="w-4 h-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type={showCustPassword ? 'text' : 'password'}
-              required
-              value={custPassword}
-              onChange={(e) => setCustPassword(e.target.value)}
-              placeholder="Create password"
-              className={inputClass}
-              disabled={loading}
-            />
-          </div>
-          <div>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type={showCustPassword ? 'text' : 'password'}
-                required
-                value={custConfirmPassword}
-                onChange={(e) => setCustConfirmPassword(e.target.value)}
-                placeholder="Confirm password"
-                className={cn(
-                  inputClass,
-                  custConfirmPassword && custPassword !== custConfirmPassword && 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20'
-                )}
-                disabled={loading}
-              />
+        <form onSubmit={handleStep2Submit} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-left">
+            {/* Full Name */}
+            <div className="space-y-1">
+              <label className="block text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                FULL NAME *
+              </label>
+              <div className="relative">
+                <User className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  required
+                  value={custName}
+                  onChange={(e) => setCustName(e.target.value)}
+                  placeholder="Your Full Name"
+                  className={inputClass}
+                  disabled={loading}
+                />
+              </div>
             </div>
-            {custConfirmPassword && custPassword !== custConfirmPassword && (
-              <p className="text-[10px] text-rose-600 font-semibold mt-1.5">Passwords don't match.</p>
-            )}
-          </div>
-          <label className="flex items-center gap-2 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={showCustPassword}
-              onChange={(e) => setShowCustPassword(e.target.checked)}
-              className="rounded-md border-border bg-muted text-primary focus:ring-primary/20 w-3.5 h-3.5"
-            />
-            <span>Show passwords</span>
-          </label>
-          <p className="text-[10px] text-muted-foreground flex items-center gap-1.5">
-            <Mail className="w-3 h-3" /> We'll send a verification code to your email
-          </p>
 
-          <div className="flex gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setStep(1)}
-              className="px-4 py-3.5 rounded-full border border-border text-muted-foreground hover:text-foreground text-xs font-bold transition-colors flex items-center gap-1.5"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" /> Back
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 bg-primary hover:bg-primary/90 text-white font-bold rounded-full py-3.5 text-xs transition-all flex items-center justify-center gap-2 shadow-md active:scale-[0.99] disabled:opacity-50"
-            >
-              <span>{loading ? 'Sending code...' : 'Continue'}</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            {/* Company Name (Optional) */}
+            <div className="space-y-1">
+              <label className="block text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                COMPANY NAME (OPTIONAL)
+              </label>
+              <div className="relative">
+                <Building2 className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={custCompany}
+                  onChange={(e) => setCustCompany(e.target.value)}
+                  placeholder="Company Name"
+                  className={inputClass}
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            {/* Email Address */}
+            <div className="space-y-1">
+              <label className="block text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                EMAIL ADDRESS *
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="email"
+                  required
+                  value={custEmail}
+                  onChange={(e) => setCustEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className={inputClass}
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            {/* Mobile Number (Mandatory) */}
+            <div className="space-y-1">
+              <label className="block text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                MOBILE NUMBER *
+              </label>
+              <div className="relative">
+                <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="tel"
+                  required
+                  value={custPhone}
+                  onChange={(e) => setCustPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder="10-digit Mobile number"
+                  maxLength={10}
+                  className={inputClass}
+                  disabled={loading}
+                />
+              </div>
+            </div>
           </div>
+
+          {/* Terms & Conditions Checkbox */}
+          <div className="flex items-center text-xs pt-1 text-left">
+            <label className="flex items-center gap-2.5 text-gray-600 hover:text-gray-900 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={agreedTerms}
+                onChange={(e) => setAgreedTerms(e.target.checked)}
+                className="sr-only"
+              />
+              <div
+                className={cn(
+                  "w-4 h-4 rounded border flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-2xs",
+                  agreedTerms
+                    ? "bg-primary border-primary text-white"
+                    : "bg-white border-gray-300 hover:border-gray-400"
+                )}
+              >
+                {agreedTerms && <Check className="w-3 h-3 stroke-[3]" />}
+              </div>
+              <span>
+                I have read and agree to the{' '}
+                <Link to="/terms" target="_blank" className="font-bold text-primary hover:underline">
+                  Terms & Conditions
+                </Link>{' '}
+                &{' '}
+                <Link to="/privacy" target="_blank" className="font-bold text-primary hover:underline">
+                  Privacy Policy
+                </Link>
+              </span>
+            </label>
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-primary hover:bg-primary/90 text-white font-bold rounded py-3 text-xs sm:text-sm tracking-wide transition-all flex items-center justify-center gap-2 shadow-sm active:scale-[0.99] disabled:opacity-50 mt-2 cursor-pointer"
+          >
+            <User className="w-4 h-4" />
+            <span>{loading ? 'Sending code...' : 'Create Account'}</span>
+          </button>
         </form>
       )}
 
+      {/* STEP 2: DEALER DETAILS & KYC FORM (Mega Jaipur Image 3 Style) */}
       {step === 2 && isDealer && (
-        <form onSubmit={handleStep2Submit} className="space-y-3">
-          <div className="relative">
-            <User className="w-4 h-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              required
-              value={dealerName}
-              onChange={(e) => setDealerName(e.target.value)}
-              placeholder="Full Name"
-              className={inputClass}
-              disabled={loading}
-            />
+        <form onSubmit={handleStep2Submit} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-left">
+            {/* Full Name */}
+            <div className="space-y-1">
+              <label className="block text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                FULL NAME *
+              </label>
+              <div className="relative">
+                <User className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  required
+                  value={dealerName}
+                  onChange={(e) => setDealerName(e.target.value)}
+                  placeholder="Full Name of Proprietor / Authorized Person"
+                  className={inputClass}
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            {/* Company / Firm Name */}
+            <div className="space-y-1">
+              <label className="block text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                COMPANY / FIRM NAME *
+              </label>
+              <div className="relative">
+                <Building2 className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  required
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder="Business / Trade Registered Name"
+                  className={inputClass}
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            {/* Email Address */}
+            <div className="space-y-1">
+              <label className="block text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                EMAIL ADDRESS *
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="email"
+                  required
+                  value={dealerEmail}
+                  onChange={(e) => setDealerEmail(e.target.value)}
+                  placeholder="Official Email Address"
+                  className={inputClass}
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            {/* Mobile Number */}
+            <div className="space-y-1">
+              <label className="block text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                MOBILE NUMBER *
+              </label>
+              <div className="relative">
+                <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="tel"
+                  required
+                  value={dealerPhone}
+                  onChange={(e) => setDealerPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder="10-digit Indian Mobile Number"
+                  className={inputClass}
+                  disabled={loading}
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="relative">
-              <Mail className="w-4 h-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="email"
+          {/* Business & KYC Verification Section */}
+          <div className="space-y-3.5 pt-4 border-t border-gray-200 text-left">
+            <div className="flex items-center gap-2 pb-1">
+              <Building2 className="w-4 h-4 text-primary" />
+              <h3 className="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wide">
+                Dealer Business & KYC Details
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="space-y-1">
+                <label className="block text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                  GSTIN NUMBER *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={gstin}
+                  onChange={(e) => setGstin(e.target.value.toUpperCase())}
+                  placeholder="15-character GSTIN"
+                  maxLength={15}
+                  className={`${plainInputClass} uppercase`}
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                  AADHAAR NUMBER (12 DIGITS) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={aadhaarNumber}
+                  onChange={(e) => setAadhaarNumber(e.target.value.replace(/\D/g, '').slice(0, 12))}
+                  placeholder="12-digit Aadhaar number"
+                  maxLength={12}
+                  className={plainInputClass}
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            {/* Document Uploads */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <FileDropField
+                label="GST Certificate (Photo or PDF)"
                 required
-                value={dealerEmail}
-                onChange={(e) => setDealerEmail(e.target.value)}
-                placeholder="Email address"
-                className={inputClass}
+                file={gstFile}
+                onChange={setGstFile}
+                disabled={loading}
+              />
+              <FileDropField
+                label="Aadhaar Card (Photo or PDF)"
+                required
+                file={aadhaarFile}
+                onChange={setAadhaarFile}
                 disabled={loading}
               />
             </div>
-            <div className="relative">
-              <Phone className="w-4 h-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="tel"
+
+            {/* Business Address */}
+            <div className="space-y-1">
+              <label className="block text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                BUSINESS ADDRESS (STREET, AREA) *
+              </label>
+              <textarea
                 required
-                value={dealerPhone}
-                onChange={(e) => setDealerPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                placeholder="Phone number"
-                className={inputClass}
+                value={dealerAddress}
+                onChange={(e) => setDealerAddress(e.target.value)}
+                placeholder="Shop / Office No, Building, Street, Area"
+                rows={2}
+                className={`${plainInputClass} resize-none`}
                 disabled={loading}
               />
             </div>
+
+            {/* State, City, Pincode in 3 columns */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="block text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                  STATE *
+                </label>
+                <SearchableSelect
+                  value={selectedState}
+                  onChange={(val) => {
+                    setSelectedState(val);
+                    setSelectedCity('');
+                  }}
+                  options={INDIA_STATES}
+                  placeholder="Select State *"
+                  searchPlaceholder="Search states..."
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                  CITY *
+                </label>
+                <SearchableSelect
+                  value={selectedCity}
+                  onChange={setSelectedCity}
+                  options={getCitiesForState(selectedState)}
+                  placeholder={selectedState ? 'Select City *' : 'Select state first'}
+                  searchPlaceholder="Search cities..."
+                  emptyMessage="No matching cities."
+                  disabled={loading || !selectedState}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                  PINCODE *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={pincode}
+                  onChange={(e) => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="6-digit Pincode"
+                  maxLength={6}
+                  className={plainInputClass}
+                  disabled={loading}
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="relative">
-            <Lock className="w-4 h-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type={showDealerPassword ? 'text' : 'password'}
-              required
-              value={dealerPassword}
-              onChange={(e) => setDealerPassword(e.target.value)}
-              placeholder="Create password"
-              className={inputClass}
-              disabled={loading}
-            />
-          </div>
-
-          <div>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+          {/* Terms & Conditions Checkbox */}
+          <div className="flex items-center text-xs pt-1 text-left">
+            <label className="flex items-center gap-2.5 text-gray-600 hover:text-gray-900 cursor-pointer select-none">
               <input
-                type={showDealerPassword ? 'text' : 'password'}
-                required
-                value={dealerConfirmPassword}
-                onChange={(e) => setDealerConfirmPassword(e.target.value)}
-                placeholder="Confirm password"
+                type="checkbox"
+                checked={agreedTerms}
+                onChange={(e) => setAgreedTerms(e.target.checked)}
+                className="sr-only"
+              />
+              <div
                 className={cn(
-                  inputClass,
-                  dealerConfirmPassword && dealerPassword !== dealerConfirmPassword && 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20'
+                  "w-4 h-4 rounded border flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-2xs",
+                  agreedTerms
+                    ? "bg-primary border-primary text-white"
+                    : "bg-white border-gray-300 hover:border-gray-400"
                 )}
-                disabled={loading}
-              />
-            </div>
-            {dealerConfirmPassword && dealerPassword !== dealerConfirmPassword && (
-              <p className="text-[10px] text-rose-600 font-semibold mt-1.5">Passwords don't match.</p>
-            )}
+              >
+                {agreedTerms && <Check className="w-3 h-3 stroke-[3]" />}
+              </div>
+              <span>
+                I have read and agree to the{' '}
+                <Link to="/terms" target="_blank" className="font-bold text-primary hover:underline">
+                  Terms & Conditions
+                </Link>{' '}
+                &{' '}
+                <Link to="/privacy" target="_blank" className="font-bold text-primary hover:underline">
+                  Privacy Policy
+                </Link>
+              </span>
+            </label>
           </div>
 
-          <label className="flex items-center gap-2 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={showDealerPassword}
-              onChange={(e) => setShowDealerPassword(e.target.checked)}
-              className="rounded-md border-border bg-muted text-primary focus:ring-primary/20 w-3.5 h-3.5"
-            />
-            <span>Show passwords</span>
-          </label>
-
-          <div className="space-y-3 pt-3 border-t border-border">
-            <div className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-primary" /> Dealer Business & KYC Details
-            </div>
-
-            <input
-              type="text"
-              required
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              placeholder="Business / Company Name *"
-              className={plainInputClass}
-              disabled={loading}
-            />
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <input
-                type="text"
-                required
-                value={gstin}
-                onChange={(e) => setGstin(e.target.value.toUpperCase())}
-                placeholder="GSTIN Number *"
-                maxLength={15}
-                className={`${plainInputClass} uppercase`}
-                disabled={loading}
-              />
-              <input
-                type="text"
-                required
-                value={aadhaarNumber}
-                onChange={(e) => setAadhaarNumber(e.target.value.replace(/\D/g, '').slice(0, 12))}
-                placeholder="Aadhaar Number (12 digits) *"
-                className={plainInputClass}
-                disabled={loading}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FileDropField label="GST Certificate Photo" required file={gstFile} onChange={setGstFile} disabled={loading} />
-              <FileDropField label="Aadhaar Card Photo" required file={aadhaarFile} onChange={setAadhaarFile} disabled={loading} />
-            </div>
-
-            <textarea
-              required
-              value={dealerAddress}
-              onChange={(e) => setDealerAddress(e.target.value)}
-              placeholder="Business Address (Street, Area) *"
-              rows={2}
-              className={`${plainInputClass} resize-none`}
-              disabled={loading}
-            />
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              <SearchableSelect
-                value={selectedState}
-                onChange={(val) => {
-                  setSelectedState(val);
-                  setSelectedCity('');
-                }}
-                options={INDIA_STATES}
-                placeholder="Select State *"
-                searchPlaceholder="Search states..."
-                disabled={loading}
-              />
-              <SearchableSelect
-                value={selectedCity}
-                onChange={setSelectedCity}
-                options={getCitiesForState(selectedState)}
-                placeholder={selectedState ? 'Select City *' : 'Select state first'}
-                searchPlaceholder="Search cities..."
-                emptyMessage="No matching cities."
-                disabled={loading || !selectedState}
-              />
-              <input
-                type="text"
-                required
-                value={pincode}
-                onChange={(e) => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="Pincode *"
-                className={plainInputClass}
-                disabled={loading}
-              />
-            </div>
-          </div>
-
-          <p className="text-[10px] text-muted-foreground flex items-center gap-1.5 pt-1">
-            <Phone className="w-3 h-3" /> We'll send a verification code to your phone via SMS
-          </p>
-
-          <div className="flex gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setStep(1)}
-              className="px-4 py-3.5 rounded-full border border-border text-muted-foreground hover:text-foreground text-xs font-bold transition-colors flex items-center gap-1.5"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" /> Back
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 bg-primary hover:bg-primary/90 text-white font-bold rounded-full py-3.5 text-xs transition-all flex items-center justify-center gap-2 shadow-md active:scale-[0.99] disabled:opacity-50"
-            >
-              <span>{loading ? 'Sending code...' : 'Continue'}</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
+          {/* Submit Dealer Registration */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-primary hover:bg-primary/90 text-white font-bold rounded py-3 text-xs sm:text-sm tracking-wide transition-all flex items-center justify-center gap-2 shadow-sm active:scale-[0.99] disabled:opacity-50 mt-2 cursor-pointer"
+          >
+            <Building2 className="w-4 h-4" />
+            <span>{loading ? 'Sending verification code...' : 'Create Account & Submit KYC'}</span>
+          </button>
         </form>
       )}
 
-      {/* STEP 3: OTP VERIFICATION */}
+      {/* STEP 3: OTP VERIFICATION (Mega Jaipur Style) */}
       {step === 3 && (
         <form onSubmit={handleVerifyOtp} className="space-y-5">
           <div className="text-center space-y-1.5">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
+            <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-2">
               {isDealer ? <Phone className="w-5 h-5" /> : <Mail className="w-5 h-5" />}
             </div>
-            <h3 className="text-sm font-bold text-foreground">Verify your {isDealer ? 'phone number' : 'email address'}</h3>
-            <p className="text-[11px] text-muted-foreground">
-              Code sent to <span className="font-semibold text-foreground">{otpIdentifier}</span>
+            <h3 className="text-sm sm:text-base font-bold text-gray-900">
+              Verify your {isDealer ? 'phone number' : 'email address'}
+            </h3>
+            <p className="text-xs text-gray-500">
+              Enter the 6-digit code sent to <span className="font-bold text-gray-800">{otpIdentifier}</span>
             </p>
           </div>
 
-          <div className="flex justify-center">
-            <OTPInput length={6} value={otp} onChange={setOtp} onComplete={(code) => setOtp(code)} label="" isDisabled={loading} />
+          <div className="flex justify-center my-4">
+            <OTPInput
+              length={6}
+              value={otp}
+              onChange={setOtp}
+              onComplete={(code) => setOtp(code)}
+              label=""
+              isDisabled={loading}
+            />
           </div>
 
-          <div className="text-center text-[11px] text-muted-foreground">
+          <div className="text-center text-xs text-gray-500">
             Didn't get the code?{' '}
             <button
               type="button"
               onClick={handleResendOtp}
               disabled={resendLoading || loading}
-              className="font-bold text-primary hover:underline disabled:opacity-50"
+              className="font-bold text-primary hover:underline disabled:opacity-50 cursor-pointer"
             >
               {resendLoading ? 'Resending...' : 'Resend'}
             </button>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2.5 pt-2">
             <button
               type="button"
               onClick={() => setStep(2)}
               disabled={loading}
-              className="px-4 py-3.5 rounded-full border border-border text-muted-foreground hover:text-foreground text-xs font-bold transition-colors flex items-center gap-1.5 disabled:opacity-50"
+              className="px-4 py-2.5 rounded border border-gray-300 text-gray-600 hover:text-gray-900 text-xs font-bold transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" /> Edit details
             </button>
             <button
               type="submit"
               disabled={loading || otp.length < 6}
-              className="flex-1 bg-primary hover:bg-primary/90 text-white font-bold rounded-full py-3.5 text-xs transition-all flex items-center justify-center gap-2 shadow-md active:scale-[0.99] disabled:opacity-50"
+              className="flex-1 bg-primary hover:bg-primary/90 text-white font-bold rounded py-2.5 text-xs sm:text-sm tracking-wide transition-all flex items-center justify-center gap-2 shadow-sm active:scale-[0.99] disabled:opacity-50 cursor-pointer"
             >
               <span>{loading ? 'Verifying...' : isDealer ? 'Verify & Submit KYC' : 'Verify & Create Account'}</span>
               {!loading && <FileCheck className="w-4 h-4" />}
@@ -731,11 +837,16 @@ const SignupWizard = ({ onSwitchToLogin }) => {
         </form>
       )}
 
-      <div className="mt-6 pt-5 border-t border-border text-center text-xs text-muted-foreground font-medium">
+      {/* Bottom Switch Link */}
+      <div className="mt-6 pt-4 border-t border-gray-100 text-center text-xs text-gray-500 font-medium">
         <span>
           Already have an account?{' '}
-          <button type="button" onClick={onSwitchToLogin} className="font-bold text-primary hover:underline transition-colors">
-            Sign in
+          <button
+            type="button"
+            onClick={onSwitchToLogin}
+            className="font-bold text-primary hover:underline cursor-pointer"
+          >
+            Login
           </button>
         </span>
       </div>

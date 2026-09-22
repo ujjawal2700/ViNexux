@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import useAuth from '../../hooks/useAuth';
 import cartService from '../../services/cartService';
 import contentService from '../../services/contentService';
 import useToast from '../../hooks/useToast';
@@ -20,9 +21,12 @@ import {
   ArrowRight,
   ArrowLeft,
   ShieldCheck,
+  Store,
+  Heart,
 } from 'lucide-react';
 
 export const CartPage = () => {
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -37,6 +41,13 @@ export const CartPage = () => {
   const fetchCartData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+
+    // If user is guest / not authenticated, show empty cart directly
+    if (!isAuthenticated) {
+      setCart({ items: [] });
+      setIsLoading(false);
+      return;
+    }
 
     // Fetch footer content for WhatsApp phone
     try {
@@ -59,11 +70,15 @@ export const CartPage = () => {
       setCart(cartData);
     } catch (err) {
       console.error('Cart fetch error:', err);
-      setError('Unable to load your shopping cart.');
+      if (err.response?.status === 401) {
+        setCart({ items: [] });
+      } else {
+        setError('Unable to load your shopping cart.');
+      }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     fetchCartData();
@@ -179,11 +194,55 @@ export const CartPage = () => {
     );
   }
 
+  // Empty Cart State - matches Mega Jaipur UI
+  if (items.length === 0) {
+    return (
+      <div className="w-full min-h-[calc(100vh-220px)] bg-white flex items-center justify-center pt-10 sm:pt-14 pb-20 px-4">
+        <div className="text-center max-w-lg mx-auto">
+          {/* Circular Shopping Cart Avatar */}
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-primary/5 border border-primary/10 flex items-center justify-center mx-auto mb-5 shadow-xs">
+            <ShoppingCart className="w-9 h-9 sm:w-11 sm:h-11 text-primary/70 stroke-[1.5]" />
+          </div>
+
+          {/* Title */}
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-2 tracking-tight">
+            Your cart is empty
+          </h2>
+
+          {/* Subtitle */}
+          <p className="text-xs sm:text-sm text-gray-500 max-w-md mx-auto leading-relaxed mb-6">
+            Browse our catalog of CCTV cameras, NVRs, networking gear and accessories.<br className="hidden sm:inline" />
+            Add items to start building your order.
+          </p>
+
+          {/* Action Buttons to move between wishlist or home */}
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:bg-primary/90 text-white font-bold text-xs sm:text-sm shadow-sm transition-all active:scale-98"
+            >
+              <Store className="w-4 h-4" />
+              <span>Continue Shopping</span>
+            </Link>
+
+            <Link
+              to="/wishlist"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md border border-primary/20 bg-primary/10 hover:bg-primary/15 text-primary font-bold text-xs sm:text-sm transition-all active:scale-98"
+            >
+              <Heart className="w-4 h-4 text-primary fill-primary/20" />
+              <span>View Wishlist</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 bg-background text-foreground min-h-screen">
       
       {/* Header */}
-      <div className="border-b border-border pb-6 flex items-center justify-between">
+      <div className="border-b border-border pb-6 flex items-center justify-between flex-wrap gap-4">
         <div>
           <span className="text-xs font-bold uppercase tracking-wider text-primary">Cart & Quotation Builder</span>
           <h1 className="text-3xl font-extrabold text-foreground tracking-tight flex items-center gap-3">
@@ -192,17 +251,33 @@ export const CartPage = () => {
           </h1>
         </div>
 
-        {items.length > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-            leftIcon={<Trash2 className="w-4 h-4" />}
-            onClick={() => setIsClearConfirmOpen(true)}
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold transition-all shadow-xs"
           >
-            Clear Cart
-          </Button>
-        )}
+            <Store className="w-3.5 h-3.5" />
+            <span>Continue Shopping</span>
+          </Link>
+          <Link
+            to="/wishlist"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary text-xs font-semibold transition-all shadow-xs"
+          >
+            <Heart className="w-3.5 h-3.5" />
+            <span>View Wishlist</span>
+          </Link>
+          {items.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+              leftIcon={<Trash2 className="w-4 h-4" />}
+              onClick={() => setIsClearConfirmOpen(true)}
+            >
+              Clear Cart
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Cart Content Body */}
@@ -365,14 +440,7 @@ export const CartPage = () => {
             </div>
           </div>
         </div>
-      ) : (
-        <EmptyState
-          title="Your Cart is Empty"
-          description="Browse our CCTV cameras, DVRs, NVRs, and accessories to build a quotation enquiry."
-          actionLabel="Explore Product Catalog"
-          onAction={() => navigate('/products')}
-        />
-      )}
+      ) : null}
 
       {/* Clear Cart Confirmation Dialog */}
       <ConfirmDialog

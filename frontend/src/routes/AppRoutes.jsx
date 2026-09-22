@@ -22,6 +22,7 @@ import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
 import ProductsPage from '../pages/public/ProductsPage';
 import ProductDetailPage from '../pages/public/ProductDetailPage';
+import WishlistPage from '../pages/public/WishlistPage';
 import CategoriesPage from '../pages/public/CategoriesPage';
 import CmsPage from '../pages/public/CmsPage';
 import UnauthorizedPage from '../pages/public/UnauthorizedPage';
@@ -73,6 +74,8 @@ const AppRoutes = () => {
         <Route path="/" element={<HomePage />} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/products/:id" element={<ProductDetailPage />} />
+        <Route path="/wishlist" element={<WishlistPage />} />
+        <Route path="/cart" element={<CartPage />} />
         <Route path="/categories" element={<CategoriesPage />} />
         <Route path="/content/pages/:slug" element={<CmsPage />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
@@ -96,9 +99,9 @@ const AppRoutes = () => {
             dealer portal: both roles use the exact same storefront chrome
             and pages, differentiated only by role-aware content within them
             (e.g. the Business & KYC section on Profile is dealer-only). */}
+        <Route path="/account/cart" element={<Navigate to="/cart" replace />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<RoleRoute allowedRoles={[ROLES.CUSTOMER, ROLES.DEALER]} />}>
-            <Route path="/account/cart" element={<CartPage />} />
             <Route path="/account/checkout-enquiry" element={<CheckoutEnquiryPage />} />
             <Route path="/account/enquiries" element={<EnquiriesPage />} />
             <Route path="/account/enquiries/:id" element={<EnquiryDetailPage />} />
