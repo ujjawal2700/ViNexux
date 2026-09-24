@@ -109,6 +109,9 @@ export const getProductsQuerySchema = {
   query: z.object({
     search: z.string().optional(),
     categoryId: z.string().optional(),
+    category: z.string().optional(),
+    categorySlug: z.string().optional(),
+    brand: z.string().optional(),
     isFeatured: z.string().optional(),
     isActive: z.string().optional(),
     page: z
@@ -122,8 +125,8 @@ export const getProductsQuerySchema = {
       })
       .optional(),
     sortBy: z
-      .enum(['name', 'sku', 'createdAt'], {
-        invalid_type_error: 'Invalid sortBy field. Allowed sort fields for product: name, sku, createdAt',
+      .enum(['name', 'sku', 'createdAt', 'standardPrice', 'dealerPrice', 'sortOrder', 'updatedAt'], {
+        invalid_type_error: 'Invalid sortBy field',
       })
       .optional(),
     sortOrder: z.enum(['asc', 'desc']).optional(),

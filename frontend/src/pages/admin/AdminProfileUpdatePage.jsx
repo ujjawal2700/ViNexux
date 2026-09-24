@@ -18,14 +18,15 @@ import {
 } from 'lucide-react';
 
 export const AdminProfileUpdatePage = () => {
-  const { user, updateProfile } = useAuth();
+  const { user, adminUser, updateProfile } = useAuth();
+  const currentAdmin = adminUser || (user?.role === 'admin' ? user : null);
   const toast = useToast();
   const navigate = useNavigate();
 
   // Form State
-  const [fullName, setFullName] = useState(user?.fullName || user?.name || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [phone, setPhone] = useState(user?.phone || user?.phoneNumber || '');
+  const [fullName, setFullName] = useState(currentAdmin?.fullName || currentAdmin?.name || '');
+  const [email, setEmail] = useState(currentAdmin?.email || '');
+  const [phone, setPhone] = useState(currentAdmin?.phone || currentAdmin?.phoneNumber || '');
 
   // Password Change State
   const [currentPassword, setCurrentPassword] = useState('');

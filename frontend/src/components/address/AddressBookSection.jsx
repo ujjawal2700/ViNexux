@@ -105,9 +105,9 @@ export const AddressBookSection = () => {
   return (
     <div className="space-y-4">
       {addresses.length === 0 && !isAdding && (
-        <div className="p-6 text-center bg-background rounded-xl border border-dashed border-border">
-          <MapPin className="w-6 h-6 text-muted-foreground mx-auto mb-2" />
-          <p className="text-xs text-muted-foreground">
+        <div className="p-6 text-center bg-gray-50/80 rounded-xl border border-dashed border-gray-300">
+          <MapPin className="w-6 h-6 text-gray-400 mx-auto mb-2" />
+          <p className="text-xs text-gray-500">
             No saved addresses yet. Add one so it's ready to select at checkout.
           </p>
         </div>

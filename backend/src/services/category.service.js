@@ -118,7 +118,7 @@ export const categoryService = {
     }
 
     const parsedPage = Math.max(1, parseInt(page, 10) || 1);
-    const parsedLimit = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
+    const parsedLimit = Math.max(1, Math.min(500, parseInt(limit, 10) || 20));
     const skip = (parsedPage - 1) * parsedLimit;
 
     const sortDirection = sortOrder === 'desc' ? -1 : 1;
@@ -130,6 +130,7 @@ export const categoryService = {
 
     const [categories, total] = await Promise.all([
       Category.find(filter)
+        .populate('parentId', 'name slug')
         .sort(sortOptions)
         .skip(skip)
         .limit(parsedLimit)
@@ -256,7 +257,7 @@ export const categoryService = {
   },
 
   /**
-   * Delete or safely deactivate category depending on dependencies.
+   * Delete category and associated descendants permanently.
    */
   async deleteCategory(id) {
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -268,31 +269,21 @@ export const categoryService = {
       throw new AppError('Category not found.', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
     }
 
-    // Check dependent subcategories and products
-    const [subcategoriesCount, productsCount] = await Promise.all([
-      Category.countDocuments({ parentId: id }),
-      Product.countDocuments({ categoryId: id }),
-    ]);
+    // Find all direct and indirect children
+    const directChildren = await Category.find({ parentId: id }).select('_id');
+    const directChildIds = directChildren.map((c) => c._id);
+    const subChildren = await Category.find({ parentId: { $in: directChildIds } }).select('_id');
+    const allDescendantIds = [id, ...directChildIds, ...subChildren.map((c) => c._id)];
 
-    if (subcategoriesCount > 0 || productsCount > 0) {
-      // Safe deactivation to preserve relational integrity
-      category.isActive = false;
-      await category.save();
+    // Clean up products in this category or any of its children
+    await Product.deleteMany({ categoryId: { $in: allDescendantIds } });
 
-      return {
-        deactivated: true,
-        message: `Category was safely deactivated (isActive = false) because ${productsCount} product(s) and ${subcategoriesCount} child category/categories depend on it.`,
-        category,
-      };
-    }
-
-    // Deactivate safely even if no dependencies
-    category.isActive = false;
-    await category.save();
+    // Delete the categories
+    await Category.deleteMany({ _id: { $in: allDescendantIds } });
 
     return {
-      deactivated: true,
-      message: 'Category successfully deactivated.',
+      deleted: true,
+      message: `Category "${category.name}" deleted successfully.`,
       category,
     };
   },

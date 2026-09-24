@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 import contentService from '../services/contentService';
 import cartService from '../services/cartService';
 import wishlistService from '../services/wishlistService';
+import categoryService from '../services/categoryService';
 import { ROLES } from '../constants';
 import Logo from '../components/ui/Logo';
 import { Drawer } from '../components/ui/Drawer';
+import { slugify } from '../utils/categoryUrls';
 import {
   Search,
   Mic,
@@ -19,27 +21,62 @@ import {
   User,
   LogIn,
   Menu,
+  ChevronRight,
+  ChevronLeft,
+  Laptop as LaptopIcon,
+  Monitor,
+  HardDrive,
+  Keyboard,
+  Printer,
+  Shield,
+  Wifi,
+  FileCode,
+  Briefcase,
+  Cable,
+  Cpu,
+  Layers,
+  Smartphone,
 } from 'lucide-react';
 
 const CATEGORY_BAR_ITEMS = [
-  { name: 'Desktop', query: 'Desktop' },
-  { name: 'Laptop', query: 'Laptop' },
-  { name: 'Storage', query: 'Storage' },
-  { name: 'Display', query: 'Display' },
-  { name: 'Peripherals', query: 'Peripherals' },
-  { name: 'Printers & Scanners', query: 'Printers' },
-  { name: 'Security', query: 'CCTV' },
-  { name: 'Networking', query: 'Routers' },
-  { name: 'Software', query: 'Software' },
-  { name: 'Mobility', query: 'Mobility' },
-  { name: 'Cables', query: 'Cables' },
-  { name: 'Connector & Converter', query: 'Connector' },
-  { name: 'Accessories CCTV & Networking', query: 'Accessories' },
-  { name: 'Telecom', query: 'Telecom' },
+  { name: 'Desktop', slug: 'desktop' },
+  { name: 'Laptop', slug: 'laptop' },
+  { name: 'Storage', slug: 'storage' },
+  { name: 'Display', slug: 'display' },
+  { name: 'Peripherals', slug: 'peripherals' },
+  { name: 'Printers & Scanners', slug: 'printers-scanners' },
+  { name: 'Security', slug: 'security' },
+  { name: 'Networking', slug: 'networking' },
+  { name: 'Software', slug: 'software' },
+  { name: 'Mobility', slug: 'mobility' },
+  { name: 'Cables', slug: 'cables' },
+  { name: 'Connector & Converter', slug: 'connector-converter' },
+  { name: 'Accessories CCTV & Networking', slug: 'accessories-cctv-networking' },
+  { name: 'Telecom', slug: 'telecom' },
 ];
 
+const getHeaderCategoryIcon = (name = '', slug = '') => {
+  const s = (slug + ' ' + name).toLowerCase();
+  if (s.includes('laptop')) return <LaptopIcon className="w-4 h-4" />;
+  if (s.includes('desktop')) return <Monitor className="w-4 h-4" />;
+  if (s.includes('storage')) return <HardDrive className="w-4 h-4" />;
+  if (s.includes('display')) return <Monitor className="w-4 h-4" />;
+  if (s.includes('peripheral')) return <Keyboard className="w-4 h-4" />;
+  if (s.includes('printer')) return <Printer className="w-4 h-4" />;
+  if (s.includes('security')) return <Shield className="w-4 h-4" />;
+  if (s.includes('network')) return <Wifi className="w-4 h-4" />;
+  if (s.includes('software')) return <FileCode className="w-4 h-4" />;
+  if (s.includes('mobility')) return <Briefcase className="w-4 h-4" />;
+  if (s.includes('cable')) return <Cable className="w-4 h-4" />;
+  if (s.includes('connector') || s.includes('converter')) return <Cpu className="w-4 h-4" />;
+  if (s.includes('accessories')) return <Layers className="w-4 h-4" />;
+  if (s.includes('telecom')) return <Phone className="w-4 h-4" />;
+  if (s.includes('mobile')) return <Smartphone className="w-4 h-4" />;
+  return <Layers className="w-4 h-4" />;
+};
+
 const PublicLayout = () => {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, adminUser, isAdminAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -52,12 +89,203 @@ const PublicLayout = () => {
   // Cart state
   const [cartCount, setCartCount] = useState(0);
   const [cartSubtotal, setCartSubtotal] = useState(0);
+  const [cartItems, setCartItems] = useState([]);
+  const [isCartHovered, setIsCartHovered] = useState(false);
+  const cartCloseTimeoutRef = useRef(null);
 
   // Wishlist state
   const [wishlistCount, setWishlistCount] = useState(() => wishlistService.getWishlist().length);
 
   // CMS Footer state
   const [footerData, setFooterData] = useState(null);
+
+  // Category Mega Menu & Navigation State
+  const [allCategories, setAllCategories] = useState([]);
+  const [hoveredHeaderId, setHoveredHeaderId] = useState(null);
+  const closeTimeoutRef = useRef(null);
+
+  // Responsive category bar positioning & horizontal scrolling
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  );
+  const [dropdownLeft, setDropdownLeft] = useState(16);
+  const headerItemRefs = useRef({});
+  const categoryNavRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  useEffect(() => {
+    const onResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  // Fetch full category hierarchy on mount
+  useEffect(() => {
+    const fetchCats = async () => {
+      try {
+        const res = await categoryService.getCategories({ limit: 500, sortBy: 'sortOrder', sortOrder: 'asc' });
+        const list = res.data?.categories || res.categories || [];
+        setAllCategories(list);
+      } catch (err) {
+        console.warn('Failed to load categories for nav bar:', err);
+      }
+    };
+    fetchCats();
+  }, []);
+
+  // Category Tree: Headers -> Mains -> Subs
+  const categoryTree = useMemo(() => {
+    if (!allCategories || allCategories.length === 0) {
+      return CATEGORY_BAR_ITEMS.map((item, idx) => ({
+        _id: `fallback-${idx}`,
+        name: item.name,
+        slug: item.slug,
+        mainCategories: [],
+      }));
+    }
+
+    const headers = allCategories.filter((c) => !c.parentId);
+    return headers.map((header) => {
+      const mains = allCategories.filter((c) => {
+        const pId = c.parentId?._id || c.parentId;
+        return pId && String(pId) === String(header._id);
+      });
+
+      const mainsWithSubs = mains.map((main) => {
+        const subs = allCategories.filter((c) => {
+          const pId = c.parentId?._id || c.parentId;
+          return pId && String(pId) === String(main._id);
+        });
+        return {
+          ...main,
+          subCategories: subs,
+        };
+      });
+
+      return {
+        ...header,
+        mainCategories: mainsWithSubs,
+      };
+    });
+  }, [allCategories]);
+
+  const checkNavScroll = useCallback(() => {
+    const el = categoryNavRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 10);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
+  }, []);
+
+  useEffect(() => {
+    checkNavScroll();
+    window.addEventListener('resize', checkNavScroll);
+    return () => window.removeEventListener('resize', checkNavScroll);
+  }, [categoryTree, checkNavScroll]);
+
+  const scrollNav = (direction) => {
+    if (categoryNavRef.current) {
+      const scrollAmount = 280;
+      categoryNavRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+      setTimeout(checkNavScroll, 300);
+    }
+  };
+
+  const handleCategoryWheel = (e) => {
+    if (categoryNavRef.current && e.deltaY !== 0) {
+      categoryNavRef.current.scrollLeft += e.deltaY;
+      checkNavScroll();
+    }
+  };
+
+  const megaMenuRef = useRef(null);
+
+  const hoveredHeader = useMemo(() => {
+    if (!hoveredHeaderId) return null;
+    return categoryTree.find((h) => String(h._id) === String(hoveredHeaderId));
+  }, [categoryTree, hoveredHeaderId]);
+
+  // Click outside listener for Mega Menu
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (megaMenuRef.current && !megaMenuRef.current.contains(e.target)) {
+        const isHeaderItem = Object.values(headerItemRefs.current).some(
+          (el) => el && el.contains(e.target)
+        );
+        if (!isHeaderItem) {
+          setHoveredHeaderId(null);
+        }
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleMouseEnterHeader = (headerId) => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+    }
+    setHoveredHeaderId(headerId);
+    const el = headerItemRefs.current[headerId];
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      setDropdownLeft(rect.left);
+    }
+  };
+
+  const handleMouseLeaveHeader = () => {
+    closeTimeoutRef.current = setTimeout(() => {
+      setHoveredHeaderId(null);
+    }, 200);
+  };
+
+  const handleHeaderClick = (e, headerId) => {
+    const header = categoryTree.find((h) => String(h._id) === String(headerId));
+    if (header && header.mainCategories && header.mainCategories.length > 0) {
+      e.preventDefault();
+      if (hoveredHeaderId === headerId) {
+        setHoveredHeaderId(null);
+      } else {
+        if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+        setHoveredHeaderId(headerId);
+        const el = headerItemRefs.current[headerId];
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          setDropdownLeft(rect.left);
+        }
+      }
+    }
+  };
+
+  // Divide main categories into 3 balanced columns matching Mega Jaipur screenshot
+  const dropdownColumns = useMemo(() => {
+    if (!hoveredHeader || !hoveredHeader.mainCategories) return [[], [], []];
+    const mains = hoveredHeader.mainCategories;
+    const col1 = [];
+    const col2 = [];
+    const col3 = [];
+    let w1 = 0, w2 = 0, w3 = 0;
+
+    mains.forEach((main) => {
+      const hasSubs = main.subCategories && main.subCategories.length > 0;
+      const weight = hasSubs ? 1 + main.subCategories.length * 0.7 : 1;
+      if (w1 <= w2 && w1 <= w3) {
+        col1.push(main);
+        w1 += weight;
+      } else if (w2 <= w1 && w2 <= w3) {
+        col2.push(main);
+        w2 += weight;
+      } else {
+        col3.push(main);
+        w3 += weight;
+      }
+    });
+
+    return [col1, col2, col3];
+  }, [hoveredHeader]);
 
   // Close mobile drawer on route change
   useEffect(() => {
@@ -73,12 +301,13 @@ const PublicLayout = () => {
     return () => window.removeEventListener('wishlist-updated', handleWishlistChange);
   }, []);
 
-  // Fetch Cart Item Count and Subtotal
+  // Fetch Cart Item Count, Subtotal, and Cart Items
   useEffect(() => {
     const fetchCartData = async () => {
       if (!isAuthenticated || user?.role === 'admin') {
         setCartCount(0);
         setCartSubtotal(0);
+        setCartItems([]);
         return;
       }
       try {
@@ -88,16 +317,24 @@ const PublicLayout = () => {
         const count = items.reduce((acc, item) => acc + (item.quantity || 1), 0);
         const subtotal =
           cart?.subtotal ||
-          items.reduce((acc, item) => acc + (item.price || 0) * (item.quantity || 1), 0);
+          items.reduce((acc, item) => {
+            const unitPrice =
+              item.priceSnapshot || item.price || item.productId?.standardPrice || 0;
+            return acc + unitPrice * (item.quantity || 1);
+          }, 0);
         setCartCount(count);
         setCartSubtotal(subtotal);
+        setCartItems(items);
       } catch (err) {
         setCartCount(0);
         setCartSubtotal(0);
+        setCartItems([]);
       }
     };
 
     fetchCartData();
+    window.addEventListener('cart-updated', fetchCartData);
+    return () => window.removeEventListener('cart-updated', fetchCartData);
   }, [isAuthenticated, user, location.pathname]);
 
   // Fetch CMS Footer Content
@@ -127,9 +364,17 @@ const PublicLayout = () => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
+
   const getProfileLink = () => {
     if (user?.role === ROLES.DEALER || user?.role === ROLES.CUSTOMER) return '/account/profile';
-    if (user?.role === ROLES.ADMIN) return '/admin/dashboard';
     return null;
   };
 
@@ -138,13 +383,23 @@ const PublicLayout = () => {
       {/* 1. STICKY HEADER CONTAINER (Locks top announcement + main header + category nav at top when scrolling) */}
       <header className="sticky top-0 z-50 w-full bg-white shadow-xs">
         
-        {/* Top Announcement Bar */}
-        <div className="w-full bg-white border-b border-gray-200 py-1 sm:py-1.5 px-4 text-center text-xs text-gray-500 font-medium tracking-wide">
+        {/* Top Announcement Bar (Mega Jaipur Style: Welcome back, {FULL_NAME}, you are now logged in. Logout) */}
+        <div className="w-full bg-white border-b border-gray-200 py-1 sm:py-1.5 px-4 text-center text-xs text-gray-600 font-medium tracking-wide">
           {isAuthenticated ? (
             <span>
-              Welcome back, <strong className="text-gray-800">{user?.fullName || user?.name || user?.email}</strong>
+              Welcome back,{' '}
+              <strong className="text-[#800020] font-bold uppercase tracking-tight">
+                {user?.fullName || user?.name || user?.contactPerson || 'Customer'}
+              </strong>
               {user?.role === 'dealer' && ' (Verified Dealer)'}
-              {user?.role === 'admin' && ' (Administrator)'}
+              {', you are now logged in. '}
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="font-bold text-[#800020] hover:underline cursor-pointer transition-colors inline-block ml-0.5"
+              >
+                Logout
+              </button>
             </span>
           ) : (
             <span>You are not logged in.</span>
@@ -152,7 +407,7 @@ const PublicLayout = () => {
         </div>
 
         {/* Main Header Row */}
-        <div className="w-full px-2 sm:px-4 lg:px-8 max-w-[1920px] mx-auto py-3 sm:py-3.5 flex items-center justify-between gap-3 sm:gap-4 lg:gap-6 border-b border-gray-200">
+        <div className="w-full px-3 sm:px-6 lg:px-8 2xl:px-12 py-3 sm:py-3.5 flex items-center justify-between gap-3 sm:gap-4 lg:gap-6 border-b border-gray-200">
           
           {/* Logo & Brand Name */}
           <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
@@ -301,7 +556,7 @@ const PublicLayout = () => {
 
             {/* Quotation */}
             <Link
-              to="/account/enquiries"
+              to="/account/quotations"
               title="Quotation / Inquiries"
               className="hidden sm:flex flex-col items-center text-gray-700 hover:text-primary transition-colors text-center px-1 group"
             >
@@ -309,23 +564,134 @@ const PublicLayout = () => {
               <span className="text-[10px] sm:text-[11px] font-semibold mt-1">Quotation</span>
             </Link>
 
-            {/* Cart Box: [X item(s) - ₹Y] + Maroon Cart Badge */}
-            <Link
-              to="/cart"
-              className="flex items-center border-2 border-primary rounded-md overflow-hidden hover:shadow-sm transition-all group shrink-0 h-10 sm:h-11"
+            {/* Cart Box: [X item(s) - ₹Y] + Maroon Cart Badge with Hover Dropdown (Matching Image 1) */}
+            <div
+              className="relative"
+              onMouseEnter={() => {
+                if (cartCloseTimeoutRef.current) clearTimeout(cartCloseTimeoutRef.current);
+                setIsCartHovered(true);
+              }}
+              onMouseLeave={() => {
+                cartCloseTimeoutRef.current = setTimeout(() => {
+                  setIsCartHovered(false);
+                }, 200);
+              }}
             >
-              <span className="px-2.5 sm:px-3.5 text-xs sm:text-sm font-bold text-gray-800 bg-white group-hover:bg-gray-50 transition-colors whitespace-nowrap">
-                {cartCount} item(s) - ₹{cartSubtotal.toLocaleString('en-IN')}
-              </span>
-              <div className="relative bg-primary text-white w-10 sm:w-11 h-full flex items-center justify-center">
-                <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
-                {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-white text-[9px] sm:text-[10px] font-black flex items-center justify-center shadow-xs">
-                    {cartCount > 99 ? '99+' : cartCount}
-                  </span>
-                )}
-              </div>
-            </Link>
+              <Link
+                to="/cart"
+                className="flex items-center border-2 border-primary rounded-md overflow-hidden hover:shadow-sm transition-all group shrink-0 h-10 sm:h-11"
+              >
+                <span className="px-2.5 sm:px-3.5 text-xs sm:text-sm font-bold text-gray-900 bg-white group-hover:bg-gray-50 transition-colors whitespace-nowrap">
+                  {cartCount} item(s) - ₹{(Number(cartSubtotal) || 0).toLocaleString('en-IN')}
+                </span>
+                <div className="relative bg-primary text-white w-10 sm:w-11 h-full flex items-center justify-center">
+                  <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-white text-[9px] sm:text-[10px] font-black flex items-center justify-center shadow-xs">
+                      {cartCount > 99 ? '99+' : cartCount}
+                    </span>
+                  )}
+                </div>
+              </Link>
+
+              {/* Cart Dropdown on Hover (Matching Image 1) */}
+              {isCartHovered && (
+                <div
+                  className="absolute right-0 top-full pt-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150"
+                  onMouseEnter={() => {
+                    if (cartCloseTimeoutRef.current) clearTimeout(cartCloseTimeoutRef.current);
+                  }}
+                  onMouseLeave={() => {
+                    cartCloseTimeoutRef.current = setTimeout(() => {
+                      setIsCartHovered(false);
+                    }, 200);
+                  }}
+                >
+                  <div className="w-[300px] sm:w-[350px] bg-white rounded-lg shadow-2xl border border-gray-200 relative overflow-hidden text-left">
+                    {/* Top indicator arrow pointing up to cart icon */}
+                    <div className="absolute -top-1.5 right-6 w-3 h-3 bg-white border-t border-l border-gray-200 rotate-45 transform z-10" />
+
+                    {/* EMPTY STATE (Matching Image 1: "Your cart is empty") */}
+                    {cartItems.length === 0 ? (
+                      <div className="py-10 px-6 text-center select-none">
+                        <p className="text-gray-500 font-medium text-sm sm:text-base">
+                          Your cart is empty
+                        </p>
+                      </div>
+                    ) : (
+                      /* CART PRODUCTS LIST */
+                      <div className="p-3.5 space-y-3">
+                        <div className="max-h-64 overflow-y-auto divide-y divide-gray-100 pr-1 space-y-2">
+                          {cartItems.map((item, idx) => {
+                            const product = item.productId || {};
+                            const price =
+                              item.priceSnapshot || item.price || product.standardPrice || 0;
+                            const img =
+                              product.images?.[0]?.url ||
+                              product.image ||
+                              'https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=200';
+                            return (
+                              <div
+                                key={item._id || idx}
+                                className="pt-2 first:pt-0 flex items-center gap-3"
+                              >
+                                <div className="w-12 h-12 bg-white rounded border border-gray-200 p-1 shrink-0 flex items-center justify-center overflow-hidden">
+                                  <img
+                                    src={img}
+                                    alt={product.name || 'Product'}
+                                    className="max-h-full max-w-full object-contain"
+                                  />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4
+                                    className="text-xs font-semibold text-gray-800 truncate"
+                                    title={product.name}
+                                  >
+                                    {product.name || 'Product'}
+                                  </h4>
+                                  <p className="text-[11px] text-gray-500 font-medium mt-0.5">
+                                    {item.quantity} ×{' '}
+                                    <strong className="text-gray-800">
+                                      ₹{Number(price).toLocaleString('en-IN')}
+                                    </strong>
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Subtotal & Action Buttons */}
+                        <div className="pt-2.5 border-t border-gray-200 space-y-2.5">
+                          <div className="flex items-center justify-between text-xs font-bold text-gray-800 px-1">
+                            <span>Subtotal:</span>
+                            <span className="text-sm font-black text-[#800020]">
+                              ₹{(Number(cartSubtotal) || 0).toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 pt-1">
+                            <Link
+                              to="/cart"
+                              onClick={() => setIsCartHovered(false)}
+                              className="h-8 rounded border border-gray-300 hover:bg-gray-50 text-xs font-bold text-gray-700 flex items-center justify-center transition-colors"
+                            >
+                              View Cart
+                            </Link>
+                            <Link
+                              to="/cart"
+                              onClick={() => setIsCartHovered(false)}
+                              className="h-8 rounded bg-[#800020] hover:bg-[#660019] text-xs font-bold text-white flex items-center justify-center transition-colors shadow-xs"
+                            >
+                              Checkout
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Mobile Menu Hamburger */}
             <button
@@ -357,34 +723,194 @@ const PublicLayout = () => {
           </form>
         </div>
 
-        {/* 3. CATEGORY NAVIGATION BAR (Solid Maroon Full Width Bar - Compact scale like Mega Jaipur) */}
-        <nav className="w-full bg-[#800020] text-white shadow-xs">
-          <div
-            className="w-full px-2 sm:px-4 lg:px-6 max-w-[1920px] mx-auto flex items-center overflow-x-auto scrollbar-none py-1"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-          >
-            {/* Shop By Brand Button */}
-            <Link
-              to="/categories"
-              className="flex items-center gap-1.5 bg-white text-primary hover:bg-gray-100 font-bold text-[11px] sm:text-xs px-2.5 sm:px-3 py-1 my-0.5 rounded shrink-0 shadow-xs transition-colors mr-2 sm:mr-3 uppercase tracking-wide whitespace-nowrap"
-            >
-              <Store className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
-              <span>Shop By Brand</span>
-            </Link>
+        {/* 3. CATEGORY NAVIGATION BAR WITH MEGA MENU ON HOVER (Compact sleek scale matching Mega Jaipur) */}
+        <nav className="hidden md:block w-full bg-[#800020] text-white shadow-xs relative z-40 select-none">
+          <div className="w-full px-2 sm:px-3 lg:px-4 2xl:px-6 flex items-center relative h-[35px] sm:h-[36px]">
+            
+            {/* Scroll Left Button (if categories overflow on narrow screens) */}
+            {canScrollLeft && (
+              <button
+                type="button"
+                onClick={() => scrollNav('left')}
+                className="hidden md:flex absolute left-1 top-1/2 -translate-y-1/2 z-20 w-5 h-5 rounded-full bg-white text-[#800020] shadow-md items-center justify-center hover:bg-gray-100 transition-all cursor-pointer"
+                aria-label="Scroll categories left"
+              >
+                <ChevronLeft className="w-3 h-3" />
+              </button>
+            )}
 
-            {/* Horizontal Categories Text Links (Compact spacing so all 14 categories fit clearly) */}
-            <div className="flex items-center gap-2.5 sm:gap-3 md:gap-3.5 lg:gap-4 xl:gap-5 py-0.5 text-[11px] sm:text-xs font-semibold tracking-tight whitespace-nowrap">
-              {CATEGORY_BAR_ITEMS.map((item, idx) => (
-                <Link
-                  key={idx}
-                  to={`/products?search=${encodeURIComponent(item.query)}`}
-                  className="text-gray-100 hover:text-white hover:underline transition-colors select-none px-0.5 py-0.5"
-                >
-                  {item.name}
-                </Link>
-              ))}
+            {/* Category Nav Row: exact compact 35px-36px height matching Mega Jaipur */}
+            <div
+              ref={categoryNavRef}
+              onScroll={checkNavScroll}
+              onWheel={handleCategoryWheel}
+              className="w-full flex items-center overflow-x-auto scrollbar-none h-full"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {/* Shop By Brand Button */}
+              <Link
+                to="/brands"
+                className="flex items-center gap-1.5 bg-white text-[#800020] hover:bg-gray-100 font-bold text-[11px] sm:text-xs px-2.5 h-[26px] rounded shadow-2xs transition-colors mr-2 sm:mr-2.5 whitespace-nowrap shrink-0"
+              >
+                <Store className="w-3.5 h-3.5 text-[#800020]" />
+                <span>Shop By Brand</span>
+              </Link>
+
+              {/* Horizontal Categories with compact font and tight gaps matching Mega Jaipur */}
+              <div className="flex items-center gap-0.5 sm:gap-1 h-full whitespace-nowrap">
+                {categoryTree.map((header) => {
+                  const isHovered = hoveredHeaderId === header._id;
+
+                  return (
+                    <div
+                      key={header._id || header.slug}
+                      ref={(el) => {
+                        if (el) headerItemRefs.current[header._id] = el;
+                      }}
+                      className="shrink-0 h-full flex items-center relative"
+                      onMouseEnter={() => handleMouseEnterHeader(header._id)}
+                      onMouseLeave={handleMouseLeaveHeader}
+                    >
+                      <Link
+                        to={`/${header.slug || slugify(header.name)}`}
+                        onClick={(e) => handleHeaderClick(e, header._id)}
+                        className={`text-white hover:text-white transition-all select-none px-1.5 sm:px-2 h-[26px] rounded flex items-center text-[11.5px] sm:text-[12px] xl:text-[12.5px] font-semibold tracking-tight leading-none ${
+                          isHovered ? 'bg-[#591116] text-white font-bold shadow-2xs' : 'hover:bg-white/10'
+                        }`}
+                      >
+                        <span>{header.name}</span>
+                      </Link>
+
+                      {/* Small downward triangle indicator matching Mega Jaipur when hovered/active */}
+                      {isHovered && (
+                        <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-white z-50 pointer-events-none" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
+
+            {/* Scroll Right Button (if categories overflow on narrow screens) */}
+            {canScrollRight && (
+              <button
+                type="button"
+                onClick={() => scrollNav('right')}
+                className="hidden md:flex absolute right-1 top-1/2 -translate-y-1/2 z-20 w-5 h-5 rounded-full bg-white text-[#800020] shadow-md items-center justify-center hover:bg-gray-100 transition-all cursor-pointer"
+                aria-label="Scroll categories right"
+              >
+                <ChevronRight className="w-3 h-3" />
+              </button>
+            )}
           </div>
+
+          {/* Mega Menu Dropdown Card (matching user reference screenshot) */}
+          {hoveredHeader && hoveredHeader.mainCategories && hoveredHeader.mainCategories.length > 0 && (
+            <div
+              ref={megaMenuRef}
+              className="absolute top-full z-50 pt-1 pointer-events-auto"
+              style={{
+                left: `${Math.max(12, Math.min(dropdownLeft, windowWidth - Math.min(840, windowWidth - 24) - 12))}px`,
+                width: `${Math.min(840, windowWidth - 24)}px`,
+              }}
+              onMouseEnter={() => {
+                if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+              }}
+              onMouseLeave={handleMouseLeaveHeader}
+            >
+              {/* Upward arrow connecting dropdown to category above */}
+              <div
+                className="absolute -top-1 w-0 h-0 border-x-[7px] border-x-transparent border-b-[7px] border-b-[#800020] z-50 pointer-events-none"
+                style={{
+                  left: `${Math.max(20, Math.min(dropdownLeft - Math.max(12, Math.min(dropdownLeft, windowWidth - Math.min(840, windowWidth - 24) - 12)) + 16, Math.min(840, windowWidth - 24) - 40))}px`,
+                }}
+              />
+
+              <div className="w-full bg-white rounded-md shadow-2xl border border-gray-200 overflow-hidden text-left animate-in fade-in slide-in-from-top-1 duration-150">
+                {/* Dropdown Header Bar (Solid Maroon theme) */}
+                <div className="bg-[#800020] text-white px-4 py-2.5 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 font-bold text-sm sm:text-base tracking-wide text-white">
+                    <div className="w-6 h-6 rounded bg-white/15 flex items-center justify-center shrink-0">
+                      {getHeaderCategoryIcon(hoveredHeader.name, hoveredHeader.slug)}
+                    </div>
+                    <span>{hoveredHeader.name}</span>
+                  </div>
+                  <Link
+                    to={`/${hoveredHeader.slug || slugify(hoveredHeader.name)}`}
+                    onClick={() => setHoveredHeaderId(null)}
+                    className="text-xs text-white/80 hover:text-white flex items-center gap-1 font-semibold transition-colors"
+                  >
+                    <span>View All {hoveredHeader.name} Products</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+
+                {/* Dropdown Body: 3-column grid matching user screenshot */}
+                <div className="p-3.5 sm:p-4 grid grid-cols-1 md:grid-cols-3 gap-3 max-h-[75vh] overflow-y-auto bg-white">
+                  {dropdownColumns.map((col, colIdx) => (
+                    <div key={colIdx} className="flex flex-col gap-2.5">
+                      {col.map((main) => {
+                        const hasSubs = main.subCategories && main.subCategories.length > 0;
+                        const headerSlug = hoveredHeader.slug || slugify(hoveredHeader.name);
+                        const mainSlug = main.slug || slugify(main.name);
+
+                        if (hasSubs) {
+                          return (
+                            <div
+                              key={main._id}
+                              className="border border-gray-200/90 rounded-md p-3.5 bg-white hover:border-[#800020]/40 transition-all shadow-2xs flex flex-col justify-start"
+                            >
+                              {/* Main Category Header with Divider Line */}
+                              <Link
+                                to={`/${headerSlug}/${mainSlug}`}
+                                onClick={() => setHoveredHeaderId(null)}
+                                className="text-[13px] sm:text-[13.5px] font-semibold text-[#800020] flex items-center gap-2 group pb-2 border-b border-gray-200 transition-colors"
+                              >
+                                <span className="text-[#800020] text-sm leading-none font-bold">•</span>
+                                <span className="group-hover:underline">{main.name}</span>
+                              </Link>
+
+                              {/* Subcategories vertical list */}
+                              <div className="pt-2 pl-3 space-y-1.5">
+                                {main.subCategories.map((sub) => {
+                                  const subSlug = sub.slug || slugify(sub.name);
+                                  return (
+                                    <Link
+                                      key={sub._id}
+                                      to={`/${headerSlug}/${mainSlug}/${subSlug}`}
+                                      onClick={() => setHoveredHeaderId(null)}
+                                      className="block text-[12px] sm:text-[12.5px] text-gray-600 hover:text-[#800020] hover:underline transition-colors py-0.5 leading-snug"
+                                    >
+                                      {sub.name}
+                                    </Link>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // Standalone Main Category Card (like Branded Laptop, Laptop Battery, Laptop Adaptor)
+                        return (
+                          <Link
+                            key={main._id}
+                            to={`/${headerSlug}/${mainSlug}`}
+                            onClick={() => setHoveredHeaderId(null)}
+                            className="border border-gray-200/90 rounded-md px-3.5 py-2.5 bg-white hover:border-[#800020] hover:bg-[#fffbfc] hover:shadow-2xs transition-all flex items-center gap-2 group select-none cursor-pointer"
+                          >
+                            <span className="text-[#800020]/70 text-sm leading-none font-bold group-hover:text-[#800020] transition-colors">•</span>
+                            <span className="text-[12.5px] sm:text-[13px] font-medium text-gray-800 group-hover:text-[#800020] transition-colors leading-tight">
+                              {main.name}
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </nav>
       </header>
 
@@ -408,11 +934,15 @@ const PublicLayout = () => {
                 </span>
               )}
             </Link>
-            <Link to="/categories" className="px-3 py-2 rounded hover:bg-gray-100">Categories & Brands</Link>
+            <Link to="/brands" className="px-3 py-2 rounded hover:bg-gray-100 flex items-center justify-between">
+              <span>Shop By Brand</span>
+              <Store className="w-4 h-4 text-primary" />
+            </Link>
+            <Link to="/categories" className="px-3 py-2 rounded hover:bg-gray-100">Categories</Link>
             <Link to="/cart" className="px-3 py-2 rounded hover:bg-gray-100">
               Shopping Cart ({cartCount})
             </Link>
-            <Link to="/account/enquiries" className="px-3 py-2 rounded hover:bg-gray-100">Quotations</Link>
+            <Link to="/account/quotations" className="px-3 py-2 rounded hover:bg-gray-100">Quotations</Link>
           </div>
 
           <div className="font-semibold text-xs text-gray-500 uppercase tracking-wider px-3">
@@ -422,7 +952,7 @@ const PublicLayout = () => {
             {CATEGORY_BAR_ITEMS.map((item, idx) => (
               <Link
                 key={idx}
-                to={`/products?search=${encodeURIComponent(item.query)}`}
+                to={`/${item.slug || slugify(item.name)}`}
                 className="px-3 py-1.5 text-xs text-gray-700 hover:text-primary hover:bg-gray-50 rounded"
               >
                 {item.name}
@@ -462,9 +992,9 @@ const PublicLayout = () => {
         <Outlet />
       </main>
 
-      {/* 5. MULTI-COLUMN MAROON FOOTER (Full Width) */}
-      <footer className="w-full bg-[#67001a] text-white pt-10 pb-6 px-3 sm:px-6 lg:px-8 mt-12 text-left">
-        <div className="w-full max-w-[1920px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 pb-10 border-b border-rose-900/40 text-xs">
+      {/* 5. MULTI-COLUMN BLACK FOOTER (Full Width) */}
+      <footer className="w-full bg-[#111111] text-white pt-10 pb-6 px-3 sm:px-6 lg:px-8 2xl:px-12 mt-12 text-left">
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 pb-10 border-b border-neutral-800 text-xs">
           
           {/* Col 1: About */}
           <div className="space-y-3">
@@ -568,7 +1098,7 @@ const PublicLayout = () => {
         </div>
 
         {/* Footer Bottom Bar */}
-        <div className="w-full max-w-[1920px] mx-auto pt-4 text-center text-[11px] text-gray-400">
+        <div className="w-full pt-4 text-center text-[11px] text-gray-400">
           <p>© 2008–2026 Vi Nexus, Jaipur. All Rights Reserved.</p>
         </div>
       </footer>

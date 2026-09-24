@@ -100,9 +100,9 @@ export const HomePage = () => {
   return (
     <div className="w-full bg-gray-50 pb-16 space-y-6 sm:space-y-8">
       
-      {/* 1. HERO WIDE BANNER (Single Clean CCTV Image Banner - No text, no buttons, no slide arrows) */}
+      {/* 1. HERO WIDE BANNER (Single Clean CCTV Image Banner - Full Width Edge to Edge) */}
       <section className="relative w-full overflow-hidden">
-        <div className="relative w-full h-[180px] sm:h-[220px] md:h-[260px] lg:h-[300px] xl:h-[330px] 2xl:h-[350px] overflow-hidden bg-white">
+        <div className="relative w-full h-[180px] sm:h-[230px] md:h-[280px] lg:h-[340px] xl:h-[380px] 2xl:h-[420px] overflow-hidden bg-white">
           <Link to="/products?search=CCTV" className="block w-full h-full group" title="ViNexus Advanced 4K AI Surveillance & Enterprise CCTV">
             <img
               src="/banners/cctv_hero_banner.jpg"
@@ -124,7 +124,7 @@ export const HomePage = () => {
       </section>
 
       {/* 4. UPDATED PRODUCTS SECTION (Full Width Grid - Exactly 6 per row) */}
-      <section className="w-full px-2 sm:px-4 lg:px-8 max-w-[1920px] mx-auto space-y-3">
+      <section className="w-full px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3">
         <div className="flex items-center justify-between border-b border-gray-200 pb-2">
           <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight text-left">
             Updated Products
@@ -146,7 +146,7 @@ export const HomePage = () => {
       </section>
 
       {/* 5. NEW ARRIVALS SECTION (Full Width Grid - Exactly 6 per row) */}
-      <section className="w-full px-2 sm:px-4 lg:px-8 max-w-[1920px] mx-auto space-y-3 pt-2 sm:pt-4">
+      <section className="w-full px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3 pt-2 sm:pt-4">
         <div className="flex items-center justify-between border-b border-gray-200 pb-2">
           <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight text-left">
             New Arrivals
@@ -167,7 +167,7 @@ export const HomePage = () => {
       </section>
 
       {/* 6. DESKTOP HEADER CATEGORY SECTION WITH PRODUCTS FOR ADD TO CART */}
-      <section className="w-full px-2 sm:px-4 lg:px-8 max-w-[1920px] mx-auto space-y-3 pt-2 sm:pt-4">
+      <section className="w-full px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3 pt-2 sm:pt-4">
         <div className="flex items-center justify-between border-b border-gray-200 pb-2">
           <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight text-left">
             Desktop & Workstation Systems
@@ -188,7 +188,7 @@ export const HomePage = () => {
       </section>
 
       {/* 7. NEXT CATEGORY SECTION: CCTV CAMERAS & SECURITY HARDWARE */}
-      <section className="w-full px-2 sm:px-4 lg:px-8 max-w-[1920px] mx-auto space-y-3 pt-2 sm:pt-4">
+      <section className="w-full px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3 pt-2 sm:pt-4">
         <div className="flex items-center justify-between border-b border-gray-200 pb-2">
           <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight text-left">
             CCTV Cameras & Security Systems
@@ -209,7 +209,7 @@ export const HomePage = () => {
       </section>
 
       {/* 8. NEXT CATEGORY SECTION: ROUTERS & ENTERPRISE POE NETWORKING */}
-      <section className="w-full px-2 sm:px-4 lg:px-8 max-w-[1920px] mx-auto space-y-3 pt-2 sm:pt-4">
+      <section className="w-full px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3 pt-2 sm:pt-4">
         <div className="flex items-center justify-between border-b border-gray-200 pb-2">
           <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight text-left">
             Routers, Gigabit Switches & Networking

@@ -430,10 +430,12 @@ const AdminReportsPage = () => {
                 </Table.Body>
               </Table>
 
-              {enquiryReport.pagination?.totalPages > 1 && (
+              {enquiryReport.pagination?.total > 0 && (
                 <Pagination
                   currentPage={enquiryPage}
                   totalPages={enquiryReport.pagination.totalPages}
+                  totalItems={enquiryReport.pagination.total}
+                  pageSize={enquiryReport.pagination.limit || 20}
                   onPageChange={(p) => setEnquiryPage(p)}
                 />
               )}
@@ -518,10 +520,12 @@ const AdminReportsPage = () => {
                 </Table.Body>
               </Table>
 
-              {dealerReport.pagination?.totalPages > 1 && (
+              {dealerReport.pagination?.total > 0 && (
                 <Pagination
                   currentPage={dealerPage}
                   totalPages={dealerReport.pagination.totalPages}
+                  totalItems={dealerReport.pagination.total}
+                  pageSize={dealerReport.pagination.limit || 20}
                   onPageChange={(p) => setDealerPage(p)}
                 />
               )}
@@ -602,10 +606,12 @@ const AdminReportsPage = () => {
                 </Table.Body>
               </Table>
 
-              {customerReport.pagination?.totalPages > 1 && (
+              {customerReport.pagination?.total > 0 && (
                 <Pagination
                   currentPage={customerPage}
                   totalPages={customerReport.pagination.totalPages}
+                  totalItems={customerReport.pagination.total}
+                  pageSize={customerReport.pagination.limit || 20}
                   onPageChange={(p) => setCustomerPage(p)}
                 />
               )}

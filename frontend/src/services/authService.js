@@ -73,8 +73,9 @@ export const authService = {
   },
 
   // Fetch Current Logged-in User Profile
-  getMe: async () => {
-    const response = await apiClient.get('/auth/me');
+  getMe: async (token) => {
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const response = await apiClient.get('/auth/me', { headers });
     return response.data;
   },
 

@@ -1,28 +1,37 @@
 import { STORAGE_KEYS } from '../constants';
 
-export const getRefreshToken = () => {
+export const getRefreshToken = (portal) => {
   try {
-    return localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+    const key = portal === 'admin' ? STORAGE_KEYS.ADMIN_REFRESH_TOKEN : STORAGE_KEYS.REFRESH_TOKEN;
+    return localStorage.getItem(key);
   } catch {
     return null;
   }
 };
 
-export const setRefreshToken = (token) => {
+export const setRefreshToken = (token, portal) => {
   try {
+    const key = portal === 'admin' ? STORAGE_KEYS.ADMIN_REFRESH_TOKEN : STORAGE_KEYS.REFRESH_TOKEN;
     if (token) {
-      localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, token);
+      localStorage.setItem(key, token);
     } else {
-      localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+      localStorage.removeItem(key);
     }
   } catch (err) {
     console.error('Error saving refresh token to storage:', err);
   }
 };
 
-export const clearRefreshToken = () => {
+export const clearRefreshToken = (portal) => {
   try {
-    localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+    if (portal === 'admin') {
+      localStorage.removeItem(STORAGE_KEYS.ADMIN_REFRESH_TOKEN);
+    } else if (portal === 'customer') {
+      localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+      localStorage.removeItem(STORAGE_KEYS.ADMIN_REFRESH_TOKEN);
+    }
   } catch (err) {
     console.error('Error clearing refresh token from storage:', err);
   }

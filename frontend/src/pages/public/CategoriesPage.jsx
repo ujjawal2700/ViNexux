@@ -8,11 +8,15 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { ArrowRight, Grid, Layers } from 'lucide-react';
 import CategoryIcon, { getCategoryProductImage } from '../../components/ui/CategoryIcon';
+import { buildCategoryPath } from '../../utils/categoryUrls';
+import Pagination from '../../components/ui/Pagination';
 
 export const CategoriesPage = () => {
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [subPage, setSubPage] = useState(1);
+  const subPageSize = 24;
 
   const fetchCategories = useCallback(async () => {
     setIsLoading(true);
@@ -36,15 +40,17 @@ export const CategoriesPage = () => {
   // Group top-level categories vs subcategories if parentId present
   const parentCategories = categories.filter((cat) => !cat.parentId);
   const subCategories = categories.filter((cat) => Boolean(cat.parentId));
+  const totalSubPages = Math.ceil(subCategories.length / subPageSize) || 1;
+  const paginatedSubCategories = subCategories.slice((subPage - 1) * subPageSize, (subPage - 1) * subPageSize + subPageSize);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-10 bg-background text-foreground min-h-screen">
       {/* Header */}
       <div className="border-b border-border pb-6">
-        <span className="text-xs font-bold uppercase tracking-wider text-primary">Security Equipment Classification</span>
+        <span className="text-xs font-bold uppercase tracking-wider text-primary">ViNexus Product Catalog</span>
         <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Category Directory</h1>
         <p className="text-xs text-muted-foreground mt-1">
-          Explore specialized categories for CCTV cameras, network recorders, routers, wiring, and hardware.
+          Explore desktop, laptop, storage, display, security, networking, telecom, software, and IT peripherals.
         </p>
       </div>
 
@@ -104,7 +110,7 @@ export const CategoriesPage = () => {
                   </div>
 
                   <div className="pt-3 border-t border-border/60">
-                    <Link to={`/products?categoryId=${cat._id}`} className="w-full">
+                    <Link to={buildCategoryPath(cat, categories)} className="w-full">
                       <Button variant="outline" size="sm" fullWidth rightIcon={<ArrowRight className="w-4 h-4" />}>
                         Browse Products
                       </Button>
@@ -117,17 +123,22 @@ export const CategoriesPage = () => {
 
           {/* Subcategories Section (if present) */}
           {subCategories.length > 0 && (
-            <div className="space-y-6 pt-6 border-t border-border">
-              <h2 className="text-xl font-bold text-foreground flex items-center gap-2 border-b border-border pb-2">
-                <Grid className="w-5 h-5 text-primary" />
-                <span>Specialized Subcategories</span>
-              </h2>
+            <div id="subcategories-section" className="space-y-6 pt-6 border-t border-border">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-2">
+                <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                  <Grid className="w-5 h-5 text-primary" />
+                  <span>Specialized Subcategories</span>
+                </h2>
+                <span className="text-xs text-muted-foreground font-medium">
+                  Showing {Math.min((subPage - 1) * subPageSize + 1, subCategories.length)}–{Math.min(subPage * subPageSize, subCategories.length)} of {subCategories.length} subcategories
+                </span>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {subCategories.map((sub) => (
+                {paginatedSubCategories.map((sub) => (
                   <Link
                     key={sub._id}
-                    to={`/products?categoryId=${sub._id}`}
+                    to={buildCategoryPath(sub, categories)}
                     className="bg-card p-3 rounded-2xl border border-border hover:border-primary/50 transition-all flex items-center justify-between group shadow-xs gap-3"
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -154,6 +165,17 @@ export const CategoriesPage = () => {
                   </Link>
                 ))}
               </div>
+
+              <Pagination
+                currentPage={subPage}
+                totalPages={totalSubPages}
+                totalItems={subCategories.length}
+                pageSize={subPageSize}
+                onPageChange={(p) => {
+                  setSubPage(p);
+                  document.getElementById('subcategories-section')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+              />
             </div>
           )}
         </div>

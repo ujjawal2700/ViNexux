@@ -2,65 +2,108 @@ import React, { createContext, useState, useEffect, useCallback } from 'react';
 import authService from '../services/authService';
 import { setAccessToken } from '../api/axios';
 import { getStoredRefreshToken, setStoredRefreshToken, clearStoredRefreshToken } from '../utils/tokenStorage';
+import { ROLES } from '../constants';
 
 export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
+  // 1. Customer / Dealer session state
   const [user, setUser] = useState(null);
   const [accessToken, setAccessTokenState] = useState(null);
+
+  // 2. Admin session state
+  const [adminUser, setAdminUser] = useState(null);
+  const [adminAccessToken, setAdminAccessTokenState] = useState(null);
+
   const [isLoading, setIsLoading] = useState(true);
   const [sessionConflict, setSessionConflict] = useState(false);
   const [conflictTicket, setConflictTicket] = useState(null);
 
-  // Helper to handle tokens & load user profile
-  const handleAuthSuccess = useCallback(async (tokens) => {
+  // Helper to handle tokens & load user profile (portal: 'admin' | 'customer')
+  const handleAuthSuccess = useCallback(async (tokens, portal) => {
     const { accessToken: newAccess, refreshToken: newRefresh } = tokens;
 
-    if (newAccess) {
-      setAccessToken(newAccess);
-      setAccessTokenState(newAccess);
-    }
-
-    if (newRefresh) {
-      setStoredRefreshToken(newRefresh);
-    }
-
-    // Fetch user details
     try {
-      const meResponse = await authService.getMe();
+      const meResponse = await authService.getMe(newAccess);
       if (meResponse.success && meResponse.data) {
-        setUser(meResponse.data.user || meResponse.data);
+        const u = meResponse.data.user || meResponse.data;
+
+        // If authenticated user is an Administrator
+        if (u.role === ROLES.ADMIN || portal === 'admin') {
+          if (newAccess) {
+            setAccessToken(newAccess, 'admin');
+            setAdminAccessTokenState(newAccess);
+          }
+          if (newRefresh) {
+            setStoredRefreshToken(newRefresh, 'admin');
+          }
+          setAdminUser(u);
+
+          // If legacy token was previously stored under customer key, clean it up
+          if (portal !== 'admin') {
+            clearStoredRefreshToken('customer');
+            setAccessToken(null, 'customer');
+            setUser(null);
+            setAccessTokenState(null);
+          }
+        } else {
+          // Normal Customer / Dealer
+          if (newAccess) {
+            setAccessToken(newAccess, 'customer');
+            setAccessTokenState(newAccess);
+          }
+          if (newRefresh) {
+            setStoredRefreshToken(newRefresh, 'customer');
+          }
+          setUser(u);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch user profile after authentication:', err);
     }
   }, []);
 
-  // Restore session on initial application load
+  // Restore sessions on initial application load
   useEffect(() => {
     const restoreSession = async () => {
-      const storedRefresh = getStoredRefreshToken();
+      const storedCustomerRefresh = getStoredRefreshToken('customer');
+      const storedAdminRefresh = getStoredRefreshToken('admin');
 
-      if (!storedRefresh) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const response = await authService.refreshToken(storedRefresh);
-        if (response.success && response.data?.accessToken) {
-          await handleAuthSuccess(response.data);
-        } else {
-          clearStoredRefreshToken();
-          setAccessToken(null);
+      // 1. Restore Customer / Dealer session if present
+      if (storedCustomerRefresh) {
+        try {
+          const response = await authService.refreshToken(storedCustomerRefresh);
+          if (response.success && response.data?.accessToken) {
+            await handleAuthSuccess(response.data, 'customer');
+          } else {
+            clearStoredRefreshToken('customer');
+            setAccessToken(null, 'customer');
+          }
+        } catch (err) {
+          console.warn('Customer session restoration failed:', err);
+          clearStoredRefreshToken('customer');
+          setAccessToken(null, 'customer');
         }
-      } catch (err) {
-        console.warn('Session restoration failed:', err);
-        clearStoredRefreshToken();
-        setAccessToken(null);
-      } finally {
-        setIsLoading(false);
       }
+
+      // 2. Restore Admin session if present
+      if (storedAdminRefresh) {
+        try {
+          const response = await authService.refreshToken(storedAdminRefresh);
+          if (response.success && response.data?.accessToken) {
+            await handleAuthSuccess(response.data, 'admin');
+          } else {
+            clearStoredRefreshToken('admin');
+            setAccessToken(null, 'admin');
+          }
+        } catch (err) {
+          console.warn('Admin session restoration failed:', err);
+          clearStoredRefreshToken('admin');
+          setAccessToken(null, 'admin');
+        }
+      }
+
+      setIsLoading(false);
     };
 
     restoreSession();
@@ -70,7 +113,7 @@ export const AuthProvider = ({ children }) => {
   const signup = async (signupData) => {
     const response = await authService.signup(signupData);
     if (response.success && response.data?.accessToken) {
-      await handleAuthSuccess(response.data);
+      await handleAuthSuccess(response.data, 'customer');
     }
     return response;
   };
@@ -79,37 +122,29 @@ export const AuthProvider = ({ children }) => {
   const googleLogin = async (googleData) => {
     const response = await authService.googleLogin(googleData);
     if (response.success && response.data?.accessToken) {
-      await handleAuthSuccess(response.data);
+      await handleAuthSuccess(response.data, 'customer');
     }
     return response;
   };
 
-  // Send OTP. Pass portal='admin' from the dedicated admin login page
-  // (which also requires `password` - admin sign-in is two-factor), or
-  // purpose='signup' for pre-account contact verification during registration.
+  // Send OTP
   const sendOtp = async (identifier, portal, purpose, password) => {
     return await authService.sendOtp(identifier, portal, purpose, password);
   };
 
-  // Verifies a pre-account "signup" OTP (see authService.verifySignupOtp) -
-  // does not create a session; the signup() call right after does that.
   const verifySignupOtp = async (identifier, otpCode) => {
     return await authService.verifySignupOtp(identifier, otpCode);
   };
 
-  // Verifies the OTP sent for a "forgot password" request; returns a
-  // short-lived resetToken (see authService.verifyResetOtp) that authorizes
-  // the actual password change - does not create a session.
   const verifyResetOtp = async (identifier, otpCode) => {
     return await authService.verifyResetOtp(identifier, otpCode);
   };
 
-  // Completes a password reset using the resetToken from verifyResetOtp.
   const resetPassword = async (resetToken, newPassword) => {
     return await authService.resetPassword(resetToken, newPassword);
   };
 
-  // Verify OTP
+  // Verify OTP (portal: 'admin' | undefined/customer)
   const verifyOtp = async (identifier, otpCode, portal) => {
     const response = await authService.verifyOtp(identifier, otpCode, portal);
 
@@ -124,14 +159,14 @@ export const AuthProvider = ({ children }) => {
     if (response.success && response.data?.accessToken) {
       setSessionConflict(false);
       setConflictTicket(null);
-      await handleAuthSuccess(response.data);
+      await handleAuthSuccess(response.data, portal);
     }
 
     return response;
   };
 
   // Force login on session conflict
-  const forceLogin = async (ticket) => {
+  const forceLogin = async (ticket, portal) => {
     const activeTicket = ticket || conflictTicket;
     if (!activeTicket) {
       throw new Error('Conflict ticket is missing for force login');
@@ -142,7 +177,7 @@ export const AuthProvider = ({ children }) => {
     if (response.success && response.data?.accessToken) {
       setSessionConflict(false);
       setConflictTicket(null);
-      await handleAuthSuccess(response.data);
+      await handleAuthSuccess(response.data, portal);
     }
 
     return response;
@@ -154,38 +189,62 @@ export const AuthProvider = ({ children }) => {
     setConflictTicket(null);
   };
 
-  // Centralized logout
-  const logout = async () => {
+  // Logout (supports portal: 'admin' vs customer default)
+  const logout = async (portal) => {
     try {
       await authService.logout();
     } catch (err) {
       console.warn('Logout API error:', err);
     } finally {
-      setUser(null);
-      setAccessTokenState(null);
-      setAccessToken(null);
-      clearStoredRefreshToken();
+      if (portal === 'admin') {
+        setAdminUser(null);
+        setAdminAccessTokenState(null);
+        setAccessToken(null, 'admin');
+        clearStoredRefreshToken('admin');
+      } else {
+        setUser(null);
+        setAccessTokenState(null);
+        setAccessToken(null, 'customer');
+        clearStoredRefreshToken('customer');
+      }
       setSessionConflict(false);
       setConflictTicket(null);
     }
   };
 
+  const adminLogout = () => logout('admin');
+
   // Update Profile
   const updateUserProfile = async (profileData) => {
     const response = await authService.updateProfile(profileData);
     if (response.success && response.data?.user) {
-      setUser((prevUser) => ({
-        ...prevUser,
-        ...response.data.user,
-      }));
+      const updated = response.data.user;
+      if (updated.role === ROLES.ADMIN) {
+        setAdminUser((prev) => ({ ...prev, ...updated }));
+      } else {
+        setUser((prev) => ({ ...prev, ...updated }));
+      }
     }
     return response;
   };
 
+  // Computed authentication flags:
+  // isAuthenticated is TRUE ONLY for Customers/Dealers on the storefront.
+  // isAdminAuthenticated is TRUE ONLY for Administrators in the Admin panel.
+  const isAuthenticated = Boolean(user && (user.role === ROLES.CUSTOMER || user.role === ROLES.DEALER));
+  const isAdminAuthenticated = Boolean(adminUser && adminUser.role === ROLES.ADMIN);
+
   const value = {
+    // Customer / Dealer
     user,
     accessToken,
-    isAuthenticated: Boolean(user && accessToken),
+    isAuthenticated,
+
+    // Admin
+    adminUser,
+    adminAccessToken,
+    isAdminAuthenticated,
+
     isLoading,
     sessionConflict,
     conflictTicket,
@@ -198,8 +257,10 @@ export const AuthProvider = ({ children }) => {
     resetPassword,
     forceLogin,
     logout,
-    updateProfile: updateUserProfile,
+    adminLogout,
     clearConflictState,
+    updateUserProfile,
+    updateProfile: updateUserProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -4,7 +4,8 @@ import useAuth from '../../hooks/useAuth';
 import { ShieldCheck, User, Mail, Phone, Calendar, Edit3, KeyRound, Lock } from 'lucide-react';
 
 const AdminProfilePage = () => {
-  const { user } = useAuth();
+  const { user, adminUser } = useAuth();
+  const currentAdmin = adminUser || (user?.role === 'admin' ? user : null);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -32,18 +33,18 @@ const AdminProfilePage = () => {
       <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-black text-2xl uppercase">
-            {(user?.fullName || user?.name || user?.email || 'A').charAt(0)}
+            {(currentAdmin?.fullName || currentAdmin?.name || currentAdmin?.email || 'A').charAt(0)}
           </div>
           <div>
             <h2 className="text-xl font-bold text-foreground">
-              {user?.fullName || user?.name || 'Administrator'}
+              {currentAdmin?.fullName || currentAdmin?.name || 'Administrator'}
             </h2>
             <div className="flex items-center gap-2 mt-1">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
                 Active System Admin
               </span>
               <span className="text-xs text-muted-foreground font-mono">
-                ID: {user?.id || user?._id || 'N/A'}
+                ID: {currentAdmin?.id || currentAdmin?._id || 'N/A'}
               </span>
             </div>
           </div>
@@ -55,7 +56,7 @@ const AdminProfilePage = () => {
               <User className="w-4 h-4 text-primary" /> Full Name
             </div>
             <p className="text-sm font-bold text-foreground">
-              {user?.fullName || user?.name || 'Not provided'}
+              {currentAdmin?.fullName || currentAdmin?.name || 'Not provided'}
             </p>
           </div>
 
@@ -64,7 +65,7 @@ const AdminProfilePage = () => {
               <Mail className="w-4 h-4 text-primary" /> Email Address
             </div>
             <p className="text-sm font-bold text-foreground font-mono">
-              {user?.email || 'Not provided'}
+              {currentAdmin?.email || 'Not provided'}
             </p>
           </div>
 
@@ -73,7 +74,7 @@ const AdminProfilePage = () => {
               <Phone className="w-4 h-4 text-primary" /> Mobile Phone
             </div>
             <p className="text-sm font-bold text-foreground font-mono">
-              {user?.phone || user?.phoneNumber || 'Not provided'}
+              {currentAdmin?.phone || currentAdmin?.phoneNumber || 'Not provided'}
             </p>
           </div>
 
@@ -82,7 +83,7 @@ const AdminProfilePage = () => {
               <ShieldCheck className="w-4 h-4 text-primary" /> Security Role
             </div>
             <p className="text-sm font-bold text-foreground uppercase tracking-wide">
-              {user?.role || 'ADMIN'}
+              {currentAdmin?.role || 'ADMIN'}
             </p>
           </div>
         </div>

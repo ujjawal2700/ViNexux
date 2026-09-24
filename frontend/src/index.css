@@ -26,10 +26,10 @@
 :root {
   --card: #ffffff;
   --ring: #800020;
-  --input: #dcc8cd;
-  --muted: #e6d8dc;
+  --input: #e5e7eb;
+  --muted: #fbf8f9;
   --accent: #9a1b32;
-  --border: #dcc8cd;
+  --border: #f0e6e8;
   --radius: 0.75rem;
   --chart-1: #800020;
   --chart-2: #9a1b32;
@@ -42,26 +42,26 @@
   --spacing: 0.25rem;
   --font-mono: 'Fira Code', monospace;
   --font-sans: 'Inter', 'Lora', sans-serif;
-  --secondary: #e6d8dc;
-  --background: #f3eff2;
+  --secondary: #f4ecee;
+  --background: #fdfbfb;
   --font-serif: 'Lora', serif;
-  --foreground: #3d0a0d;
+  --foreground: #1f2937;
   --destructive: #be123c;
   --shadow-blur: 4px;
-  --shadow-color: #3d0a0d;
+  --shadow-color: rgba(128, 0, 32, 0.08);
   --sidebar-ring: #800020;
   --shadow-spread: 0.5px;
   --letter-spacing: -0.015em;
   --shadow-opacity: 0.2;
   --sidebar-accent: #591116;
   --sidebar-border: #591116;
-  --card-foreground: #3d0a0d;
+  --card-foreground: #1f2937;
   --shadow-offset-x: 0px;
   --shadow-offset-y: 3px;
   --sidebar-primary: #800020;
-  --muted-foreground: #7c5c5f;
+  --muted-foreground: #6b7280;
   --accent-foreground: #ffffff;
-  --popover-foreground: #3d0a0d;
+  --popover-foreground: #1f2937;
   --primary-foreground: #ffffff;
   --sidebar-foreground: #fdf8f9;
   --secondary-foreground: #800020;
@@ -70,58 +70,56 @@
   --sidebar-primary-foreground: #ffffff;
 
   /* Theme Aliases for Burgundy Wine Light */
-  --color-bg-primary: #f3eff2;
+  --color-bg-primary: #fdfbfb;
   --color-bg-surface: #ffffff;
   --color-bg-card: #ffffff;
-  --color-border-subtle: #dcc8cd;
+  --color-border-subtle: #f0e6e8;
   --color-crimson-primary: #800020;
   --color-amber-accent: #9a1b32;
 }
 
-/* Dark theme: neutral charcoal surfaces (not a hue-rotated brown) with the
-   brand red kept as a vivid accent. Toggled via a `.dark` class on <html>
-   (see ThemeContext). */
+/* Enforce light maroon theme across all modes - project does not use dark mode */
 .dark {
-  --card: #1c1c1f;
-  --ring: #fb3760;
-  --input: #313136;
-  --muted: #262629;
-  --accent: #fb7185;
-  --border: #313136;
-  --chart-1: #fb3760;
-  --chart-2: #fb7185;
-  --chart-3: #fda4af;
-  --chart-4: #fecdd3;
-  --chart-5: #ffe4e6;
-  --popover: #1c1c1f;
-  --primary: #fb3760;
-  --sidebar: #101012;
-  --secondary: #262629;
-  --background: #131315;
-  --foreground: #f2f2f3;
-  --destructive: #fb7185;
-  --shadow-color: #000000;
-  --sidebar-ring: #fb3760;
-  --sidebar-accent: #1c1c1f;
-  --sidebar-border: #232326;
-  --card-foreground: #f2f2f3;
-  --sidebar-primary: #fb3760;
-  --muted-foreground: #9d9da3;
-  --accent-foreground: #131315;
-  --popover-foreground: #f2f2f3;
+  --card: #ffffff;
+  --ring: #800020;
+  --input: #e5e7eb;
+  --muted: #fbf8f9;
+  --accent: #9a1b32;
+  --border: #f0e6e8;
+  --chart-1: #800020;
+  --chart-2: #9a1b32;
+  --chart-3: #be123c;
+  --chart-4: #d44a63;
+  --chart-5: #ea869a;
+  --popover: #ffffff;
+  --primary: #800020;
+  --sidebar: #3d0a0d;
+  --secondary: #f4ecee;
+  --background: #fdfbfb;
+  --foreground: #1f2937;
+  --destructive: #be123c;
+  --shadow-color: rgba(128, 0, 32, 0.08);
+  --sidebar-ring: #800020;
+  --sidebar-accent: #591116;
+  --sidebar-border: #591116;
+  --card-foreground: #1f2937;
+  --sidebar-primary: #800020;
+  --muted-foreground: #6b7280;
+  --accent-foreground: #ffffff;
+  --popover-foreground: #1f2937;
   --primary-foreground: #ffffff;
-  --sidebar-foreground: #f2f2f3;
-  --secondary-foreground: #f2f2f3;
-  --destructive-foreground: #131315;
-  --sidebar-accent-foreground: #f2f2f3;
+  --sidebar-foreground: #fdf8f9;
+  --secondary-foreground: #800020;
+  --destructive-foreground: #ffffff;
+  --sidebar-accent-foreground: #fdf8f9;
   --sidebar-primary-foreground: #ffffff;
 
-  --color-bg-primary: #131315;
-  --color-bg-surface: #1c1c1f;
-  --color-bg-card: #1c1c1f;
-  --color-border-subtle: #313136;
-  --color-crimson-primary: #fb3760;
-  --color-amber-accent: #fb7185;
+  --color-bg-primary: #fdfbfb;
+  --color-bg-surface: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-border-subtle: #f0e6e8;
+  --color-crimson-primary: #800020;
+  --color-amber-accent: #9a1b32;
 }
 
 @theme inline {
@@ -172,6 +170,18 @@
 }
 
 @layer base {
+  html, body {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: clip;
+  }
+  @supports not (overflow-x: clip) {
+    html, body {
+      overflow-x: hidden;
+    }
+  }
   html {
     color-scheme: light;
   }
@@ -185,6 +195,19 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     transition: background-color 0.2s ease, color 0.2s ease;
+  }
+  #root {
+    width: 100%;
+    max-width: 100%;
+    min-height: 100vh;
+    overflow-x: clip;
+    display: flex;
+    flex-direction: column;
+  }
+  @supports not (overflow-x: clip) {
+    #root {
+      overflow-x: hidden;
+    }
   }
 }
 

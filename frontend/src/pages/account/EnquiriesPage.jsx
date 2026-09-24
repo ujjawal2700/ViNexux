@@ -166,11 +166,13 @@ export const EnquiriesPage = () => {
           <Table columns={columns} data={enquiries} />
 
           {/* Pagination */}
-          {pagination.totalPages > 1 && (
+          {pagination.total > 0 && (
             <div className="pt-4 flex justify-center border-t border-border">
               <Pagination
                 currentPage={currentPage}
                 totalPages={pagination.totalPages}
+                totalItems={pagination.total}
+                pageSize={pagination.limit || 10}
                 onPageChange={(page) => setCurrentPage(page)}
               />
             </div>

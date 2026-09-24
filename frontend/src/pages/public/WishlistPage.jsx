@@ -5,12 +5,15 @@ import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
 import wishlistService from '../../services/wishlistService';
 import { ProductCard } from '../../components/products/ProductCard';
+import Pagination from '../../components/ui/Pagination';
 
 const WishlistPage = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
   const [items, setItems] = useState(() => wishlistService.getWishlist());
+  const [page, setPage] = useState(1);
+  const pageSize = 18;
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -120,8 +123,8 @@ const WishlistPage = () => {
           </div>
         ) : (
           /* Populated State - 6 column responsive product grid */
-          <div>
-            <div className="mb-4 flex items-center justify-between text-xs text-gray-500">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between text-xs text-gray-500">
               <span>Showing {items.length} saved {items.length === 1 ? 'item' : 'items'}</span>
               <Link
                 to="/products"
@@ -133,13 +136,26 @@ const WishlistPage = () => {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
-              {items.map((product) => (
+              {items.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize).map((product) => (
                 <ProductCard
                   key={product._id || product.id}
                   product={product}
                 />
               ))}
             </div>
+
+            {items.length > pageSize && (
+              <Pagination
+                currentPage={page}
+                totalPages={Math.ceil(items.length / pageSize) || 1}
+                totalItems={items.length}
+                pageSize={pageSize}
+                onPageChange={(p) => {
+                  setPage(p);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              />
+            )}
           </div>
         )}
       </div>

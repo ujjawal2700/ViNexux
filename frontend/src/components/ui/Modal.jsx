@@ -31,7 +31,7 @@ export const Modal = ({
   return (
     <DialogPrimitive.Root open={isOpen} onOpenChange={(open) => !open && onClose?.()}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0" />
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0" />
         <DialogPrimitive.Content
           onPointerDownOutside={(e) => {
             if (!closeOnOutsideClick) e.preventDefault();
@@ -42,28 +42,28 @@ export const Modal = ({
           className={cn(
             'fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)]',
             sizeClasses[size] || sizeClasses.md,
-            'bg-card rounded-2xl border border-border shadow-2xl overflow-hidden flex flex-col max-h-[90vh]',
+            'bg-white text-gray-900 rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]',
             'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
             className
           )}
         >
           {(title || description || onClose) && (
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white">
               <div>
                 {title && (
-                  <DialogPrimitive.Title className="text-base font-bold text-foreground">
+                  <DialogPrimitive.Title className="text-base font-bold text-gray-900">
                     {title}
                   </DialogPrimitive.Title>
                 )}
                 {description && (
-                  <DialogPrimitive.Description className="text-xs text-muted-foreground mt-0.5">
+                  <DialogPrimitive.Description className="text-xs text-gray-500 mt-0.5">
                     {description}
                   </DialogPrimitive.Description>
                 )}
               </div>
               <DialogPrimitive.Close asChild>
                 <button
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
                   title="Close modal"
                 >
                   <X className="w-4 h-4" />
@@ -72,12 +72,12 @@ export const Modal = ({
             </div>
           )}
 
-          <div className="p-6 overflow-y-auto flex-1 space-y-4 text-sm text-foreground">
+          <div className="p-6 overflow-y-auto flex-1 space-y-4 text-sm text-gray-700 bg-white">
             {children}
           </div>
 
           {footer && (
-            <div className="px-6 py-4 border-t border-border bg-background flex items-center justify-end gap-3">
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/80 flex items-center justify-end gap-3">
               {footer}
             </div>
           )}

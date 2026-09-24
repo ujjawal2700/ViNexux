@@ -255,10 +255,12 @@ const AdminSessionsPage = () => {
             </Table.Body>
           </Table>
 
-          {pagination.totalPages > 1 && (
+          {pagination.total > 0 && (
             <Pagination
               currentPage={page}
               totalPages={pagination.totalPages}
+              totalItems={pagination.total}
+              pageSize={pagination.limit || 20}
               onPageChange={(newPage) => setPage(newPage)}
             />
           )}

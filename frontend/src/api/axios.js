@@ -11,14 +11,22 @@ const normalizeApiBaseUrl = (raw) => {
 
 const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
 
-// Token memory store for access token
+// Token memory store for access tokens
 let inMemoryAccessToken = null;
+let inMemoryAdminAccessToken = null;
 
-export const setAccessToken = (token) => {
-  inMemoryAccessToken = token;
+export const setAccessToken = (token, portal) => {
+  if (portal === 'admin') {
+    inMemoryAdminAccessToken = token;
+  } else {
+    inMemoryAccessToken = token;
+  }
 };
 
-export const getAccessToken = () => {
+export const getAccessToken = (portal) => {
+  if (portal === 'admin') {
+    return inMemoryAdminAccessToken;
+  }
   return inMemoryAccessToken;
 };
 
@@ -34,8 +42,13 @@ const apiClient = axios.create({
 // Request Interceptor: Attach Access Token if present
 apiClient.interceptors.request.use(
   (config) => {
-    if (inMemoryAccessToken) {
-      config.headers.Authorization = `Bearer ${inMemoryAccessToken}`;
+    const isAdminEndpoint = config.url?.startsWith('/admin') || config.url?.includes('/admin/');
+    const token = isAdminEndpoint
+      ? (inMemoryAdminAccessToken || inMemoryAccessToken)
+      : inMemoryAccessToken;
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
@@ -69,10 +82,12 @@ apiClient.interceptors.response.use(
                            originalRequest.url?.includes('/auth/refresh-token');
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
-      const refreshToken = getStoredRefreshToken();
+      const isAdminEndpoint = originalRequest.url?.startsWith('/admin') || originalRequest.url?.includes('/admin/');
+      const portal = isAdminEndpoint ? 'admin' : 'customer';
+      const refreshToken = getStoredRefreshToken(isAdminEndpoint ? 'admin' : undefined);
 
       if (!refreshToken) {
-        setAccessToken(null);
+        setAccessToken(null, portal);
         return Promise.reject(error);
       }
 
@@ -99,9 +114,9 @@ apiClient.interceptors.response.use(
         const newRefreshToken = response.data?.data?.refreshToken;
 
         if (newAccessToken) {
-          setAccessToken(newAccessToken);
+          setAccessToken(newAccessToken, portal);
           if (newRefreshToken) {
-            setStoredRefreshToken(newRefreshToken);
+            setStoredRefreshToken(newRefreshToken, portal);
           }
 
           processQueue(null, newAccessToken);
@@ -112,9 +127,8 @@ apiClient.interceptors.response.use(
         }
       } catch (refreshErr) {
         processQueue(refreshErr, null);
-        clearStoredRefreshToken();
-        setAccessToken(null);
-        // Optionally trigger global logout event if needed
+        clearStoredRefreshToken(portal);
+        setAccessToken(null, portal);
         return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;

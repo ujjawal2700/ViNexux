@@ -4,7 +4,7 @@ import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
 import cartService from '../../services/cartService';
 import wishlistService from '../../services/wishlistService';
-import { Minus, Plus, Check, Heart } from 'lucide-react';
+import { Minus, Plus, Check, Heart, FileText } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export const ProductCard = ({ product, onCartUpdated, className }) => {
@@ -116,6 +116,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
       await cartService.addItem(product._id, quantity);
       toast.success(`Added ${quantity}x "${product.name}" to cart!`);
       setIsAdded(true);
+      window.dispatchEvent(new Event('cart-updated'));
       if (onCartUpdated) {
         onCartUpdated();
       }
@@ -130,6 +131,32 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
   };
 
   const handleCardClick = () => {
+    const pathname = window.location.pathname.replace(/\/+$/, '');
+
+    // If on a Brand route: /brands/acer -> /brands/acer/:id
+    if (pathname.startsWith('/brands/') && !pathname.includes(product._id)) {
+      navigate(`${pathname}/${product._id}`);
+      return;
+    }
+
+    // If on a Hierarchical Category route: e.g. /laptop/branded-laptop -> /laptop/branded-laptop/:id
+    const isExcluded =
+      pathname === '' ||
+      pathname === '/' ||
+      pathname.startsWith('/products') ||
+      pathname.startsWith('/cart') ||
+      pathname.startsWith('/wishlist') ||
+      pathname.startsWith('/account') ||
+      pathname.startsWith('/admin') ||
+      pathname.startsWith('/categories') ||
+      pathname.startsWith('/brands') ||
+      pathname.startsWith('/content');
+
+    if (!isExcluded && !pathname.includes(product._id)) {
+      navigate(`${pathname}/${product._id}`);
+      return;
+    }
+
     navigate(`/products/${product._id}`);
   };
 
@@ -188,28 +215,40 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
         <div className="flex items-center justify-between gap-1 pt-1">
           <div className="flex items-baseline gap-1">
             <span className="text-sm sm:text-base md:text-lg font-bold text-gray-900">
-              ₹{displayPrice.toLocaleString('en-IN')}
+              ₹{(Number(displayPrice) || 0).toLocaleString('en-IN')}
             </span>
             {hasDealerDiscount && (
               <span className="text-[10px] sm:text-xs text-gray-400 line-through">
-                ₹{standardPrice.toLocaleString('en-IN')}
+                ₹{(Number(standardPrice) || 0).toLocaleString('en-IN')}
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-1">
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 inline-block"></span>
               In Stock
             </span>
-            <span className="text-[10px] sm:text-[11px] text-gray-400 font-medium truncate max-w-[55px] sm:max-w-[80px]" title={brandName}>
+            <span className="text-[10px] sm:text-[11px] text-gray-500 font-bold uppercase truncate max-w-[65px] sm:max-w-[85px]" title={brandName}>
               {brandName}
             </span>
           </div>
         </div>
+
+        {/* CD Discount Badge (Matching Mega Jaipur: CD DISCOUNT: ₹...) */}
+        <div className="flex items-center gap-1.5 pt-0.5">
+          <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/90 text-[9px] sm:text-[9.5px] font-bold tracking-tight">
+            CD DISCOUNT: ₹{Math.max(15, Math.round((Number(displayPrice) || 0) * 0.015)).toLocaleString('en-IN')}
+          </span>
+        </div>
+
+        {/* Sub-label: Quantity Slabs Not Applicable */}
+        <div className="text-[10px] text-gray-400 select-none pt-0.5">
+          Quantity Slabs Not Applicable
+        </div>
       </div>
 
-      {/* Interactive Actions Row: Quantity Selector + ADD TO CART */}
+      {/* Interactive Actions Row: Quantity Stepper + ADD TO CART + Quote Button */}
       <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between gap-1.5 sm:gap-2 w-full">
         {/* Quantity Stepper [- 1 +] */}
         <div
@@ -258,6 +297,20 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
           ) : (
             'ADD TO CART'
           )}
+        </button>
+
+        {/* Quotation / Enquiry Icon Button (Matching Mega Jaipur) */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            navigate('/account/quotations');
+          }}
+          title="Quotation / Inquiry"
+          className="h-9 w-9 rounded border border-gray-300 hover:border-primary hover:text-primary flex items-center justify-center text-gray-500 bg-white transition-colors shrink-0 cursor-pointer"
+        >
+          <FileText className="w-4 h-4" />
         </button>
       </div>
     </div>

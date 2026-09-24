@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import productService from '../../services/productService';
+import categoryService from '../../services/categoryService';
 import cartService from '../../services/cartService';
 import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
 import ProductCard from '../../components/products/ProductCard';
+import { extractProductId, buildCategoryPath, buildCategoryTrail } from '../../utils/categoryUrls';
 import { Button } from '../../components/ui/Button';
 import { Badge, StatusBadge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
@@ -21,15 +23,21 @@ import {
   Minus,
   CheckCircle2,
   Share2,
+  ChevronRight,
 } from 'lucide-react';
 
 export const ProductDetailPage = () => {
-  const { id } = useParams();
+  const params = useParams();
+  const { id, param2, param3, brandSlug, headerSlug } = params;
+  const rawId = id || param3 || param2;
+  const productId = extractProductId(rawId);
+
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const toast = useToast();
 
   const [product, setProduct] = useState(null);
+  const [categories, setCategories] = useState([]);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
@@ -37,12 +45,31 @@ export const ProductDetailPage = () => {
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch product data
+  // 1. Fetch categories tree for breadcrumbs
+  useEffect(() => {
+    const fetchCats = async () => {
+      try {
+        const res = await categoryService.getCategories({ limit: 500, isActive: true });
+        const list = res.data?.categories || res.categories || [];
+        setCategories(list);
+      } catch (err) {
+        console.warn('Failed to load categories for breadcrumbs:', err);
+      }
+    };
+    fetchCats();
+  }, []);
+
+  // 2. Fetch product data
   const fetchProduct = useCallback(async () => {
+    if (!productId) {
+      setError('Product ID is missing');
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
-      const res = await productService.getProductById(id);
+      const res = await productService.getProductById(productId);
       const prod = res.data?.product || res.product || res.data;
       if (!prod) {
         setError('Product not found');
@@ -67,13 +94,58 @@ export const ProductDetailPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [id]);
+  }, [productId]);
 
   useEffect(() => {
     fetchProduct();
     setSelectedImageIndex(0);
     setQuantity(1);
   }, [fetchProduct]);
+
+  // Compute Breadcrumb Trail
+  const breadcrumbTrail = useMemo(() => {
+    // 1. Brand view
+    if (brandSlug) {
+      const brandName = brandSlug.replace(/-/g, ' ').toUpperCase();
+      return [
+        { label: 'Home', path: '/' },
+        { label: 'Brands', path: '/brands' },
+        { label: brandName, path: `/brands/${brandSlug}` },
+        { label: product?.name || 'Product Details', path: null },
+      ];
+    }
+
+    // 2. Category view
+    const catId = typeof product?.categoryId === 'object' ? product?.categoryId?._id : product?.categoryId;
+    const catObj = categories.find((c) => String(c._id) === String(catId)) || (typeof product?.categoryId === 'object' ? product.categoryId : null);
+
+    if (catObj) {
+      const trail = buildCategoryTrail(catObj, categories);
+      return [
+        ...trail,
+        { label: product?.name || 'Product Details', path: null },
+      ];
+    }
+
+    return [
+      { label: 'Home', path: '/' },
+      { label: 'Products', path: '/products' },
+      { label: product?.name || 'Product Details', path: null },
+    ];
+  }, [brandSlug, product, categories]);
+
+  // Compute Back target
+  const backTarget = useMemo(() => {
+    if (brandSlug) {
+      return { label: `Back to ${brandSlug.replace(/-/g, ' ').toUpperCase()}`, path: `/brands/${brandSlug}` };
+    }
+    const catId = typeof product?.categoryId === 'object' ? product?.categoryId?._id : product?.categoryId;
+    const catObj = categories.find((c) => String(c._id) === String(catId)) || (typeof product?.categoryId === 'object' ? product.categoryId : null);
+    if (catObj) {
+      return { label: `Back to ${catObj.name}`, path: buildCategoryPath(catObj, categories) };
+    }
+    return { label: 'Back to Product Catalog', path: '/products' };
+  }, [brandSlug, product, categories]);
 
   // Determine user pricing role
   const isApprovedDealer = user?.role === 'dealer' && (user?.dealerStatus === 'approved' || user?.kycStatus === 'approved');
@@ -121,6 +193,7 @@ export const ProductDetailPage = () => {
     try {
       setIsAdding(true);
       await cartService.addItem(product._id, quantity);
+      window.dispatchEvent(new Event('cart-updated'));
       toast.success(`Added ${quantity} x "${product.name}" to cart!`);
     } catch (err) {
       console.error('Failed to add item to cart:', err);
@@ -176,17 +249,39 @@ export const ProductDetailPage = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-12 bg-background text-foreground min-h-screen">
       
       {/* 1. BREADCRUMB HEADER */}
-      <div className="flex items-center justify-between text-xs text-muted-foreground border-b border-border pb-4">
-        <Link to="/products" className="hover:text-primary inline-flex items-center gap-1.5 font-medium transition-colors">
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to Product Catalog
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs border-b border-border pb-4">
+        {/* Hierarchical Breadcrumbs */}
+        <nav aria-label="Breadcrumb" className="flex items-center flex-wrap gap-1.5 text-gray-500 text-xs">
+          {breadcrumbTrail.map((crumb, idx) => {
+            const isLast = idx === breadcrumbTrail.length - 1;
+            return (
+              <React.Fragment key={idx}>
+                {idx > 0 && <ChevronRight className="w-3.5 h-3.5 text-gray-400 shrink-0" />}
+                {isLast || !crumb.path ? (
+                  <span className="font-bold text-gray-900 truncate max-w-[200px] sm:max-w-xs md:max-w-md">
+                    {crumb.label}
+                  </span>
+                ) : (
+                  <Link
+                    to={crumb.path}
+                    className="hover:text-[#800020] transition-colors truncate"
+                  >
+                    {crumb.label}
+                  </Link>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </nav>
+
+        {/* Back Link */}
+        <Link
+          to={backTarget.path}
+          className="hover:text-primary inline-flex items-center gap-1.5 font-medium text-muted-foreground transition-colors shrink-0 text-xs"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>{backTarget.label}</span>
         </Link>
-        <div className="flex items-center gap-2 text-[#9a6870]">
-          <Layers className="w-3.5 h-3.5 text-primary" />
-          <span>Category:</span>
-          <span className="text-foreground font-semibold">
-            {typeof product.categoryId === 'object' ? product.categoryId?.name : 'Security Equipment'}
-          </span>
-        </div>
       </div>
 
       {/* 2. MAIN PRODUCT PRESENTATION GRID */}

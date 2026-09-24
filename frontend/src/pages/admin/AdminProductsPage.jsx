@@ -61,7 +61,7 @@ const AdminProductsPage = () => {
       setPagination(res.data?.pagination || { page: 1, limit: 20, totalPages: 1, total: 0 });
 
       if (categoriesList.length === 0) {
-        const catRes = await adminService.getCategories({ limit: 100 });
+        const catRes = await adminService.getCategories({ limit: 500, sortBy: 'sortOrder', sortOrder: 'asc' });
         setCategoriesList(catRes.data?.categories || []);
       }
     } catch (err) {
@@ -104,7 +104,7 @@ const AdminProductsPage = () => {
 
       <AdminPageHeader
         title="Product Catalog Management"
-        subtitle="Manage camera models, SKUs, wholesale dealer pricing, specs & media galleries"
+        subtitle="Manage hardware models, laptops, desktops, cameras, networking, SKUs, wholesale dealer pricing & specs"
         badge={`${pagination.total} Total Products`}
         action={
           <Button variant="primary" size="sm" onClick={() => navigate('/admin/products/new')}>
@@ -128,7 +128,23 @@ const AdminProductsPage = () => {
             },
             options: [
               { value: '', label: 'All Categories' },
-              ...categoriesList.map((cat) => ({ value: cat._id, label: cat.name })),
+              ...categoriesList.map((cat) => {
+                const pId = cat.parentId?._id || cat.parentId;
+                const parent = pId ? categoriesList.find((p) => p._id === pId) : null;
+                const grandParentId = parent?.parentId?._id || parent?.parentId;
+                const isSub = Boolean(grandParentId);
+                const isMain = Boolean(pId && !grandParentId);
+
+                let label = cat.name;
+                if (isSub) {
+                  label = `↳ [Sub] ${cat.name}`;
+                } else if (isMain) {
+                  label = `— [Main] ${cat.name}`;
+                } else {
+                  label = `[Header] ${cat.name}`;
+                }
+                return { value: cat._id, label };
+              }),
             ],
           },
           {
@@ -291,10 +307,12 @@ const AdminProductsPage = () => {
             </Table.Body>
           </Table>
 
-          {pagination.totalPages > 1 && (
+          {pagination.total > 0 && (
             <Pagination
               currentPage={page}
               totalPages={pagination.totalPages}
+              totalItems={pagination.total}
+              pageSize={pagination.limit || 20}
               onPageChange={(newPage) => setPage(newPage)}
             />
           )}

@@ -3,8 +3,8 @@ import { Navigate, Outlet } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 import { ROLES } from '../constants';
 
-const PublicRoute = ({ restricted = false }) => {
-  const { isAuthenticated, isLoading, user } = useAuth();
+const PublicRoute = ({ restricted = false, portal = null }) => {
+  const { isAuthenticated, isAdminAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -14,13 +14,16 @@ const PublicRoute = ({ restricted = false }) => {
     );
   }
 
-  if (isAuthenticated && restricted) {
-    // No dedicated dashboard for customer/dealer roles - both land on the
-    // storefront, exactly like a normal post-OTP login (see VerifyOtpPage).
-    if (user?.role === ROLES.ADMIN) {
-      return <Navigate to="/admin/dashboard" replace />;
+  if (restricted) {
+    if (portal === 'admin') {
+      if (isAdminAuthenticated) {
+        return <Navigate to="/admin/dashboard" replace />;
+      }
+    } else {
+      if (isAuthenticated) {
+        return <Navigate to="/" replace />;
+      }
     }
-    return <Navigate to="/" replace />;
   }
 
   return <Outlet />;

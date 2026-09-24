@@ -76,16 +76,16 @@ export const LoginPage = ({ initialTab = 'login' }) => {
         />
       ) : (
         <div className="w-full max-w-md bg-white border border-gray-200/90 rounded-xl p-6 sm:p-8 shadow-sm transition-all duration-200">
-          {/* Top Segmented Tabs: Login | Register (Mega Jaipur Style) */}
-          <div className="grid grid-cols-2 rounded-md overflow-hidden bg-[#f4eff1] p-1 mb-6 border border-gray-200/60">
+          {/* Top Segmented Tabs: Login | Register (Mega Jaipur Style with ViNexus Maroon) */}
+          <div className="grid grid-cols-2 gap-2 mb-6">
             <button
               type="button"
               onClick={() => handleTabSwitch('login')}
               className={cn(
-                "py-2.5 text-xs sm:text-sm font-bold rounded transition-all duration-200 cursor-pointer",
+                "py-2.5 text-xs sm:text-sm font-bold rounded transition-all duration-200 cursor-pointer text-center",
                 activeTab === 'login'
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-gray-600 hover:text-gray-900 bg-transparent"
+                  ? "bg-[#800020] text-white shadow-xs"
+                  : "bg-[#fdf2f4] hover:bg-[#fae1e6] text-[#800020] hover:text-[#590016] font-semibold"
               )}
             >
               Login
@@ -94,10 +94,10 @@ export const LoginPage = ({ initialTab = 'login' }) => {
               type="button"
               onClick={() => handleTabSwitch('signup')}
               className={cn(
-                "py-2.5 text-xs sm:text-sm font-bold rounded transition-all duration-200 cursor-pointer",
+                "py-2.5 text-xs sm:text-sm font-bold rounded transition-all duration-200 cursor-pointer text-center",
                 activeTab === 'signup'
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-gray-600 hover:text-gray-900 bg-transparent"
+                  ? "bg-[#800020] text-white shadow-xs"
+                  : "bg-[#fdf2f4] hover:bg-[#fae1e6] text-[#800020] hover:text-[#590016] font-semibold"
               )}
             >
               Register

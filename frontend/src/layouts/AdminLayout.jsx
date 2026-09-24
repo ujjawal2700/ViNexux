@@ -20,16 +20,21 @@ import {
   Award, 
   LayoutList,
   LogOut,
-  ArrowLeft,
   Menu,
-  X
+  X,
+  ChevronDown,
+  ChevronRight,
+  Layers,
+  GitBranch
 } from 'lucide-react';
 
 const AdminLayout = () => {
-  const { user, logout } = useAuth();
+  const { user, adminUser, adminLogout, logout } = useAuth();
+  const currentAdmin = adminUser || (user?.role === 'admin' ? user : null);
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pendingKycCount, setPendingKycCount] = useState(0);
+  const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -112,7 +117,107 @@ const AdminLayout = () => {
             <div className="space-y-1">
               {mainNav.map((item) => {
                 const Icon = item.icon;
-                const isActive = location.pathname === item.path || (item.path !== '/admin/dashboard' && location.pathname.startsWith(item.path));
+                const isCatManagement = item.path === '/admin/categories';
+
+                if (isCatManagement) {
+                  const isCatRoute = location.pathname.startsWith('/admin/categories');
+                  const currentTier = new URLSearchParams(location.search).get('tier');
+
+                  return (
+                    <div key={item.path} className="space-y-1">
+                      {/* Main Category Management Header with Dropdown Chevron */}
+                      <div
+                        className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all duration-200 select-none ${
+                          isCatRoute
+                            ? 'bg-muted text-primary border border-border font-bold shadow-xs'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                        }`}
+                        onClick={() => setIsCategoryMenuOpen(!isCategoryMenuOpen)}
+                      >
+                        <Link
+                          to="/admin/categories"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsCategoryMenuOpen(true);
+                            setMobileOpen(false);
+                          }}
+                          className="flex items-center gap-3 flex-1"
+                        >
+                          <Icon className={`w-4 h-4 ${isCatRoute ? 'text-primary' : 'text-muted-foreground'}`} />
+                          <span>{item.label}</span>
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsCategoryMenuOpen(!isCategoryMenuOpen);
+                          }}
+                          className="p-0.5 hover:text-primary transition-colors cursor-pointer"
+                          aria-label="Toggle category hierarchy sub-menu"
+                        >
+                          {isCategoryMenuOpen ? (
+                            <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                          ) : (
+                            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Dropdown Hierarchy Sub-Items: Header Category -> Main Category -> Sub Category */}
+                      {isCategoryMenuOpen && (
+                        <div className="pl-5 pr-1 py-1 space-y-1 border-l-2 border-primary/20 ml-4 my-1">
+                          {/* 1. Header Category */}
+                          <Link
+                            to="/admin/categories/header"
+                            onClick={() => setMobileOpen(false)}
+                            className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-colors ${
+                              location.pathname === '/admin/categories/header'
+                                ? 'bg-primary text-white font-bold shadow-xs'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                            }`}
+                          >
+                            <Layers className="w-3.5 h-3.5 shrink-0" />
+                            <span className="flex-1">Header Category</span>
+                          </Link>
+
+                          {/* 2. Main Category */}
+                          <Link
+                            to="/admin/categories/main"
+                            onClick={() => setMobileOpen(false)}
+                            className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-colors ${
+                              location.pathname === '/admin/categories/main'
+                                ? 'bg-primary text-white font-bold shadow-xs'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                            }`}
+                          >
+                            <FolderTree className="w-3.5 h-3.5 shrink-0" />
+                            <span className="flex-1">Main Category</span>
+                          </Link>
+
+                          {/* 3. Sub Category */}
+                          <Link
+                            to="/admin/categories/sub"
+                            onClick={() => setMobileOpen(false)}
+                            className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-colors ${
+                              location.pathname === '/admin/categories/sub'
+                                ? 'bg-primary text-white font-bold shadow-xs'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                            }`}
+                          >
+                            <GitBranch className="w-3.5 h-3.5 shrink-0" />
+                            <span className="flex-1">Sub Category</span>
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // If Product Catalog is already shown in category hierarchy, we can still keep or show standard items
+                const isActive =
+                  location.pathname === item.path ||
+                  (item.path !== '/admin/dashboard' && location.pathname.startsWith(item.path));
+
                 return (
                   <Link
                     key={item.path}
@@ -166,16 +271,12 @@ const AdminLayout = () => {
         </div>
 
         <div className="pt-4 border-t border-border flex flex-col gap-2">
-          <Link
-            to="/"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Public Storefront
-          </Link>
           <button
-            onClick={logout}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors w-full text-left"
+            onClick={() => {
+              if (adminLogout) adminLogout();
+              else logout('admin');
+            }}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors w-full text-left cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             Admin Sign Out
@@ -200,7 +301,7 @@ const AdminLayout = () => {
           </div>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <Link to="/admin/profile" className="hover:text-primary transition-colors">
-              Admin: <strong className="text-foreground font-bold underline decoration-primary/30 underline-offset-4">{user?.fullName || user?.name || user?.email}</strong>
+              Admin: <strong className="text-foreground font-bold underline decoration-primary/30 underline-offset-4">{currentAdmin?.fullName || currentAdmin?.name || currentAdmin?.email || 'Administrator'}</strong>
             </Link>
             <ThemeToggle />
           </div>

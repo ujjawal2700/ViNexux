@@ -2,9 +2,11 @@ import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 
-const ProtectedRoute = ({ loginPath = '/login' }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+const ProtectedRoute = ({ loginPath = '/login', portal = null }) => {
+  const { isAuthenticated, isAdminAuthenticated, isLoading } = useAuth();
   const location = useLocation();
+
+  const isAuthed = portal === 'admin' || loginPath.includes('/admin') ? isAdminAuthenticated : isAuthenticated;
 
   if (isLoading) {
     return (
@@ -17,7 +19,7 @@ const ProtectedRoute = ({ loginPath = '/login' }) => {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthed) {
     return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 

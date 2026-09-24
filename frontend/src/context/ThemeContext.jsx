@@ -5,58 +5,40 @@ export const ThemeContext = createContext(null);
 const STORAGE_KEY = 'vinexus-theme';
 
 const getInitialTheme = () => {
-  if (typeof window === 'undefined') return 'light';
-  try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored === 'light' || stored === 'dark') return stored;
-  } catch {
-    // localStorage unavailable (private mode, etc.) - fall through to system preference
-  }
-  if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) {
-    return 'dark';
-  }
   return 'light';
 };
 
 const applyTheme = (theme) => {
   const root = document.documentElement;
-  if (theme === 'dark') {
-    root.classList.add('dark');
-  } else {
-    root.classList.remove('dark');
-  }
+  // Always enforce light theme across the application
+  root.classList.remove('dark');
 };
 
 export const ThemeProvider = ({ children }) => {
-  const [theme, setThemeState] = useState(getInitialTheme);
+  const [theme, setThemeState] = useState('light');
 
   useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
+    applyTheme('light');
+    try {
+      window.localStorage.setItem(STORAGE_KEY, 'light');
+    } catch {}
+  }, []);
 
   const setTheme = useCallback((next) => {
-    setThemeState(next);
+    setThemeState('light');
+    applyTheme('light');
     try {
-      window.localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-      // ignore persistence failures
-    }
+      window.localStorage.setItem(STORAGE_KEY, 'light');
+    } catch {}
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setThemeState((prev) => {
-      const next = prev === 'dark' ? 'light' : 'dark';
-      try {
-        window.localStorage.setItem(STORAGE_KEY, next);
-      } catch {
-        // ignore persistence failures
-      }
-      return next;
-    });
+    setThemeState('light');
+    applyTheme('light');
   }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, isDark: theme === 'dark' }}>
+    <ThemeContext.Provider value={{ theme: 'light', setTheme, toggleTheme, isDark: false }}>
       {children}
     </ThemeContext.Provider>
   );

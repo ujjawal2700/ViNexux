@@ -35,12 +35,12 @@ const DEFAULT_CATEGORY_TILES = [
   },
   {
     name: 'Security',
-    slug: 'cctv-cameras',
+    slug: 'security',
     image: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=300&q=80',
   },
   {
     name: 'Networking',
-    slug: 'routers-networking',
+    slug: 'networking',
     image: 'https://images.unsplash.com/photo-1606904825846-647eb07f5be2?auto=format&fit=crop&w=300&q=80',
   },
   {
@@ -65,7 +65,7 @@ const DEFAULT_CATEGORY_TILES = [
   },
   {
     name: 'Accessories CCTV & Networking',
-    slug: 'accessories-cctv',
+    slug: 'accessories-cctv-networking',
     image: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=300&q=80',
   },
   {
@@ -99,7 +99,7 @@ export const CategorySlider = ({ categories = [] }) => {
   };
 
   return (
-    <div className="relative w-full px-2 sm:px-4 lg:px-8 max-w-[1920px] mx-auto my-2">
+    <div className="relative w-full px-3 sm:px-6 lg:px-8 2xl:px-12 my-2">
       {/* Left Navigation Arrow */}
       <button
         type="button"
@@ -119,7 +119,7 @@ export const CategorySlider = ({ categories = [] }) => {
         {tiles.map((cat, idx) => (
           <div key={idx} className="relative group shrink-0">
             <Link
-              to={cat.id ? `/products?categoryId=${cat.id}` : `/products?search=${encodeURIComponent(cat.name)}`}
+              to={cat.slug ? `/${cat.slug}` : cat.id ? `/products?categoryId=${cat.id}` : `/${cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
               className="flex flex-col items-center justify-between w-24 sm:w-28 md:w-32 h-28 sm:h-32 md:h-36 p-2.5 sm:p-3 bg-white border border-gray-200 rounded-lg transition-all duration-300 ease-out hover:-translate-y-1.5 hover:border-primary hover:shadow-[0_8px_24px_rgba(128,0,32,0.14)] text-center select-none"
             >
               <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 flex items-center justify-center overflow-hidden mb-1">

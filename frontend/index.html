@@ -45,13 +45,12 @@
     />
     <meta name="twitter:image" content="/logo.png" />
 
-    <!-- Apply the stored/system theme before paint to avoid a flash of the wrong theme -->
+    <!-- Enforce light theme across entire application -->
     <script>
       (function () {
         try {
-          var stored = localStorage.getItem('vinexus-theme');
-          var isDark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-          if (isDark) document.documentElement.classList.add('dark');
+          document.documentElement.classList.remove('dark');
+          localStorage.setItem('vinexus-theme', 'light');
         } catch (e) {}
       })();
     </script>

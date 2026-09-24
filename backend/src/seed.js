@@ -129,38 +129,128 @@ async function seed() {
 
   const parentCategoriesData = [
     {
-      name: 'CCTV Cameras & Security Systems',
-      slug: 'cctv-cameras',
-      image: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80',
-      description: 'High-definition IP dome, bullet, PTZ security cameras, and smart AI surveillance tech.',
+      name: 'Desktop',
+      slug: 'desktop',
+      description: 'High-performance desktop PCs, workstations, all-in-one systems, and mini computers.',
+      image: 'https://images.unsplash.com/photo-1593640408182-31c70c8268f5?auto=format&fit=crop&w=800&q=80',
       sortOrder: 1,
       isActive: true,
       parentId: null,
     },
     {
-      name: 'Routers & Network Hardware',
-      slug: 'routers-networking',
-      image: 'https://images.unsplash.com/photo-1606904825846-647eb07f5be2?auto=format&fit=crop&w=800&q=80',
-      description: 'Dual-band Wi-Fi 6 routers, mesh systems, and industrial cellular gateways.',
+      name: 'Laptop',
+      slug: 'laptop',
+      description: 'Business laptops, ultrabooks, mobile workstations, and computing notebooks.',
+      image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=800&q=80',
       sortOrder: 2,
       isActive: true,
       parentId: null,
     },
     {
-      name: 'Enterprise Gigabit PoE Switches',
-      slug: 'switches-poe',
-      image: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80',
-      description: 'Managed and unmanaged PoE+ switches for high-density IP camera networks.',
+      name: 'Storage',
+      slug: 'storage',
+      description: 'Surveillance hard drives (WD Purple, Seagate SkyHawk), NVMe SSDs, NAS storage, and portable drives.',
+      image: 'https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?auto=format&fit=crop&w=800&q=80',
       sortOrder: 3,
       isActive: true,
       parentId: null,
     },
     {
-      name: 'Video & Photo Shooting Cameras',
-      slug: 'shooting-cameras',
-      image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=800&q=80',
-      description: 'Professional DSLR, mirrorless, and cinema cameras from Canon, Nikon, and Sony.',
+      name: 'Display',
+      slug: 'display',
+      description: 'Surveillance monitoring displays, professional IPS monitors, digital signage, and commercial screens.',
+      image: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=800&q=80',
       sortOrder: 4,
+      isActive: true,
+      parentId: null,
+    },
+    {
+      name: 'Peripherals',
+      slug: 'peripherals',
+      description: 'Keyboards, optical mice, surveillance controllers, headsets, and computer accessories.',
+      image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=800&q=80',
+      sortOrder: 5,
+      isActive: true,
+      parentId: null,
+    },
+    {
+      name: 'Printers & Scanners',
+      slug: 'printers-scanners',
+      description: 'Laserjet printers, barcode label printers, document scanners, and all-in-one printing equipment.',
+      image: 'https://images.unsplash.com/photo-1612815154858-60aa4c59eaa6?auto=format&fit=crop&w=800&q=80',
+      sortOrder: 6,
+      isActive: true,
+      parentId: null,
+    },
+    {
+      name: 'Security',
+      slug: 'security',
+      description: 'CCTV IP dome & bullet cameras, PTZ surveillance, DVR/NVR recorders, and biometric access control.',
+      image: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80',
+      sortOrder: 7,
+      isActive: true,
+      parentId: null,
+    },
+    {
+      name: 'Networking',
+      slug: 'networking',
+      description: 'Enterprise PoE switches, wireless Wi-Fi 6 routers, access points, and rackmount patch panels.',
+      image: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80',
+      sortOrder: 8,
+      isActive: true,
+      parentId: null,
+    },
+    {
+      name: 'Software',
+      slug: 'software',
+      description: 'Operating systems, surveillance VMS platforms, antivirus security suites, and office utilities.',
+      image: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=800&q=80',
+      sortOrder: 9,
+      isActive: true,
+      parentId: null,
+    },
+    {
+      name: 'Mobility',
+      slug: 'mobility',
+      description: 'Industrial handhelds, 4G/5G mobile dongles, power banks, and portable enterprise tech.',
+      image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=800&q=80',
+      sortOrder: 10,
+      isActive: true,
+      parentId: null,
+    },
+    {
+      name: 'Cables',
+      slug: 'cables',
+      description: 'CAT6 / CAT6A UTP ethernet cables, 3+1 CCTV copper coaxial cables, fiber optic patch cords, and HDMI wires.',
+      image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=800&q=80',
+      sortOrder: 11,
+      isActive: true,
+      parentId: null,
+    },
+    {
+      name: 'Connector & Converter',
+      slug: 'connector-converter',
+      description: 'BNC connectors, RJ45 modular jacks, DC jacks, HDMI-to-VGA converters, and optical media transceivers.',
+      image: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80',
+      sortOrder: 12,
+      isActive: true,
+      parentId: null,
+    },
+    {
+      name: 'Accessories CCTV & Networking',
+      slug: 'accessories-cctv-networking',
+      description: 'CCTV power supply boxes, server network rack cabinets, camera mounting brackets, and tools.',
+      image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+      sortOrder: 13,
+      isActive: true,
+      parentId: null,
+    },
+    {
+      name: 'Telecom',
+      slug: 'telecom',
+      description: 'IP PBX telephone systems, VoIP SIP desk phones, intercom modules, and telecommunication hardware.',
+      image: 'https://images.unsplash.com/photo-1534536281715-e28d76689b4d?auto=format&fit=crop&w=800&q=80',
+      sortOrder: 14,
       isActive: true,
       parentId: null,
     },
@@ -171,114 +261,20 @@ async function seed() {
   for (const catData of parentCategoriesData) {
     const cat = await Category.create(catData);
     categoryMap[cat.slug] = cat._id;
-    console.log(`  ✓ Top Category: ${cat.name} (${cat.slug})`);
+    console.log(`  ✓ Top Parent Category: ${cat.name} (${cat.slug})`);
   }
 
-  const subCategoriesData = [
-    // --- Subcategories under CCTV Cameras ---
-    {
-      name: 'Dahua Security Cameras',
-      slug: 'cctv-dahua',
-      parentId: categoryMap['cctv-cameras'],
-      image: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80',
-      description: 'Official Dahua Starlight & WizSense IP security cameras.',
-      sortOrder: 1,
-      isActive: true,
-    },
-    {
-      name: 'Hikvision Surveillance',
-      slug: 'cctv-hikvision',
-      parentId: categoryMap['cctv-cameras'],
-      image: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?auto=format&fit=crop&w=800&q=80',
-      description: 'Hikvision AcuSense and ColorVu high-resolution surveillance systems.',
-      sortOrder: 2,
-      isActive: true,
-    },
-    {
-      name: 'CP PLUS IP Cameras',
-      slug: 'cctv-cpplus',
-      parentId: categoryMap['cctv-cameras'],
-      image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=800&q=80',
-      description: 'CP PLUS Guard+ and Indigo series CCTV cameras.',
-      sortOrder: 3,
-      isActive: true,
-    },
-
-    // --- Subcategories under Routers & Network Hardware ---
-    {
-      name: 'Dual-Band Wi-Fi 6 Routers',
-      slug: 'routers-wifi6',
-      parentId: categoryMap['routers-networking'],
-      image: 'https://images.unsplash.com/photo-1606904825846-647eb07f5be2?auto=format&fit=crop&w=800&q=80',
-      description: 'Next-gen Wi-Fi 6 wireless mesh and high-speed routers.',
-      sortOrder: 1,
-      isActive: true,
-    },
-    {
-      name: '4G/5G Industrial Modems',
-      slug: 'modems-4g5g',
-      parentId: categoryMap['routers-networking'],
-      image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=800&q=80',
-      description: 'Heavy-duty 4G LTE and 5G cellular SIM routers for remote sites.',
-      sortOrder: 2,
-      isActive: true,
-    },
-
-    // --- Subcategories under Enterprise Gigabit PoE Switches ---
-    {
-      name: 'Managed Enterprise Switches',
-      slug: 'switches-managed',
-      parentId: categoryMap['switches-poe'],
-      image: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80',
-      description: 'L2+ managed 16, 24, and 48-port PoE+ switches with SFP+ uplinks.',
-      sortOrder: 1,
-      isActive: true,
-    },
-    {
-      name: 'Unmanaged Industrial Switches',
-      slug: 'switches-unmanaged',
-      parentId: categoryMap['switches-poe'],
-      image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80',
-      description: 'Plug-and-play PoE switches for CCTV installation networks.',
-      sortOrder: 2,
-      isActive: true,
-    },
-
-    // --- Subcategories under Video & Photo Shooting Cameras ---
-    {
-      name: 'Canon DSLR & Mirrorless Series',
-      slug: 'cameras-canon',
-      parentId: categoryMap['shooting-cameras'],
-      image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=800&q=80',
-      description: 'Canon EOS R cinema mirrorless and EOS DSLR camera bodies.',
-      sortOrder: 1,
-      isActive: true,
-    },
-    {
-      name: 'Nikon Full-Frame Cameras',
-      slug: 'cameras-nikon',
-      parentId: categoryMap['shooting-cameras'],
-      image: 'https://images.unsplash.com/photo-1512790182412-b19e6d611397?auto=format&fit=crop&w=800&q=80',
-      description: 'Nikon Z series mirrorless and FX-format professional DSLRs.',
-      sortOrder: 2,
-      isActive: true,
-    },
-    {
-      name: 'Sony Alpha Cine Cameras',
-      slug: 'cameras-sony',
-      parentId: categoryMap['shooting-cameras'],
-      image: 'https://images.unsplash.com/photo-1519638399535-1b036603ac77?auto=format&fit=crop&w=800&q=80',
-      description: 'Sony Alpha 7 IV and Cinema Line FX full-frame video cameras.',
-      sortOrder: 3,
-      isActive: true,
-    },
-  ];
-
-  for (const subCatData of subCategoriesData) {
-    const subCat = await Category.create(subCatData);
-    categoryMap[subCat.slug] = subCat._id;
-    console.log(`  ✓ Subcategory: ${subCat.name} (${subCat.slug})`);
-  }
+  // Alias category references for seeded products
+  categoryMap['cctv-dahua'] = categoryMap['security'];
+  categoryMap['cctv-hikvision'] = categoryMap['security'];
+  categoryMap['cctv-cpplus'] = categoryMap['security'];
+  categoryMap['routers-wifi6'] = categoryMap['networking'];
+  categoryMap['modems-4g5g'] = categoryMap['networking'];
+  categoryMap['switches-managed'] = categoryMap['networking'];
+  categoryMap['switches-unmanaged'] = categoryMap['networking'];
+  categoryMap['cameras-canon'] = categoryMap['security'];
+  categoryMap['cameras-nikon'] = categoryMap['security'];
+  categoryMap['cameras-sony'] = categoryMap['security'];
 
   // --- 3. PRODUCTS SEEDING (5 Products Per Top Category = 20 Total) ---
   console.log('[Seed] Seeding exactly 5 products per category (20 curated products)...');

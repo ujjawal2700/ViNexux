@@ -72,6 +72,9 @@ export const productService = {
     const {
       search,
       categoryId,
+      category,
+      categorySlug: rawCategorySlug,
+      brand,
       isFeatured,
       isActive,
       page = 1,
@@ -80,21 +83,78 @@ export const productService = {
       sortOrder = 'desc',
     } = queryParams;
 
-    const filter = {};
+    const categorySlug = category || rawCategorySlug;
 
-    // Filter by search query (sanitized regex search on product name or SKU)
+    const filter = {};
+    const andClauses = [];
+
+    // Filter by brand parameter (supports exact brand specification or brand keyword in product name)
+    if (brand && brand.trim()) {
+      const cleanBrand = brand.trim();
+      const escapedBrand = escapeRegex(cleanBrand);
+      const brandRegex = new RegExp(`^${escapedBrand}$`, 'i');
+      const brandWordRegex = new RegExp(`(^|\\s|\\W)${escapedBrand}(\\W|\\s|$)`, 'i');
+      andClauses.push({
+        $or: [
+          { specifications: { $elemMatch: { key: /^brand$/i, value: brandRegex } } },
+          { name: brandWordRegex },
+        ],
+      });
+    }
+
+    // Filter by search query (sanitized regex search on product name, SKU, or matching category names)
     if (search && search.trim()) {
       const escapedSearch = escapeRegex(search.trim());
       const searchRegex = new RegExp(escapedSearch, 'i');
-      filter.$or = [{ name: searchRegex }, { sku: searchRegex }];
+
+      const matchedCategories = await Category.find({
+        $or: [{ name: searchRegex }, { slug: searchRegex }],
+      }).select('_id').lean();
+
+      if (matchedCategories.length > 0) {
+        const matchedCatIds = matchedCategories.map((c) => c._id);
+        const childCats = await Category.find({ parentId: { $in: matchedCatIds } }).select('_id').lean();
+        const allCatIds = [...matchedCatIds, ...childCats.map((c) => c._id)];
+        andClauses.push({
+          $or: [
+            { name: searchRegex },
+            { sku: searchRegex },
+            { categoryId: { $in: allCatIds } },
+          ],
+        });
+      } else {
+        andClauses.push({
+          $or: [{ name: searchRegex }, { sku: searchRegex }],
+        });
+      }
     }
 
-    // Filter by categoryId
+    if (andClauses.length > 0) {
+      filter.$and = andClauses;
+    }
+
+    // Filter by categoryId (supports querying header category, main category, or subcategory)
     if (categoryId) {
       if (!mongoose.Types.ObjectId.isValid(categoryId)) {
         throw new AppError('Invalid categoryId query filter format.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
       }
-      filter.categoryId = categoryId;
+      const directChildren = await Category.find({ parentId: categoryId }).select('_id').lean();
+      const directChildIds = directChildren.map((c) => c._id);
+      const subChildren = await Category.find({ parentId: { $in: directChildIds } }).select('_id').lean();
+      const allCategoryIds = [categoryId, ...directChildIds, ...subChildren.map((c) => c._id)];
+      filter.categoryId = { $in: allCategoryIds };
+    } else if (categorySlug && categorySlug.trim()) {
+      const trimmedSlug = categorySlug.trim().toLowerCase();
+      const foundCategory = await Category.findOne({
+        $or: [{ slug: trimmedSlug }, { name: new RegExp(`^${escapeRegex(trimmedSlug)}$`, 'i') }],
+      }).select('_id').lean();
+      if (foundCategory) {
+        const directChildren = await Category.find({ parentId: foundCategory._id }).select('_id').lean();
+        const directChildIds = directChildren.map((c) => c._id);
+        const subChildren = await Category.find({ parentId: { $in: directChildIds } }).select('_id').lean();
+        const allCategoryIds = [foundCategory._id, ...directChildIds, ...subChildren.map((c) => c._id)];
+        filter.categoryId = { $in: allCategoryIds };
+      }
     }
 
     // Filter by isFeatured flag
@@ -112,8 +172,9 @@ export const productService = {
     const skip = (parsedPage - 1) * parsedLimit;
 
     const sortDirection = sortOrder === 'asc' ? 1 : -1;
+    const sortField = sortBy === 'sortOrder' ? 'createdAt' : sortBy;
     const sortOptions = {};
-    sortOptions[sortBy] = sortDirection;
+    sortOptions[sortField] = sortDirection;
 
     const [products, total] = await Promise.all([
       Product.find(filter)

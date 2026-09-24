@@ -24,10 +24,16 @@ import ProductsPage from '../pages/public/ProductsPage';
 import ProductDetailPage from '../pages/public/ProductDetailPage';
 import WishlistPage from '../pages/public/WishlistPage';
 import CategoriesPage from '../pages/public/CategoriesPage';
+import BrandsPage from '../pages/public/BrandsPage';
 import CmsPage from '../pages/public/CmsPage';
 import UnauthorizedPage from '../pages/public/UnauthorizedPage';
 import NotFoundPage from '../pages/public/NotFoundPage';
 import UiPreviewPage from '../pages/public/UiPreviewPage';
+import {
+  CategoryRoute,
+  CategoryLevel2Route,
+  CategoryLevel3Route,
+} from './HierarchicalCategoryRoutes';
 
 // Account Pages (shared by customer & dealer roles - no more separate
 // dealer portal; see pages/account/)
@@ -41,6 +47,9 @@ import ProfileUpdatePage from '../pages/account/ProfileUpdatePage';
 // Admin Pages
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
 import AdminCategoriesPage from '../pages/admin/AdminCategoriesPage';
+import AdminHeaderCategoriesPage from '../pages/admin/AdminHeaderCategoriesPage';
+import AdminMainCategoriesPage from '../pages/admin/AdminMainCategoriesPage';
+import AdminSubCategoriesPage from '../pages/admin/AdminSubCategoriesPage';
 import AdminProductsPage from '../pages/admin/AdminProductsPage';
 import AdminProductDetailPage from '../pages/admin/AdminProductDetailPage';
 import AdminDealersPage from '../pages/admin/AdminDealersPage';
@@ -77,6 +86,8 @@ const AppRoutes = () => {
         <Route path="/wishlist" element={<WishlistPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/categories" element={<CategoriesPage />} />
+        <Route path="/brands" element={<BrandsPage />} />
+        <Route path="/shop-by-brand" element={<BrandsPage />} />
         <Route path="/content/pages/:slug" element={<CmsPage />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
         <Route path="/not-found" element={<NotFoundPage />} />
@@ -84,8 +95,8 @@ const AppRoutes = () => {
         {/* Internal Component Library Showcase */}
         <Route path="/ui-preview" element={<UiPreviewPage />} />
 
-        {/* Guest Auth Routes */}
-        <Route element={<PublicRoute restricted={true} />}>
+        {/* Guest Auth Routes (Customer / Dealer) */}
+        <Route element={<PublicRoute restricted={true} portal="customer" />}>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<LoginPage initialTab="signup" />} />
           <Route path="/signup" element={<LoginPage initialTab="signup" />} />
@@ -95,17 +106,15 @@ const AppRoutes = () => {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
         </Route>
 
-        {/* ACCOUNT ROUTES - shared by customer & dealer roles. No dedicated
-            dealer portal: both roles use the exact same storefront chrome
-            and pages, differentiated only by role-aware content within them
-            (e.g. the Business & KYC section on Profile is dealer-only). */}
+        {/* ACCOUNT ROUTES - shared by customer & dealer roles. */}
         <Route path="/account/cart" element={<Navigate to="/cart" replace />} />
-        <Route element={<ProtectedRoute />}>
-          <Route element={<RoleRoute allowedRoles={[ROLES.CUSTOMER, ROLES.DEALER]} />}>
+        <Route element={<ProtectedRoute loginPath="/login" portal="customer" />}>
+          <Route element={<RoleRoute allowedRoles={[ROLES.CUSTOMER, ROLES.DEALER]} portal="customer" />}>
             <Route path="/account/checkout-enquiry" element={<CheckoutEnquiryPage />} />
             <Route path="/account/enquiries" element={<EnquiriesPage />} />
             <Route path="/account/enquiries/:id" element={<EnquiryDetailPage />} />
             <Route path="/account/profile" element={<ProfilePage />} />
+            <Route path="/account/quotations" element={<ProfilePage initialTab="quotations" />} />
             <Route path="/account/profile/update" element={<ProfileUpdatePage />} />
           </Route>
         </Route>
@@ -129,20 +138,40 @@ const AppRoutes = () => {
         <Route path="/dealer/kyc" element={<Navigate to="/account/profile/update" replace />} />
         <Route path="/dealer/kyc/status" element={<Navigate to="/account/profile" replace />} />
         <Route path="/dealer/pricing" element={<Navigate to="/products" replace />} />
+
+        {/* HIERARCHICAL BRAND & CATEGORY ROUTES (SEO-Friendly multi-level URLs matching Mega Jaipur) */}
+        {/* Brand: /brands/:brandSlug and /brands/:brandSlug/:id */}
+        <Route path="/brands/:brandSlug" element={<ProductsPage />} />
+        <Route path="/brands/:brandSlug/:id" element={<ProductDetailPage />} />
+
+        {/* 4 segments: /:headerSlug/:param2/:param3/:id -> Product Detail in 3rd tier subcategory */}
+        <Route path="/:headerSlug/:param2/:param3/:id" element={<ProductDetailPage />} />
+
+        {/* 3 segments: /:headerSlug/:param2/:param3 -> Subcategory OR Product Detail in 2nd tier main category */}
+        <Route path="/:headerSlug/:param2/:param3" element={<CategoryLevel3Route />} />
+
+        {/* 2 segments: /:headerSlug/:param2 -> Main Category OR Product Detail in 1st tier header category */}
+        <Route path="/:headerSlug/:param2" element={<CategoryLevel2Route />} />
+
+        {/* 1 segment: /:headerSlug -> Header Category */}
+        <Route path="/:headerSlug" element={<CategoryRoute />} />
       </Route>
 
       {/* DEDICATED ADMIN LOGIN (standalone, no storefront chrome) */}
-      <Route element={<PublicRoute restricted={true} />}>
+      <Route element={<PublicRoute restricted={true} portal="admin" />}>
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/admin/verify-otp" element={<VerifyOtpPage />} />
       </Route>
 
       {/* ADMIN PROTECTED ROUTES (WITH ADMIN LAYOUT) */}
-      <Route element={<ProtectedRoute loginPath="/admin/login" />}>
-        <Route element={<RoleRoute allowedRoles={[ROLES.ADMIN]} />}>
+      <Route element={<ProtectedRoute loginPath="/admin/login" portal="admin" />}>
+        <Route element={<RoleRoute allowedRoles={[ROLES.ADMIN]} portal="admin" />}>
           <Route element={<AdminLayout />}>
             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
             <Route path="/admin/categories" element={<AdminCategoriesPage />} />
+            <Route path="/admin/categories/header" element={<AdminHeaderCategoriesPage />} />
+            <Route path="/admin/categories/main" element={<AdminMainCategoriesPage />} />
+            <Route path="/admin/categories/sub" element={<AdminSubCategoriesPage />} />
             <Route path="/admin/products" element={<AdminProductsPage />} />
             <Route path="/admin/products/new" element={<AdminProductDetailPage />} />
             <Route path="/admin/products/:id" element={<AdminProductDetailPage />} />

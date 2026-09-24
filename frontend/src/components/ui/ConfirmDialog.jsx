@@ -23,22 +23,26 @@ export const ConfirmDialog = ({
 
   const footer = (
     <>
-      <Button
-        variant="secondary"
-        size="sm"
+      <button
+        type="button"
         onClick={onClose}
-        isDisabled={isLoading}
+        disabled={isLoading}
+        className="px-4 py-2 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
       >
         {cancelText}
-      </Button>
-      <Button
-        variant={resolvedIsDanger ? 'danger' : 'primary'}
-        size="sm"
+      </button>
+      <button
+        type="button"
         onClick={onConfirm}
-        isLoading={isLoading}
+        disabled={isLoading}
+        className={`px-4 py-2 text-xs font-bold text-white rounded-lg transition-colors cursor-pointer shadow-2xs disabled:opacity-50 flex items-center gap-1.5 ${
+          resolvedIsDanger
+            ? 'bg-rose-600 hover:bg-rose-700'
+            : 'bg-[#800020] hover:bg-[#9a1b32]'
+        }`}
       >
         {confirmText}
-      </Button>
+      </button>
     </>
   );
 
@@ -51,13 +55,13 @@ export const ConfirmDialog = ({
     >
       <div className="flex items-start gap-4">
         <div className={`p-2.5 rounded-xl shrink-0 ${
-          resolvedIsDanger ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-muted text-primary border border-border'
+          resolvedIsDanger ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'bg-rose-50 text-[#800020] border border-rose-200'
         }`}>
           {resolvedIsDanger ? <AlertTriangle className="w-5 h-5" /> : <Info className="w-5 h-5" />}
         </div>
-        <div>
-          <h4 className="font-bold text-foreground text-sm">{title}</h4>
-          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{resolvedDescription}</p>
+        <div className="text-left">
+          <h4 className="font-bold text-gray-900 text-sm">{title}</h4>
+          <p className="text-xs text-gray-600 mt-1 leading-relaxed">{resolvedDescription}</p>
         </div>
       </div>
     </Modal>
