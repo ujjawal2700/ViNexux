@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const DEFAULT_SLIDES = [
@@ -97,18 +96,17 @@ const HeroBannerSlider = ({ slides = DEFAULT_SLIDES, autoPlayInterval = 5000 }) 
             key={slide.id || idx}
             className="w-full shrink-0 h-full relative"
           >
-            <Link
-              to={slide.link}
-              className="block w-full h-full relative overflow-hidden focus:outline-none"
-              tabIndex={currentIndex === idx ? 0 : -1}
+            <div
+              className="block w-full h-full relative overflow-hidden select-none"
             >
               <img
                 src={slide.image}
                 alt={slide.title}
                 className="w-full h-full object-cover object-top transition-transform duration-700 ease-out"
                 loading={idx === 0 ? 'eager' : 'lazy'}
+                draggable={false}
               />
-            </Link>
+            </div>
           </div>
         ))}
       </div>
