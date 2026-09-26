@@ -18,11 +18,15 @@ import {
   Heart,
   FileText,
   ShoppingCart,
+  Trash2,
+  Check,
+  X,
   User,
   LogIn,
   Menu,
   ChevronRight,
   ChevronLeft,
+  ArrowRight,
   Laptop as LaptopIcon,
   Monitor,
   HardDrive,
@@ -92,6 +96,8 @@ const PublicLayout = () => {
   const [cartItems, setCartItems] = useState([]);
   const [isCartHovered, setIsCartHovered] = useState(false);
   const cartCloseTimeoutRef = useRef(null);
+  const [addedCartToast, setAddedCartToast] = useState(null);
+  const toastTimeoutRef = useRef(null);
 
   // Wishlist state
   const [wishlistCount, setWishlistCount] = useState(() => wishlistService.getWishlist().length);
@@ -302,40 +308,221 @@ const PublicLayout = () => {
   }, []);
 
   // Fetch Cart Item Count, Subtotal, and Cart Items
+  const fetchCartData = useCallback(async () => {
+    if (!isAuthenticated || user?.role === 'admin') {
+      setCartCount(0);
+      setCartSubtotal(0);
+      setCartItems([]);
+      return;
+    }
+    try {
+      const response = await cartService.getCart();
+      const cart = response?.data?.cart || response?.data || response?.cart || response;
+      const rawItems = cart?.items || [];
+      // Filter valid items where product exists
+      const items = rawItems.filter((i) => i && (i.productId?._id || i.productId));
+      
+      // 1 product in cart = 1, 2 products = 2 (Count of distinct products)
+      const count = items.length;
+
+      // Subtotal after CD discount (matching Mega Jaipur and CartPage)
+      const subtotal = items.reduce((acc, item) => {
+        const prod = item.productId || item.product || {};
+        const unitPrice =
+          item.priceSnapshot !== undefined
+            ? item.priceSnapshot
+            : (prod.standardPrice || prod.price || 0);
+        const cdDiscount = Math.round(unitPrice * 0.015);
+        const effectivePrice = Math.max(0, unitPrice - cdDiscount);
+        return acc + effectivePrice * (item.quantity || 1);
+      }, 0);
+
+      setCartCount(count);
+      setCartSubtotal(subtotal);
+      setCartItems(items);
+    } catch (err) {
+      console.warn('Failed to fetch cart data in layout:', err);
+      setCartCount(0);
+      setCartSubtotal(0);
+      setCartItems([]);
+    }
+  }, [isAuthenticated, user]);
+
+  // Fetch on mount or auth change, and listen for live cart-updated events
   useEffect(() => {
-    const fetchCartData = async () => {
-      if (!isAuthenticated || user?.role === 'admin') {
-        setCartCount(0);
-        setCartSubtotal(0);
-        setCartItems([]);
-        return;
-      }
-      try {
-        const response = await cartService.getCart();
-        const cart = response.data?.cart || response.cart;
-        const items = cart?.items || [];
-        const count = items.reduce((acc, item) => acc + (item.quantity || 1), 0);
-        const subtotal =
-          cart?.subtotal ||
-          items.reduce((acc, item) => {
-            const unitPrice =
-              item.priceSnapshot || item.price || item.productId?.standardPrice || 0;
-            return acc + unitPrice * (item.quantity || 1);
-          }, 0);
+    const handleCartUpdated = (e) => {
+      if (e?.detail?.cart) {
+        const cartData = e.detail.cart;
+        const rawItems = cartData.items || [];
+        const items = rawItems.filter((i) => i && (i.productId?._id || i.productId));
+        const count = items.length; // 1 product = 1, 2 products = 2
+        const subtotal = items.reduce((acc, item) => {
+          const prod = item.productId || item.product || {};
+          const unitPrice =
+            item.priceSnapshot !== undefined
+              ? item.priceSnapshot
+              : (prod.standardPrice || prod.price || 0);
+          const cdDiscount = Math.round(unitPrice * 0.015);
+          const effectivePrice = Math.max(0, unitPrice - cdDiscount);
+          return acc + effectivePrice * (item.quantity || 1);
+        }, 0);
+
         setCartCount(count);
         setCartSubtotal(subtotal);
         setCartItems(items);
-      } catch (err) {
-        setCartCount(0);
-        setCartSubtotal(0);
-        setCartItems([]);
+        return;
       }
+      fetchCartData();
     };
 
     fetchCartData();
-    window.addEventListener('cart-updated', fetchCartData);
-    return () => window.removeEventListener('cart-updated', fetchCartData);
-  }, [isAuthenticated, user, location.pathname]);
+    window.addEventListener('cart-updated', handleCartUpdated);
+    return () => window.removeEventListener('cart-updated', handleCartUpdated);
+  }, [fetchCartData, location.pathname]);
+
+  // Listen for Added to Cart popup event (Matching Image 2)
+  useEffect(() => {
+    const handleItemAdded = async (e) => {
+      const { product, quantity, displayPrice, cart: freshCart } = e.detail || {};
+      if (!product) return;
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+
+      const addQty = quantity || 1;
+      const unitPrice = displayPrice || product.standardPrice || product.price || 0;
+      const prodId = String(product._id || product.id);
+
+      // If freshCart was passed from response, use it directly (0ms)
+      if (freshCart?.items) {
+        const rawItems = freshCart.items || [];
+        const items = rawItems.filter((i) => i && (i.productId?._id || i.productId));
+        const count = items.length;
+        const subtotal = items.reduce((acc, item) => {
+          const p = item.productId || item.product || {};
+          const uPrice =
+            item.priceSnapshot !== undefined
+              ? item.priceSnapshot
+              : (p.standardPrice || p.price || 0);
+          const cdDiscount = Math.round(uPrice * 0.015);
+          const effectivePrice = Math.max(0, uPrice - cdDiscount);
+          return acc + effectivePrice * (item.quantity || 1);
+        }, 0);
+        setCartCount(count);
+        setCartSubtotal(subtotal);
+        setCartItems(items);
+      } else {
+        // Instant optimistic update (0ms)
+        setCartItems((prev) => {
+          const existingIdx = prev.findIndex((i) => {
+            const id = String(i.productId?._id || i.productId || i._id);
+            return id === prodId;
+          });
+
+          let updated;
+          if (existingIdx > -1) {
+            updated = [...prev];
+            updated[existingIdx] = {
+              ...updated[existingIdx],
+              quantity: (updated[existingIdx].quantity || 1) + addQty,
+            };
+          } else {
+            updated = [
+              ...prev,
+              {
+                _id: `temp_${Date.now()}`,
+                productId: product,
+                quantity: addQty,
+                priceSnapshot: unitPrice,
+              },
+            ];
+            // Only increment product count if brand new product added
+            setCartCount((c) => c + 1);
+          }
+
+          const newSubtotal = updated.reduce((acc, item) => {
+            const p = item.productId || item.product || {};
+            const uPrice =
+              item.priceSnapshot !== undefined
+                ? item.priceSnapshot
+                : (p.standardPrice || p.price || 0);
+            const cdDiscount = Math.round(uPrice * 0.015);
+            const effectivePrice = Math.max(0, uPrice - cdDiscount);
+            return acc + effectivePrice * (item.quantity || 1);
+          }, 0);
+          setCartSubtotal(newSubtotal);
+
+          return updated;
+        });
+      }
+
+      // Show toast
+      setAddedCartToast({
+        id: Date.now(),
+        product,
+        quantity: addQty,
+        price: unitPrice,
+      });
+
+      toastTimeoutRef.current = setTimeout(() => {
+        setAddedCartToast(null);
+      }, 5000);
+
+      // Background sync with server
+      await fetchCartData();
+    };
+
+    window.addEventListener('cart-item-added', handleItemAdded);
+    return () => {
+      window.removeEventListener('cart-item-added', handleItemAdded);
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
+  }, [fetchCartData]);
+
+  // Remove item directly from cart hover dropdown (Instant Optimistic + Broadcast)
+  const handleRemoveCartItem = async (e, productId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!productId) return;
+    try {
+      const prodIdStr = String(productId);
+      let updatedList = [];
+      setCartItems((prev) => {
+        updatedList = prev.filter((item) => {
+          const id = String(item.productId?._id || item.productId || item._id);
+          return id !== prodIdStr;
+        });
+
+        // Unique product count decrements by 1 (e.g. 2 -> 1, 1 -> 0)
+        setCartCount(updatedList.length);
+
+        const newSubtotal = updatedList.reduce((acc, item) => {
+          const p = item.productId || item.product || {};
+          const uPrice =
+            item.priceSnapshot !== undefined
+              ? item.priceSnapshot
+              : (p.standardPrice || p.price || 0);
+          const cdDiscount = Math.round(uPrice * 0.015);
+          const effectivePrice = Math.max(0, uPrice - cdDiscount);
+          return acc + effectivePrice * (item.quantity || 1);
+        }, 0);
+        setCartSubtotal(newSubtotal);
+
+        return updatedList;
+      });
+
+      // Broadcast to all open pages (e.g. CartPage updates immediately without reload!)
+      window.dispatchEvent(
+        new CustomEvent('cart-updated', {
+          detail: { cart: { items: updatedList } },
+        })
+      );
+
+      await cartService.removeItem(productId);
+      await fetchCartData();
+    } catch (err) {
+      console.error('Failed to remove cart item:', err);
+      fetchCartData();
+    }
+  };
 
   // Fetch CMS Footer Content
   useEffect(() => {
@@ -579,19 +766,19 @@ const PublicLayout = () => {
             >
               <Link
                 to="/cart"
-                className="flex items-center border-2 border-primary rounded-md overflow-hidden hover:shadow-sm transition-all group shrink-0 h-10 sm:h-11"
+                className="relative flex items-center border-[1.5px] border-primary rounded-md hover:shadow-sm transition-all group shrink-0 h-10 sm:h-11 overflow-visible"
               >
-                <span className="px-2.5 sm:px-3.5 text-xs sm:text-sm font-bold text-gray-900 bg-white group-hover:bg-gray-50 transition-colors whitespace-nowrap">
+                <span className="px-2.5 sm:px-3 text-xs sm:text-sm font-semibold text-gray-900 bg-white group-hover:bg-gray-50 transition-colors whitespace-nowrap rounded-l-[5px] h-full flex items-center">
                   {cartCount} item(s) - ₹{(Number(cartSubtotal) || 0).toLocaleString('en-IN')}
                 </span>
-                <div className="relative bg-primary text-white w-10 sm:w-11 h-full flex items-center justify-center">
+                <div className="relative bg-primary text-white w-10 sm:w-11 h-full flex items-center justify-center rounded-r-[4px]">
                   <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
-                  {cartCount > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-white text-[9px] sm:text-[10px] font-black flex items-center justify-center shadow-xs">
-                      {cartCount > 99 ? '99+' : cartCount}
-                    </span>
-                  )}
                 </div>
+                {cartCount > 0 && (
+                  <span className="absolute -top-2.5 -right-2.5 min-w-[22px] h-[22px] px-1 aspect-square rounded-full bg-[#f03a3a] text-white text-xs font-bold flex items-center justify-center shadow-sm z-30 pointer-events-none select-none leading-none">
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </span>
+                )}
               </Link>
 
               {/* Cart Dropdown on Hover (Matching Image 1) */}
@@ -607,11 +794,11 @@ const PublicLayout = () => {
                     }, 200);
                   }}
                 >
-                  <div className="w-[300px] sm:w-[350px] bg-white rounded-lg shadow-2xl border border-gray-200 relative overflow-hidden text-left">
+                  <div className="w-[360px] sm:w-[420px] bg-white rounded-xl shadow-2xl border border-gray-200 relative overflow-hidden text-left">
                     {/* Top indicator arrow pointing up to cart icon */}
                     <div className="absolute -top-1.5 right-6 w-3 h-3 bg-white border-t border-l border-gray-200 rotate-45 transform z-10" />
 
-                    {/* EMPTY STATE (Matching Image 1: "Your cart is empty") */}
+                    {/* EMPTY STATE */}
                     {cartItems.length === 0 ? (
                       <div className="py-10 px-6 text-center select-none">
                         <p className="text-gray-500 font-medium text-sm sm:text-base">
@@ -619,23 +806,31 @@ const PublicLayout = () => {
                         </p>
                       </div>
                     ) : (
-                      /* CART PRODUCTS LIST */
+                      /* CART PRODUCTS LIST (Matching Reference Images) */
                       <div className="p-3.5 space-y-3">
-                        <div className="max-h-64 overflow-y-auto divide-y divide-gray-100 pr-1 space-y-2">
+                        <div className="max-h-72 overflow-y-auto divide-y divide-gray-100 pr-1 space-y-2.5">
                           {cartItems.map((item, idx) => {
-                            const product = item.productId || {};
+                            const product = item.productId || item.product || {};
                             const price =
-                              item.priceSnapshot || item.price || product.standardPrice || 0;
+                              item.priceSnapshot || item.price || product.standardPrice || product.price || 0;
                             const img =
                               product.images?.[0]?.url ||
                               product.image ||
                               'https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=200';
+                            const pid =
+                              product.sku ||
+                              (product._id ? `A${String(product._id).slice(-4).toUpperCase()}` : 'A2522');
+                            const itemCd =
+                              product.specifications?.find((s) => s.key?.toLowerCase().includes('code'))?.value ||
+                              product.sku?.slice(0, 8).toUpperCase() ||
+                              '1CXARIE';
+
                             return (
                               <div
                                 key={item._id || idx}
-                                className="pt-2 first:pt-0 flex items-center gap-3"
+                                className="pt-2.5 first:pt-0 flex items-start gap-3 group/item"
                               >
-                                <div className="w-12 h-12 bg-white rounded border border-gray-200 p-1 shrink-0 flex items-center justify-center overflow-hidden">
+                                <div className="w-14 h-14 bg-white rounded-lg border border-gray-200 p-1 shrink-0 flex items-center justify-center overflow-hidden">
                                   <img
                                     src={img}
                                     alt={product.name || 'Product'}
@@ -643,46 +838,57 @@ const PublicLayout = () => {
                                   />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h4
-                                    className="text-xs font-semibold text-gray-800 truncate"
+                                  <Link
+                                    to={`/products/${product._id}`}
+                                    onClick={() => setIsCartHovered(false)}
+                                    className="text-xs font-bold text-gray-900 line-clamp-2 leading-snug hover:text-[#800020] transition-colors block"
                                     title={product.name}
                                   >
                                     {product.name || 'Product'}
-                                  </h4>
-                                  <p className="text-[11px] text-gray-500 font-medium mt-0.5">
-                                    {item.quantity} ×{' '}
-                                    <strong className="text-gray-800">
-                                      ₹{Number(price).toLocaleString('en-IN')}
-                                    </strong>
+                                  </Link>
+                                  <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-1.5 flex-wrap">
+                                    <span>• Product ID: {pid}</span>
+                                    <span>• Item CD: {itemCd}</span>
                                   </p>
+                                </div>
+                                <div className="text-right shrink-0 flex flex-col items-end justify-between self-stretch">
+                                  <span className="text-[11px] text-gray-400 font-medium">
+                                    x {item.quantity || 1}
+                                  </span>
+                                  <span className="text-xs font-black text-gray-900">
+                                    ₹{Number(price * (item.quantity || 1)).toLocaleString('en-IN')}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleRemoveCartItem(e, product._id || item.productId || item._id)}
+                                    className="text-gray-400 hover:text-rose-600 transition-colors p-0.5 mt-0.5 cursor-pointer"
+                                    title="Remove item from cart"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5 stroke-[1.75]" />
+                                  </button>
                                 </div>
                               </div>
                             );
                           })}
                         </div>
 
-                        {/* Subtotal & Action Buttons */}
-                        <div className="pt-2.5 border-t border-gray-200 space-y-2.5">
-                          <div className="flex items-center justify-between text-xs font-bold text-gray-800 px-1">
-                            <span>Subtotal:</span>
-                            <span className="text-sm font-black text-[#800020]">
+                        {/* Total & Action Buttons (Matching Reference Image) */}
+                        <div className="pt-3 border-t border-gray-200 space-y-3">
+                          <div className="flex items-center justify-between px-1">
+                            <span className="text-sm font-bold text-gray-900">Total</span>
+                            <span className="text-base font-black text-gray-900">
                               ₹{(Number(cartSubtotal) || 0).toLocaleString('en-IN')}
                             </span>
                           </div>
-                          <div className="grid grid-cols-2 gap-2 pt-1">
+
+                          <div>
                             <Link
                               to="/cart"
                               onClick={() => setIsCartHovered(false)}
-                              className="h-8 rounded border border-gray-300 hover:bg-gray-50 text-xs font-bold text-gray-700 flex items-center justify-center transition-colors"
+                              className="w-full h-11 rounded-lg bg-[#800020] hover:bg-[#66001a] text-xs font-bold text-white flex items-center justify-center gap-2 transition-all shadow-xs uppercase tracking-wider cursor-pointer active:scale-98"
                             >
-                              View Cart
-                            </Link>
-                            <Link
-                              to="/cart"
-                              onClick={() => setIsCartHovered(false)}
-                              className="h-8 rounded bg-[#800020] hover:bg-[#660019] text-xs font-bold text-white flex items-center justify-center transition-colors shadow-xs"
-                            >
-                              Checkout
+                              <ShoppingCart className="w-4 h-4" />
+                              <span>View Cart</span>
                             </Link>
                           </div>
                         </div>
@@ -987,13 +1193,61 @@ const PublicLayout = () => {
         </div>
       </Drawer>
 
-      {/* 4. MAIN PAGE CONTENT (Full Width) */}
-      <main className="flex-1 flex flex-col w-full">
+      {/* 4. ADDED TO CART FLOATING TOAST POPUP (Matching Image 2) */}
+      {addedCartToast && (
+        <div className="fixed top-20 right-4 sm:right-8 z-50 max-w-sm sm:max-w-md w-full bg-white rounded-2xl shadow-2xl border border-gray-200 border-l-4 border-l-emerald-500 overflow-hidden animate-in slide-in-from-top-4 duration-200 text-left">
+          <div className="p-4 space-y-2.5">
+            {/* Top Row: Green Check Circle + Title + Close Button */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                  <Check className="w-4 h-4 stroke-[3]" />
+                </div>
+                <h3 className="font-bold text-sm text-gray-900">
+                  Added to cart
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAddedCartToast(null)}
+                className="text-gray-400 hover:text-gray-700 p-1 rounded-full cursor-pointer transition-colors"
+                aria-label="Close notification"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Product Details line matching Image 2 */}
+            <p className="text-xs text-gray-600 leading-snug pl-8 pr-1 font-medium">
+              {addedCartToast.quantity} unit · {addedCartToast.product.name} · ₹{Number(addedCartToast.price).toLocaleString('en-IN')}
+            </p>
+
+            {/* View Cart Button */}
+            <div className="pl-8 pt-1">
+              <Link
+                to="/cart"
+                onClick={() => setAddedCartToast(null)}
+                className="inline-flex items-center justify-center px-5 py-2 rounded-lg bg-[#800020] hover:bg-[#66001a] text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-xs"
+              >
+                View Cart ({cartCount > 0 ? cartCount : (addedCartToast.quantity || 1)})
+              </Link>
+            </div>
+          </div>
+
+          {/* Progress Bar (Auto-Dismiss in 5s) */}
+          <div className="w-full bg-emerald-100 h-1 overflow-hidden">
+            <div className="bg-emerald-500 h-full animate-shrink-progress" />
+          </div>
+        </div>
+      )}
+
+      {/* 5. MAIN PAGE CONTENT (Natural Height Flow Matching Mega Jaipur) */}
+      <main className="w-full flex flex-col">
         <Outlet />
       </main>
 
       {/* 5. MULTI-COLUMN BLACK FOOTER (Full Width) */}
-      <footer className="w-full bg-[#111111] text-white pt-10 pb-6 px-3 sm:px-6 lg:px-8 2xl:px-12 mt-12 text-left">
+      <footer className="w-full bg-[#111111] text-white pt-8 pb-6 px-3 sm:px-6 lg:px-8 2xl:px-12 mt-4 sm:mt-6 text-left">
         <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 pb-10 border-b border-neutral-800 text-xs">
           
           {/* Col 1: About */}

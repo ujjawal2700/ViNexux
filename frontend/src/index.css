@@ -311,5 +311,41 @@
   animation: pulse-glow 2.5s infinite ease-in-out;
 }
 
+/* Custom Modern Page Scrollbar */
+html {
+  scroll-behavior: smooth;
+}
 
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
 
+::-webkit-scrollbar-track {
+  background: #f8f9fa;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+  border: 2px solid #f8f9fa;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #800020;
+}
+
+/* Toast Progress Animation */
+@keyframes shrinkProgress {
+  0% {
+    width: 100%;
+  }
+  100% {
+    width: 0%;
+  }
+}
+
+.animate-shrink-progress {
+  animation: shrinkProgress 5s linear forwards;
+}

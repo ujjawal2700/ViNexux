@@ -113,10 +113,24 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
 
     try {
       setIsAdding(true);
-      await cartService.addItem(product._id, quantity);
-      toast.success(`Added ${quantity}x "${product.name}" to cart!`);
+      const res = await cartService.addItem(product._id, quantity);
+      const updatedCart = res.data?.cart || res.data || res.cart || res;
       setIsAdded(true);
-      window.dispatchEvent(new Event('cart-updated'));
+      window.dispatchEvent(
+        new CustomEvent('cart-updated', {
+          detail: { cart: updatedCart },
+        })
+      );
+      window.dispatchEvent(
+        new CustomEvent('cart-item-added', {
+          detail: {
+            product,
+            quantity,
+            displayPrice,
+            cart: updatedCart,
+          },
+        })
+      );
       if (onCartUpdated) {
         onCartUpdated();
       }

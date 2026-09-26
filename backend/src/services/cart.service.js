@@ -92,9 +92,27 @@ const formatPopulatedCart = async (cart, userId) => {
     },
   });
 
-  const items = cart.items || [];
+  // Filter valid items where the product actually exists in database
+  const validItems = (cart.items || []).filter(
+    (item) => item.productId && item.productId._id
+  );
+
+  // If orphan items existed (e.g. deleted products), clean them from DB
+  if (validItems.length !== (cart.items || []).length) {
+    cart.items = validItems;
+    await cart.save();
+  }
+
+  const items = validItems;
   const itemCount = items.length;
   const totalQuantity = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+  const subtotal = items.reduce((sum, item) => {
+    const price =
+      item.priceSnapshot !== undefined
+        ? item.priceSnapshot
+        : (item.productId?.standardPrice || 0);
+    return sum + price * (item.quantity || 1);
+  }, 0);
 
   return {
     _id: cart._id,
@@ -102,6 +120,7 @@ const formatPopulatedCart = async (cart, userId) => {
     items,
     itemCount,
     totalQuantity,
+    subtotal,
     updatedAt: cart.updatedAt,
   };
 };
