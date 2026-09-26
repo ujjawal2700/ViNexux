@@ -337,13 +337,6 @@ export const BrandCarousel = () => {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {/* Header Row */}
-      <div className="flex items-center justify-between px-2 pb-1 text-left">
-        <span className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-gray-500">
-          Featured Brands
-        </span>
-      </div>
-
       {/* Left Navigation Arrow */}
       <button
         type="button"

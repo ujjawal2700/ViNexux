@@ -18,6 +18,7 @@ import {
   Store,
   Heart,
   ChevronRight,
+  MessageCircle,
 } from 'lucide-react';
 
 export const CartPage = () => {
@@ -30,7 +31,8 @@ export const CartPage = () => {
   const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [updatingItemId, setUpdatingItemId] = useState(null);
-  const [supportPhone, setSupportPhone] = useState('918949940610');
+  const [supportPhone, setSupportPhone] = useState('918769959424');
+  const [whatsappNote, setWhatsappNote] = useState('Please confirm live stock availability, delivery timeline & share official GST commercial invoice.');
 
   // Format Currency (INR ₹)
   const formatCurrency = (amount) => {
@@ -102,22 +104,24 @@ export const CartPage = () => {
     loadRecentlyViewed();
   }, []);
 
-  // 3. Fetch CMS Footer phone for WhatsApp quotation
+  // 3. Fetch CMS Footer WhatsApp settings
   useEffect(() => {
     const fetchFooterPhone = async () => {
       try {
         const footerRes = await contentService.getFooterContent();
-        const phoneRaw =
-          footerRes.data?.footer?.contactDetails?.phone ||
-          footerRes.footer?.contactDetails?.phone;
-        if (phoneRaw) {
-          const cleaned = phoneRaw.replace(/\D/g, '');
-          if (cleaned.length >= 10) {
-            setSupportPhone(cleaned.startsWith('91') ? cleaned : `91${cleaned}`);
-          }
+        const footer = footerRes?.data?.footer || footerRes?.footer || footerRes?.data;
+        const phoneRaw = footer?.whatsappNumber || '8769959424';
+        const cleaned = phoneRaw.replace(/\D/g, '');
+        if (cleaned.length >= 10) {
+          setSupportPhone(cleaned.startsWith('91') ? cleaned : `91${cleaned.slice(-10)}`);
+        } else {
+          setSupportPhone('918769959424');
+        }
+        if (footer?.whatsappMessageNote) {
+          setWhatsappNote(footer.whatsappMessageNote);
         }
       } catch {
-        // non-blocking
+        setSupportPhone('918769959424');
       }
     };
     fetchFooterPhone();
@@ -300,40 +304,85 @@ export const CartPage = () => {
     navigate('/account/checkout');
   };
 
-  // Convert to Quotation (WhatsApp / Download)
+  // Convert to Quotation & Instant WhatsApp Order
   const handleConvertToQuotation = () => {
     if (selectedItemIds.size === 0) {
-      toast.warning('Please select products for quotation.');
+      toast.warning('Please select at least one product using the checkboxes.');
       return;
     }
 
-    let text = `*ViNexus Commercial Quotation Request*\n\n`;
-    text += `Customer: ${user?.name || user?.fullName || 'Valued Client'}\n`;
-    text += `Date: ${new Date().toLocaleDateString('en-IN')}\n\n`;
-    text += `*Selected Products:*\n`;
+    const customerName = user?.fullName || user?.name || user?.contactPerson || 'Customer';
+    const customerPhone = user?.phone ? ` | Phone: ${user.phone}` : '';
+    const nowStr = new Date().toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
 
-    items.forEach((item, idx) => {
+    let text = `🛍️ *ViNexus Compu World — Commercial Order & Quotation Request*\n`;
+    text += `━━━━━━━━━━━━━━━━━━━━━\n`;
+    text += `👤 *Customer:* ${customerName}${customerPhone}\n`;
+    text += `📅 *Date:* ${nowStr}\n\n`;
+    text += `📦 *Selected Items (${selectedCount} pcs):*\n`;
+
+    let itemIndex = 0;
+    items.forEach((item) => {
       const prod = item.productId || {};
       const id = String(prod._id || item.productId || item._id);
       if (!selectedItemIds.has(id)) return;
 
+      itemIndex += 1;
       const name = prod.name || 'Product';
-      const pid = prod.sku || `VN-${String(prod._id || '').slice(-4).toUpperCase()}`;
+      const pid = prod.sku ? `PID: ${prod.sku}` : `PID: VN-${String(prod._id || '').slice(-4).toUpperCase()}`;
+      const itemCd = prod.specifications?.find((s) => s.key?.toLowerCase().includes('code') || s.key?.toLowerCase().includes('item cd'))?.value;
+      const cdCodeStr = itemCd ? ` | Item CD: ${itemCd}` : '';
+
       const unitPrice =
         item.priceSnapshot !== undefined
           ? item.priceSnapshot
           : (prod.standardPrice || prod.price || 0);
       const qty = item.quantity || 1;
-      text += `${idx + 1}. *${name}* (PID: ${pid})\n   Qty: ${qty} | Unit: ${formatCurrency(unitPrice)} | Total: ${formatCurrency(unitPrice * qty)}\n\n`;
+      const itemTotal = unitPrice * qty;
+
+      text += `${itemIndex}. *${name}*\n`;
+      text += `   • ${pid}${cdCodeStr}\n`;
+      text += `   • Qty: *${qty}* | Unit: ${formatCurrency(unitPrice)} | Total: *${formatCurrency(itemTotal)}*\n\n`;
     });
 
-    text += `*Estimated Subtotal:* ${formatCurrency(subtotal)}\n`;
-    text += `*Applicable CD Discount:* -${formatCurrency(totalDiscount)}\n`;
-    text += `*Final Quotation Value:* ${formatCurrency(grandTotal)}\n\n`;
-    text += `Please issue formal quotation and availability terms.`;
+    text += `━━━━━━━━━━━━━━━━━━━━━\n`;
+    text += `💰 *Quotation Summary:*\n`;
+    text += `• Total Items: ${selectedCount}\n`;
+    text += `• Subtotal: ${formatCurrency(subtotal)}\n`;
+    if (totalDiscount > 0) {
+      text += `• CD Discount (1.5%): -${formatCurrency(totalDiscount)}\n`;
+    }
+    text += `👉 *Final Quotation Value: ${formatCurrency(grandTotal)}*\n`;
+    text += `━━━━━━━━━━━━━━━━━━━━━\n\n`;
+    text += `💬 _${whatsappNote || 'Please confirm live stock availability, delivery timeline & share official GST commercial invoice.'}_\n`;
 
-    const waUrl = `https://wa.me/${supportPhone}?text=${encodeURIComponent(text)}`;
-    window.open(waUrl, '_blank');
+    const cleanNumber = (supportPhone || '8769959424').replace(/\D/g, '');
+    const finalPhone =
+      cleanNumber.length === 10
+        ? `91${cleanNumber}`
+        : cleanNumber.startsWith('91')
+        ? cleanNumber
+        : `91${cleanNumber.slice(-10) || '8769959424'}`;
+    const encodedText = encodeURIComponent(text);
+    const waUrl = `https://api.whatsapp.com/send?phone=${finalPhone}&text=${encodedText}`;
+
+    try {
+      const link = document.createElement('a');
+      link.href = waUrl;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch {
+      window.open(waUrl, '_blank');
+    }
+
+    toast.success('Opening WhatsApp... Please click Send in WhatsApp to send your quotation.');
   };
 
   if (isLoading) {
@@ -378,8 +427,8 @@ export const CartPage = () => {
           </p>
           <div className="pt-2">
             <Link
-              to="/products"
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[#420b45] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#320735] transition-all shadow-xs"
+              to="/"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[#800020] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#660019] transition-all shadow-xs"
             >
               <Store className="w-4 h-4" /> Continue Shopping
             </Link>
@@ -562,15 +611,15 @@ export const CartPage = () => {
               <button
                 type="button"
                 onClick={handleConvertToQuotation}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[#d2b8d5] rounded-md text-xs sm:text-[13px] font-semibold text-[#420b45] hover:bg-[#fcf8fd] hover:border-[#b895be] transition-all shadow-2xs cursor-pointer active:scale-98"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-emerald-300 hover:border-emerald-500 rounded-md text-xs sm:text-[13px] font-semibold text-emerald-800 hover:bg-emerald-50/50 transition-all shadow-2xs cursor-pointer active:scale-98"
               >
-                <FileText className="w-4 h-4 text-[#420b45]" />
+                <MessageCircle className="w-4 h-4 text-[#25D366]" />
                 <span>Convert to quotation</span>
               </button>
 
               <Link
-                to="/products"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[#d2b8d5] rounded-md text-xs sm:text-[13px] font-semibold text-[#420b45] hover:bg-[#fcf8fd] hover:border-[#b895be] transition-all shadow-2xs active:scale-98"
+                to="/"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[#d2b8d5] rounded-md text-xs sm:text-[13px] font-semibold text-[#800020] hover:bg-[#fcf8fd] hover:border-[#800020] transition-all shadow-2xs active:scale-98"
               >
                 <span>Continue Shopping</span>
               </Link>
@@ -605,19 +654,34 @@ export const CartPage = () => {
                 </span>
               </div>
 
-              <button
-                type="button"
-                onClick={handleProceedCheckout}
-                disabled={selectedCount === 0}
-                className="w-full h-10 rounded bg-[#800020] hover:bg-[#66001a] disabled:opacity-50 text-white text-xs sm:text-sm font-semibold uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-98"
-              >
-                <Lock className="w-4 h-4" />
-                <span>Proceed to Checkout</span>
-              </button>
+              {/* Primary Cart Actions: WhatsApp Quotation / Order + Send Enquiry */}
+              <div className="space-y-2.5 pt-2">
+                {/* 1. WhatsApp Order / Quotation Button */}
+                <button
+                  type="button"
+                  onClick={handleConvertToQuotation}
+                  disabled={selectedCount === 0}
+                  className="w-full h-11 rounded-md bg-[#25D366] hover:bg-[#20bd5a] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-bold tracking-wide flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-98"
+                >
+                  <MessageCircle className="w-4 h-4 fill-white text-[#25D366]" />
+                  <span>Send Cart Enquiry</span>
+                </button>
+
+                {/* 2. Send Enquiry Web Form Button */}
+                <button
+                  type="button"
+                  onClick={handleProceedCheckout}
+                  disabled={selectedCount === 0}
+                  className="w-full h-11 rounded-md bg-[#800020] hover:bg-[#66001a] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-bold tracking-wide flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-98"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Send Enquiry</span>
+                </button>
+              </div>
 
               <div className="flex items-center justify-center gap-1.5 text-[11px] text-gray-500 font-medium pt-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 stroke-[2]" />
-                <span>100% Secure SSL Checkout</span>
+                <span>Selected items ready for instant quotation</span>
               </div>
             </div>
           </div>

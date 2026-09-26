@@ -5,6 +5,7 @@ import contentService from '../services/contentService';
 import cartService from '../services/cartService';
 import wishlistService from '../services/wishlistService';
 import categoryService from '../services/categoryService';
+import productService from '../services/productService';
 import { ROLES } from '../constants';
 import Logo from '../components/ui/Logo';
 import { Drawer } from '../components/ui/Drawer';
@@ -86,6 +87,12 @@ const PublicLayout = () => {
 
   // Search state
   const [headerSearch, setHeaderSearch] = useState('');
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const desktopSearchRef = useRef(null);
+  const mobileSearchRef = useRef(null);
+  const searchDebounceRef = useRef(null);
 
   // Mobile menu drawer state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -248,22 +255,9 @@ const PublicLayout = () => {
     }, 200);
   };
 
-  const handleHeaderClick = (e, headerId) => {
-    const header = categoryTree.find((h) => String(h._id) === String(headerId));
-    if (header && header.mainCategories && header.mainCategories.length > 0) {
-      e.preventDefault();
-      if (hoveredHeaderId === headerId) {
-        setHoveredHeaderId(null);
-      } else {
-        if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
-        setHoveredHeaderId(headerId);
-        const el = headerItemRefs.current[headerId];
-        if (el) {
-          const rect = el.getBoundingClientRect();
-          setDropdownLeft(rect.left);
-        }
-      }
-    }
+  const handleHeaderClick = () => {
+    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    setHoveredHeaderId(null);
   };
 
   // Divide main categories into 3 balanced columns matching Mega Jaipur screenshot
@@ -548,7 +542,212 @@ const PublicLayout = () => {
     if (headerSearch.trim()) {
       navigate(`/products?search=${encodeURIComponent(headerSearch.trim())}`);
       setIsMobileMenuOpen(false);
+      setIsSearchOpen(false);
     }
+  };
+
+  // Debounced Live Search Suggestions
+  useEffect(() => {
+    const query = headerSearch.trim();
+    if (!query) {
+      setSearchSuggestions([]);
+      setIsSearching(false);
+      setIsSearchOpen(false);
+      return;
+    }
+
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+
+    setIsSearching(true);
+    searchDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await productService.getProducts({
+          search: query,
+          limit: 8,
+          isActive: true,
+        });
+        const prods = res?.data?.products || res?.products || [];
+        setSearchSuggestions(prods);
+        setIsSearchOpen(true);
+      } catch (err) {
+        console.warn('Live search error:', err);
+        setSearchSuggestions([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 250);
+
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, [headerSearch]);
+
+  // Click outside and keydown listeners to dismiss search dropdown
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      const isInsideDesktop = desktopSearchRef.current && desktopSearchRef.current.contains(e.target);
+      const isInsideMobile = mobileSearchRef.current && mobileSearchRef.current.contains(e.target);
+      if (!isInsideDesktop && !isInsideMobile) {
+        setIsSearchOpen(false);
+      }
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsSearchOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  // Close search dropdown on route change
+  useEffect(() => {
+    setIsSearchOpen(false);
+  }, [location.pathname, location.search]);
+
+  // Format product search row data
+  const formatSearchProduct = (prod) => {
+    const fallbackImgs = [
+      'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&auto=format&fit=crop&q=80',
+    ];
+    let img = prod?.images?.[0]?.url || prod?.image;
+    if (!img || typeof img !== 'string' || !img.startsWith('http')) {
+      const hash = (prod?._id || prod?.name || '0').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      img = fallbackImgs[hash % fallbackImgs.length];
+    }
+
+    const brand =
+      prod.specifications?.find((s) => s.key?.toLowerCase() === 'brand')?.value ||
+      (typeof prod.categoryId === 'object' ? prod.categoryId?.name : 'OEM');
+
+    const price = prod.standardPrice || prod.price || 0;
+
+    const pidCode = prod.sku
+      ? `A${prod.sku.replace(/[^0-9]/g, '').slice(-4) || prod.sku.slice(-4).toUpperCase()}`
+      : `A${(prod._id || '3768').slice(-4).toUpperCase()}`;
+
+    const itemCd =
+      prod.specifications?.find((s) => s.key?.toLowerCase().includes('code') || s.key?.toLowerCase().includes('item cd'))?.value ||
+      (prod.sku ? prod.sku.replace(/[^A-Za-z0-9]/g, '').slice(-7).toUpperCase() : (prod._id || '1INGRUO').slice(-7).toUpperCase());
+
+    const stock = prod.stock ?? 10;
+    let stockText = 'In Stock';
+    let stockClass = 'text-emerald-600 font-medium text-[11px]';
+    if (stock <= 0) {
+      stockText = 'Out of Stock';
+      stockClass = 'text-red-500 font-medium text-[11px]';
+    } else if (stock <= 5) {
+      stockText = 'Low Stock';
+      stockClass = 'text-amber-600 font-medium text-[11px]';
+    }
+
+    return { img, brand, price, pidCode, itemCd, stockText, stockClass };
+  };
+
+  // Render Search Autocomplete Dropdown
+  const renderSearchDropdown = () => {
+    if (!isSearchOpen || !headerSearch.trim()) return null;
+
+    return (
+      <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-b-lg shadow-2xl border border-gray-200 z-50 overflow-hidden text-left animate-in fade-in-50 duration-150">
+        {isSearching && searchSuggestions.length === 0 ? (
+          <div className="py-7 px-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
+            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <span>Searching products...</span>
+          </div>
+        ) : searchSuggestions.length === 0 ? (
+          <div>
+            <div className="py-7 px-4 text-center text-[13px] text-gray-600 font-normal">
+              No matches &mdash; press Enter to see full results.
+            </div>
+            <div
+              onClick={() => {
+                navigate(`/products?search=${encodeURIComponent(headerSearch.trim())}`);
+                setIsSearchOpen(false);
+              }}
+              className="border-t border-gray-100 flex items-center justify-between px-4 py-3 text-sm text-[#800020] hover:bg-gray-50 cursor-pointer font-medium transition-colors group"
+            >
+              <span>View all results for &ldquo;{headerSearch.trim()}&rdquo;</span>
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div className="px-4 pt-3 pb-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 bg-gray-50/50">
+              PRODUCTS
+            </div>
+            <div className="max-h-[380px] overflow-y-auto divide-y divide-gray-100">
+              {searchSuggestions.map((prod) => {
+                const { img, brand, price, pidCode, itemCd, stockText, stockClass } = formatSearchProduct(prod);
+                return (
+                  <div
+                    key={prod._id}
+                    onClick={() => {
+                      navigate(`/products/${prod._id}`);
+                      setIsSearchOpen(false);
+                    }}
+                    className="flex items-center px-4 py-2.5 hover:bg-gray-50 cursor-pointer transition-colors group"
+                  >
+                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded border border-gray-200 p-1 flex items-center justify-center shrink-0 bg-white mr-3">
+                      <img
+                        src={img}
+                        alt={prod.name}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=800&auto=format&fit=crop&q=80';
+                        }}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      <div className="text-[13px] font-medium text-gray-900 group-hover:text-primary transition-colors truncate leading-snug">
+                        {prod.name}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs mt-0.5">
+                        <span className="font-semibold text-gray-500 uppercase tracking-tight text-[11px]">
+                          {brand}
+                        </span>
+                        <span className="font-bold text-gray-900">
+                          ₹{price.toLocaleString('en-IN')}
+                        </span>
+                        <span className={stockClass}>
+                          {stockText}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-gray-400 font-mono tracking-tight mt-0.5">
+                        PID: {pidCode}&nbsp;&nbsp;Item CD: {itemCd}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div
+              onClick={() => {
+                navigate(`/products?search=${encodeURIComponent(headerSearch.trim())}`);
+                setIsSearchOpen(false);
+              }}
+              className="border-t border-gray-100 flex items-center justify-between px-4 py-2.5 text-xs text-[#800020] hover:bg-gray-50 cursor-pointer font-medium transition-colors group"
+            >
+              <span>View all results for &ldquo;{headerSearch.trim()}&rdquo;</span>
+              <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const handleLogout = async () => {
@@ -616,15 +815,22 @@ const PublicLayout = () => {
 
           {/* Search Bar with Mic & Camera & Search Button (Expands across middle to eliminate margin) */}
           <form
+            ref={desktopSearchRef}
             onSubmit={handleSearchSubmit}
-            className="flex-1 max-w-3xl xl:max-w-4xl 2xl:max-w-5xl hidden md:flex items-center mx-2 lg:mx-4"
+            className="flex-1 max-w-3xl xl:max-w-4xl 2xl:max-w-5xl hidden md:flex items-center mx-2 lg:mx-4 relative"
           >
             <div className="relative w-full flex items-center">
               <input
                 type="text"
                 placeholder="Search laptops, printers, RAM, SSD, cameras, CCTV..."
                 value={headerSearch}
-                onChange={(e) => setHeaderSearch(e.target.value)}
+                onFocus={() => {
+                  if (headerSearch.trim()) setIsSearchOpen(true);
+                }}
+                onChange={(e) => {
+                  setHeaderSearch(e.target.value);
+                  if (e.target.value.trim()) setIsSearchOpen(true);
+                }}
                 className="w-full h-11 lg:h-12 pl-4 pr-20 bg-gray-50 hover:bg-white focus:bg-white text-gray-900 placeholder-gray-400 text-sm rounded-l-md border border-r-0 border-gray-300 focus:border-primary focus:outline-none transition-all shadow-inner"
               />
 
@@ -645,6 +851,9 @@ const PublicLayout = () => {
                   <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
+
+              {/* Live Search Autocomplete Dropdown */}
+              {renderSearchDropdown()}
             </div>
 
             {/* Search Button in Maroon */}
@@ -911,15 +1120,24 @@ const PublicLayout = () => {
         </div>
 
         {/* Mobile Search Bar Row (small screens) */}
-        <div className="md:hidden px-3 pb-2.5">
-          <form onSubmit={handleSearchSubmit} className="flex w-full items-center">
-            <input
-              type="text"
-              placeholder="Search products..."
-              value={headerSearch}
-              onChange={(e) => setHeaderSearch(e.target.value)}
-              className="w-full h-9 px-3 bg-gray-50 text-gray-900 placeholder-gray-400 text-xs rounded-l border border-r-0 border-gray-300 focus:border-primary focus:outline-none"
-            />
+        <div className="md:hidden px-3 pb-2.5" ref={mobileSearchRef}>
+          <form onSubmit={handleSearchSubmit} className="flex w-full items-center relative">
+            <div className="relative w-full flex items-center">
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={headerSearch}
+                onFocus={() => {
+                  if (headerSearch.trim()) setIsSearchOpen(true);
+                }}
+                onChange={(e) => {
+                  setHeaderSearch(e.target.value);
+                  if (e.target.value.trim()) setIsSearchOpen(true);
+                }}
+                className="w-full h-9 px-3 bg-gray-50 text-gray-900 placeholder-gray-400 text-xs rounded-l border border-r-0 border-gray-300 focus:border-primary focus:outline-none"
+              />
+              {renderSearchDropdown()}
+            </div>
             <button
               type="submit"
               className="h-9 px-3.5 bg-primary text-white text-xs font-bold rounded-r flex items-center justify-center shrink-0"
@@ -931,7 +1149,7 @@ const PublicLayout = () => {
 
         {/* 3. CATEGORY NAVIGATION BAR WITH MEGA MENU ON HOVER (Compact sleek scale matching Mega Jaipur) */}
         <nav className="hidden md:block w-full bg-[#800020] text-white shadow-xs relative z-40 select-none">
-          <div className="w-full px-2 sm:px-3 lg:px-4 2xl:px-6 flex items-center relative h-[35px] sm:h-[36px]">
+          <div className="w-full px-2 sm:px-3 lg:px-4 2xl:px-6 flex items-center relative h-[38px] sm:h-[40px]">
             
             {/* Scroll Left Button (if categories overflow on narrow screens) */}
             {canScrollLeft && (
@@ -945,7 +1163,7 @@ const PublicLayout = () => {
               </button>
             )}
 
-            {/* Category Nav Row: exact compact 35px-36px height matching Mega Jaipur */}
+            {/* Category Nav Row: exact compact height matching Mega Jaipur */}
             <div
               ref={categoryNavRef}
               onScroll={checkNavScroll}
@@ -956,14 +1174,14 @@ const PublicLayout = () => {
               {/* Shop By Brand Button */}
               <Link
                 to="/brands"
-                className="flex items-center gap-1.5 bg-white text-[#800020] hover:bg-gray-100 font-bold text-[11px] sm:text-xs px-2.5 h-[26px] rounded shadow-2xs transition-colors mr-2 sm:mr-2.5 whitespace-nowrap shrink-0"
+                className="flex items-center gap-1.5 bg-white text-[#800020] hover:bg-gray-100 font-bold text-xs sm:text-[13px] px-2.5 h-[29px] rounded shadow-2xs transition-colors mr-1 sm:mr-1.5 whitespace-nowrap shrink-0"
               >
                 <Store className="w-3.5 h-3.5 text-[#800020]" />
                 <span>Shop By Brand</span>
               </Link>
 
-              {/* Horizontal Categories with compact font and tight gaps matching Mega Jaipur */}
-              <div className="flex items-center gap-0.5 sm:gap-1 h-full whitespace-nowrap">
+              {/* Horizontal Categories with compact gaps and clear readable font matching Mega Jaipur */}
+              <div className="flex items-center gap-1 h-full whitespace-nowrap">
                 {categoryTree.map((header) => {
                   const isHovered = hoveredHeaderId === header._id;
 
@@ -979,18 +1197,15 @@ const PublicLayout = () => {
                     >
                       <Link
                         to={`/${header.slug || slugify(header.name)}`}
-                        onClick={(e) => handleHeaderClick(e, header._id)}
-                        className={`text-white hover:text-white transition-all select-none px-1.5 sm:px-2 h-[26px] rounded flex items-center text-[11.5px] sm:text-[12px] xl:text-[12.5px] font-semibold tracking-tight leading-none ${
-                          isHovered ? 'bg-[#591116] text-white font-bold shadow-2xs' : 'hover:bg-white/10'
+                        onClick={handleHeaderClick}
+                        className={`transition-colors duration-150 select-none px-2 h-[29px] rounded flex items-center text-[14.5px] font-medium tracking-normal leading-none no-underline ${
+                          isHovered
+                            ? 'bg-white/15 text-white'
+                            : 'text-white/90 hover:bg-white/10 hover:text-white'
                         }`}
                       >
                         <span>{header.name}</span>
                       </Link>
-
-                      {/* Small downward triangle indicator matching Mega Jaipur when hovered/active */}
-                      {isHovered && (
-                        <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-white z-50 pointer-events-none" />
-                      )}
                     </div>
                   );
                 })}
@@ -1044,7 +1259,7 @@ const PublicLayout = () => {
                   <Link
                     to={`/${hoveredHeader.slug || slugify(hoveredHeader.name)}`}
                     onClick={() => setHoveredHeaderId(null)}
-                    className="text-xs text-white/80 hover:text-white flex items-center gap-1 font-semibold transition-colors"
+                    className="text-xs text-white/90 hover:text-white flex items-center gap-1 font-semibold transition-colors no-underline px-2 py-1 rounded hover:bg-white/10"
                   >
                     <span>View All {hoveredHeader.name} Products</span>
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -1070,14 +1285,14 @@ const PublicLayout = () => {
                               <Link
                                 to={`/${headerSlug}/${mainSlug}`}
                                 onClick={() => setHoveredHeaderId(null)}
-                                className="text-[13px] sm:text-[13.5px] font-semibold text-[#800020] flex items-center gap-2 group pb-2 border-b border-gray-200 transition-colors"
+                                className="text-[13px] sm:text-[13.5px] font-bold text-[#800020] flex items-center gap-2 pb-2 border-b border-gray-200 hover:text-[#590016] transition-colors no-underline group"
                               >
                                 <span className="text-[#800020] text-sm leading-none font-bold">•</span>
-                                <span className="group-hover:underline">{main.name}</span>
+                                <span>{main.name}</span>
                               </Link>
 
                               {/* Subcategories vertical list */}
-                              <div className="pt-2 pl-3 space-y-1.5">
+                              <div className="pt-2 pl-2 space-y-1">
                                 {main.subCategories.map((sub) => {
                                   const subSlug = sub.slug || slugify(sub.name);
                                   return (
@@ -1085,7 +1300,7 @@ const PublicLayout = () => {
                                       key={sub._id}
                                       to={`/${headerSlug}/${mainSlug}/${subSlug}`}
                                       onClick={() => setHoveredHeaderId(null)}
-                                      className="block text-[12px] sm:text-[12.5px] text-gray-600 hover:text-[#800020] hover:underline transition-colors py-0.5 leading-snug"
+                                      className="block text-[12px] sm:text-[12.5px] text-gray-700 hover:text-[#800020] px-2 py-1 rounded-md border border-transparent hover:border-[#800020]/25 hover:bg-[#800020]/5 transition-all duration-150 leading-snug no-underline"
                                     >
                                       {sub.name}
                                     </Link>
@@ -1102,12 +1317,15 @@ const PublicLayout = () => {
                             key={main._id}
                             to={`/${headerSlug}/${mainSlug}`}
                             onClick={() => setHoveredHeaderId(null)}
-                            className="border border-gray-200/90 rounded-md px-3.5 py-2.5 bg-white hover:border-[#800020] hover:bg-[#fffbfc] hover:shadow-2xs transition-all flex items-center gap-2 group select-none cursor-pointer"
+                            className="border border-gray-200/90 rounded-md px-3.5 py-2.5 bg-white hover:border-[#800020] hover:bg-[#800020]/5 hover:shadow-xs transition-all duration-200 flex items-center justify-between group select-none cursor-pointer no-underline"
                           >
-                            <span className="text-[#800020]/70 text-sm leading-none font-bold group-hover:text-[#800020] transition-colors">•</span>
-                            <span className="text-[12.5px] sm:text-[13px] font-medium text-gray-800 group-hover:text-[#800020] transition-colors leading-tight">
-                              {main.name}
-                            </span>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-gray-400 text-sm leading-none font-bold group-hover:text-[#800020] transition-colors">•</span>
+                              <span className="text-[12.5px] sm:text-[13px] font-medium text-gray-800 group-hover:text-[#800020] group-hover:font-semibold transition-all leading-tight truncate">
+                                {main.name}
+                              </span>
+                            </div>
+                            <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-[#800020] group-hover:translate-x-0.5 transition-all duration-200 shrink-0 ml-1.5 opacity-60 group-hover:opacity-100" />
                           </Link>
                         );
                       })}

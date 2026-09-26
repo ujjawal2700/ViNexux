@@ -79,6 +79,7 @@ apiClient.interceptors.response.use(
     const isAuthEndpoint = originalRequest.url?.includes('/auth/login') ||
                            originalRequest.url?.includes('/auth/verify-otp') ||
                            originalRequest.url?.includes('/auth/send-otp') ||
+                           originalRequest.url?.includes('/auth/force-login') ||
                            originalRequest.url?.includes('/auth/refresh-token');
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {

@@ -753,21 +753,12 @@ export const authService = {
       throw new AppError('Account not active or authorized.', HTTP_STATUS.FORBIDDEN, ERROR_CODES.FORBIDDEN);
     }
 
-    // Verify the specific conflicting session is still active
+    // If conflicting session is specified, revoke it; if already resolved/expired, proceed seamlessly
     if (decoded.existingSessionId) {
-      const targetSession = await Session.findOne({
-        sessionId: decoded.existingSessionId,
-        userId: user._id,
-        isActive: true,
-      });
-
-      if (!targetSession) {
-        throw new AppError(
-          'The conflicting session has already been resolved, expired, or revoked.',
-          HTTP_STATUS.BAD_REQUEST,
-          ERROR_CODES.BAD_REQUEST
-        );
-      }
+      await Session.updateOne(
+        { sessionId: decoded.existingSessionId, userId: user._id },
+        { isActive: false, revokedAt: new Date() }
+      );
     }
 
     // Revoke all existing active sessions for this user

@@ -1,24 +1,40 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FileQuestion, ArrowLeft } from 'lucide-react';
+import { SearchX } from 'lucide-react';
 
 const NotFoundPage = () => {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-background min-h-[60vh]">
-      <div className="w-16 h-16 rounded-2xl bg-muted border border-border flex items-center justify-center mb-4">
-        <FileQuestion className="w-8 h-8 text-primary" />
+    <div className="flex-1 flex flex-col items-center justify-center py-20 px-4 text-center bg-white min-h-[60vh]">
+      {/* Icon Badge */}
+      <div className="w-14 h-14 rounded-2xl bg-[#faf5fb] border border-[#f0e4f3] flex items-center justify-center mb-5 text-[#800020]">
+        <SearchX className="w-7 h-7 stroke-[1.8]" />
       </div>
-      <h1 className="text-4xl font-extrabold text-foreground mb-2">404 - Page Not Found</h1>
-      <p className="text-xs text-muted-foreground max-w-md mb-6 leading-relaxed">
-        The requested URL path does not exist or has been moved within the Vinexus platform.
+
+      {/* Heading */}
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2.5 tracking-tight">
+        Page not found
+      </h1>
+
+      {/* Description */}
+      <p className="text-sm sm:text-base text-gray-500 max-w-md mb-8 leading-relaxed">
+        The page you're looking for doesn't exist or has been moved. Try one of these instead.
       </p>
-      <Link
-        to="/"
-        className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors shadow-sm"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Return to Home
-      </Link>
+
+      {/* Action Buttons */}
+      <div className="flex flex-wrap items-center justify-center gap-3.5">
+        <Link
+          to="/"
+          className="px-7 py-2.5 rounded-full bg-[#800020] hover:bg-[#660019] text-white text-sm font-semibold transition-all shadow-xs active:scale-98"
+        >
+          Continue Shopping
+        </Link>
+        <Link
+          to="/brands"
+          className="px-6 py-2.5 rounded-full border border-gray-300 bg-white hover:bg-gray-50 text-gray-800 text-sm font-semibold transition-all active:scale-98"
+        >
+          All brands
+        </Link>
+      </div>
     </div>
   );
 };

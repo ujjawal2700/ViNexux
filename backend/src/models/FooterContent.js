@@ -40,6 +40,16 @@ const footerContentSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    whatsappNumber: {
+      type: String,
+      trim: true,
+      default: '8769959424',
+    },
+    whatsappMessageNote: {
+      type: String,
+      trim: true,
+      default: 'Please confirm live stock availability, delivery timeline & share official GST commercial invoice.',
+    },
     address: {
       type: String,
       trim: true,

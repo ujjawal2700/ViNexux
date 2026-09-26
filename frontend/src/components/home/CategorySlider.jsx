@@ -49,11 +49,6 @@ const DEFAULT_CATEGORY_TILES = [
     image: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=300&q=80',
   },
   {
-    name: 'Mobility',
-    slug: 'mobility',
-    image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=300&q=80',
-  },
-  {
     name: 'Cables',
     slug: 'cables',
     image: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=300&q=80',
@@ -73,20 +68,50 @@ const DEFAULT_CATEGORY_TILES = [
     slug: 'telecom',
     image: 'https://images.unsplash.com/photo-1520923642038-b4259aceffd7?auto=format&fit=crop&w=300&q=80',
   },
+  {
+    name: 'Mobile',
+    slug: 'mobile',
+    image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=300&q=80',
+  },
 ];
 
 export const CategorySlider = ({ categories = [] }) => {
   const scrollRef = useRef(null);
 
-  // Merge dynamic categories if present with default tiles
-  const tiles = categories.length > 0
-    ? categories.map((cat, i) => ({
-        name: cat.name,
-        slug: cat.slug || cat._id,
-        id: cat._id,
-        image: cat.image || DEFAULT_CATEGORY_TILES[i % DEFAULT_CATEGORY_TILES.length].image,
-      }))
-    : DEFAULT_CATEGORY_TILES;
+  // Strictly filter to Header/Root categories (no parentId)
+  const headerCategories = (categories || []).filter((c) => !c.parentId);
+  const sourceList =
+    headerCategories.length > 0
+      ? headerCategories
+      : categories.length > 0
+      ? categories
+      : DEFAULT_CATEGORY_TILES;
+
+  // Map each category to an accurate tile with clean slug and image
+  const tiles = sourceList.map((cat, i) => {
+    const slug = (
+      cat.slug ||
+      cat.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-') ||
+      ''
+    ).toLowerCase();
+
+    // Match image from category record or fallback to curated default tile image
+    const matchedDefault = DEFAULT_CATEGORY_TILES.find(
+      (d) =>
+        d.slug === slug ||
+        d.name.toLowerCase() === (cat.name || '').toLowerCase()
+    );
+
+    return {
+      name: cat.name,
+      slug: slug,
+      id: cat._id,
+      image:
+        cat.image ||
+        matchedDefault?.image ||
+        DEFAULT_CATEGORY_TILES[i % DEFAULT_CATEGORY_TILES.length].image,
+    };
+  });
 
   const scrollManual = (direction) => {
     if (scrollRef.current) {
@@ -104,7 +129,7 @@ export const CategorySlider = ({ categories = [] }) => {
       <button
         type="button"
         onClick={() => scrollManual('left')}
-        className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white border border-gray-300 shadow-md flex items-center justify-center text-gray-700 hover:text-primary hover:border-primary transition-all opacity-90 hover:opacity-100 cursor-pointer"
+        className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white border border-gray-300 shadow-md flex items-center justify-center text-gray-700 hover:text-[#800020] hover:border-[#800020] transition-all opacity-90 hover:opacity-100 cursor-pointer"
         aria-label="Scroll categories left"
       >
         <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -119,8 +144,8 @@ export const CategorySlider = ({ categories = [] }) => {
         {tiles.map((cat, idx) => (
           <div key={idx} className="relative group shrink-0">
             <Link
-              to={cat.slug ? `/${cat.slug}` : cat.id ? `/products?categoryId=${cat.id}` : `/${cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
-              className="flex flex-col items-center justify-between w-24 sm:w-28 md:w-32 h-28 sm:h-32 md:h-36 p-2.5 sm:p-3 bg-white border border-gray-200 rounded-lg transition-all duration-300 ease-out hover:-translate-y-1.5 hover:border-primary hover:shadow-[0_8px_24px_rgba(128,0,32,0.14)] text-center select-none"
+              to={`/${cat.slug}`}
+              className="flex flex-col items-center justify-between w-24 sm:w-28 md:w-32 h-28 sm:h-32 md:h-36 p-2.5 sm:p-3 bg-white border border-gray-200 rounded-lg transition-all duration-300 ease-out hover:-translate-y-1.5 hover:border-[#800020] hover:shadow-[0_8px_24px_rgba(128,0,32,0.14)] text-center select-none"
             >
               <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 flex items-center justify-center overflow-hidden mb-1">
                 <img
@@ -130,7 +155,7 @@ export const CategorySlider = ({ categories = [] }) => {
                   loading="lazy"
                 />
               </div>
-              <span className="text-[11px] sm:text-xs font-semibold text-gray-800 leading-tight transition-colors duration-300 group-hover:text-primary line-clamp-1">
+              <span className="text-[11px] sm:text-xs font-semibold text-gray-800 leading-tight transition-colors duration-300 group-hover:text-[#800020] line-clamp-1">
                 {cat.name}
               </span>
             </Link>

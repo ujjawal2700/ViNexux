@@ -27,6 +27,8 @@ const AdminCmsFooterPage = () => {
     companyDescription: '',
     email: '',
     phone: '',
+    whatsappNumber: '8769959424',
+    whatsappMessageNote: 'Please confirm live stock availability, delivery timeline & share official GST commercial invoice.',
     address: '',
     quickLinks: [],
     legalLinks: [],
@@ -48,6 +50,8 @@ const AdminCmsFooterPage = () => {
         companyDescription: data.companyDescription || '',
         email: data.email || '',
         phone: data.phone || '',
+        whatsappNumber: data.whatsappNumber || '8769959424',
+        whatsappMessageNote: data.whatsappMessageNote || 'Please confirm live stock availability, delivery timeline & share official GST commercial invoice.',
         address: data.address || '',
         quickLinks: Array.isArray(data.quickLinks)
           ? data.quickLinks.map((link) => ({ label: link.label || '', url: link.url || '' }))
@@ -159,6 +163,8 @@ const AdminCmsFooterPage = () => {
         companyDescription: formData.companyDescription.trim(),
         email: formData.email.trim(),
         phone: formData.phone.trim(),
+        whatsappNumber: formData.whatsappNumber ? formData.whatsappNumber.trim() : '8769959424',
+        whatsappMessageNote: formData.whatsappMessageNote ? formData.whatsappMessageNote.trim() : '',
         address: formData.address.trim(),
         quickLinks: cleanedQuickLinks,
         legalLinks: cleanedLegalLinks,
@@ -175,6 +181,8 @@ const AdminCmsFooterPage = () => {
         companyDescription: updated.companyDescription || '',
         email: updated.email || '',
         phone: updated.phone || '',
+        whatsappNumber: updated.whatsappNumber || '8769959424',
+        whatsappMessageNote: updated.whatsappMessageNote || 'Please confirm live stock availability, delivery timeline & share official GST commercial invoice.',
         address: updated.address || '',
         quickLinks: Array.isArray(updated.quickLinks) ? updated.quickLinks : cleanedQuickLinks,
         legalLinks: Array.isArray(updated.legalLinks) ? updated.legalLinks : cleanedLegalLinks,
@@ -284,7 +292,25 @@ const AdminCmsFooterPage = () => {
                   type="text"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="+1 (800) 555-WINE"
+                  placeholder="+91 8769959424"
+                />
+              </FormField>
+
+              <FormField label="WhatsApp Orders & Quotation Number (Cart Deep Link)">
+                <Input
+                  type="text"
+                  value={formData.whatsappNumber}
+                  onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value })}
+                  placeholder="8769959424"
+                />
+              </FormField>
+
+              <FormField label="WhatsApp Quotation Closing Note">
+                <Input
+                  type="text"
+                  value={formData.whatsappMessageNote}
+                  onChange={(e) => setFormData({ ...formData, whatsappMessageNote: e.target.value })}
+                  placeholder="Please confirm live stock availability, delivery timeline & share official GST commercial invoice."
                 />
               </FormField>
             </div>

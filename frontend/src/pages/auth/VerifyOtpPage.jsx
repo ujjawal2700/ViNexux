@@ -10,7 +10,7 @@ export const VerifyOtpPage = () => {
   const toast = useToast();
 
   const identifier = location.state?.identifier || '';
-  const portal = location.state?.portal;
+  const portal = location.state?.portal || (location.pathname.startsWith('/admin') ? 'admin' : 'customer');
 
   // Format phone number nicely (e.g. +91 8209224481)
   const formatPhoneNumber = (val) => {
@@ -126,9 +126,14 @@ export const VerifyOtpPage = () => {
       if (res.sessionConflict) {
         return;
       }
-      if (res.success) {
+      if (res.success || res.data?.accessToken) {
         toast.success('Verification successful!');
-        navigate(portal === 'admin' ? '/admin/dashboard' : '/');
+        if (portal === 'admin') {
+          navigate('/admin/dashboard', { replace: true });
+        } else {
+          const destination = location.state?.from || '/';
+          navigate(destination, { replace: true });
+        }
       } else {
         setError(res.message || 'OTP verification failed');
       }
@@ -163,14 +168,20 @@ export const VerifyOtpPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await forceLogin(conflictTicket);
-      if (res.success) {
-        navigate(portal === 'admin' ? '/admin/dashboard' : '/');
+      const res = await forceLogin(conflictTicket, portal);
+      if (res.success || res.data?.accessToken) {
+        toast.success('Other device disconnected! Logging you in...');
+        if (portal === 'admin') {
+          navigate('/admin/dashboard', { replace: true });
+        } else {
+          const destination = location.state?.from || '/';
+          navigate(destination, { replace: true });
+        }
       } else {
         setError(res.message || 'Force login failed');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to invalidate existing active session');
+      setError(err.response?.data?.message || err.message || 'Failed to invalidate existing active session');
     } finally {
       setLoading(false);
     }
@@ -181,28 +192,34 @@ export const VerifyOtpPage = () => {
       {/* Mega Jaipur Layout Card with ViNexus Maroon Brand Styling */}
       <div className="w-full max-w-[430px] bg-white rounded-lg sm:shadow-sm sm:border sm:border-gray-200/90 p-5 sm:p-7">
         
-        {/* Top Segmented Tabs: Login (Active Maroon) | Register (Inactive) */}
-        <div className="grid grid-cols-2 gap-2 mb-6">
-          <button
-            type="button"
-            className="py-2.5 bg-[#800020] text-white font-bold text-xs sm:text-sm rounded text-center shadow-xs select-none"
-          >
-            Login
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/login?tab=signup')}
-            className="py-2.5 bg-[#fdf2f4] hover:bg-[#fae1e6] text-[#800020] hover:text-[#590016] font-semibold text-xs sm:text-sm rounded text-center transition-colors select-none cursor-pointer"
-          >
-            Register
-          </button>
-        </div>
+        {/* Top Segmented Header */}
+        {portal === 'admin' ? (
+          <div className="mb-6 p-2.5 bg-[#fdf2f4] border border-[#f3d5dc] rounded text-center">
+            <span className="text-xs font-bold text-[#800020] uppercase tracking-wider">ViNexus Administrator Verification</span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 mb-6">
+            <button
+              type="button"
+              className="py-2.5 bg-[#800020] text-white font-bold text-xs sm:text-sm rounded text-center shadow-xs select-none"
+            >
+              Login
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/login?tab=signup')}
+              className="py-2.5 bg-[#fdf2f4] hover:bg-[#fae1e6] text-[#800020] hover:text-[#590016] font-semibold text-xs sm:text-sm rounded text-center transition-colors select-none cursor-pointer"
+            >
+              Register
+            </button>
+          </div>
+        )}
 
         {/* Back Button + Title Block */}
         <div className="flex items-center gap-3.5 mb-4 text-left">
           <button
             type="button"
-            onClick={() => navigate('/login', { state: { identifier } })}
+            onClick={() => navigate(portal === 'admin' ? '/admin/login' : '/login', { state: { identifier } })}
             className="w-9 h-9 rounded bg-[#fdf2f4] hover:bg-[#fae1e6] text-[#800020] flex items-center justify-center shrink-0 transition-colors cursor-pointer border border-[#f3d5dc]"
             title="Go back"
             aria-label="Go back"
@@ -316,10 +333,10 @@ export const VerifyOtpPage = () => {
           <div>
             <button
               type="button"
-              onClick={() => navigate('/login', { state: { identifier } })}
+              onClick={() => navigate(portal === 'admin' ? '/admin/login' : '/login', { state: { identifier } })}
               className="text-[#800020] font-bold hover:underline cursor-pointer"
             >
-              Change Number
+              {portal === 'admin' ? 'Change Account' : 'Change Number'}
             </button>
           </div>
         </div>

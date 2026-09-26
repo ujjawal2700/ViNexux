@@ -21,45 +21,52 @@ export const AuthProvider = ({ children }) => {
 
   // Helper to handle tokens & load user profile (portal: 'admin' | 'customer')
   const handleAuthSuccess = useCallback(async (tokens, portal) => {
-    const { accessToken: newAccess, refreshToken: newRefresh } = tokens;
+    const { accessToken: newAccess, refreshToken: newRefresh, user: authUser } = tokens;
 
-    try {
-      const meResponse = await authService.getMe(newAccess);
-      if (meResponse.success && meResponse.data) {
-        const u = meResponse.data.user || meResponse.data;
+    let u = authUser || null;
 
-        // If authenticated user is an Administrator
-        if (u.role === ROLES.ADMIN || portal === 'admin') {
-          if (newAccess) {
-            setAccessToken(newAccess, 'admin');
-            setAdminAccessTokenState(newAccess);
-          }
-          if (newRefresh) {
-            setStoredRefreshToken(newRefresh, 'admin');
-          }
-          setAdminUser(u);
-
-          // If legacy token was previously stored under customer key, clean it up
-          if (portal !== 'admin') {
-            clearStoredRefreshToken('customer');
-            setAccessToken(null, 'customer');
-            setUser(null);
-            setAccessTokenState(null);
-          }
-        } else {
-          // Normal Customer / Dealer
-          if (newAccess) {
-            setAccessToken(newAccess, 'customer');
-            setAccessTokenState(newAccess);
-          }
-          if (newRefresh) {
-            setStoredRefreshToken(newRefresh, 'customer');
-          }
-          setUser(u);
+    // If user object not provided in tokens payload, fetch via /auth/me
+    if (!u && newAccess) {
+      try {
+        const meResponse = await authService.getMe(newAccess);
+        if (meResponse.success && meResponse.data) {
+          u = meResponse.data.user || meResponse.data;
         }
+      } catch (err) {
+        console.error('Failed to fetch user profile after authentication:', err);
       }
-    } catch (err) {
-      console.error('Failed to fetch user profile after authentication:', err);
+    }
+
+    if (u) {
+      const isAdmin = u.role === ROLES.ADMIN || portal === 'admin';
+
+      if (isAdmin) {
+        if (newAccess) {
+          setAccessToken(newAccess, 'admin');
+          setAdminAccessTokenState(newAccess);
+        }
+        if (newRefresh) {
+          setStoredRefreshToken(newRefresh, 'admin');
+        }
+        setAdminUser(u);
+
+        if (portal !== 'admin') {
+          clearStoredRefreshToken('customer');
+          setAccessToken(null, 'customer');
+          setUser(null);
+          setAccessTokenState(null);
+        }
+      } else {
+        // Normal Customer / Dealer
+        if (newAccess) {
+          setAccessToken(newAccess, 'customer');
+          setAccessTokenState(newAccess);
+        }
+        if (newRefresh) {
+          setStoredRefreshToken(newRefresh, 'customer');
+        }
+        setUser(u);
+      }
     }
   }, []);
 

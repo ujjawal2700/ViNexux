@@ -9,6 +9,7 @@
  */
 
 export const RESERVED_ROOT_SLUGS = new Set([
+  'brand',
   'cart',
   'wishlist',
   'categories',

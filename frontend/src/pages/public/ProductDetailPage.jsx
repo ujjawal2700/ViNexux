@@ -11,6 +11,7 @@ import { extractProductId, buildCategoryPath, buildCategoryTrail } from '../../u
 import { Image } from '../../components/ui/Image';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/ErrorState';
+import NotFoundPage from './NotFoundPage';
 import {
   ShoppingCart,
   ArrowLeft,
@@ -450,19 +451,7 @@ Please share commercial quotation and availability.`;
   }
 
   if (error || !product) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 text-center">
-        <ErrorState title="Product Not Found" description={error || 'The requested product does not exist in our catalog.'} />
-        <div className="mt-6">
-          <Link
-            to="/products"
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[#800020] text-white font-bold text-sm hover:bg-[#66001a] transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" /> Return to Catalog
-          </Link>
-        </div>
-      </div>
-    );
+    return <NotFoundPage />;
   }
 
   return (

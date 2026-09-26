@@ -8,6 +8,7 @@ import { Pagination } from '../../components/ui/Pagination';
 import { SkeletonCard } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
+import NotFoundPage from './NotFoundPage';
 import { ALL_BRANDS } from './BrandsPage';
 import {
   buildCategoryPath,
@@ -65,6 +66,7 @@ export const ProductsPage = () => {
   // Data states
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
 
   // UI state
@@ -80,6 +82,8 @@ export const ProductsPage = () => {
         setCategories(list);
       } catch (err) {
         console.warn('Failed to load categories for catalog filter:', err);
+      } finally {
+        setCategoriesLoaded(true);
       }
     };
     fetchCategories();
@@ -92,7 +96,7 @@ export const ProductsPage = () => {
     const s = slugify(rawBrand);
     const matched = ALL_BRANDS.find((b) => slugify(b.name) === s);
     if (matched) return matched.name;
-    return rawBrand.replace(/-/g, ' ').toUpperCase();
+    return brandSlug ? null : rawBrand.replace(/-/g, ' ').toUpperCase();
   }, [brandSlug, searchParams]);
 
   // Match category object from hierarchical route parameter
@@ -782,6 +786,16 @@ export const ProductsPage = () => {
       </div>
     </div>
   );
+
+  // If a category was requested in the URL path but does not exist
+  if (targetCategorySlug && categoriesLoaded && !routeCategory) {
+    return <NotFoundPage />;
+  }
+
+  // If a brand was requested in /brands/:brandSlug but does not exist
+  if (brandSlug && !resolvedBrand) {
+    return <NotFoundPage />;
+  }
 
   return (
     <div className="w-full bg-[#f8f9fa] min-h-screen pb-12">

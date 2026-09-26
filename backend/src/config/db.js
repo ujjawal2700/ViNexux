@@ -1,5 +1,14 @@
+import dns from 'dns';
 import mongoose from 'mongoose';
 import { config } from './env.js';
+
+// Ensure Node.js resolves MongoDB Atlas SRV records via reliable public DNS
+// This resolves 'querySrv ECONNREFUSED' common on Windows & ISP/router firewalls
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
+} catch (dnsErr) {
+  console.warn('[Database] Could not override default DNS servers:', dnsErr.message);
+}
 
 export const connectDB = async () => {
   try {

@@ -67,9 +67,8 @@ export const sendOtpSchema = {
           invalid_type_error: 'Purpose must be one of: signup, login, phone-change, password-reset',
         })
         .default('login'),
-      // Optional login surface hint. When set to 'admin' (the dedicated
-      // /admin/login page), the target account must have the admin role.
-      portal: z.enum(['admin']).optional(),
+      // Optional login surface hint: 'admin' (dedicated /admin/login) or 'customer' (storefront /login)
+      portal: z.enum(['admin', 'customer']).optional(),
       // Required only for the admin portal login surface - admin sign-in is
       // password + OTP two-factor, not OTP-only like customer/dealer login.
       password: z.string().trim().optional(),
@@ -95,7 +94,7 @@ export const verifyOtpSchema = {
         invalid_type_error: 'Purpose must be one of: signup, login, phone-change',
       })
       .default('login'),
-    portal: z.enum(['admin']).optional(),
+    portal: z.enum(['admin', 'customer']).optional(),
   }),
 };
 

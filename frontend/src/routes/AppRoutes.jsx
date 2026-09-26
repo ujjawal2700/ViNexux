@@ -202,8 +202,10 @@ const AppRoutes = () => {
         </Route>
       </Route>
 
-      {/* FALLBACK CATCH-ALL */}
-      <Route path="*" element={<Navigate to="/not-found" replace />} />
+      {/* FALLBACK CATCH-ALL (Preserves URL in browser and displays Header & Footer) */}
+      <Route element={<PublicLayout />}>
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
     </Routes>
   );
 };

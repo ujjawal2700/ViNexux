@@ -2,6 +2,7 @@ import React from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import ProductsPage from '../pages/public/ProductsPage';
 import ProductDetailPage from '../pages/public/ProductDetailPage';
+import NotFoundPage from '../pages/public/NotFoundPage';
 import { RESERVED_ROOT_SLUGS, isProductIdParam } from '../utils/categoryUrls';
 
 /**
@@ -12,7 +13,7 @@ export const CategoryRoute = () => {
   const lower = (headerSlug || '').toLowerCase();
 
   if (RESERVED_ROOT_SLUGS.has(lower)) {
-    return <Navigate to="/not-found" replace />;
+    return <NotFoundPage />;
   }
 
   return <ProductsPage />;
@@ -29,7 +30,7 @@ export const CategoryLevel2Route = () => {
   const lowerHeader = (headerSlug || '').toLowerCase();
 
   if (RESERVED_ROOT_SLUGS.has(lowerHeader)) {
-    return <Navigate to="/not-found" replace />;
+    return <NotFoundPage />;
   }
 
   if (isProductIdParam(param2)) {
@@ -50,7 +51,7 @@ export const CategoryLevel3Route = () => {
   const lowerHeader = (headerSlug || '').toLowerCase();
 
   if (RESERVED_ROOT_SLUGS.has(lowerHeader)) {
-    return <Navigate to="/not-found" replace />;
+    return <NotFoundPage />;
   }
 
   if (isProductIdParam(param3)) {

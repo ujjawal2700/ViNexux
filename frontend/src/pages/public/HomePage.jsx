@@ -26,9 +26,9 @@ export const HomePage = () => {
       try {
         const catRes = await categoryService.getCategories({ limit: 100, isActive: true });
         const allCats = catRes.data?.categories || catRes.categories || [];
-        setCategories(allCats);
-        // Extract root/header categories (those with no parentId) in natural order
+        // Extract strictly root/header categories (those with no parentId)
         rootCats = allCats.filter((c) => !c.parentId);
+        setCategories(rootCats);
       } catch (e) {
         console.warn('Category fetch error:', e);
       }
