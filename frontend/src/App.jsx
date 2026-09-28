@@ -3,15 +3,20 @@ import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import { ThemeProvider } from './context/ThemeContext';
 import AppRoutes from './routes/AppRoutes';
+import GlobalRequestLoader from './components/ui/GlobalRequestLoader';
+import { WebsiteSettingsProvider } from './context/WebsiteSettingsProvider';
 
 function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <ToastProvider>
-          <AppRoutes />
-        </ToastProvider>
-      </AuthProvider>
+      <WebsiteSettingsProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <AppRoutes />
+            <GlobalRequestLoader />
+          </ToastProvider>
+        </AuthProvider>
+      </WebsiteSettingsProvider>
     </ThemeProvider>
   );
 }

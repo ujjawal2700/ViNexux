@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, X, Store } from 'lucide-react';
 import { buildBrandUrl } from '../../utils/categoryUrls';
+import { BrandGridSkeleton } from '../../components/ui/Skeleton';
 
 /**
  * Full catalogue of IT, CCTV, networking, and electronics brands
@@ -281,7 +282,7 @@ export const BrandsPage = () => {
     setSearchQuery(val);
   };
 
-  if (loading) return <p className="p-8" role="status">Loading brands...</p>;
+  if (loading) return <BrandGridSkeleton />;
   if (error) return <ErrorState title="Brands unavailable" description={error} onRetry={reload} />;
 
   return (

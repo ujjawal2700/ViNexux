@@ -1,4 +1,3 @@
-import { Image } from '../ui/Image';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
@@ -6,9 +5,10 @@ import useToast from '../../hooks/useToast';
 import cartService from '../../services/cartService';
 import guestCartService from '../../services/guestCartService';
 import wishlistService from '../../services/wishlistService';
-import { Minus, Plus, Check, Heart } from 'lucide-react';
+import { Minus, Plus, Check, Heart, ImageOff } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { buildProductPath } from '../../utils/categoryUrls';
+import { getAvailableStock, getMaximumOrderQuantity } from '../../utils/inventory';
 
 export const ProductCard = ({ product, onCartUpdated, className }) => {
   const { user, isAuthenticated } = useAuth();
@@ -17,6 +17,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
   const [isAdded, setIsAdded] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const productId = product?._id || product?.id;
   const [isWishlisted, setIsWishlisted] = useState(() => wishlistService.isInWishlist(productId));
 
@@ -39,6 +40,11 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
 
   const standardPrice = product.standardPrice || 0;
   const dealerPrice = product.dealerPrice || 0;
+  const availableStock = getAvailableStock(product);
+  const maximumQuantity = getMaximumOrderQuantity(product);
+  const isOutOfStock = product.stockStatus === 'out-of-stock' || maximumQuantity === 0;
+  const isLowStock = !isOutOfStock && (product.stockStatus === 'low-stock' || (availableStock !== null && availableStock > 0 && availableStock < 5));
+  const isInStock = !isOutOfStock && !isLowStock;
 
   let displayPrice = product?.applicablePrice ?? standardPrice;
   let hasDealerDiscount = false;
@@ -50,10 +56,20 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
     }
   }
 
-  // Brand tag
+  // Brand info
   const brandName =
+    product.brandId?.name ||
     product.specifications?.find((s) => s.key?.toLowerCase() === 'brand')?.value ||
     (typeof product.categoryId === 'object' ? product.categoryId?.name : 'ViNexus');
+  const brandLogo = product.brandId?.logo?.url;
+
+  // Model number - from dedicated field or specs
+  const modelNumber =
+    product.modelNumber ||
+    product.specifications?.find((s) => /^(model number|model no)$/i.test(s.key || ''))?.value ||
+    null;
+
+
 
   // Handle Wishlist Toggle
   const handleToggleWishlist = (e) => {
@@ -76,13 +92,32 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
 
   const handleIncrement = (e) => {
     e.stopPropagation();
-    setQuantity((prev) => prev + 1);
+    // If no stock info, allow free increment (legacy products)
+    if (availableStock === null) {
+      setQuantity((prev) => prev + 1);
+      return;
+    }
+    if (quantity >= availableStock) {
+      toast.stock(`Limited stock — only ${availableStock} unit${availableStock === 1 ? '' : 's'} available.`);
+      return;
+    }
+    const nextQuantity = quantity + 1;
+    setQuantity(nextQuantity);
+    // Warn when reaching the max
+    if (nextQuantity >= availableStock) {
+      toast.stock(`Limited stock — only ${availableStock} unit${availableStock === 1 ? '' : 's'} available.`);
+    }
   };
 
   // Handle Add to Cart action
   const handleAddToCart = async (e) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (isOutOfStock) {
+      toast.warning('This product is currently out of stock.');
+      return;
+    }
 
     if (!isAuthenticated) {
       const updatedCart = guestCartService.addItem(product, quantity);
@@ -102,24 +137,9 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
       const res = await cartService.addItem(product._id, quantity);
       const updatedCart = res.data?.cart || res.data || res.cart || res;
       setIsAdded(true);
-      window.dispatchEvent(
-        new CustomEvent('cart-updated', {
-          detail: { cart: updatedCart },
-        })
-      );
-      window.dispatchEvent(
-        new CustomEvent('cart-item-added', {
-          detail: {
-            product,
-            quantity,
-            displayPrice,
-            cart: updatedCart,
-          },
-        })
-      );
-      if (onCartUpdated) {
-        onCartUpdated();
-      }
+      window.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart: updatedCart } }));
+      window.dispatchEvent(new CustomEvent('cart-item-added', { detail: { product, quantity, displayPrice, cart: updatedCart } }));
+      if (onCartUpdated) onCartUpdated();
       setTimeout(() => setIsAdded(false), 2000);
     } catch (err) {
       console.error('Failed to add item to cart:', err);
@@ -138,50 +158,69 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
     <div
       onClick={handleCardClick}
       className={cn(
-        "group relative flex h-full flex-col justify-between overflow-hidden rounded border border-gray-200 bg-white p-3 sm:p-3.5 text-gray-900 shadow-2xs hover:shadow-md transition-all duration-200 cursor-pointer",
+        "group relative flex h-full flex-col overflow-hidden rounded-sm border border-gray-200 bg-white text-gray-900 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer",
         className
       )}
     >
-      {/* Top Image Container with generous height like Mega Jaipur */}
-      <div className="relative mb-2.5 flex h-48 sm:h-52 md:h-56 lg:h-60 w-full items-center justify-center overflow-hidden bg-white p-2 sm:p-3">
-        {/* Wishlist Floating Button (visible on hover, matching Mega Jaipur) */}
+      {/* ── IMAGE AREA (large, no restricting inner div, transparent bg for PNGs) ── */}
+      <div className="relative w-full bg-white overflow-hidden" style={{ minHeight: '220px', maxHeight: '260px', height: '240px' }}>
+        {/* Wishlist Button */}
         <button
           type="button"
           onClick={handleToggleWishlist}
-          title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+          title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
           aria-label="Wishlist"
-          className="absolute top-2.5 right-2.5 z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center text-gray-400 hover:text-red-500 hover:scale-105 active:scale-95 transition-all duration-200 opacity-0 group-hover:opacity-100 cursor-pointer"
+          className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center text-gray-400 hover:text-[#800020] hover:scale-105 active:scale-95 transition-all duration-200 opacity-0 group-hover:opacity-100 cursor-pointer"
         >
           <Heart
             className={cn(
-              "w-4 h-4 transition-colors",
-              isWishlisted ? "fill-red-500 text-red-500" : "text-gray-400 hover:text-red-500"
+              'w-4 h-4 transition-colors',
+              isWishlisted ? 'fill-red-500 text-red-500' : 'text-gray-400 hover:text-red-500'
             )}
           />
         </button>
 
-        <Image
-          src={primaryImage}
-          alt={product.name}
-          objectFit="object-contain"
-          className="h-full w-full transition-transform duration-300 group-hover:scale-105"
-          loading="lazy"
-        />
+        {/* Product Image – full size, no wrapper box clipping PNG */}
+        {primaryImage && !imgError ? (
+          <img
+            src={primaryImage}
+            alt={product.name}
+            onError={() => setImgError(true)}
+            className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105 p-3"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 text-gray-300">
+            <ImageOff className="w-10 h-10 mb-1 opacity-40" />
+            <span className="text-[10px] font-bold uppercase tracking-wider opacity-40">No Image</span>
+          </div>
+        )}
       </div>
 
-      {/* Content Container */}
-      <div className="flex flex-col text-left gap-1.5 w-full flex-grow">
-        {/* Title */}
-        <h3 className="font-semibold text-xs sm:text-sm text-gray-800 leading-snug line-clamp-2 min-h-[34px] sm:min-h-[38px] group-hover:text-primary transition-colors">
+      {/* ── CONTENT AREA ── */}
+      <div className="flex flex-1 flex-col p-3 text-left border-t border-gray-100">
+
+        {/* Product Title */}
+        <h3 className="min-h-[50px] line-clamp-3 text-[13px] font-semibold leading-[1.35] text-gray-900 transition-colors group-hover:text-[#800020] sm:text-[13.5px]">
           {product.name}
         </h3>
 
-        {product.modelNumber && <div className="text-[10px] sm:text-[11px] text-gray-500 font-medium">Model: <strong className="text-gray-700">{product.modelNumber}</strong></div>}
+        {/* Model Number box only (no PID) */}
+        {modelNumber && (
+          <div className="mt-2">
+            <span
+              className="inline-block min-w-0 max-w-full truncate rounded bg-gray-100 border border-gray-200 px-1.5 py-0.5 text-[10.5px] font-semibold text-gray-600"
+              title={`Model: ${modelNumber}`}
+            >
+              Model: {modelNumber}
+            </span>
+          </div>
+        )}
 
-        {/* Price & In Stock row */}
-        <div className="flex items-center justify-between gap-1 pt-1">
-          <div className="flex items-baseline gap-1">
-            <span className="text-sm sm:text-base md:text-lg font-bold text-gray-900">
+        {/* Price row with brand logo/name */}
+        <div className="mt-2.5 flex min-h-8 items-center justify-between gap-2">
+          <div className="flex min-w-0 items-baseline gap-1">
+            <span className="text-[17px] font-extrabold text-gray-900 sm:text-lg leading-none">
               ₹{(Number(displayPrice) || 0).toLocaleString('en-IN')}
             </span>
             {hasDealerDiscount && (
@@ -191,76 +230,106 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
             )}
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 inline-block"></span>
-              {product.stockStatus === 'in-stock' ? 'In Stock' : product.stockStatus === 'out-of-stock' ? 'Out of Stock' : 'On Request'}
-            </span>
-            <span className="text-[10px] sm:text-[11px] text-gray-500 font-bold uppercase truncate max-w-[65px] sm:max-w-[85px]" title={brandName}>
-              {brandName}
-            </span>
-          </div>
-        </div>
-
-        {hasDealerDiscount && <div className="text-xs text-emerald-700">Dealer saving: ?{(standardPrice - displayPrice).toLocaleString('en-IN')}</div>}
-
-        {/* Sub-label: Quantity Slabs Not Applicable */}
-        <div className="text-[10px] text-gray-400 select-none pt-0.5">
-          Quantity Slabs Not Applicable
-        </div>
-      </div>
-
-      {/* Interactive Actions Row: Quantity Stepper + ADD TO CART */}
-      <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center gap-1.5 w-full min-w-0">
-        {/* Quantity Stepper [- 1 +] */}
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="flex items-center border border-gray-300 rounded bg-white overflow-hidden text-xs shrink-0 h-9"
-        >
-          <button
-            type="button"
-            onClick={handleDecrement}
-            className="w-6 h-full text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors flex items-center justify-center font-bold"
-            aria-label="Decrease quantity"
-          >
-            <Minus className="w-3 h-3" />
-          </button>
-          <span className="w-6 text-center font-bold text-gray-800 select-none text-xs">
-            {quantity}
-          </span>
-          <button
-            type="button"
-            onClick={handleIncrement}
-            className="w-6 h-full text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors flex items-center justify-center font-bold"
-            aria-label="Increase quantity"
-          >
-            <Plus className="w-3 h-3" />
-          </button>
-        </div>
-
-        {/* ADD TO CART Button in Solid Maroon */}
-        <button
-          type="button"
-          disabled={!product.isActive || isAdding}
-          onClick={handleAddToCart}
-          className={cn(
-            "flex-1 min-w-0 h-9 px-1 rounded text-[9px] sm:text-[10px] font-bold uppercase transition-all duration-150 flex items-center justify-center gap-1 shadow-2xs whitespace-nowrap",
-            isAdded
-              ? "bg-emerald-600 text-white hover:bg-emerald-700"
-              : "bg-primary hover:bg-primary/90 text-white active:scale-98"
-          )}
-        >
-          {isAdding ? (
-            <span className="animate-spin text-xs">●</span>
-          ) : isAdded ? (
-            <>
-              <Check className="w-3.5 h-3.5 stroke-[3]" /> ADDED
-            </>
+          {brandLogo ? (
+            <img src={brandLogo} alt={`${brandName} logo`} title={brandName} className="h-7 w-14 shrink-0 object-contain object-right" />
           ) : (
-            'ADD TO CART'
+            <span className="max-w-[72px] shrink-0 truncate text-right text-[10px] font-extrabold uppercase text-[#800020]" title={brandName}>{brandName}</span>
           )}
-        </button>
+        </div>
 
+        {/* Stock Status Badge (matching Mega Jaipur green/amber/rose dot + text) */}
+        <div className="mt-1.5">
+          {isOutOfStock ? (
+            <span className="inline-flex items-center gap-1 rounded border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-rose-700">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-rose-500" />
+              Out of Stock
+            </span>
+          ) : isLowStock ? (
+            <span className="inline-flex items-center gap-1 rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-amber-700">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
+              Low Stock
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-emerald-700">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              In Stock
+            </span>
+          )}
+        </div>
+
+        {hasDealerDiscount && (
+          <div className="mt-1 text-[10px] font-semibold text-[#800020]">
+            Dealer saving: ₹{(standardPrice - displayPrice).toLocaleString('en-IN')}
+          </div>
+        )}
+
+        {/* Quantity Selector + Add to Cart / Out of Stock Button */}
+        <div className="mt-auto pt-2 border-t border-gray-100 flex h-8.5 w-full items-center gap-1.5 mt-3">
+          {/* Qty Stepper - only shown when not OOS */}
+          {!isOutOfStock && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="flex shrink-0 h-8 overflow-hidden rounded border border-gray-300 bg-white text-xs shadow-xs"
+            >
+              <button
+                type="button"
+                onClick={handleDecrement}
+                disabled={quantity <= 1}
+                className="flex w-6 items-center justify-center text-gray-700 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+                aria-label="Decrease quantity"
+              >
+                <Minus className="h-3 w-3" />
+              </button>
+              <span className="flex w-6 items-center justify-center border-x border-gray-200 text-xs font-bold text-gray-900 select-none">
+                {quantity}
+              </span>
+              <button
+                type="button"
+                onClick={handleIncrement}
+                disabled={maximumQuantity <= 0}
+                className="flex w-6 items-center justify-center text-gray-700 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+                aria-label="Increase quantity"
+              >
+                <Plus className="h-3 w-3" />
+              </button>
+            </div>
+          )}
+
+          {/* Add to Cart OR Out of Stock button */}
+          {isOutOfStock ? (
+            /* Full width disabled OOS button in orange (matching user request) */
+            <button
+              type="button"
+              disabled
+              className="flex h-8 w-full items-center justify-center whitespace-nowrap rounded border border-orange-300 bg-orange-50 text-orange-700 text-[10.5px] font-bold tracking-tight uppercase cursor-not-allowed select-none"
+            >
+              OUT OF STOCK
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={!product.isActive || isAdding}
+              onClick={handleAddToCart}
+              className={cn(
+                'flex h-8 min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded px-1.5 sm:px-2 text-[10px] sm:text-[10.5px] font-bold uppercase tracking-tight transition-all shadow-xs',
+                isAdded
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-[#800020] text-white hover:bg-[#660019] active:scale-98 cursor-pointer'
+              )}
+            >
+              {isAdding ? (
+                <span className="animate-spin text-xs">●</span>
+              ) : isAdded ? (
+                <>
+                  <Check className="h-3 w-3 stroke-[3]" />
+                  <span>ADDED</span>
+                </>
+              ) : (
+                <span>ADD TO CART</span>
+              )}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

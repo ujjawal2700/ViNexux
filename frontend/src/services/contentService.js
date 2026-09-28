@@ -33,6 +33,11 @@ export const contentService = {
     return response.data;
   },
 
+  async getWebsiteSettings(options = {}) {
+    const response = await apiClient.get('/content/website-settings', options);
+    return response.data;
+  },
+
   /**
    * Fetch published static CMS page by slug.
    */

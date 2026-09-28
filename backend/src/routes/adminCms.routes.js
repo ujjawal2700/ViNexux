@@ -25,6 +25,9 @@ import {
   uploadBannerImg,
   uploadPromoBannerImg,
   uploadTrustBadgeIconImg,
+  fetchWebsiteSettingsAdmin,
+  editWebsiteSettingsAdmin,
+  uploadWebsiteAssetImg,
 } from '../controllers/adminCms.controller.js';
 import { validate } from '../middlewares/validate.js';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
@@ -40,6 +43,8 @@ import {
   trustBadgeSchema,
   updateTrustBadgeSchema,
   footerContentSchema,
+  websiteSettingsSchema,
+  websiteAssetSchema,
 } from '../validators/cms.validator.js';
 
 const router = Router();
@@ -81,6 +86,11 @@ router.post('/trust-badges/:id/image', uploadSingle('file', 'cms'), uploadTrustB
 // --- Footer Content ---
 router.get('/footer-content', fetchFooterContentAdmin);
 router.put('/footer-content', validate(footerContentSchema), editFooterContentAdmin);
+
+// --- Website / SEO Settings ---
+router.get('/website-settings', fetchWebsiteSettingsAdmin);
+router.put('/website-settings', validate(websiteSettingsSchema), editWebsiteSettingsAdmin);
+router.post('/website-settings/:field/image', validate(websiteAssetSchema), uploadSingle('file', 'cms'), uploadWebsiteAssetImg);
 
 export default router;
 

@@ -4,6 +4,7 @@ import {
   getPublicCmsPageBySlug,
   getPublicActiveTrustBadges,
   getPublicFooterContent,
+  getPublicWebsiteSettings,
 } from '../services/cms.service.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -32,4 +33,9 @@ export const fetchPublicTrustBadges = asyncHandler(async (req, res) => {
 export const fetchPublicFooterContent = asyncHandler(async (req, res) => {
   const footer = await getPublicFooterContent();
   return ApiResponse.success(res, 'Active footer content retrieved successfully', { footer }, HTTP_STATUS.OK);
+});
+
+export const fetchPublicWebsiteSettings = asyncHandler(async (req, res) => {
+  const settings = await getPublicWebsiteSettings();
+  return ApiResponse.success(res, 'Website settings retrieved successfully', { settings }, HTTP_STATUS.OK);
 });

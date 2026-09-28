@@ -50,7 +50,7 @@ export const productService = {
   /**
    * Create a new product.
    */
-  async createProduct({ sku, name, modelNumber, categoryId, brandId, description, images = [], specifications = [], standardPrice = 0, dealerPrice = 0, isFeatured = false, isActive = true }) {
+  async createProduct({ sku, name, modelNumber, model, informationPhone, categoryId, brandId, description, images = [], specifications = [], standardPrice = 0, dealerPrice = 0, isFeatured = false, isActive = true }) {
     const uppercaseSku = sku.trim().toUpperCase();
 
     // Check duplicate SKU
@@ -83,6 +83,9 @@ export const productService = {
     const brand = brandId && await Brand.findOne({ _id: brandId, isActive: true });
     if (!brand) throw new AppError('Please select an active managed brand.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
     if (!modelNumber?.trim()) throw new AppError('Model number is required.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+    if (!model?.trim()) throw new AppError('Model is required.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+    const existingModelNumber = await Product.findOne({ modelNumber: modelNumber.trim() });
+    if (existingModelNumber) throw new AppError('Model number must be unique.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
     const normalizedSpecifications = [
       ...specifications.filter((specification) => !/^(brand|manufacturer)$/i.test(specification.key)),
       { key: 'Brand', value: brand.name },
@@ -95,6 +98,8 @@ export const productService = {
       sku: uppercaseSku,
       name: name.trim(),
       modelNumber: modelNumber.trim(),
+      model: model.trim(),
+      informationPhone: informationPhone?.trim() || undefined,
       categoryId,
       brandId,
       description: description ? description.trim() : undefined,
@@ -316,7 +321,13 @@ export const productService = {
 
     // Preserve existing fields that were not supplied
     if (updateData.name) product.name = updateData.name.trim();
-    if (updateData.modelNumber !== undefined) product.modelNumber = updateData.modelNumber.trim();
+    if (updateData.modelNumber !== undefined) {
+      const duplicateModel = await Product.findOne({ modelNumber: updateData.modelNumber.trim(), _id: { $ne: id } });
+      if (duplicateModel) throw new AppError('Model number must be unique.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+      product.modelNumber = updateData.modelNumber.trim();
+    }
+    if (updateData.model !== undefined) product.model = updateData.model.trim();
+    if (updateData.informationPhone !== undefined) product.informationPhone = updateData.informationPhone.trim();
     if (updateData.description !== undefined) product.description = updateData.description ? updateData.description.trim() : null;
     if (updateData.images !== undefined) product.images = updateData.images;
     if (updateData.specifications !== undefined) product.specifications = updateData.specifications;

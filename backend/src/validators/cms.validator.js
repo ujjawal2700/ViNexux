@@ -189,6 +189,20 @@ export const footerContentSchema = {
   }),
 };
 
+export const websiteSettingsSchema = {
+  body: z.object({
+    websiteName: z.string().trim().min(1, 'Website name is required').max(150),
+    metaTitle: z.string().trim().min(1, 'Meta title is required').max(200),
+    metaDescription: z.string().trim().min(20, 'Meta description must be at least 20 characters').max(500),
+  }),
+};
+
+export const websiteAssetSchema = {
+  params: z.object({
+    field: z.enum(['favicon', 'logo', 'ogImage']),
+  }),
+};
+
 export const getPageBySlugSchema = {
   params: z.object({
     slug: z

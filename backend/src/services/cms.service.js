@@ -3,6 +3,7 @@ import { PromotionalBanner } from '../models/PromotionalBanner.js';
 import { CmsPage } from '../models/CmsPage.js';
 import { TrustBadge } from '../models/TrustBadge.js';
 import { FooterContent } from '../models/FooterContent.js';
+import { WebsiteSettings } from '../models/WebsiteSettings.js';
 import { storageService } from './storage/storage.service.js';
 import { AppError } from '../utils/AppError.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
@@ -319,6 +320,64 @@ export const updateFooterContent = async (payload) => {
 export const getPublicFooterContent = async () => {
   const footer = await FooterContent.findOne({ isActive: true }).lean();
   return footer || null;
+};
+
+// ==========================================
+// 6. WEBSITE / SEO SETTINGS SERVICE
+// ==========================================
+
+export const getWebsiteSettings = async () => {
+  return WebsiteSettings.findOneAndUpdate(
+    { singletonKey: 'primary' },
+    { $setOnInsert: { singletonKey: 'primary' } },
+    { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+  );
+};
+
+export const updateWebsiteSettings = async (payload, adminUserId) => {
+  return WebsiteSettings.findOneAndUpdate(
+    { singletonKey: 'primary' },
+    { ...payload, singletonKey: 'primary', updatedBy: adminUserId },
+    { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+  );
+};
+
+export const getPublicWebsiteSettings = async () => {
+  const settings = await getWebsiteSettings();
+  return {
+    websiteName: settings.websiteName,
+    metaTitle: settings.metaTitle,
+    metaDescription: settings.metaDescription,
+    favicon: { url: settings.favicon?.url || '/favicon.jpeg' },
+    logo: { url: settings.logo?.url || '/logo.png' },
+    ogImage: { url: settings.ogImage?.url || '/favicon.jpeg' },
+  };
+};
+
+export const uploadWebsiteAsset = async (field, file, adminUserId) => {
+  const allowedFields = {
+    favicon: 'favicon',
+    logo: 'logo',
+    ogImage: 'og-image',
+  };
+  if (!allowedFields[field]) {
+    throw new AppError('Invalid website asset field.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+  }
+
+  const settings = await getWebsiteSettings();
+  const uploaded = await storageService.replaceFile({
+    oldPublicId: settings[field]?.publicId,
+    buffer: file.buffer,
+    originalname: file.originalname,
+    mimetype: file.mimetype,
+    folder: `vinexus/website/${allowedFields[field]}`,
+    category: 'cms',
+  });
+
+  settings[field] = { url: uploaded.url, publicId: uploaded.publicId };
+  settings.updatedBy = adminUserId;
+  await settings.save();
+  return settings;
 };
 
 export const uploadBannerImage = async (id, file) => {

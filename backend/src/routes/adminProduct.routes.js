@@ -7,6 +7,7 @@ import {
   deleteProduct,
   uploadImage,
   deleteImage,
+  seedTestStockQuantities,
 } from '../controllers/adminProduct.controller.js';
 import { validate } from '../middlewares/validate.js';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
@@ -31,6 +32,9 @@ router.delete('/:id', authenticate, authorize('admin'), validate(deleteProductSc
 // Product Image Storage Routes
 router.post('/:id/images', authenticate, authorize('admin'), uploadSingle('file', 'product'), uploadImage);
 router.delete('/:id/images/:publicId(*)', authenticate, authorize('admin'), deleteImage);
+
+// Dev/Admin utility: bulk seed test stock quantities
+router.post('/dev/seed-stock', authenticate, authorize('admin'), seedTestStockQuantities);
 
 export default router;
 

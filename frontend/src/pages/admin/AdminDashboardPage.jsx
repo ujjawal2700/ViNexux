@@ -55,7 +55,7 @@ const AdminDashboardPage = () => {
   if (loading) {
     return (
       <div className="space-y-6">
-        <AdminPageHeader title="Admin Dashboard" subtitle="Loading system overview..." />
+        <AdminPageHeader title="Admin Dashboard" subtitle="System Control Center Overview" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((n) => (
             <Skeleton key={n} className="h-28 rounded-xl" />

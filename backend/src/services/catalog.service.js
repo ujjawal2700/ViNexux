@@ -75,6 +75,35 @@ const brandExpression = {
   } }, 0] }, ''] } },
 };
 
+const stockNumberExpression = {
+  $convert: {
+    input: {
+      $trim: {
+        input: {
+          $ifNull: [{ $arrayElemAt: [{ $map: {
+            input: { $filter: { input: '$specifications', as: 'spec', cond: { $in: [{ $toLower: '$$spec.key' }, ['stock', 'inventory']] } } },
+            as: 'spec', in: '$$spec.value',
+          } }, 0] }, ''],
+        },
+      },
+    },
+    to: 'double',
+    onError: null,
+    onNull: null,
+  },
+};
+
+const stockStatusExpression = {
+  $switch: {
+    branches: [
+      { case: { $eq: ['$stockQuantity', 0] }, then: 'out-of-stock' },
+      { case: { $and: [{ $gt: ['$stockQuantity', 0] }, { $lt: ['$stockQuantity', 5] }] }, then: 'low-stock' },
+      { case: { $gte: ['$stockQuantity', 5] }, then: 'in-stock' },
+    ],
+    default: 'on-order',
+  },
+};
+
 export const getPublicBrands = async () => {
   const categories = await getPublicCategories();
   const managed = await Brand.find({ isActive: true }).sort({ sortOrder: 1, name: 1 }).lean();
@@ -126,7 +155,12 @@ export const getPublicProducts = async (query = {}, user = null) => {
       { categoryId: { $in: descendantIds(categories, matchingCategories.map((category) => category._id)) } },
     ];
   }
-  const pipeline = [{ $match: match }, { $set: { brand: { $toUpper: brandExpression } } }];
+  const basePipeline = [
+    { $match: match },
+    { $set: { brand: { $toUpper: brandExpression }, stockQuantity: stockNumberExpression } },
+    { $set: { stockStatus: stockStatusExpression } },
+  ];
+  const pipeline = [...basePipeline];
   let brand = query.brand;
   let managedBrandId = null;
   if (query.brandSlug) {
@@ -140,7 +174,11 @@ export const getPublicProducts = async (query = {}, user = null) => {
       { brandId: new mongoose.Types.ObjectId(managedBrandId) },
       { brand: new RegExp(`^${escapeRegex(brand.trim())}$`, 'i') },
     ],
-  } : { brand: new RegExp(`^${escapeRegex(brand.trim())}$`, 'i') } });
+  } : {
+    brand: {
+      $in: String(brand).split(',').map((name) => new RegExp(`^${escapeRegex(name.trim())}$`, 'i')),
+    },
+  } });
 
   const approvedDealer = user?.role === 'dealer'
     ? await DealerProfile.findOne({ userId: user._id, status: 'approved' }).lean() : null;
@@ -161,6 +199,10 @@ export const getPublicProducts = async (query = {}, user = null) => {
     if (values.length) extraFilters.push({ specifications: { $elemMatch: { key: new RegExp(`^${escapeRegex(key)}$`, 'i'), value: { $in: values } } } });
   }
   if (query.inStock === 'true') extraFilters.push({ specifications: { $elemMatch: { key: /^(stock|inventory)$/i, value: /^\s*[1-9]\d*(\.\d+)?\s*$/ } } });
+  if (query.availability) {
+    const requestedStatuses = String(query.availability).split(',').filter(Boolean);
+    if (requestedStatuses.length) extraFilters.push({ stockStatus: { $in: requestedStatuses } });
+  }
   if (query.minPrice !== undefined || query.maxPrice !== undefined) {
     extraFilters.push({ applicablePrice: {
       ...(query.minPrice !== undefined ? { $gte: Number(query.minPrice) } : {}),
@@ -175,9 +217,12 @@ export const getPublicProducts = async (query = {}, user = null) => {
   const [result] = await Product.aggregate([...pipeline, { $facet: {
     products: [...filtered, { $sort: { [sortField]: query.sortOrder === 'asc' ? 1 : -1, _id: 1 } }, { $skip: (page - 1) * limit }, { $limit: limit }, { $unset: ['_pricing', '__v'] }],
     total: [...filtered, { $count: 'count' }],
-    brands: [{ $match: { brand: { $ne: '' } } }, { $group: { _id: '$brand', count: { $sum: 1 } } }, { $sort: { _id: 1 } }],
     specs: [{ $unwind: '$specifications' }, { $group: { _id: { key: '$specifications.key', value: '$specifications.value' }, count: { $sum: 1 } } }, { $sort: { '_id.key': 1, '_id.value': 1 } }],
   } }]);
+  const [categoryBrands, availabilityCounts] = await Promise.all([
+    Product.aggregate([...basePipeline, { $match: { brand: { $ne: '' } } }, { $group: { _id: '$brand', count: { $sum: 1 } } }, { $sort: { _id: 1 } }]),
+    Product.aggregate([...basePipeline, { $group: { _id: '$stockStatus', count: { $sum: 1 } } }]),
+  ]);
   const byId = new Map(categories.map((category) => [String(category._id), category]));
   const productBrandIds = result.products.map((product) => product.brandId).filter(Boolean);
   const productBrands = productBrandIds.length ? await Brand.find({ _id: { $in: productBrandIds }, isActive: true }).lean() : [];
@@ -196,12 +241,12 @@ export const getPublicProducts = async (query = {}, user = null) => {
   const products = result.products.map((product) => {
     if (approvedDealer) product.dealerPrice = product.applicablePrice;
     else delete product.dealerPrice;
-    const stock = product.specifications?.find((spec) => /^(stock|inventory)$/i.test(spec.key))?.value;
-    const stockStatus = stock !== undefined && String(stock).trim() !== '' && Number.isFinite(Number(stock))
-      ? (Number(stock) > 0 ? 'in-stock' : 'out-of-stock') : 'on-request';
     return {
       ...product,
-      stockStatus,
+      modelNumber: product.modelNumber || `VNX-${String(product._id).slice(-8).toUpperCase()}`,
+      model: product.model || product.specifications?.find((specification) => specification.key?.trim().toLowerCase() === 'model')?.value || 'Standard Model',
+      availableStock: product.stockQuantity,
+      stockStatus: product.stockStatus || 'on-order',
       categoryPath: categoryPathFor(product.categoryId),
       brandId: brandById.get(String(product.brandId)) || product.brandId,
       categoryId: byId.get(String(product.categoryId)),
@@ -225,8 +270,12 @@ export const getPublicProducts = async (query = {}, user = null) => {
   return {
     products, pagination: { page, limit, total: result.total[0]?.count || 0, totalPages: Math.ceil((result.total[0]?.count || 0) / limit) },
     facets: {
-      brands: result.brands.map((item) => ({ name: item._id, count: item.count })),
-      specs: [...specMap.values()].map(({ definition, values }) => ({
+      brands: categoryBrands.map((item) => ({ name: item._id, count: item.count })),
+      availability: ['in-stock', 'low-stock', 'on-order', 'out-of-stock'].map((status) => ({
+        status,
+        count: availabilityCounts.find((item) => item._id === status)?.count || 0,
+      })),
+      specs: [...specMap.values()].filter(({ values }) => values.length > 1).slice(0, 5).map(({ definition, values }) => ({
         key: definition.key, label: definition.label, inputType: definition.inputType, unit: definition.unit,
         values: definition.options?.length
           ? [...values].sort((a, b) => definition.options.indexOf(a.val) - definition.options.indexOf(b.val))

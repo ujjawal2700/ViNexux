@@ -9,24 +9,21 @@ import ProductCard from '../../components/products/ProductCard';
 import BrandCarousel from '../../components/home/BrandCarousel';
 import CategorySlider from '../../components/home/CategorySlider';
 import HeroBannerSlider from '../../components/home/HeroBannerSlider';
+import Skeleton, { BrandCarouselSkeleton, ProductCardSkeleton } from '../../components/ui/Skeleton';
 
 const HomePageSkeleton = () => (
   <div className="w-full min-h-screen bg-gray-50 pb-16 space-y-6 sm:space-y-8" role="status" aria-label="Loading storefront">
-    <div className="w-full h-[200px] sm:h-[260px] md:h-[320px] lg:h-[380px] xl:h-[430px] 2xl:h-[460px] bg-gray-200 animate-pulse" />
+    <Skeleton className="w-full h-[200px] sm:h-[260px] md:h-[320px] lg:h-[380px] xl:h-[430px] 2xl:h-[460px] rounded-none" />
 
     <div className="w-full px-3 sm:px-6 lg:px-8 2xl:px-12">
-      <div className="flex gap-3 overflow-hidden">
-        {Array.from({ length: 8 }).map((_, index) => (
-          <div key={index} className="h-24 min-w-36 flex-1 rounded-lg bg-gray-200 animate-pulse" />
-        ))}
-      </div>
+      <BrandCarouselSkeleton count={8} className="px-0" />
     </div>
 
     <div className="w-full px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-4">
-      <div className="h-6 w-44 rounded bg-gray-200 animate-pulse" />
+      <Skeleton className="h-6 w-44" />
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
         {Array.from({ length: 6 }).map((_, index) => (
-          <div key={index} className="h-72 rounded-xl bg-gray-200 animate-pulse" />
+          <ProductCardSkeleton key={index} />
         ))}
       </div>
     </div>
@@ -67,7 +64,10 @@ export const HomePage = () => {
       // Category product rows are below the fold. Load them after the main
       // storefront is visible so they do not block the hero banner.
       const sectionResults = await Promise.allSettled(rootCats.map(async (category) => {
-        const response = await productService.getProducts({ categoryId: category._id, limit: 8 });
+        const response = await productService.getProducts(
+          { categoryId: category._id, limit: 8 },
+          { skipGlobalLoader: true }
+        );
         return { category, products: response.data?.products || [] };
       }));
       const sections = sectionResults

@@ -28,6 +28,8 @@ export const createProductSchema = {
       .min(2, { message: 'Product name must be at least 2 characters' })
       .max(150, { message: 'Product name cannot exceed 150 characters' }),
     modelNumber: z.string({ required_error: 'Model number is required' }).trim().min(1).max(100),
+    model: z.string({ required_error: 'Model is required' }).trim().min(1).max(100),
+    informationPhone: z.string().trim().max(20).regex(/^\+?[0-9 ]*$/, 'Information phone must contain only digits, spaces, or a leading +').optional(),
     categoryId: z
       .string({ required_error: 'Category ID is required' })
       .refine(isValidObjectId, { message: 'Invalid categoryId format. Must be a valid MongoDB ObjectId' }),
@@ -76,6 +78,8 @@ export const updateProductSchema = {
       .refine(isValidObjectId, { message: 'Invalid categoryId format. Must be a valid MongoDB ObjectId' })
       .optional(),
     modelNumber: z.string().trim().min(1).max(100).optional(),
+    model: z.string().trim().min(1).max(100).optional(),
+    informationPhone: z.string().trim().max(20).regex(/^\+?[0-9 ]*$/, 'Information phone must contain only digits, spaces, or a leading +').optional(),
     brandId: z.string().refine(isValidObjectId, { message: 'Invalid brandId format' }).optional(),
     description: z
       .string()
@@ -114,6 +118,11 @@ export const getProductsQuerySchema = {
     search: z.string().max(200).optional(),
     brandSlug: z.string().max(150).optional(),
     inStock: z.enum(['true', 'false']).optional(),
+    availability: z.string().max(100).refine((value) => {
+      const allowed = new Set(['in-stock', 'low-stock', 'on-order', 'out-of-stock']);
+      const statuses = value.split(',').filter(Boolean);
+      return statuses.length > 0 && statuses.every((status) => allowed.has(status));
+    }, { message: 'Invalid availability filter' }).optional(),
     minPrice: z.coerce.number().min(0).optional(),
     maxPrice: z.coerce.number().min(0).optional(),
     specs: z.string().max(10000).refine((value) => {

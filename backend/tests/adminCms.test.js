@@ -245,6 +245,19 @@ const runAdminCmsTests = async () => {
     const getFooterAdminRes = await request('/api/admin/cms/footer-content', { method: 'GET', headers: adminHeaders });
     assert(getFooterAdminRes.status === 200, 'Admin fetch footer content returns 200');
 
+    // 6. Website / SEO Settings Update & Fetch
+    const updateWebsiteSettingsRes = await request('/api/admin/cms/website-settings', { method: 'PUT', headers: adminHeaders }, {
+      websiteName: 'Vinexus Test Store',
+      metaTitle: 'Vinexus Test Store | Security Products',
+      metaDescription: 'Browse professional security, networking, and computer products from Vinexus Test Store.',
+    });
+    assert(updateWebsiteSettingsRes.status === 200, 'Admin update website settings returns 200');
+    assert(updateWebsiteSettingsRes.body.data.settings.websiteName === 'Vinexus Test Store', 'Website name updated in database');
+
+    const getWebsiteSettingsAdminRes = await request('/api/admin/cms/website-settings', { method: 'GET', headers: adminHeaders });
+    assert(getWebsiteSettingsAdminRes.status === 200, 'Admin fetch website settings returns 200');
+    assert(getWebsiteSettingsAdminRes.body.data.settings.metaTitle.includes('Vinexus Test Store'), 'Saved meta title is returned');
+
     // -------------------------------------------------------------
     // SECTION C: VALIDATION CHECKS
     // -------------------------------------------------------------
@@ -315,6 +328,10 @@ const runAdminCmsTests = async () => {
     const pubFooterRes = await request('/api/content/footer-content', { method: 'GET' });
     assert(pubFooterRes.status === 200, 'Public GET /api/content/footer-content returns 200');
     assert(pubFooterRes.body.data.footer.companyName === 'Vinexus Industrial Solutions', 'Public footer content matches');
+
+    const pubWebsiteSettingsRes = await request('/api/content/website-settings', { method: 'GET' });
+    assert(pubWebsiteSettingsRes.status === 200, 'Public GET /api/content/website-settings returns 200');
+    assert(pubWebsiteSettingsRes.body.data.settings.websiteName === 'Vinexus Test Store', 'Public website settings match admin changes');
 
     // -------------------------------------------------------------
     // SECTION E: SECURITY & SCRIPT INJECTION PROTECTION

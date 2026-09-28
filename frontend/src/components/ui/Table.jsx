@@ -1,5 +1,6 @@
 import React from 'react';
-import Spinner from './Spinner';
+import { Skeleton } from './Skeleton';
+import { LoadingPill } from './GlobalRequestLoader';
 
 const wrapperClass = (className = '') =>
   `w-full overflow-x-auto rounded-2xl border border-border bg-card relative shadow-xs ${className}`;
@@ -39,9 +40,9 @@ export const Table = ({
     const rows = data || [];
     return (
       <div className={wrapperClass(className)}>
-        {isLoading && (
+        {isLoading && rows.length > 0 && (
           <div className="absolute inset-0 bg-card/70 backdrop-blur-xs flex items-center justify-center z-10">
-            <Spinner size="md" />
+            <LoadingPill message="Updating table..." />
           </div>
         )}
         <table className="w-full text-left text-sm text-foreground border-collapse">
@@ -58,7 +59,15 @@ export const Table = ({
             </tr>
           </thead>
           <tbody className={tbodyClass}>
-            {rows.length > 0 ? (
+            {isLoading && rows.length === 0 ? (
+              Array.from({ length: 6 }).map((_, rowIndex) => (
+                <tr key={rowIndex}>
+                  {columns.map((column, columnIndex) => (
+                    <td key={column.key || columnIndex} className="px-6 py-4"><Skeleton className="h-5 w-full" /></td>
+                  ))}
+                </tr>
+              ))
+            ) : rows.length > 0 ? (
               rows.map((row, rowIdx) => (
                 <tr key={row._id || row.id || rowIdx} className={rowClass}>
                   {columns.map((col, colIdx) => (
@@ -90,8 +99,8 @@ export const Table = ({
   return (
     <div className={wrapperClass(className)}>
       {isLoading && (
-        <div className="absolute inset-0 bg-card/70 backdrop-blur-xs flex items-center justify-center z-10">
-          <Spinner size="md" />
+        <div className="absolute inset-0 min-h-40 bg-card/70 backdrop-blur-xs flex items-center justify-center z-10">
+          <LoadingPill message="Updating table..." />
         </div>
       )}
       <table className="w-full text-left text-sm text-foreground border-collapse">

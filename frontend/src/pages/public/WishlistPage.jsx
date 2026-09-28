@@ -42,7 +42,7 @@ export const WishlistPage = () => {
     if (stock <= 0) {
       return { label: '• On Order', color: 'text-amber-700', canAdd: false };
     }
-    if (stock <= 5) {
+    if (stock < 5) {
       return { label: '• Low Stock', color: 'text-amber-600', canAdd: true };
     }
     return { label: '• In Stock', color: 'text-emerald-600', canAdd: true };

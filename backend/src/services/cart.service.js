@@ -8,6 +8,26 @@ import { AppError } from '../utils/AppError.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../constants/errorCodes.js';
 
+const getAvailableStock = (product) => {
+  const stockSpecification = product?.specifications?.find((specification) =>
+    /^(stock|inventory)$/i.test(String(specification?.key || '').trim())
+  );
+  if (!stockSpecification) return null;
+  const parsed = Number(stockSpecification.value);
+  return Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : null;
+};
+
+const assertQuantityAvailable = (product, quantity) => {
+  const availableStock = getAvailableStock(product);
+  if (availableStock !== null && quantity > availableStock) {
+    throw new AppError(
+      `Limited stock. Only ${availableStock} unit${availableStock === 1 ? '' : 's'} available.`,
+      HTTP_STATUS.BAD_REQUEST,
+      ERROR_CODES.BAD_REQUEST
+    );
+  }
+};
+
 /**
  * Validate that product exists, is active, and belongs to an active category
  */
@@ -158,9 +178,11 @@ export const addToCart = async (userId, productId, quantity = 1) => {
 
   if (existingItemIndex > -1) {
     const newQty = cart.items[existingItemIndex].quantity + quantity;
+    assertQuantityAvailable(product, newQty);
     cart.items[existingItemIndex].quantity = Math.min(1000, newQty);
     cart.items[existingItemIndex].priceSnapshot = priceSnapshot;
   } else {
+    assertQuantityAvailable(product, quantity);
     cart.items.push({
       productId,
       quantity: Math.min(1000, quantity),
@@ -201,7 +223,8 @@ export const updateCartItem = async (userId, productId, quantity) => {
     );
   }
 
-  await validateProductAndCategoryActive(productId);
+  const product = await validateProductAndCategoryActive(productId);
+  assertQuantityAvailable(product, quantity);
 
   cart.items[itemIndex].quantity = quantity;
   await cart.save();

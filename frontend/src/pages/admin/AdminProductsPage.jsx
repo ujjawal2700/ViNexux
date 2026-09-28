@@ -223,7 +223,7 @@ const AdminProductsPage = () => {
             <Table.Header>
               <Table.Row>
                 <Table.Head>Image</Table.Head>
-                <Table.Head>SKU / Name</Table.Head>
+                <Table.Head>SKU / Model / Name</Table.Head>
                 <Table.Head>Category</Table.Head>
                 <Table.Head>Standard Price</Table.Head>
                 <Table.Head>Dealer Price</Table.Head>
@@ -254,6 +254,8 @@ const AdminProductsPage = () => {
                     </Table.Cell>
                     <Table.Cell>
                       <div className="font-mono text-[11px] text-primary font-bold">{prod.sku}</div>
+                      <div className="text-[10px] font-semibold text-muted-foreground">Model No: {prod.modelNumber || 'Not set'}</div>
+                      <div className="text-[10px] text-muted-foreground">Model: {prod.model || 'Not set'}</div>
                       <div className="text-xs font-bold text-foreground max-w-xs truncate">{prod.name}</div>
                     </Table.Cell>
                     <Table.Cell className="text-xs text-muted-foreground">

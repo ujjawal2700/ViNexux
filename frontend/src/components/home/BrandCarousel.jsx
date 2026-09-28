@@ -3,6 +3,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { buildBrandUrl } from '../../utils/categoryUrls';
+import { BrandCarouselSkeleton } from '../ui/Skeleton';
 
 /**
  * Authentic brand logo renderer with custom SVG icons, typographic styling,
@@ -302,7 +303,7 @@ export const BrandCarousel = () => {
     }
   };
 
-  if (loading) return <p className="px-6 py-3" role="status">Loading brands...</p>;
+  if (loading) return <BrandCarouselSkeleton />;
   if (error) return <button className="px-6 py-3" onClick={reload}>{error} Retry</button>;
   if (!brands.length) return null;
 

@@ -8,6 +8,7 @@ import contentService from '../../services/contentService';
 import useToast from '../../hooks/useToast';
 import ProductCard from '../../components/products/ProductCard';
 import { buildProductPath } from '../../utils/categoryUrls';
+import { getAvailableStock } from '../../utils/inventory';
 import { Skeleton } from '../../components/ui/Skeleton';
 import {
   ShoppingCart,
@@ -179,8 +180,13 @@ export const CartPage = () => {
   };
 
   // Update Item Quantity (Optimistic + Broadcast)
-  const handleUpdateQuantity = async (productId, newQuantity) => {
+  const handleUpdateQuantity = async (productId, newQuantity, product) => {
     if (newQuantity < 1 || !productId) return;
+    const availableStock = getAvailableStock(product);
+    if (availableStock !== null && newQuantity > availableStock) {
+      toast.stock('Limited stock — maximum available quantity selected.');
+      return;
+    }
     try {
       setUpdatingItemId(productId);
 
@@ -311,7 +317,7 @@ export const CartPage = () => {
     }
     if (!isAuthenticated) {
       toast.info('Please sign up or log in to send your enquiry. Your cart will be kept.');
-      navigate('/login', { state: { from: '/account/checkout-enquiry' } });
+      navigate('/login', { state: { from: { pathname: '/account/checkout-enquiry' } } });
       return;
     }
     sessionStorage.setItem('vinexus_enquiry_selected_products', JSON.stringify([...selectedItemIds]));
@@ -320,6 +326,12 @@ export const CartPage = () => {
 
   // Open a pre-filled WhatsApp chat with the CMS-configured admin number.
   const handleChatOnWhatsApp = () => {
+    if (!isAuthenticated) {
+      toast.info('Please sign up or log in to chat on WhatsApp. Your cart will be kept.');
+      navigate('/login', { state: { from: { pathname: '/cart' } } });
+      return;
+    }
+
     if (selectedItemIds.size === 0) {
       toast.warning('Please select at least one product using the checkboxes.');
       return;
@@ -490,6 +502,8 @@ export const CartPage = () => {
                       const standardPrice = prod.standardPrice || prod.price || unitPrice;
                       const cdDiscount = Math.max(0, standardPrice - unitPrice);
                       const lineTotal = unitPrice * (item.quantity || 1);
+                      const availableStock = getAvailableStock(prod);
+                      const isAtStockLimit = availableStock !== null && (item.quantity || 1) >= availableStock;
 
                       const imgUrl =
                         prod.images?.[0]?.url ||
@@ -557,7 +571,7 @@ export const CartPage = () => {
                             <div className="inline-flex items-center border border-[#d2b8d5] rounded bg-white overflow-hidden">
                               <button
                                 type="button"
-                                onClick={() => handleUpdateQuantity(prodId, (item.quantity || 1) - 1)}
+                                onClick={() => handleUpdateQuantity(prodId, (item.quantity || 1) - 1, prod)}
                                 disabled={(item.quantity || 1) <= 1 || updatingItemId === prodId}
                                 className="w-7 h-7 flex items-center justify-center text-[#420b45] hover:bg-[#fbf7fc] disabled:opacity-30 cursor-pointer transition-colors"
                                 title="Decrease quantity"
@@ -569,14 +583,17 @@ export const CartPage = () => {
                               </span>
                               <button
                                 type="button"
-                                onClick={() => handleUpdateQuantity(prodId, (item.quantity || 1) + 1)}
-                                disabled={updatingItemId === prodId}
+                                onClick={() => handleUpdateQuantity(prodId, (item.quantity || 1) + 1, prod)}
+                                disabled={updatingItemId === prodId || availableStock === 0}
                                 className="w-7 h-7 flex items-center justify-center text-[#420b45] hover:bg-[#fbf7fc] disabled:opacity-30 cursor-pointer transition-colors"
                                 title="Increase quantity"
                               >
                                 <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                               </button>
                             </div>
+                            {isAtStockLimit && (
+                              <div className="mt-1 text-[11px] font-semibold text-[#800020]">Limited stock</div>
+                            )}
                           </td>
 
                           {/* TOTAL + TRASH BUTTON */}

@@ -1,6 +1,7 @@
 import app from './app.js';
 import { config } from './config/env.js';
 import { connectDB, disconnectDB } from './config/db.js';
+import { backfillProductModels } from './services/productModelBackfill.service.js';
 
 let server;
 
@@ -19,6 +20,10 @@ const startServer = async () => {
 
     // 2. Connect to MongoDB asynchronously after port binding
     await connectDB();
+    const modelBackfill = await backfillProductModels();
+    if (modelBackfill.updated > 0) {
+      console.log(`[Server] Assigned unique model data to ${modelBackfill.updated} existing products.`);
+    }
   } catch (error) {
     console.error(`[Server] Startup warning/failure: ${error.message}`);
     // If database connection fails, keep process running so port scanner receives health response

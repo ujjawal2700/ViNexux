@@ -24,6 +24,9 @@ import {
   uploadBannerImage,
   uploadPromoBannerImage,
   uploadTrustBadgeIcon,
+  getWebsiteSettings,
+  updateWebsiteSettings,
+  uploadWebsiteAsset,
 } from '../services/cms.service.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -142,6 +145,22 @@ export const fetchFooterContentAdmin = asyncHandler(async (req, res) => {
 export const editFooterContentAdmin = asyncHandler(async (req, res) => {
   const footer = await updateFooterContent(req.body);
   return ApiResponse.success(res, 'Footer content updated successfully', { footer }, HTTP_STATUS.OK);
+});
+
+// --- Website / SEO Settings ---
+export const fetchWebsiteSettingsAdmin = asyncHandler(async (req, res) => {
+  const settings = await getWebsiteSettings();
+  return ApiResponse.success(res, 'Website settings retrieved successfully', { settings }, HTTP_STATUS.OK);
+});
+
+export const editWebsiteSettingsAdmin = asyncHandler(async (req, res) => {
+  const settings = await updateWebsiteSettings(req.body, req.user._id);
+  return ApiResponse.success(res, 'Website settings updated successfully', { settings }, HTTP_STATUS.OK);
+});
+
+export const uploadWebsiteAssetImg = asyncHandler(async (req, res) => {
+  const settings = await uploadWebsiteAsset(req.params.field, req.file, req.user._id);
+  return ApiResponse.success(res, 'Website asset uploaded successfully', { settings }, HTTP_STATUS.OK);
 });
 
 // --- Asset Storage Handlers ---
