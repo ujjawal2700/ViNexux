@@ -10,7 +10,9 @@ import categoryService from '../services/categoryService';
 import productService from '../services/productService';
 import { ROLES } from '../constants';
 import Logo from '../components/ui/Logo';
+import useWebsiteSettings from '../hooks/useWebsiteSettings';
 import { Drawer } from '../components/ui/Drawer';
+import { Skeleton } from '../components/ui/Skeleton';
 import { slugify, buildCategoryPath, buildProductPath } from '../utils/categoryUrls';
 import {
   Search,
@@ -76,6 +78,8 @@ const PublicLayout = () => {
   const { user, isAuthenticated, adminUser, isAdminAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { settings: websiteSettings } = useWebsiteSettings();
+  const websiteName = (websiteSettings.websiteName || 'Vi Nexus').toUpperCase();
 
   // Search state
   const [headerSearch, setHeaderSearch] = useState('');
@@ -779,13 +783,9 @@ const PublicLayout = () => {
           <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
             <Logo className="w-10 h-10 sm:w-12 sm:h-12 object-contain group-hover:scale-105 transition-transform" />
             <div className="flex flex-col text-left">
-              <div className="flex items-center">
-                <span className="text-2xl sm:text-3xl font-black tracking-tight text-primary">
-                  VI
-                </span>
-                <span className="text-2xl sm:text-3xl font-black tracking-tight text-gray-900">
-                  NEXUS
-                </span>
+              <div className="flex items-center" aria-label={websiteName}>
+                <span className="text-2xl sm:text-3xl font-black tracking-tight text-primary">{websiteName.slice(0, 2)}</span>
+                <span className="text-2xl sm:text-3xl font-black tracking-tight text-gray-900">{websiteName.slice(2)}</span>
               </div>
               <span className="text-[9px] sm:text-[10px] font-black tracking-widest text-primary uppercase -mt-1">
                 COMPU WORLD
@@ -1157,7 +1157,7 @@ const PublicLayout = () => {
                 <span>Shop By Brand</span>
               </Link>
 
-              {categoriesLoading && <span role="status" className="px-3 text-xs">Loading categories...</span>}
+              {categoriesLoading && <div role="status" aria-label="Loading categories" className="flex items-center gap-2 px-2">{[80, 64, 96, 72, 88, 64].map((width, index) => <Skeleton key={index} className="h-6 shrink-0 rounded" style={{ width }} />)}</div>}
               {categoriesError && <button className="px-3 text-xs" onClick={() => setCategoryRetry((value) => value + 1)}>{categoriesError}. Retry</button>}
               {!categoriesLoading && !categoriesError && categoryTree.length === 0 && <span className="px-3 text-xs">No categories available</span>}
               {/* Horizontal Categories with compact gaps and clear readable font matching Mega Jaipur */}
@@ -1343,7 +1343,7 @@ const PublicLayout = () => {
             Categories
           </div>
           <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
-            {categoriesLoading && <span role="status">Loading categories...</span>}
+            {categoriesLoading && <div role="status" aria-label="Loading categories" className="space-y-2 px-3 py-2">{[1, 2, 3, 4, 5].map((item) => <Skeleton key={item} className="h-8 w-full" />)}</div>}
             {categoriesError && <button onClick={() => setCategoryRetry((value) => value + 1)}>{categoriesError}. Retry</button>}
             {categoryTree.map((header) => (
               <details key={header._id} className="px-3 py-2">

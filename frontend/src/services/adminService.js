@@ -119,6 +119,14 @@ export const adminService = {
     return response.data;
   },
 
+
+  /**
+   * DEV/ADMIN: Bulk seed test stock quantities on all laptop products.
+   */
+  async seedTestStockQuantities() {
+    const response = await apiClient.post('/admin/products/dev/seed-stock');
+    return response.data;
+  },
   async uploadCmsImage(file, folder = 'vinexus/banners') {
     const formData = new FormData();
     formData.append('image', file);
@@ -428,6 +436,26 @@ export const adminService = {
 
   async updateFooterContentAdmin(footerData) {
     const response = await apiClient.put('/admin/cms/footer-content', footerData);
+    return response.data;
+  },
+
+  async getWebsiteSettingsAdmin() {
+    const response = await apiClient.get('/admin/cms/website-settings');
+    return response.data;
+  },
+
+  async updateWebsiteSettingsAdmin(settings) {
+    const response = await apiClient.put('/admin/cms/website-settings', settings);
+    return response.data;
+  },
+
+  async uploadWebsiteAssetAdmin(field, file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post(`/admin/cms/website-settings/${field}/image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      loadingMessage: 'Uploading website image...',
+    });
     return response.data;
   },
 

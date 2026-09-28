@@ -27,6 +27,7 @@ export const ToastProvider = ({ children }) => {
     error: (msg, duration) => addToast(msg, 'error', duration),
     warning: (msg, duration) => addToast(msg, 'warning', duration),
     info: (msg, duration) => addToast(msg, 'info', duration),
+    stock: (msg, duration) => addToast(msg, 'stock', duration),
     remove: removeToast,
   };
 

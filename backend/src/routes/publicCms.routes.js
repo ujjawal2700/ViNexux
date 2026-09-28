@@ -5,6 +5,7 @@ import {
   fetchPublicCmsPageBySlug,
   fetchPublicTrustBadges,
   fetchPublicFooterContent,
+  fetchPublicWebsiteSettings,
 } from '../controllers/publicCms.controller.js';
 import { validate } from '../middlewares/validate.js';
 import { getPageBySlugSchema } from '../validators/cms.validator.js';
@@ -17,5 +18,6 @@ router.get('/promotional-banners', fetchPublicPromoBanners);
 router.get('/pages/:slug', validate(getPageBySlugSchema), fetchPublicCmsPageBySlug);
 router.get('/trust-badges', fetchPublicTrustBadges);
 router.get('/footer-content', fetchPublicFooterContent);
+router.get('/website-settings', fetchPublicWebsiteSettings);
 
 export default router;

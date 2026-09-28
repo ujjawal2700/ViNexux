@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import productService from '../../services/productService';
 import categoryService from '../../services/categoryService';
 import cartService from '../../services/cartService';
@@ -11,29 +11,21 @@ import ProductCard from '../../components/products/ProductCard';
 import { extractProductId, buildCategoryPath, buildCategoryTrail } from '../../utils/categoryUrls';
 import { Image } from '../../components/ui/Image';
 import { Skeleton } from '../../components/ui/Skeleton';
-import { ErrorState } from '../../components/ui/ErrorState';
 import NotFoundPage from './NotFoundPage';
+import { getAvailableStock } from '../../utils/inventory';
 import {
   ShoppingCart,
-  ArrowLeft,
-  Tag,
   ShieldCheck,
-  Plus,
-  Minus,
   CheckCircle2,
   XCircle,
-  Share2,
   ChevronRight,
   ChevronLeft,
   Heart,
   Copy,
   Check,
-  FileText,
-  X,
-  Send,
-  Phone,
   ListFilter,
-  CheckCircle,
+  Minus,
+  Plus,
 } from 'lucide-react';
 
 export const ProductDetailPage = () => {
@@ -42,7 +34,6 @@ export const ProductDetailPage = () => {
   const rawId = id || param3 || param2;
   const productId = extractProductId(rawId);
 
-  const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const toast = useToast();
 
@@ -50,23 +41,18 @@ export const ProductDetailPage = () => {
   const [categories, setCategories] = useState([]);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState(null);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
   const [hasNameCopied, setHasNameCopied] = useState(false);
+  const [quantity, setQuantity] = useState(1);
 
-  // Quick Enquiry Modal State
-  const [isEnquiryModalOpen, setIsEnquiryModalOpen] = useState(false);
-  const [enquiryForm, setEnquiryForm] = useState({
-    name: '',
-    phone: '',
-    city: '',
-    message: '',
-  });
-  const [isSubmittingEnquiry, setIsSubmittingEnquiry] = useState(false);
+  useEffect(() => {
+    setQuantity(1);
+  }, [productId]);
+
 
   // 1. Fetch categories tree for breadcrumbs & category linking
   useEffect(() => {
@@ -133,20 +119,8 @@ export const ProductDetailPage = () => {
   useEffect(() => {
     fetchProduct();
     setSelectedImageIndex(0);
-    setQuantity(1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [fetchProduct]);
-
-  // Sync enquiry form defaults from logged-in user
-  useEffect(() => {
-    if (user) {
-      setEnquiryForm((prev) => ({
-        ...prev,
-        name: user.fullName || user.name || user.contactPerson || '',
-        phone: user.phone || user.whatsappNumber || '',
-      }));
-    }
-  }, [user]);
 
   // Compute Breadcrumb Trail
   const breadcrumbTrail = useMemo(() => {
@@ -212,7 +186,25 @@ export const ProductDetailPage = () => {
   }
 
   // Stock status: isActive = true means available in stock
-  const isInStock = product?.stockStatus !== 'out-of-stock';
+  const availableStock = getAvailableStock(product);
+  const isInStock = product?.stockStatus === 'out-of-stock' || availableStock === 0
+    ? false
+    : ['in-stock', 'low-stock'].includes(product?.stockStatus) || (availableStock !== null && availableStock > 0) || Boolean(product?.isActive);
+
+  // Stepper handlers & disabled state (matches user request: + disables at stock limit, - re-enables it)
+  const isIncrementDisabled = !isInStock || (availableStock !== null && quantity >= availableStock);
+  const isDecrementDisabled = !isInStock || quantity <= 1;
+
+  const handleDecrement = () => {
+    setQuantity((prev) => Math.max(1, prev - 1));
+  };
+
+  const handleIncrement = () => {
+    if (availableStock !== null && quantity >= availableStock) {
+      return;
+    }
+    setQuantity((prev) => prev + 1);
+  };
 
   // Format Currency (INR ₹)
   const formatCurrency = (amount) => {
@@ -222,10 +214,6 @@ export const ProductDetailPage = () => {
       maximumFractionDigits: 0,
     }).format(amount);
   };
-
-  // Quantity Modifier Handlers
-  const handleDecrement = () => setQuantity((prev) => Math.max(1, prev - 1));
-  const handleIncrement = () => setQuantity((prev) => Math.min(1000, prev + 1));
 
   // Add to Cart Action
   const handleAddToCart = async () => {
@@ -300,19 +288,6 @@ export const ProductDetailPage = () => {
     setTimeout(() => setHasNameCopied(false), 2000);
   };
 
-  // Share
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: product?.name,
-        text: `Check out ${product?.name} on ViNexus`,
-        url: window.location.href,
-      }).catch(() => {});
-    } else {
-      handleCopyLink();
-    }
-  };
-
   // Extracted Brand info
   const brandName = useMemo(() => {
     if (product?.brandId?.name) return product.brandId.name;
@@ -323,93 +298,24 @@ export const ProductDetailPage = () => {
     return firstWord || 'ViNexus';
   }, [product]);
 
-  // Model & Item code from specifications
-  const modelName = useMemo(() => {
-    if (product?.modelNumber) return product.modelNumber;
-    const fromSpec = product?.specifications?.find(
-      (s) => s.key.toLowerCase().includes('model') || s.key.toLowerCase().includes('series')
-    )?.value;
-    return fromSpec || product?.name?.split(' ')[1] || 'Standard Series';
-  }, [product]);
+  const modelNumber = product?.modelNumber || `VNX-${String(product?._id || '').slice(-8).toUpperCase()}`;
+  const modelName = product?.model || product?.specifications?.find(
+    (specification) => specification.key?.trim().toLowerCase() === 'model'
+  )?.value || 'Standard Model';
 
   const warrantyText = useMemo(() => {
     const fromSpec = product?.specifications?.find((s) => s.key.toLowerCase().includes('warranty'))?.value;
     return fromSpec || '1 Year ON-SITE / Direct Replacement Warranty';
   }, [product]);
 
-  // WhatsApp Enquiry Link Generator
-  const whatsappUrl = useMemo(() => {
-    const phone = '918949940610';
-    const message = `Hello ViNexus, I am interested in:
-*Product:* ${product?.name || ''}
-*Model:* ${modelName}
-*Status:* ${isInStock ? 'In Stock' : 'Out of Stock (Special Request)'}
-*Price:* ${formatCurrency(displayPrice)}
-*Link:* ${window.location.href}
-
-Please share current pricing and availability.`;
-
-    return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-  }, [product, modelName, isInStock, displayPrice]);
-
-  // Submit Enquiry Modal Form
-  const handleSubmitEnquiry = async (e) => {
-    e.preventDefault();
-    if (!isAuthenticated) {
-      guestCartService.addItem(product, quantity);
-      toast.info('Please sign up or log in to send your enquiry. Your cart will be kept.');
-      setIsEnquiryModalOpen(false);
-      navigate('/login', { state: { from: window.location.pathname } });
-      return;
-    }
-    if (!enquiryForm.phone || enquiryForm.phone.length < 10) {
-      toast.error('Please enter a valid 10-digit WhatsApp/Mobile number');
-      return;
-    }
-
-    setIsSubmittingEnquiry(true);
-    try {
-      if (isAuthenticated && !isAdmin) {
-        try {
-          await cartService.addItem(product._id, quantity);
-          window.dispatchEvent(new Event('cart-updated'));
-        } catch {
-          // non-blocking
-        }
-      }
-
-      toast.success(
-        `Thank you ${enquiryForm.name || 'Valued Customer'}! Your enquiry for "${product.name}" has been recorded. Our enterprise team will contact you shortly.`
-      );
-      setIsEnquiryModalOpen(false);
-
-      // Open WhatsApp chat to speed up inquiry
-      window.open(whatsappUrl, '_blank');
-    } catch (err) {
-      console.error('Enquiry submission error:', err);
-      toast.error('Failed to submit enquiry. Please try via WhatsApp.');
-    } finally {
-      setIsSubmittingEnquiry(false);
-    }
-  };
-
-  const requireLoginForEnquiry = () => {
-    if (isAuthenticated) {
-      setIsEnquiryModalOpen(true);
-      return;
-    }
-    guestCartService.addItem(product, quantity);
-    toast.info('Please sign up or log in to send your enquiry. Your cart will be kept.');
-    navigate('/login', { state: { from: window.location.pathname } });
-  };
-
   // Structured Full Specifications List (Matching Image 2)
   const fullSpecifications = useMemo(() => {
     if (!product) return [];
     const list = [];
 
-    // Ensure Brand and Model are first
+    // Keep the client-managed identifiers first and separate.
     list.push({ key: 'Brand', value: brandName });
+    list.push({ key: 'Model Number', value: modelNumber });
     list.push({ key: 'Model', value: modelName });
 
     // Add all existing specs from product.specifications if not already present
@@ -432,7 +338,7 @@ Please share current pricing and availability.`;
     }
 
     return list;
-  }, [product, brandName, modelName, warrantyText]);
+  }, [product, brandName, modelNumber, modelName, warrantyText]);
 
   // Product Images Gallery (Safe for hooks order)
   const images = useMemo(() => {
@@ -589,19 +495,21 @@ Please share current pricing and availability.`;
                 <button
                   type="button"
                   onClick={handleCopyName}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:text-[#800020]"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:text-[#800020]"
                   title="Copy Product Name"
+                  aria-label="Copy Product Name"
                 >
-                  {hasNameCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />} Copy Name
+                  {hasNameCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                 </button>
 
                 <button
                   type="button"
                   onClick={handleCopyLink}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:text-[#800020]"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:text-[#800020]"
                   title="Copy Product Link"
+                  aria-label="Copy Product Link"
                 >
-                  {hasCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />} Copy Link
+                  {hasCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                 </button>
               </div>
             </div>
@@ -621,7 +529,14 @@ Please share current pricing and availability.`;
           <div className="border border-gray-200 rounded-xl overflow-hidden shadow-2xs bg-white text-xs">
             <table className="w-full text-left border-collapse">
               <tbody>
-                {/* Model */}
+                <tr className="border-b border-gray-100 hover:bg-gray-50/50">
+                  <td className="px-4 py-2.5 font-medium text-gray-600 flex items-center gap-2">
+                    <span className="text-gray-400 font-bold">#</span>
+                    <span>Model Number</span>
+                  </td>
+                  <td className="px-4 py-2.5 font-semibold text-gray-800">{modelNumber}</td>
+                </tr>
+
                 <tr className="border-b border-gray-100 hover:bg-gray-50/50">
                   <td className="px-4 py-2.5 font-medium text-gray-600 flex items-center gap-2">
                     <span className="text-gray-400 font-bold">▣</span>
@@ -643,73 +558,25 @@ Please share current pricing and availability.`;
                   </td>
                 </tr>
 
-                {/* 5. Product Registration */}
-                <tr className="border-b border-gray-100 hover:bg-gray-50/50">
-                  <td className="px-4 py-2.5 font-medium text-gray-600 flex items-center gap-2">
-                    <span className="text-gray-400 font-bold">::</span>
-                    <span>Product Registration</span>
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <a
-                      href={`https://wa.me/918949940610?text=Hi%20ViNexus%2C%20I%20want%20to%20register%20warranty%20for%20${encodeURIComponent(product.name)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#800020] font-semibold hover:underline inline-flex items-center gap-1"
-                    >
-                      <span>Click here</span>
-                      <ChevronRight className="w-3 h-3" />
-                    </a>
-                  </td>
-                </tr>
-
-                {/* 6. Warranty Claim Procedure */}
-                <tr className="hover:bg-gray-50/50">
-                  <td className="px-4 py-2.5 font-medium text-gray-600 flex items-center gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-[#800020]" />
-                    <span>Warranty Claim Procedure</span>
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <a
-                      href={`https://wa.me/918949940610?text=Hi%20ViNexus%2C%20I%20need%20assistance%20with%20warranty%20claim%20for%20${encodeURIComponent(product.name)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#800020] font-semibold hover:underline inline-flex items-center gap-1"
-                    >
-                      <span>Click here</span>
-                      <ChevronRight className="w-3 h-3" />
-                    </a>
-                  </td>
-                </tr>
               </tbody>
             </table>
           </div>
 
           {/* Contact Assistance Row (Matching Given Image: "For More Information: 70738 88300") */}
-          <div className="bg-[#fbf7f9] border border-rose-200/70 rounded-xl px-4 py-2.5 flex items-center justify-between text-xs">
+          <div className="bg-[#fbf7f9] border border-rose-200/70 rounded-xl px-4 py-2.5 flex items-center text-xs">
             <div className="flex items-center gap-2 text-gray-800">
               <CheckCircle2 className="w-4 h-4 text-[#800020] shrink-0" />
               <span>For More Information:</span>
-              <a href="tel:+917073888300" className="font-bold text-[#800020] hover:underline font-mono">
-                70738 88300
-              </a>
+              {product.informationPhone ? (
+                <a href={`tel:${product.informationPhone.replace(/\s/g, '')}`} className="font-bold text-[#800020] hover:underline font-mono">{product.informationPhone}</a>
+              ) : (
+                <span className="font-semibold text-gray-500">Number will be updated by admin</span>
+              )}
             </div>
-            <a
-              href="https://wa.me/917073888300"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[11px] font-bold text-[#800020] hover:underline"
-            >
-              Contact Support &rarr;
-            </a>
           </div>
         </div>
 
-        {/* =========================================
-            COLUMN 3: BUY CARD, ADD TO CART & ENQUIRIES (Right)
-            Matching Given Image with User Rules:
-            - If In Stock: Add to Cart Enabled, WhatsApp Enabled, Send Enquiry Disabled
-            - If Out of Stock: Add to Cart Disabled, Send Enquiry Enabled
-           ========================================= */}
+        {/* Purchase card: product quantity is adjusted later in the cart. */}
         <div className="lg:col-span-3">
           <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-xs space-y-4">
             
@@ -726,13 +593,11 @@ Please share current pricing and availability.`;
                 )}
               </div>
 
-              {/* Discount Tag */}
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-rose-50 text-[#800020] border border-rose-200 text-xs font-bold uppercase tracking-tight shrink-0">
-                <Tag className="w-3 h-3 text-[#800020]" />
-                {hasDealerDiscount
-                  ? `CD DISCOUNT: ${formatCurrency(standardPrice - dealerPrice)}`
-                  : 'Price shown above'}
-              </span>
+              {hasDealerDiscount && (
+                <span className="inline-flex items-center rounded border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-bold uppercase tracking-tight text-[#800020]">
+                  DEALER SAVING: {formatCurrency(standardPrice - dealerPrice)}
+                </span>
+              )}
             </div>
 
             {/* In Stock / Out of Stock Status Pill */}
@@ -748,39 +613,39 @@ Please share current pricing and availability.`;
               </div>
             )}
 
-            {/* Quantity Selector + Add to Cart Button */}
-            <div className="flex items-center gap-2">
-              {/* Quantity Counter */}
-              <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden h-11 shrink-0 bg-gray-50">
-                <button
-                  type="button"
-                  onClick={handleDecrement}
-                  disabled={quantity <= 1 || !isInStock}
-                  className="px-2.5 h-full hover:bg-gray-200 text-gray-600 disabled:opacity-30 transition-colors cursor-pointer"
-                  aria-label="Decrease quantity"
-                >
-                  <Minus className="w-3.5 h-3.5" />
-                </button>
-                <span className="w-8 text-center font-bold text-gray-900 text-sm">
-                  {quantity}
-                </span>
-                <button
-                  type="button"
-                  onClick={handleIncrement}
-                  disabled={!isInStock}
-                  className="px-2.5 h-full hover:bg-gray-200 text-gray-600 disabled:opacity-30 transition-colors cursor-pointer"
-                  aria-label="Increase quantity"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
-              </div>
+            {/* Quantity Stepper + Add to Cart Button (Matching Screenshot) */}
+            <div className="flex items-center gap-3">
+              {isInStock && (
+                <div className="flex items-center h-11 border border-gray-300 rounded-lg bg-white overflow-hidden shadow-xs shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleDecrement}
+                    disabled={isDecrementDisabled}
+                    className="w-10 h-full flex items-center justify-center text-gray-700 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    aria-label="Decrease quantity"
+                  >
+                    <Minus className="w-4 h-4 stroke-[2.2]" />
+                  </button>
+                  <span className="w-10 h-full flex items-center justify-center border-x border-gray-200 font-bold text-sm text-gray-900 select-none">
+                    {quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleIncrement}
+                    disabled={isIncrementDisabled}
+                    className="w-10 h-full flex items-center justify-center text-gray-700 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    aria-label="Increase quantity"
+                  >
+                    <Plus className="w-4 h-4 stroke-[2.2]" />
+                  </button>
+                </div>
+              )}
 
-              {/* Add to Cart Button (Enabled when In Stock, Disabled when Out of Stock) */}
               <button
                 type="button"
                 onClick={handleAddToCart}
                 disabled={!isInStock || isAdding}
-                className={`flex-1 h-11 px-3 rounded-lg font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-xs ${
+                className={`flex-1 h-11 px-4 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xs ${
                   isInStock
                     ? 'bg-[#800020] hover:bg-[#66001a] text-white cursor-pointer active:scale-98'
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-75'
@@ -789,83 +654,6 @@ Please share current pricing and availability.`;
               >
                 <ShoppingCart className="w-4 h-4 shrink-0" />
                 <span>{isInStock ? (isAdding ? 'Adding...' : 'Add to Cart') : 'Out of Stock'}</span>
-              </button>
-            </div>
-
-            {/* Send Enquiry Button */}
-            {/* RULE: If product available (in stock) -> Send Enquiry button is DISABLED */}
-            {/* If product out of stock -> Send Enquiry button is ENABLED */}
-            <div>
-              <button
-                type="button"
-                onClick={requireLoginForEnquiry}
-                disabled={isInStock}
-                className={`w-full h-10 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 border transition-all ${
-                  !isInStock
-                    ? 'border-[#800020] bg-[#800020] text-white hover:bg-[#66001a] shadow-sm cursor-pointer'
-                    : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
-                }`}
-                title={
-                  !isInStock
-                    ? 'Submit enquiry for restock or bulk order'
-                    : 'Product is available in stock to purchase directly via Cart'
-                }
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>
-                  {!isInStock ? 'Send Enquiry (Out of Stock)' : 'Send Enquiry (Disabled - Available via Cart)'}
-                </span>
-              </button>
-            </div>
-
-            {/* TWO BOTTOM OPTION BOXES: WhatsApp Enquiry & Send Enquiry */}
-            <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gray-100">
-              
-              {/* Option 1: WhatsApp Enquiry (Always enabled) */}
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(event) => {
-                  if (!isAuthenticated) {
-                    event.preventDefault();
-                    requireLoginForEnquiry();
-                  }
-                }}
-                className="p-2.5 rounded-xl border border-gray-200 hover:border-[#25D366] hover:bg-emerald-50/40 transition-all flex flex-col justify-between group cursor-pointer text-left"
-                title="Send Enquiry to WhatsApp"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-bold text-gray-900 group-hover:text-[#25D366] transition-colors flex items-center gap-1">
-                    <svg className="w-3.5 h-3.5 fill-[#25D366] shrink-0" viewBox="0 0 24 24">
-                      <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
-                    </svg>
-                    WhatsApp
-                  </span>
-                  <span className="text-[9px] font-bold text-[#25D366] uppercase">Chat &rarr;</span>
-                </div>
-                <span className="text-[10px] text-gray-500 line-clamp-1 leading-tight">
-                  Instant Quote
-                </span>
-              </a>
-
-              {/* Option 2: Send Enquiry */}
-              <button
-                type="button"
-                onClick={requireLoginForEnquiry}
-                className="p-2.5 rounded-xl border border-gray-200 hover:border-[#800020] hover:bg-rose-50/40 transition-all flex flex-col justify-between group cursor-pointer text-left"
-                title="Send Product Enquiry"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-bold text-gray-900 group-hover:text-[#800020] transition-colors flex items-center gap-1">
-                    <FileText className="w-3.5 h-3.5 text-[#800020] shrink-0" />
-                    Enquiry
-                  </span>
-                  <span className="text-[9px] font-bold text-[#800020] uppercase">Quote &rarr;</span>
-                </div>
-                <span className="text-[10px] text-gray-500 line-clamp-1 leading-tight">
-                  B2B Assistance
-                </span>
               </button>
             </div>
 
@@ -943,126 +731,7 @@ Please share current pricing and availability.`;
         </section>
       )}
 
-      {/* =========================================================================
-          5. DIRECT PRODUCT ENQUIRY MODAL (B2B / Out of Stock)
-         ========================================================================= */}
-      {isEnquiryModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 relative animate-in fade-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-[#800020]" />
-                <h3 className="font-bold text-base text-gray-900">
-                  Submit Product Enquiry
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsEnquiryModalOpen(false)}
-                className="text-gray-400 hover:text-gray-700 p-1 rounded-full cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            {/* Product Snapshot */}
-            <div className="my-4 p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center gap-3">
-              <div className="w-14 h-14 bg-white rounded-lg p-1 border border-gray-200 shrink-0">
-                <Image src={currentImage} alt={product.name} aspectRatio="aspect-square" className="object-contain w-full h-full" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h4 className="text-xs font-bold text-gray-900 truncate">{product.name}</h4>
-                <div className="flex items-center gap-2 text-[11px] text-gray-500 mt-0.5">
-                  <span>SKU: {product.sku}</span>
-                  <span>•</span>
-                  <span className="font-bold text-[#800020]">{formatCurrency(displayPrice)}</span>
-                </div>
-                <div className="mt-1">
-                  {isInStock ? (
-                    <span className="text-[10px] text-emerald-700 font-bold">✔ In Stock</span>
-                  ) : (
-                    <span className="text-[10px] text-rose-700 font-bold">✖ Out of Stock (Special Request)</span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Enquiry Form */}
-            <form onSubmit={handleSubmitEnquiry} className="space-y-3 text-xs">
-              <div>
-                <label className="block text-gray-700 font-semibold mb-1">Your Full Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Ramesh Kumar"
-                  value={enquiryForm.name}
-                  onChange={(e) => setEnquiryForm({ ...enquiryForm, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-[#800020] focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-gray-700 font-semibold mb-1">WhatsApp / Phone *</label>
-                  <input
-                    type="tel"
-                    required
-                    maxLength={10}
-                    placeholder="10-digit mobile"
-                    value={enquiryForm.phone}
-                    onChange={(e) => setEnquiryForm({ ...enquiryForm, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-[#800020] focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-semibold mb-1">City / Location</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Jaipur, Rajasthan"
-                    value={enquiryForm.city}
-                    onChange={(e) => setEnquiryForm({ ...enquiryForm, city: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-[#800020] focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-gray-700 font-semibold mb-1">Specific Requirement / Query</label>
-                <textarea
-                  rows={3}
-                  placeholder={`Specify required quantity, custom cabling, deployment timeframe, or ask about restocking for ${product.name}...`}
-                  value={enquiryForm.message}
-                  onChange={(e) => setEnquiryForm({ ...enquiryForm, message: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-[#800020] focus:outline-none resize-none"
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  type="submit"
-                  disabled={isSubmittingEnquiry}
-                  className="flex-1 py-2.5 px-4 rounded-lg bg-[#800020] hover:bg-[#66001a] text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-xs"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>{isSubmittingEnquiry ? 'Sending...' : 'Submit Enquiry & Chat'}</span>
-                </button>
-
-                <a
-                  href={whatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="py-2.5 px-4 rounded-lg bg-[#25D366] hover:bg-[#20ba5a] text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-xs"
-                >
-                  <Phone className="w-3.5 h-3.5" />
-                  <span>Direct WhatsApp</span>
-                </a>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

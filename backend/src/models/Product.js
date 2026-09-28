@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { randomBytes } from 'node:crypto';
 
 const productImageSchema = new mongoose.Schema(
   {
@@ -66,8 +67,24 @@ const productSchema = new mongoose.Schema(
     },
     modelNumber: {
       type: String,
+      required: [true, 'Model number is required'],
       trim: true,
+      unique: true,
+      sparse: true,
+      default: () => `VNX-${randomBytes(5).toString('hex').toUpperCase()}`,
       maxlength: [100, 'Model number cannot exceed 100 characters'],
+    },
+    model: {
+      type: String,
+      required: [true, 'Model is required'],
+      trim: true,
+      default: 'Standard Model',
+      maxlength: [100, 'Model cannot exceed 100 characters'],
+    },
+    informationPhone: {
+      type: String,
+      trim: true,
+      maxlength: [20, 'Information phone cannot exceed 20 characters'],
     },
     brandId: {
       type: mongoose.Schema.Types.ObjectId,

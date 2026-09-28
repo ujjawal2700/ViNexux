@@ -81,6 +81,8 @@ const AdminProductDetailPage = () => {
   const [selectedBrandId, setSelectedBrandId] = useState('');
   const [sku, setSku] = useState('');
   const [modelNumber, setModelNumber] = useState('');
+  const [model, setModel] = useState('');
+  const [informationPhone, setInformationPhone] = useState('');
   const [warranty, setWarranty] = useState('1 Year Official Warranty');
   const [countryOfOrigin, setCountryOfOrigin] = useState('India');
   const [hsnCode, setHsnCode] = useState('');
@@ -213,6 +215,8 @@ const AdminProductDetailPage = () => {
       setSku(prod.sku || '');
       setDescription(prod.description || '');
       setModelNumber(prod.modelNumber || '');
+      setModel(prod.model || '');
+      setInformationPhone(prod.informationPhone || '');
       setSelectedBrandId(String(prod.brandId?._id || prod.brandId || ''));
       setStandardPrice(prod.standardPrice !== undefined ? String(prod.standardPrice) : '');
       setDealerPrice(prod.dealerPrice !== undefined ? String(prod.dealerPrice) : '');
@@ -235,8 +239,10 @@ const AdminProductDetailPage = () => {
           const keyLower = sp.key.toLowerCase().trim();
           if (keyLower === 'brand') {
             setBrandName(sp.value);
-          } else if (keyLower === 'model number' || keyLower === 'model') {
+          } else if (keyLower === 'model number' && !prod.modelNumber) {
             setModelNumber(sp.value);
+          } else if (keyLower === 'model' && !prod.model) {
+            setModel(sp.value);
           } else if (keyLower === 'warranty') {
             setWarranty(sp.value);
           } else if (keyLower === 'country of origin') {
@@ -433,6 +439,11 @@ const AdminProductDetailPage = () => {
       setActiveTab('general');
       return;
     }
+    if (!model.trim()) {
+      setFormError('Please enter the product model in General Info.');
+      setActiveTab('general');
+      return;
+    }
 
     // 2. Validate Category Hierarchy
     // Remember user requirement: Sub category is strictly optional!
@@ -476,7 +487,6 @@ const AdminProductDetailPage = () => {
       // Assemble structured specifications array
       const allSpecs = [];
       if (brandName.trim()) allSpecs.push({ key: 'Brand', value: brandName.trim() });
-      if (modelNumber.trim()) allSpecs.push({ key: 'Model Number', value: modelNumber.trim() });
       if (warranty.trim()) allSpecs.push({ key: 'Warranty', value: warranty.trim() });
       if (countryOfOrigin.trim()) allSpecs.push({ key: 'Country of Origin', value: countryOfOrigin.trim() });
       if (hsnCode.trim()) allSpecs.push({ key: 'HSN Code', value: hsnCode.trim() });
@@ -500,6 +510,8 @@ const AdminProductDetailPage = () => {
       const payload = {
         name: name.trim(),
         modelNumber: modelNumber.trim(),
+        model: model.trim(),
+        informationPhone: informationPhone.trim(),
         sku: sku.trim().toUpperCase(),
         categoryId: effectiveCategoryId,
         brandId: selectedBrandId,
@@ -775,12 +787,30 @@ const AdminProductDetailPage = () => {
               </div>
 
               {/* Hardware Spec Attributes Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-2 border-t border-gray-100">
-                <FormField label="MODEL NUMBER">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+                <FormField label="MODEL NUMBER" required hint="Must be unique for every product">
                   <Input
                     value={modelNumber}
                     onChange={(e) => setModelNumber(e.target.value)}
-                    placeholder="e.g. G614JU-N3193WS"
+                    placeholder="e.g. VNX-G614JU-N3193WS"
+                    required
+                  />
+                </FormField>
+
+                <FormField label="MODEL" required>
+                  <Input
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    placeholder="e.g. ROG Strix G16"
+                    required
+                  />
+                </FormField>
+
+                <FormField label="MORE INFORMATION PHONE">
+                  <Input
+                    value={informationPhone}
+                    onChange={(e) => setInformationPhone(e.target.value)}
+                    placeholder="e.g. +91 70738 88300"
                   />
                 </FormField>
 
@@ -853,7 +883,7 @@ const AdminProductDetailPage = () => {
 
                   <div>
                     <label className="text-[11px] font-black uppercase tracking-wider text-gray-700 block mb-1">
-                      Regular Price (₹) *
+                      Standard Price (₹) *
                     </label>
                     <Input
                       type="number"
@@ -868,7 +898,7 @@ const AdminProductDetailPage = () => {
 
                   <div>
                     <label className="text-[11px] font-black uppercase tracking-wider text-emerald-700 block mb-1">
-                      Dealer Sale (₹) *
+                      Dealer Price (₹) *
                     </label>
                     <Input
                       type="number"

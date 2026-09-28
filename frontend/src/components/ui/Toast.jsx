@@ -23,6 +23,11 @@ const toastConfig = {
     style: 'bg-muted border-border text-foreground',
     iconStyle: 'text-primary',
   },
+  stock: {
+    icon: Info,
+    style: 'bg-[#fff6f8] border-[#800020] text-[#800020]',
+    iconStyle: 'text-[#800020]',
+  },
 };
 
 export const ToastContainer = ({ toasts = [], onDismiss }) => {

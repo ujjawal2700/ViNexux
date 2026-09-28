@@ -25,8 +25,9 @@ import {
   ChevronDown,
   ChevronRight,
   Layers,
-  GitBranch
-  ,Tags
+  GitBranch,
+  Tags,
+  Settings2,
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -72,6 +73,7 @@ const AdminLayout = () => {
   ];
 
   const cmsNav = [
+    { label: 'Website / SEO Settings', path: '/admin/cms/website-settings', icon: Settings2 },
     { label: 'Hero Banners', path: '/admin/cms/banners', icon: Image },
     { label: 'Promotional Cards', path: '/admin/cms/promotional-banners', icon: Sparkles },
     { label: 'CMS Static Pages', path: '/admin/cms/pages', icon: FileText },
@@ -123,8 +125,6 @@ const AdminLayout = () => {
 
                 if (isCatManagement) {
                   const isCatRoute = location.pathname.startsWith('/admin/categories');
-                  const currentTier = new URLSearchParams(location.search).get('tier');
-
                   return (
                     <div key={item.path} className="space-y-1">
                       {/* Main Category Management Header with Dropdown Chevron */}

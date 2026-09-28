@@ -79,6 +79,9 @@ try {
   check(branch.data.facets.specs.find((s) => s.key === 'RAM').label === 'Memory', 'Facet uses category-owned label');
   check(tree.data.categories.find((c) => c.slug === 'laptop').filterDefinitions[0].key === 'RAM', 'Public category contract exposes product filter definitions');
   check((await get('/products?category=laptop&inStock=true')).data.pagination.total === 1, 'Stock filter uses stored quantity instead of active flag');
+  check((await get('/products?category=laptop&availability=low-stock')).data.pagination.total === 1, 'Low-stock availability filter uses stored quantity');
+  check((await get('/products?category=laptop&availability=out-of-stock')).data.pagination.total === 1, 'Out-of-stock availability filter uses stored quantity');
+  check(branch.data.facets.availability.find((item) => item.status === 'low-stock').count === 1, 'Availability facet returns category-scoped counts');
   check((await get('/products?category=laptop&minPrice=150&maxPrice=250')).data.pagination.total === 1, 'Price range is enforced server-side');
   check((await get('/products?brandSlug=unlisted-brand')).data.pagination.total === 4, 'New database brand is routable without frontend whitelist');
   check((await get('/products/brands')).data.brands.some((brand) => brand.name === 'UNLISTED BRAND'), 'Legacy database brands remain visible during migration');

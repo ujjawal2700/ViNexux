@@ -5,7 +5,8 @@ import categoryService from '../../services/categoryService';
 import ProductCard from '../../components/products/ProductCard';
 import { Drawer } from '../../components/ui/Drawer';
 import { Pagination } from '../../components/ui/Pagination';
-import { SkeletonCard } from '../../components/ui/Skeleton';
+import { FilterSidebarSkeleton, ProductCardSkeleton } from '../../components/ui/Skeleton';
+import { ContentLoadingOverlay } from '../../components/ui/GlobalRequestLoader';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
 import {
@@ -27,7 +28,6 @@ import {
   ChevronDown,
   LayoutGrid,
   CheckSquare,
-  Square,
   SlidersHorizontal,
   PackageCheck,
   Layers,
@@ -41,9 +41,9 @@ const SORT_OPTIONS = [
   { value: 'name_desc', label: 'Name (Z - A)' },
   { value: 'price_asc', label: 'Price (Low > High)' },
   { value: 'price_desc', label: 'Price (High > Low)' },
-  { value: 'model_asc', label: 'Model (A - Z)' },
-  { value: 'model_desc', label: 'Model (Z - A)' },
 ];
+
+const DEFAULT_AVAILABILITY = ['in-stock', 'low-stock', 'on-order'];
 
 export const ProductsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -65,7 +65,7 @@ export const ProductsPage = () => {
 
 
   const [selectedSpecs, setSelectedSpecs] = useState({}); // { "Wattage": ["65w"], ... }
-  const [inStockOnly, setInStockOnly] = useState(false);
+  const [selectedAvailability, setSelectedAvailability] = useState(() => [...DEFAULT_AVAILABILITY]);
   const [sortOption, setSortOption] = useState('default');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 28;
@@ -84,7 +84,7 @@ export const ProductsPage = () => {
   const [categories, setCategories] = useState([]);
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [categoryError, setCategoryError] = useState(null);
-  const [facets, setFacets] = useState({ brands: [], specs: [] });
+  const [facets, setFacets] = useState({ brands: [], availability: [], specs: [] });
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
 
   // UI state
@@ -123,9 +123,12 @@ export const ProductsPage = () => {
   }, [categories, headerSlug, param2, param3, targetCategorySlug]);
   const queryCategory = categories.find((category) => category._id === initialCategory || category.slug === initialCategory);
   const selectedCategoryId = targetCategorySlug ? (routeCategory?._id || '') : (queryCategory?._id || initialCategory);
-  const resolvedBrand = initialBrand || (brandSlug ? brandSlug.replace(/-/g, ' ').toUpperCase() : null);
-  const selectedBrands = useMemo(() => resolvedBrand ? [resolvedBrand.toUpperCase()] : [], [resolvedBrand]);
-  const activeBrandParam = resolvedBrand || '';
+  const routeBrand = brandSlug ? brandSlug.replace(/-/g, ' ').toUpperCase() : '';
+  const selectedBrands = useMemo(() => {
+    const names = initialBrand ? initialBrand.split(',') : (routeBrand ? [routeBrand] : []);
+    return [...new Set(names.map((name) => name.trim().toUpperCase()).filter(Boolean))];
+  }, [initialBrand, routeBrand]);
+  const resolvedBrand = selectedBrands.length === 1 ? selectedBrands[0] : '';
 
   // 3. Fetch products from API
   const fetchProducts = useCallback(async (signal) => {
@@ -148,12 +151,6 @@ export const ProductsPage = () => {
         sortOrder = 'asc';
       } else if (sortOption === 'name_desc') {
         sortBy = 'name';
-        sortOrder = 'desc';
-      } else if (sortOption === 'model_asc') {
-        sortBy = 'modelNumber';
-        sortOrder = 'asc';
-      } else if (sortOption === 'model_desc') {
-        sortBy = 'modelNumber';
         sortOrder = 'desc';
       } else if (sortOption === 'newest') {
         sortBy = 'createdAt';
@@ -183,11 +180,11 @@ export const ProductsPage = () => {
 
       if (brandSlug && !initialBrand) query.brandSlug = brandSlug;
       else if (initialBrand) query.brand = initialBrand;
-      if (inStockOnly) query.inStock = 'true';
+      if (selectedAvailability.length) query.availability = selectedAvailability.join(',');
       if (Object.values(selectedSpecs).some((values) => values.length)) query.specs = JSON.stringify(selectedSpecs);
-      const response = await productService.getProducts(query, { signal });
+      const response = await productService.getProducts(query, { signal, skipGlobalLoader: true });
       if (signal?.aborted) return;
-      setFacets(response.data?.facets || { brands: [], specs: [] });
+      setFacets(response.data?.facets || { brands: [], availability: [], specs: [] });
       const productList = response.data?.products || response.products || [];
       const pageInfo = response.data?.pagination || response.pagination || {
         page: 1,
@@ -205,7 +202,7 @@ export const ProductsPage = () => {
     } finally {
       if (!signal?.aborted) setIsLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchTerm, selectedCategoryId, targetCategorySlug, sortOption, initialCategory, initialBrand, brandSlug, inStockOnly, selectedSpecs, categoriesLoaded, categoryError, routeCategory, user?.id, user?.dealerStatus]);
+  }, [currentPage, itemsPerPage, searchTerm, selectedCategoryId, targetCategorySlug, sortOption, initialCategory, initialBrand, brandSlug, selectedAvailability, selectedSpecs, categoriesLoaded, categoryError, routeCategory, user?.id, user?.dealerStatus]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -215,6 +212,9 @@ export const ProductsPage = () => {
 
   const availableBrands = facets.brands;
   const dynamicSpecs = facets.specs;
+  const availabilityFacets = facets.availability || [];
+  const hasDefaultAvailability = selectedAvailability.length === DEFAULT_AVAILABILITY.length
+    && DEFAULT_AVAILABILITY.every((status) => selectedAvailability.includes(status));
   // Filtering and pagination are performed together by MongoDB.
   const displayedProducts = products;
 
@@ -258,51 +258,16 @@ export const ProductsPage = () => {
     ];
   }, [resolvedBrand, selectedBrands, selectedCategoryId, activeCategory, categories]);
 
-  // Related categories for sidebar (siblings or children)
-  const categoryNavigation = useMemo(() => {
-    if (!activeCategory) {
-      return {
-        type: 'root',
-        items: categories.filter((c) => !c.parentId),
-      };
-    }
-
-    const directChildren = categories.filter(
-      (c) => (c.parentId?._id || c.parentId)?.toString() === activeCategory._id.toString()
-    );
-
-    if (directChildren.length > 0) {
-      return {
-        type: 'children',
-        parent: activeCategory,
-        items: directChildren,
-      };
-    }
-
-    const parentId = activeCategory.parentId?._id || activeCategory.parentId;
-    if (parentId) {
-      const parentCat = categories.find((c) => c._id === parentId.toString());
-      const siblings = categories.filter(
-        (c) => (c.parentId?._id || c.parentId)?.toString() === parentId.toString()
-      );
-      return {
-        type: 'siblings',
-        parent: parentCat,
-        items: siblings,
-      };
-    }
-
-    return {
-      type: 'root',
-      items: categories.filter((c) => !c.parentId),
-    };
-  }, [activeCategory, categories]);
-
   // Keep search and category constraints when changing a brand.
   const handleToggleBrand = (brandName) => {
     const next = new URLSearchParams(searchParams);
-    if (selectedBrands.includes(brandName)) next.delete('brand');
-    else next.set('brand', brandName);
+    const normalized = brandName.toUpperCase();
+    const updated = selectedBrands.includes(normalized)
+      ? selectedBrands.filter((name) => name !== normalized)
+      : [...selectedBrands, normalized];
+    if (updated.length) next.set('brand', updated.join(','));
+    else next.delete('brand');
+    setCurrentPage(1);
     if (brandSlug) navigate(`/search?${next}`);
     else setSearchParams(next);
   };
@@ -319,38 +284,38 @@ export const ProductsPage = () => {
     });
   };
 
-  // Preserve search/brand when navigating to a different category.
-  const handleSelectCategory = (catId) => {
-    const next = new URLSearchParams(searchParams);
-    next.delete('category');
-    next.delete('categoryId');
-    if (resolvedBrand) next.set('brand', resolvedBrand);
-    const category = categories.find((item) => String(item._id) === String(catId));
-    const path = catId && category ? buildCategoryPath(category, categories) : (activeCategory ? buildCategoryPath(activeCategory, categories) : '/');
-    navigate(`${path}${next.size ? `?${next}` : ''}`);
-    setIsMobileFilterOpen(false);
+  const handleToggleAvailability = (status) => {
+    setCurrentPage(1);
+    setSelectedAvailability((current) => current.includes(status)
+      ? current.filter((item) => item !== status)
+      : [...current, status]);
   };
 
   const handleResetFilters = () => {
     setSelectedSpecs({});
-    setInStockOnly(false);
+    setSelectedAvailability([...DEFAULT_AVAILABILITY]);
     setSortOption('default');
     setCurrentPage(1);
     setIsMobileFilterOpen(false);
-    navigate(activeCategory ? buildCategoryPath(activeCategory, categories) : '/');
+    const destination = activeCategory ? buildCategoryPath(activeCategory, categories) : '/search';
+    const preserved = new URLSearchParams();
+    if (searchTerm.trim()) preserved.set('search', searchTerm.trim());
+    navigate(`${destination}${preserved.size ? `?${preserved}` : ''}`);
   };
 
   // Compute Page Header Title (Matching Mega Jaipur: "Branded Laptop", "Laptop Hinges", "ACER")
   const pageTitle = useMemo(() => {
-    const brandName = resolvedBrand || (selectedBrands.length === 1 && !selectedCategoryId ? selectedBrands[0] : '');
-    if (brandName && !selectedCategoryId) {
-      return brandName;
+    if (activeCategory?.name) {
+      return activeCategory.name;
     }
-    if (brandName && selectedCategoryId && activeCategory) {
-      return `${brandName} - ${activeCategory.name}`;
+    if (brandSlug) {
+      return routeBrand || brandSlug.replace(/-/g, ' ').toUpperCase();
     }
-    return activeCategory?.name || (searchTerm ? `Search: "${searchTerm}"` : 'Product Catalog');
-  }, [resolvedBrand, selectedBrands, selectedCategoryId, activeCategory, searchTerm]);
+    if (searchTerm) {
+      return `Search: "${searchTerm}"`;
+    }
+    return 'Product Catalog';
+  }, [activeCategory, brandSlug, routeBrand, searchTerm]);
 
   // Sidebar Filter Content (used in both desktop sidebar & mobile drawer)
   const renderSidebarFilters = () => (
@@ -361,14 +326,13 @@ export const ProductsPage = () => {
           <Filter className="w-4 h-4 text-primary" />
           <span>Filters</span>
         </div>
-        {(selectedCategoryId || selectedBrands.length > 0 || inStockOnly || searchTerm || Object.keys(selectedSpecs).some(k => selectedSpecs[k]?.length > 0)) && (
-          <button
-            onClick={handleResetFilters}
-            className="text-xs font-semibold text-primary hover:underline transition-colors cursor-pointer"
-          >
-            Reset All
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={handleResetFilters}
+          className="text-xs font-bold text-primary hover:underline transition-colors cursor-pointer"
+        >
+          Reset
+        </button>
       </div>
 
       {/* 2. Categories Accordion (matching Screenshot) */}
@@ -392,64 +356,10 @@ export const ProductsPage = () => {
         </button>
 
         {openSections.categories && (
-          <div className="mt-2.5 space-y-2">
-            {/* If a category is selected and we are NOT in brand view, show checked box */}
-            {activeCategory && !activeBrandParam && (
-              <div className="p-2 rounded bg-primary/5 border border-primary/20 space-y-1.5">
-                <label
-                  onClick={() => handleSelectCategory(activeCategory._id)}
-                  className="flex items-center gap-2 text-xs font-bold text-primary cursor-pointer select-none"
-                >
-                  <CheckSquare className="w-4 h-4 text-primary shrink-0" />
-                  <span className="truncate">{activeCategory.name}</span>
-                </label>
-                {activeCategory.parentId && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleSelectCategory(
-                        activeCategory.parentId?._id || activeCategory.parentId
-                      )
-                    }
-                    className="text-[11px] text-gray-500 hover:text-primary hover:underline flex items-center gap-1 pl-6 transition-colors"
-                  >
-                    <span>↑ Back to {activeCategory.parentId?.name || 'Parent'}</span>
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* List items (e.g. Laptop (8) in brand view matching reference screenshot) */}
-            <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-              {categoryNavigation.items.map((cat) => {
-                const isSelected = selectedCategoryId === cat._id;
-                return (
-                  <button
-                    key={cat._id}
-                    type="button"
-                    onClick={() => handleSelectCategory(cat._id)}
-                    className={`w-full flex items-center justify-between text-xs px-2 py-1.5 rounded transition-all text-left group cursor-pointer ${
-                      isSelected
-                        ? 'font-bold text-primary bg-primary/10'
-                        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      {isSelected ? (
-                        <CheckSquare className="w-3.5 h-3.5 text-primary shrink-0" />
-                      ) : (
-                        <Square className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600 shrink-0" />
-                      )}
-                      <span className="truncate">{cat.name}</span>
-                    </div>
-                    {cat.count !== undefined && (
-                      <span className="text-[11px] text-gray-400 font-medium ml-1 shrink-0">
-                        {cat.count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+          <div className="mt-2.5">
+            <div className="flex items-center gap-2 rounded bg-primary/5 border border-primary/20 p-2 text-xs font-bold text-primary select-none">
+              <CheckSquare className="w-4 h-4 shrink-0" />
+              <span className="truncate">{activeCategory?.name || 'All Products'}</span>
             </div>
           </div>
         )}
@@ -476,7 +386,7 @@ export const ProductsPage = () => {
         </button>
 
         {openSections.brands && (
-          <div className="mt-2.5 space-y-2 max-h-60 overflow-y-auto pr-1">
+          <div className="mt-2.5 space-y-2">
             {availableBrands.length > 0 ? (
               availableBrands.map((brand) => {
                 const isChecked = selectedBrands.includes(brand.name.toUpperCase());
@@ -513,7 +423,50 @@ export const ProductsPage = () => {
         )}
       </div>
 
-      {/* 4. Dynamic Specification Accordions (matching Wattage & Pin Size in screenshot) */}
+      {/* 4. Availability is present on every catalog page */}
+      <div className="border-b border-gray-200 pb-3">
+        <button
+          type="button"
+          onClick={() => setOpenSections((prev) => ({ ...prev, availability: !prev.availability }))}
+          className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-gray-800 py-1.5 hover:text-primary transition-colors select-none"
+        >
+          <div className="flex items-center gap-2">
+            <PackageCheck className="w-4 h-4 text-primary" />
+            <span>Availability</span>
+          </div>
+          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${openSections.availability ? 'rotate-180' : ''}`} />
+        </button>
+
+        {openSections.availability && (
+          <div className="mt-2.5 space-y-1.5">
+            {[
+              ['in-stock', 'In Stock'],
+              ['low-stock', 'Low Stock'],
+              ['on-order', 'On Order'],
+              ['out-of-stock', 'Out of Stock'],
+            ].map(([status, label]) => {
+              const checked = selectedAvailability.includes(status);
+              const count = availabilityFacets.find((item) => item.status === status)?.count || 0;
+              return (
+                <label key={status} className="flex items-center justify-between text-xs text-gray-700 hover:text-primary cursor-pointer select-none py-0.5">
+                  <span className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => handleToggleAvailability(status)}
+                      className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#800020] cursor-pointer"
+                    />
+                    <span className={checked ? 'font-bold text-gray-900' : ''}>{label}</span>
+                  </span>
+                  <span className="text-[11px] text-gray-400 font-medium">{count}</span>
+                </label>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 5. Up to five category-specific product specification filters */}
       {dynamicSpecs.map((specGroup) => (
         <div key={specGroup.key} className="border-b border-gray-200 pb-3">
           <button
@@ -538,7 +491,7 @@ export const ProductsPage = () => {
           </button>
 
           {openSections[`spec_${specGroup.key}`] !== false && (
-            <div className="mt-2.5 space-y-1.5 max-h-48 overflow-y-auto pr-1">
+            <div className="mt-2.5 space-y-1.5">
               {specGroup.values.map(({ val, count }) => {
                 const isChecked = (selectedSpecs[specGroup.key] || []).includes(val);
                 return (
@@ -572,51 +525,6 @@ export const ProductsPage = () => {
         </div>
       ))}
 
-      {/* 5. Availability Accordion (In Stock checkbox) */}
-      <div>
-        <button
-          type="button"
-          onClick={() =>
-            setOpenSections((prev) => ({ ...prev, availability: !prev.availability }))
-          }
-          className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-gray-800 py-1.5 hover:text-primary transition-colors select-none"
-        >
-          <div className="flex items-center gap-2">
-            <PackageCheck className="w-4 h-4 text-primary" />
-            <span>Availability</span>
-          </div>
-          <ChevronDown
-            className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
-              openSections.availability ? 'rotate-180' : ''
-            }`}
-          />
-        </button>
-
-        {openSections.availability && (
-          <div className="mt-2.5">
-            <label className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-1 group">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={inStockOnly}
-                  onChange={(e) => { setInStockOnly(e.target.checked); setCurrentPage(1); }}
-                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#800020] cursor-pointer"
-                />
-                <span
-                  className={
-                    inStockOnly ? 'font-bold text-gray-900' : 'group-hover:text-primary'
-                  }
-                >
-                  In Stock
-                </span>
-              </div>
-              <span className="text-[11px] text-gray-400 font-medium">
-                {products.length}
-              </span>
-            </label>
-          </div>
-        )}
-      </div>
     </div>
   );
 
@@ -634,13 +542,13 @@ export const ProductsPage = () => {
 
   return (
     <div className="w-full bg-[#f8f9fa]">
-      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-0 space-y-5">
+      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-0 space-y-2">
         {/* 1. BREADCRUMBS & CENTERED BRAND/CATEGORY TITLE (matching Screenshot) */}
-        <div className="flex flex-col items-center justify-center relative space-y-2 pb-2">
+        <div className="relative flex min-h-12 flex-col items-center justify-center gap-2 lg:flex-row">
           {/* Breadcrumb row */}
           <nav
             aria-label="Breadcrumb"
-            className="w-full flex items-center flex-wrap gap-1.5 text-xs text-gray-500 font-medium mb-1"
+            className="flex w-full items-center flex-wrap gap-1.5 text-xs text-gray-500 font-medium lg:absolute lg:left-0 lg:w-auto lg:max-w-[35%]"
           >
             {breadcrumbTrail.map((crumb, idx) => (
               <React.Fragment key={crumb.label + idx}>
@@ -660,11 +568,11 @@ export const ProductsPage = () => {
           </nav>
 
           {/* Centered Large Title (matching Screenshot: e.g. "ACER") */}
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#800020] tracking-tight text-center">
+          <h1 className="text-2xl sm:text-3xl font-black text-[#800020] tracking-tight text-center">
             {pageTitle}
           </h1>
 
-          <div className="w-full sm:w-auto sm:absolute sm:right-0 sm:bottom-2 flex items-center justify-between sm:justify-end gap-2">
+          <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end lg:absolute lg:right-0">
             <button
               type="button"
               onClick={() => setIsMobileFilterOpen(true)}
@@ -706,16 +614,17 @@ export const ProductsPage = () => {
         </div>
 
         {/* 2. TWO-COLUMN LAYOUT: SIDEBAR (lg:col-span-3) + PRODUCT GRID (lg:col-span-9) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
           {/* DESKTOP SIDEBAR FILTERS (matching Screenshot) */}
-          <aside className="hidden lg:block lg:col-span-3 xl:col-span-3 2xl:col-span-2 bg-white rounded-lg border border-gray-200 p-4 shadow-2xs sticky top-36">
-            {renderSidebarFilters()}
+          <aside className="hidden lg:block lg:col-span-3 xl:col-span-3 2xl:col-span-2 bg-white rounded-lg border border-gray-200 p-4 shadow-2xs">
+            {isLoading && displayedProducts.length === 0 ? <FilterSidebarSkeleton /> : renderSidebarFilters()}
           </aside>
 
           {/* MAIN PRODUCT CATALOG CONTENT */}
-          <main className="lg:col-span-9 xl:col-span-9 2xl:col-span-10 space-y-4">
+          <main className="relative lg:col-span-9 xl:col-span-9 2xl:col-span-10 space-y-4 min-h-80">
+            {isLoading && displayedProducts.length > 0 && <ContentLoadingOverlay message="Updating results..." className="rounded-xl" />}
             {/* Active Filter Chips */}
-            {(selectedBrands.length > 0 || inStockOnly || Object.keys(selectedSpecs).some(k => selectedSpecs[k]?.length > 0)) && (
+            {(selectedBrands.length > 0 || !hasDefaultAvailability || Object.keys(selectedSpecs).some(k => selectedSpecs[k]?.length > 0)) && (
               <div className="flex items-center flex-wrap gap-2 pt-1">
                 {selectedBrands.map((b) => (
                   <span
@@ -747,39 +656,26 @@ export const ProductsPage = () => {
                     </span>
                   ))
                 )}
-                {inStockOnly && (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    <span>In Stock Only</span>
-                    <button
-                      onClick={() => { setInStockOnly(false); setCurrentPage(1); }}
-                      className="hover:text-emerald-900 font-bold ml-0.5 cursor-pointer"
-                    >
-                      ×
-                    </button>
+                {!hasDefaultAvailability && selectedAvailability.map((status) => (
+                  <span key={status} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span>{status.split('-').map((part) => part[0].toUpperCase() + part.slice(1)).join(' ')}</span>
+                    <button onClick={() => handleToggleAvailability(status)} className="hover:text-emerald-900 font-bold ml-0.5 cursor-pointer">×</button>
                   </span>
-                )}
+                ))}
                 <button
-                  onClick={() => {
-                    const next = new URLSearchParams(searchParams);
-                    next.delete('brand');
-                    if (brandSlug) navigate(`/search?${next}`);
-                    else setSearchParams(next);
-                    setCurrentPage(1);
-                    setSelectedSpecs({});
-                    setInStockOnly(false);
-                  }}
+                  onClick={handleResetFilters}
                   className="text-xs text-gray-500 hover:text-primary hover:underline ml-1 cursor-pointer"
                 >
-                  Clear filter tags
+                  Reset filters
                 </button>
               </div>
             )}
 
             {/* PRODUCT CARDS HIGH-DENSITY GRID (matching Screenshot: 4-5 cards per row on large displays) */}
-            {isLoading ? (
+            {isLoading && displayedProducts.length === 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-3 sm:gap-3.5">
-                {[...Array(8)].map((_, i) => (
-                  <SkeletonCard key={i} />
+                {[...Array(12)].map((_, i) => (
+                  <ProductCardSkeleton key={i} />
                 ))}
               </div>
             ) : error ? (
@@ -815,8 +711,8 @@ export const ProductsPage = () => {
               <EmptyState
                 title="No Products Found"
                 description={
-                  activeBrandParam
-                    ? `No products found under brand "${activeBrandParam}".`
+                  selectedBrands.length > 0
+                    ? `No products found under ${selectedBrands.join(', ')}.`
                     : activeCategory
                     ? `No products found under "${activeCategory.name}".`
                     : 'No products match your current search or category filter criteria.'
