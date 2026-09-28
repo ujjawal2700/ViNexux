@@ -42,7 +42,7 @@ const apiClient = axios.create({
 // Request Interceptor: Attach Access Token if present
 apiClient.interceptors.request.use(
   (config) => {
-    const isAdminEndpoint = config.url?.startsWith('/admin') || config.url?.includes('/admin/');
+    const isAdminEndpoint = config.portal === 'admin' || config.url?.startsWith('/admin') || config.url?.includes('/admin/');
     const token = isAdminEndpoint
       ? (inMemoryAdminAccessToken || inMemoryAccessToken)
       : inMemoryAccessToken;
@@ -83,7 +83,7 @@ apiClient.interceptors.response.use(
                            originalRequest.url?.includes('/auth/refresh-token');
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
-      const isAdminEndpoint = originalRequest.url?.startsWith('/admin') || originalRequest.url?.includes('/admin/');
+      const isAdminEndpoint = originalRequest.portal === 'admin' || originalRequest.url?.startsWith('/admin') || originalRequest.url?.includes('/admin/');
       const portal = isAdminEndpoint ? 'admin' : 'customer';
       const refreshToken = getStoredRefreshToken(isAdminEndpoint ? 'admin' : undefined);
 

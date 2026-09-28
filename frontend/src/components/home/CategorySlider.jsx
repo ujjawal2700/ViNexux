@@ -1,117 +1,16 @@
+import { Image } from '../ui/Image';
 import React, { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-
-const DEFAULT_CATEGORY_TILES = [
-  {
-    name: 'Desktop',
-    slug: 'desktop',
-    image: 'https://images.unsplash.com/photo-1587831990711-23ca6441447b?auto=format&fit=crop&w=300&q=80',
-  },
-  {
-    name: 'Laptop',
-    slug: 'laptop',
-    image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=300&q=80',
-  },
-  {
-    name: 'Storage',
-    slug: 'storage',
-    image: 'https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?auto=format&fit=crop&w=300&q=80',
-  },
-  {
-    name: 'Display',
-    slug: 'display',
-    image: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=300&q=80',
-  },
-  {
-    name: 'Peripherals',
-    slug: 'peripherals',
-    image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=300&q=80',
-  },
-  {
-    name: 'Printers & Scanners',
-    slug: 'printers-scanners',
-    image: 'https://images.unsplash.com/photo-1612815154858-60aa4c59eaa6?auto=format&fit=crop&w=300&q=80',
-  },
-  {
-    name: 'Security',
-    slug: 'security',
-    image: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=300&q=80',
-  },
-  {
-    name: 'Networking',
-    slug: 'networking',
-    image: 'https://images.unsplash.com/photo-1606904825846-647eb07f5be2?auto=format&fit=crop&w=300&q=80',
-  },
-  {
-    name: 'Software',
-    slug: 'software',
-    image: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=300&q=80',
-  },
-  {
-    name: 'Cables',
-    slug: 'cables',
-    image: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=300&q=80',
-  },
-  {
-    name: 'Connector & Converter',
-    slug: 'connector-converter',
-    image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=300&q=80',
-  },
-  {
-    name: 'Accessories CCTV & Networking',
-    slug: 'accessories-cctv-networking',
-    image: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=300&q=80',
-  },
-  {
-    name: 'Telecom',
-    slug: 'telecom',
-    image: 'https://images.unsplash.com/photo-1520923642038-b4259aceffd7?auto=format&fit=crop&w=300&q=80',
-  },
-  {
-    name: 'Mobile',
-    slug: 'mobile',
-    image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=300&q=80',
-  },
-];
 
 export const CategorySlider = ({ categories = [] }) => {
   const scrollRef = useRef(null);
 
   // Strictly filter to Header/Root categories (no parentId)
   const headerCategories = (categories || []).filter((c) => !c.parentId);
-  const sourceList =
-    headerCategories.length > 0
-      ? headerCategories
-      : categories.length > 0
-      ? categories
-      : DEFAULT_CATEGORY_TILES;
-
-  // Map each category to an accurate tile with clean slug and image
-  const tiles = sourceList.map((cat, i) => {
-    const slug = (
-      cat.slug ||
-      cat.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-') ||
-      ''
-    ).toLowerCase();
-
-    // Match image from category record or fallback to curated default tile image
-    const matchedDefault = DEFAULT_CATEGORY_TILES.find(
-      (d) =>
-        d.slug === slug ||
-        d.name.toLowerCase() === (cat.name || '').toLowerCase()
-    );
-
-    return {
-      name: cat.name,
-      slug: slug,
-      id: cat._id,
-      image:
-        cat.image ||
-        matchedDefault?.image ||
-        DEFAULT_CATEGORY_TILES[i % DEFAULT_CATEGORY_TILES.length].image,
-    };
-  });
+  const tiles = headerCategories.map((category) => ({
+    name: category.name, slug: category.slug, id: category._id, image: category.image,
+  }));
 
   const scrollManual = (direction) => {
     if (scrollRef.current) {
@@ -123,6 +22,7 @@ export const CategorySlider = ({ categories = [] }) => {
     }
   };
 
+  if (!tiles.length) return null;
   return (
     <div className="relative w-full px-3 sm:px-6 lg:px-8 2xl:px-12 my-2">
       {/* Left Navigation Arrow */}
@@ -148,10 +48,10 @@ export const CategorySlider = ({ categories = [] }) => {
               className="flex flex-col items-center justify-between w-24 sm:w-28 md:w-32 h-28 sm:h-32 md:h-36 p-2.5 sm:p-3 bg-white border border-gray-200 rounded-lg transition-all duration-300 ease-out hover:-translate-y-1.5 hover:border-[#800020] hover:shadow-[0_8px_24px_rgba(128,0,32,0.14)] text-center select-none"
             >
               <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 flex items-center justify-center overflow-hidden mb-1">
-                <img
+                <Image
                   src={cat.image}
                   alt={cat.name}
-                  className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                  className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
                   loading="lazy"
                 />
               </div>

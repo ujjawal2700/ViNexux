@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProductCard from '../products/ProductCard';
+import { buildProductPath } from '../../utils/categoryUrls';
 
 // Inline Icons (Zero external dependencies)
 const ChevronLeftIcon = () => (
@@ -66,7 +67,7 @@ export function CoverflowCarousel({
           desc: prod.description || 'Industrial grade surveillance camera & hardware solution.',
           img: primaryImg,
           ctaText: 'EXPLORE PRODUCT',
-          ctaUrl: `/products/${prod._id}`,
+          ctaUrl: buildProductPath(prod),
           rawProduct: validProduct,
         };
       });

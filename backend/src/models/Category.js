@@ -1,5 +1,23 @@
 import mongoose from 'mongoose';
 
+const filterDefinitionSchema = new mongoose.Schema(
+  {
+    key: { type: String, required: true, trim: true, maxlength: 50 },
+    label: { type: String, required: true, trim: true, maxlength: 80 },
+    inputType: {
+      type: String,
+      enum: ['select', 'multi-select', 'text', 'number', 'boolean'],
+      default: 'select',
+    },
+    options: [{ type: String, trim: true, maxlength: 100 }],
+    unit: { type: String, trim: true, maxlength: 20 },
+    isRequired: { type: Boolean, default: false },
+    isFilterable: { type: Boolean, default: true },
+    sortOrder: { type: Number, default: 0, min: 0 },
+  },
+  { _id: false }
+);
+
 const categorySchema = new mongoose.Schema(
   {
     name: {
@@ -39,6 +57,12 @@ const categorySchema = new mongoose.Schema(
       type: Number,
       default: 0,
       min: [0, 'Sort order cannot be negative'],
+    },
+    // Admin-defined product fields for this category. Descendants inherit
+    // definitions from every ancestor and may add/override fields by key.
+    filterDefinitions: {
+      type: [filterDefinitionSchema],
+      default: [],
     },
   },
   {

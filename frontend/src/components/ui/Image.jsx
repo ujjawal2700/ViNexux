@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ImageOff } from 'lucide-react';
 import Skeleton from './Skeleton';
 
-export const Image = ({
+const ImageContent = ({
   src,
   alt = '',
   className = '',
@@ -25,11 +25,11 @@ export const Image = ({
 
   return (
     <div className={`relative overflow-hidden rounded-xl bg-muted ${aspectRatio} ${className}`}>
-      {isLoading && (
+      {isLoading && (src || fallbackSrc) && !hasError && (
         <Skeleton className="absolute inset-0 w-full h-full" />
       )}
 
-      {hasError ? (
+      {hasError || !(src || fallbackSrc) ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted text-[#9a6870] p-4 text-center">
           <ImageOff className="w-6 h-6 mb-1 opacity-60" />
           <span className="text-[10px] uppercase font-bold tracking-wider opacity-60">No Preview Available</span>
@@ -50,4 +50,5 @@ export const Image = ({
   );
 };
 
+export const Image = (props) => <ImageContent key={props.src || props.fallbackSrc || 'empty'} {...props} />;
 export default Image;

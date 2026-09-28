@@ -112,3 +112,9 @@ export const authorize = (...allowedRoles) => {
     next();
   };
 };
+
+// Guests may browse; supplied credentials must still be valid.
+export const optionalAuthenticate = (req, res, next) => {
+  if (!req.headers.authorization) return next();
+  return authenticate(req, res, next);
+};

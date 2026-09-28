@@ -2,10 +2,12 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import cartService from '../../services/cartService';
+import guestCartService from '../../services/guestCartService';
 import productService from '../../services/productService';
 import contentService from '../../services/contentService';
 import useToast from '../../hooks/useToast';
 import ProductCard from '../../components/products/ProductCard';
+import { buildProductPath } from '../../utils/categoryUrls';
 import { Skeleton } from '../../components/ui/Skeleton';
 import {
   ShoppingCart,
@@ -13,13 +15,16 @@ import {
   Plus,
   Minus,
   FileText,
-  Lock,
   ShieldCheck,
   Store,
-  Heart,
   ChevronRight,
-  MessageCircle,
 } from 'lucide-react';
+
+const WhatsAppIcon = ({ className = 'w-4 h-4' }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M.057 24l1.687-6.163A11.86 11.86 0 0 1 .157 11.891C.16 5.335 5.495 0 12.05 0a11.82 11.82 0 0 1 8.413 3.488 11.82 11.82 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24Zm6.597-3.807a9.86 9.86 0 0 0 5.392 1.592c5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 0 0 1.746 5.634l-.999 3.648 3.742-.981Zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414Z" />
+  </svg>
+);
 
 export const CartPage = () => {
   const { isAuthenticated, user } = useAuth();
@@ -46,7 +51,9 @@ export const CartPage = () => {
   // 1. Fetch Cart Data
   const fetchCartData = useCallback(async () => {
     if (!isAuthenticated) {
-      setCart({ items: [] });
+      const guestCart = guestCartService.getCart();
+      setCart(guestCart);
+      setSelectedItemIds(new Set(guestCart.items.map((item) => String(item.productId?._id || item.productId))));
       setIsLoading(false);
       return;
     }
@@ -196,8 +203,8 @@ export const CartPage = () => {
         return nextCart;
       });
 
-      const res = await cartService.updateItemQuantity(productId, newQuantity);
-      const updatedCart = res.data?.cart || res.data || res.cart || res;
+      const res = isAuthenticated ? await cartService.updateItemQuantity(productId, newQuantity) : guestCartService.updateItem(productId, newQuantity);
+      const updatedCart = isAuthenticated ? (res.data?.cart || res.data || res.cart || res) : res;
       if (updatedCart) {
         setCart(updatedCart);
         window.dispatchEvent(
@@ -243,8 +250,8 @@ export const CartPage = () => {
         return next;
       });
 
-      const res = await cartService.removeItem(productId);
-      const updatedCart = res?.data?.cart || res?.data || res?.cart || res;
+      const res = isAuthenticated ? await cartService.removeItem(productId) : guestCartService.removeItem(productId);
+      const updatedCart = isAuthenticated ? (res?.data?.cart || res?.data || res?.cart || res) : res;
       if (updatedCart) {
         setCart(updatedCart);
         window.dispatchEvent(
@@ -278,10 +285,11 @@ export const CartPage = () => {
         item.priceSnapshot !== undefined
           ? item.priceSnapshot
           : (prod.standardPrice || prod.price || 0);
-      const cdDiscount = Math.round(unitPrice * 0.015); // ~1.5% CD discount matching Mega Jaipur standards
+      const standardPrice = prod.standardPrice || prod.price || unitPrice;
+      const cdDiscount = Math.max(0, standardPrice - unitPrice);
       const qty = item.quantity || 1;
 
-      sub += unitPrice * qty;
+      sub += standardPrice * qty;
       disc += cdDiscount * qty;
       count += qty;
     });
@@ -301,11 +309,17 @@ export const CartPage = () => {
       toast.warning('Please select at least one product to checkout.');
       return;
     }
-    navigate('/account/checkout');
+    if (!isAuthenticated) {
+      toast.info('Please sign up or log in to send your enquiry. Your cart will be kept.');
+      navigate('/login', { state: { from: '/account/checkout-enquiry' } });
+      return;
+    }
+    sessionStorage.setItem('vinexus_enquiry_selected_products', JSON.stringify([...selectedItemIds]));
+    navigate('/account/checkout-enquiry');
   };
 
-  // Convert to Quotation & Instant WhatsApp Order
-  const handleConvertToQuotation = () => {
+  // Open a pre-filled WhatsApp chat with the CMS-configured admin number.
+  const handleChatOnWhatsApp = () => {
     if (selectedItemIds.size === 0) {
       toast.warning('Please select at least one product using the checkboxes.');
       return;
@@ -319,7 +333,7 @@ export const CartPage = () => {
       year: 'numeric',
     });
 
-    let text = `🛍️ *ViNexus Compu World — Commercial Order & Quotation Request*\n`;
+    let text = `🛍️ *ViNexus Compu World — Product Enquiry*\n`;
     text += `━━━━━━━━━━━━━━━━━━━━━\n`;
     text += `👤 *Customer:* ${customerName}${customerPhone}\n`;
     text += `📅 *Date:* ${nowStr}\n\n`;
@@ -333,9 +347,7 @@ export const CartPage = () => {
 
       itemIndex += 1;
       const name = prod.name || 'Product';
-      const pid = prod.sku ? `PID: ${prod.sku}` : `PID: VN-${String(prod._id || '').slice(-4).toUpperCase()}`;
-      const itemCd = prod.specifications?.find((s) => s.key?.toLowerCase().includes('code') || s.key?.toLowerCase().includes('item cd'))?.value;
-      const cdCodeStr = itemCd ? ` | Item CD: ${itemCd}` : '';
+      const model = prod.modelNumber || prod.specifications?.find((s) => s.key?.toLowerCase().includes('model'))?.value || '';
 
       const unitPrice =
         item.priceSnapshot !== undefined
@@ -345,18 +357,18 @@ export const CartPage = () => {
       const itemTotal = unitPrice * qty;
 
       text += `${itemIndex}. *${name}*\n`;
-      text += `   • ${pid}${cdCodeStr}\n`;
+      if (model) text += `   • Model: ${model}\n`;
       text += `   • Qty: *${qty}* | Unit: ${formatCurrency(unitPrice)} | Total: *${formatCurrency(itemTotal)}*\n\n`;
     });
 
     text += `━━━━━━━━━━━━━━━━━━━━━\n`;
-    text += `💰 *Quotation Summary:*\n`;
+    text += `💰 *Enquiry Summary:*\n`;
     text += `• Total Items: ${selectedCount}\n`;
     text += `• Subtotal: ${formatCurrency(subtotal)}\n`;
     if (totalDiscount > 0) {
-      text += `• CD Discount (1.5%): -${formatCurrency(totalDiscount)}\n`;
+      text += `• Verified Dealer Discount: -${formatCurrency(totalDiscount)}\n`;
     }
-    text += `👉 *Final Quotation Value: ${formatCurrency(grandTotal)}*\n`;
+    text += `👉 *Estimated Total: ${formatCurrency(grandTotal)}*\n`;
     text += `━━━━━━━━━━━━━━━━━━━━━\n\n`;
     text += `💬 _${whatsappNote || 'Please confirm live stock availability, delivery timeline & share official GST commercial invoice.'}_\n`;
 
@@ -382,7 +394,7 @@ export const CartPage = () => {
       window.open(waUrl, '_blank');
     }
 
-    toast.success('Opening WhatsApp... Please click Send in WhatsApp to send your quotation.');
+    toast.success('Opening the pre-filled WhatsApp chat.');
   };
 
   if (isLoading) {
@@ -456,8 +468,7 @@ export const CartPage = () => {
                           SELECT
                         </button>
                       </th>
-                      <th className="py-2.5 px-2.5 text-left font-semibold whitespace-nowrap">PID</th>
-                      <th className="py-2.5 px-2.5 text-left font-semibold whitespace-nowrap">ITEM CD</th>
+                      <th className="py-2.5 px-2.5 text-left font-semibold whitespace-nowrap">MODEL</th>
                       <th className="py-2.5 px-2.5 text-center font-semibold">IMAGE</th>
                       <th className="py-2.5 px-3 text-left font-semibold min-w-[200px]">PRODUCT NAME</th>
                       <th className="py-2.5 px-3 text-right font-semibold whitespace-nowrap">UNIT PRICE</th>
@@ -476,24 +487,16 @@ export const CartPage = () => {
                         item.priceSnapshot !== undefined
                           ? item.priceSnapshot
                           : (prod.standardPrice || prod.price || 0);
-                      const cdDiscount = Math.round(unitPrice * 0.015);
-                      const effectivePrice = Math.max(0, unitPrice - cdDiscount);
-                      const lineTotal = effectivePrice * (item.quantity || 1);
+                      const standardPrice = prod.standardPrice || prod.price || unitPrice;
+                      const cdDiscount = Math.max(0, standardPrice - unitPrice);
+                      const lineTotal = unitPrice * (item.quantity || 1);
 
                       const imgUrl =
                         prod.images?.[0]?.url ||
                         prod.image ||
                         'https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=300';
                       
-                      // Clean Mega Jaipur PID format (e.g. A3656, A2522)
-                      const pid = prod.sku?.replace(/[^0-9]/g, '')
-                        ? `A${prod.sku.replace(/[^0-9]/g, '').padStart(4, '0').slice(-4)}`
-                        : `A${String(prod._id || '').slice(-4).toUpperCase()}`;
-
-                      // Clean Mega Jaipur ITEM CD format (e.g. 1HVDNEU, 1CXARIE)
-                      const itemCd =
-                        prod.specifications?.find((s) => s.key?.toLowerCase().includes('code'))?.value ||
-                        `1H${String(prod.sku || prod._id || 'VNX').replace(/[^A-Z0-9]/gi, '').slice(-5).toUpperCase()}`;
+                      const model = prod.modelNumber || prod.specifications?.find((s) => s.key?.toLowerCase().includes('model'))?.value || '—';
 
                       return (
                         <tr
@@ -512,14 +515,9 @@ export const CartPage = () => {
                             />
                           </td>
 
-                          {/* PID */}
+                          {/* MODEL */}
                           <td className="py-3 px-2.5 font-mono text-xs sm:text-[13px] text-gray-700 whitespace-nowrap">
-                            {pid}
-                          </td>
-
-                          {/* ITEM CD */}
-                          <td className="py-3 px-2.5 font-mono text-xs sm:text-[13px] text-gray-700 whitespace-nowrap">
-                            {itemCd}
+                            {model}
                           </td>
 
                           {/* IMAGE (Thumbnail matching reference image) */}
@@ -536,7 +534,7 @@ export const CartPage = () => {
                           {/* PRODUCT NAME (1 line with ellipsis) */}
                           <td className="py-3 px-3 min-w-[200px] max-w-[320px]">
                             <Link
-                              to={`/products/${prod._id || prodId}`}
+                              to={buildProductPath(prod)}
                               className="text-xs sm:text-[13px] text-gray-800 hover:text-[#420b45] font-normal truncate block transition-colors"
                               title={prod.name}
                             >
@@ -606,17 +604,8 @@ export const CartPage = () => {
               </div>
             </div>
 
-            {/* Bottom Actions Row (Matching Reference Image) */}
+            {/* Bottom Actions Row */}
             <div className="flex items-center justify-between gap-3 flex-wrap pt-2">
-              <button
-                type="button"
-                onClick={handleConvertToQuotation}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-emerald-300 hover:border-emerald-500 rounded-md text-xs sm:text-[13px] font-semibold text-emerald-800 hover:bg-emerald-50/50 transition-all shadow-2xs cursor-pointer active:scale-98"
-              >
-                <MessageCircle className="w-4 h-4 text-[#25D366]" />
-                <span>Convert to quotation</span>
-              </button>
-
               <Link
                 to="/"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[#d2b8d5] rounded-md text-xs sm:text-[13px] font-semibold text-[#800020] hover:bg-[#fcf8fd] hover:border-[#800020] transition-all shadow-2xs active:scale-98"
@@ -654,17 +643,17 @@ export const CartPage = () => {
                 </span>
               </div>
 
-              {/* Primary Cart Actions: WhatsApp Quotation / Order + Send Enquiry */}
+              {/* Primary cart actions */}
               <div className="space-y-2.5 pt-2">
-                {/* 1. WhatsApp Order / Quotation Button */}
+                {/* 1. WhatsApp chat button */}
                 <button
                   type="button"
-                  onClick={handleConvertToQuotation}
+                  onClick={handleChatOnWhatsApp}
                   disabled={selectedCount === 0}
                   className="w-full h-11 rounded-md bg-[#25D366] hover:bg-[#20bd5a] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-bold tracking-wide flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-98"
                 >
-                  <MessageCircle className="w-4 h-4 fill-white text-[#25D366]" />
-                  <span>Send Cart Enquiry</span>
+                  <WhatsAppIcon className="w-4 h-4 text-white" />
+                  <span>Chat on WhatsApp</span>
                 </button>
 
                 {/* 2. Send Enquiry Web Form Button */}
@@ -681,7 +670,7 @@ export const CartPage = () => {
 
               <div className="flex items-center justify-center gap-1.5 text-[11px] text-gray-500 font-medium pt-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 stroke-[2]" />
-                <span>Selected items ready for instant quotation</span>
+                <span>Selected products are ready to send as an enquiry</span>
               </div>
             </div>
           </div>
@@ -698,7 +687,7 @@ export const CartPage = () => {
               Recently Viewed
             </h2>
             <Link
-              to="/products"
+              to="/"
               className="text-xs font-semibold text-[#800020] hover:underline flex items-center gap-1"
             >
               See all products <ChevronRight className="w-3.5 h-3.5" />

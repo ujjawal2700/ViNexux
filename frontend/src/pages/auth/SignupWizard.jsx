@@ -9,8 +9,6 @@ import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { cn } from '../../lib/utils';
 import {
   Mail,
-  Lock,
-  ArrowRight,
   ArrowLeft,
   ShieldCheck,
   Sparkles,
@@ -21,14 +19,13 @@ import {
   FileCheck,
   CheckCircle2,
   Check,
-  Eye,
-  EyeOff,
 } from 'lucide-react';
 
 const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 const AADHAAR_REGEX = /^\d{12}$/;
 const PINCODE_REGEX = /^\d{6}$/;
 const PHONE_REGEX = /^[6-9]\d{9}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -78,20 +75,13 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
 
   // Customer fields
   const [custName, setCustName] = useState('');
-  const [custCompany, setCustCompany] = useState('');
   const [custEmail, setCustEmail] = useState('');
   const [custPhone, setCustPhone] = useState('');
-  const [custPassword, setCustPassword] = useState('');
-  const [custConfirmPassword, setCustConfirmPassword] = useState('');
-  const [showCustPassword, setShowCustPassword] = useState(false);
 
   // Dealer fields
   const [dealerName, setDealerName] = useState('');
   const [dealerEmail, setDealerEmail] = useState('');
   const [dealerPhone, setDealerPhone] = useState('');
-  const [dealerPassword, setDealerPassword] = useState('');
-  const [dealerConfirmPassword, setDealerConfirmPassword] = useState('');
-  const [showDealerPassword, setShowDealerPassword] = useState(false);
   const [companyName, setCompanyName] = useState('');
   const [gstin, setGstin] = useState('');
   const [gstFile, setGstFile] = useState(null);
@@ -135,6 +125,12 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
       if (!PHONE_REGEX.test(custPhone.trim())) {
         return 'Please enter a valid 10-digit Indian mobile number.';
       }
+      if (custName.trim().length < 2 || custName.trim().length > 100) {
+        return 'Full name must be between 2 and 100 characters.';
+      }
+      if (!EMAIL_REGEX.test(custEmail.trim())) {
+        return 'Please enter a valid email address.';
+      }
       return null;
     }
 
@@ -143,6 +139,12 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
     }
     if (!PHONE_REGEX.test(dealerPhone.trim())) {
       return 'Please enter a valid 10-digit Indian mobile number.';
+    }
+    if (dealerName.trim().length < 2 || dealerName.trim().length > 100) {
+      return 'Full name must be between 2 and 100 characters.';
+    }
+    if (!EMAIL_REGEX.test(dealerEmail.trim())) {
+      return 'Please enter a valid email address.';
     }
     if (!companyName.trim()) {
       return 'Business / Company Name is required.';
@@ -190,7 +192,7 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
       return;
     }
 
-    const identifier = isDealer ? dealerPhone.trim() : custEmail.trim();
+    const identifier = isDealer ? dealerPhone.trim() : custPhone.trim();
 
     setLoading(true);
     setError(null);
@@ -247,7 +249,6 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
           fullName: custName.trim(),
           email: custEmail.trim().toLowerCase(),
           phone: custPhone.trim(),
-          companyName: custCompany.trim() || undefined,
           password: `VNX@${custPhone.trim()}`,
           role: 'customer',
         };
@@ -416,24 +417,6 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
                   value={custName}
                   onChange={(e) => setCustName(e.target.value)}
                   placeholder="Your Full Name"
-                  className={inputClass}
-                  disabled={loading}
-                />
-              </div>
-            </div>
-
-            {/* Company Name (Optional) */}
-            <div className="space-y-1">
-              <label className="block text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                COMPANY NAME (OPTIONAL)
-              </label>
-              <div className="relative">
-                <Building2 className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="text"
-                  value={custCompany}
-                  onChange={(e) => setCustCompany(e.target.value)}
-                  placeholder="Company Name"
                   className={inputClass}
                   disabled={loading}
                 />
@@ -783,10 +766,10 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
         <form onSubmit={handleVerifyOtp} className="space-y-5">
           <div className="text-center space-y-1.5">
             <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-2">
-              {isDealer ? <Phone className="w-5 h-5" /> : <Mail className="w-5 h-5" />}
+              <Phone className="w-5 h-5" />
             </div>
             <h3 className="text-sm sm:text-base font-bold text-gray-900">
-              Verify your {isDealer ? 'phone number' : 'email address'}
+              Verify your phone number
             </h3>
             <p className="text-xs text-gray-500">
               Enter the 6-digit code sent to <span className="font-bold text-gray-800">{otpIdentifier}</span>

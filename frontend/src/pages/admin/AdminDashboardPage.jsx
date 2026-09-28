@@ -4,7 +4,7 @@ import adminService from '../../services/adminService';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import StatsCard from '../../components/admin/StatsCard';
 import Table from '../../components/ui/Table';
-import Badge, { StatusBadge } from '../../components/ui/Badge';
+import { StatusBadge } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Skeleton from '../../components/ui/Skeleton';
 import ErrorState from '../../components/ui/ErrorState';
@@ -16,8 +16,6 @@ import {
   FolderTree, 
   Clock, 
   ArrowRight,
-  PlusCircle,
-  ShieldCheck,
   Sparkles
 } from 'lucide-react';
 
@@ -90,22 +88,6 @@ const AdminDashboardPage = () => {
         title="Admin Control Center"
         subtitle="Real-time system health, lead analytics & verification queue"
         badge="Live System"
-        action={
-          <div className="flex items-center gap-2">
-            <Link to="/admin/products">
-              <Button variant="outline" size="sm">
-                <PlusCircle className="w-3.5 h-3.5 mr-1.5" />
-                Add Product
-              </Button>
-            </Link>
-            <Link to="/admin/dealers">
-              <Button variant="primary" size="sm">
-                <ShieldCheck className="w-3.5 h-3.5 mr-1.5" />
-                Verify Dealers
-              </Button>
-            </Link>
-          </div>
-        }
       />
 
       {/* KPI Cards Grid */}

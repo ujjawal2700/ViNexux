@@ -39,6 +39,7 @@ const AdminCmsBannersPage = () => {
   // Image Upload Modal State
   const [uploadBannerTarget, setUploadBannerTarget] = useState(null);
   const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
   const [imageUploading, setImageUploading] = useState(false);
 
   // Delete Confirm State
@@ -77,6 +78,8 @@ const AdminCmsBannersPage = () => {
       sortOrder: 0,
     });
     setFormError('');
+    setImageFile(null);
+    setImagePreview('');
     setIsModalOpen(true);
   };
 
@@ -91,13 +94,20 @@ const AdminCmsBannersPage = () => {
       sortOrder: banner.sortOrder || 0,
     });
     setFormError('');
+    setImageFile(null);
+    setImagePreview(banner.image?.url || '');
     setIsModalOpen(true);
   };
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    if (!editingBanner && !imageFile) {
+      setFormError('Please choose a banner image from your system.');
+      return;
+    }
     setFormSubmitting(true);
     setFormError('');
+    let newlyUploadedPublicId = '';
     try {
       const payload = {
         title: formData.title.trim() || undefined,
@@ -108,21 +118,26 @@ const AdminCmsBannersPage = () => {
         sortOrder: Number(formData.sortOrder) || 0,
       };
 
-      if (!editingBanner) {
-        payload.image = { url: 'https://via.placeholder.com/1200x400?text=Vinexus+Banner' };
-      }
-
       if (editingBanner) {
         await adminService.updateBannerAdmin(editingBanner._id, payload);
+        if (imageFile) await adminService.uploadBannerImageAdmin(editingBanner._id, imageFile);
         setToast({ message: 'Hero banner updated successfully!', type: 'success' });
       } else {
+        const upload = await adminService.uploadCmsImage(imageFile, 'vinexus/banners');
+        payload.image = { url: upload.data.url, publicId: upload.data.publicId };
+        newlyUploadedPublicId = upload.data.publicId;
         await adminService.createBannerAdmin(payload);
         setToast({ message: 'Hero banner created successfully!', type: 'success' });
       }
 
       setIsModalOpen(false);
+      setImageFile(null);
+      setImagePreview('');
       fetchBanners();
     } catch (err) {
+      if (!editingBanner && newlyUploadedPublicId) {
+        await adminService.deleteStoredImage(newlyUploadedPublicId).catch(() => {});
+      }
       console.error('Save banner error:', err);
       setFormError(err.response?.data?.message || 'Failed to save hero banner');
     } finally {
@@ -222,7 +237,9 @@ const AdminCmsBannersPage = () => {
                 <Table.Cell className="font-mono text-xs text-muted-foreground font-bold">#{b.sortOrder || 0}</Table.Cell>
                 <Table.Cell>
                   <div className="w-24 h-12 rounded-lg border border-border bg-card overflow-hidden">
-                    <img src={b.image?.url || 'https://via.placeholder.com/300x150'} alt={b.title || 'Banner'} className="w-full h-full object-cover" />
+                    {b.image?.url
+                      ? <img src={b.image.url} alt={b.title || 'Banner'} className="w-full h-full object-cover" />
+                      : <span className="flex h-full items-center justify-center text-[10px] text-muted-foreground">No image</span>}
                   </div>
                 </Table.Cell>
                 <Table.Cell>
@@ -299,12 +316,27 @@ const AdminCmsBannersPage = () => {
             />
           </FormField>
 
+          <FormField label={editingBanner ? 'Replace Banner Image (Optional)' : 'Banner Image'} required={!editingBanner} hint="Choose JPEG, PNG or WebP; recommended 1600×500px, max 5MB">
+            <input
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              onChange={(e) => {
+                const file = e.target.files?.[0] || null;
+                setImageFile(file);
+                setImagePreview(file ? URL.createObjectURL(file) : (editingBanner?.image?.url || ''));
+              }}
+              className="block w-full text-xs text-muted-foreground file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-muted file:text-foreground"
+              required={!editingBanner}
+            />
+            {imagePreview && <img src={imagePreview} alt="Banner preview" className="mt-3 h-32 w-full rounded-lg border border-border object-cover" />}
+          </FormField>
+
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Target URL Link">
               <Input
                 value={formData.link}
                 onChange={(e) => setFormData({ ...formData, link: e.target.value })}
-                placeholder="e.g. /products?category=cctv"
+                placeholder="e.g. /security/cctv"
               />
             </FormField>
 

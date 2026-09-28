@@ -73,9 +73,9 @@ export const authService = {
     const normalizedPhone = phone ? phone.trim() : '';
     const isDealer = role === 'dealer';
 
-    // Require OTP-verified contact before creating the account: customers
-    // verify their email, dealers verify their phone (see verifySignupOtp).
-    const otpIdentifier = isDealer ? normalizedPhone : normalizedEmail;
+    // Every customer and dealer must verify the submitted mobile number
+    // before an account can be created.
+    const otpIdentifier = normalizedPhone;
     const normalizedOtpIdentifier = normalizeIdentifier(otpIdentifier);
     const verifiedOtp = await OtpVerification.findOne({
       identifier: normalizedOtpIdentifier,
@@ -84,9 +84,7 @@ export const authService = {
     });
     if (!verifiedOtp) {
       throw new AppError(
-        isDealer
-          ? 'Please verify your phone number via OTP before completing registration.'
-          : 'Please verify your email address via OTP before completing registration.',
+        'Please verify your phone number via OTP before completing registration.',
         HTTP_STATUS.BAD_REQUEST,
         ERROR_CODES.VALIDATION_ERROR
       );
@@ -120,6 +118,7 @@ export const authService = {
         user.fullName = fullName.trim();
         user.name = fullName.trim();
         if (normalizedPhone) user.phone = normalizedPhone;
+        user.isPhoneVerified = true;
         if (dob) user.dob = new Date(dob);
         user.passwordHash = passwordHash;
 
@@ -176,7 +175,7 @@ export const authService = {
       passwordHash,
       role: isDealer ? 'dealer' : 'customer',
       isPhoneVerified: true,
-      isEmailVerified: true,
+      isEmailVerified: false,
       accountStatus: 'active',
       status: 'active',
     });
@@ -484,11 +483,15 @@ export const authService = {
       }
     }
 
-    // Activate user upon successful phone verification
-    if (purpose === 'signup' || user.accountStatus === 'pending') {
-      user.isPhoneVerified = true;
-      user.accountStatus = 'active';
-      user.status = 'active';
+    // A successful mobile OTP proves ownership of the current login number.
+    // Signup/pending accounts are activated at the same time.
+    const verifiedByPhone = !isEmail;
+    if (verifiedByPhone || purpose === 'signup' || user.accountStatus === 'pending') {
+      if (verifiedByPhone) user.isPhoneVerified = true;
+      if (purpose === 'signup' || user.accountStatus === 'pending') {
+        user.accountStatus = 'active';
+        user.status = 'active';
+      }
       await user.save();
     }
 
@@ -880,7 +883,8 @@ export const authService = {
   },
 
   /**
-   * Updates user profile (fullName, email, phone, dob, address, password, dealer details)
+   * Updates user profile details. Storefront authentication is OTP-based,
+   * so password updates are intentionally not accepted here.
    */
   async updateProfile(userId, data) {
     const user = await User.findById(userId).select('+passwordHash');
@@ -918,6 +922,7 @@ export const authService = {
         throw new AppError('Email address is already in use by another account', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
       }
       user.email = normalizedEmail;
+      user.isEmailVerified = false;
     }
 
     // Update Phone (check for duplicates if changed)
@@ -928,6 +933,7 @@ export const authService = {
         throw new AppError('Phone number is already in use by another account', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
       }
       user.phone = normalizedPhone;
+      user.isPhoneVerified = false;
     }
 
     if (dob) {
@@ -938,13 +944,13 @@ export const authService = {
       user.address = address.trim();
     }
 
-    // Update Password if newPassword provided
-    if (newPassword) {
-      if (user.passwordHash && currentPassword) {
-        const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
-        if (!isMatch) {
-          throw new AppError('Current password is incorrect', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
-        }
+    // Password credentials are used only by the administrator portal.
+    if (user.role === 'admin' && newPassword) {
+      const isMatch = user.passwordHash && currentPassword
+        ? await bcrypt.compare(currentPassword, user.passwordHash)
+        : false;
+      if (!isMatch) {
+        throw new AppError('Current password is incorrect', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
       }
       user.passwordHash = await bcrypt.hash(newPassword, 10);
     }

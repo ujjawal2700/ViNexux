@@ -1,3 +1,4 @@
+import { getPublicProducts, getPublicProductById, getPublicBrands } from '../services/catalog.service.js';
 import { productService } from '../services/product.service.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -15,7 +16,7 @@ export const createProduct = asyncHandler(async (req, res) => {
 });
 
 export const getProducts = asyncHandler(async (req, res) => {
-  const result = await productService.getProducts(req.query);
+  const result = await getPublicProducts(req.query, req.user);
 
   return ApiResponse.success(
     res,
@@ -27,7 +28,7 @@ export const getProducts = asyncHandler(async (req, res) => {
 
 export const getProductById = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const product = await productService.getProductById(id);
+  const product = await getPublicProductById(id, req.user);
 
   return ApiResponse.success(
     res,
@@ -68,3 +69,5 @@ export default {
   updateProduct,
   deleteProduct,
 };
+
+export const getBrands = asyncHandler(async (req, res) => ApiResponse.success(res, 'Catalog brands retrieved', { brands: await getPublicBrands() }));

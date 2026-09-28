@@ -39,8 +39,7 @@ export const authService = {
     return response.data;
   },
 
-  // Verifies a pre-account "signup" OTP (email for customers, phone for
-  // dealers) so the multi-step signup wizard can confirm contact ownership
+  // Verifies the mobile-number OTP before customer/dealer account creation
   // before the account is actually created.
   verifySignupOtp: async (identifier, otpCode) => {
     const response = await apiClient.post('/auth/verify-signup-otp', { identifier, otp: otpCode });
@@ -73,15 +72,16 @@ export const authService = {
   },
 
   // Fetch Current Logged-in User Profile
-  getMe: async (token) => {
+  getMe: async (token, portal) => {
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    const response = await apiClient.get('/auth/me', { headers });
+    const response = await apiClient.get('/auth/me', { headers, portal });
     return response.data;
   },
 
-  // Update Profile & Password
-  updateProfile: async (profileData) => {
-    const response = await apiClient.put('/auth/profile', profileData);
+  // Update profile details
+  updateProfile: async (profileData, token, portal) => {
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const response = await apiClient.put('/auth/profile', profileData, { headers, portal });
     return response.data;
   },
 

@@ -6,6 +6,9 @@ import { Button } from '../../components/ui/Button';
 import Logo from '../../components/ui/Logo';
 import ThemeToggle from '../../components/ui/ThemeToggle';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_REGEX = /^[6-9]\d{9}$/;
+
 /**
  * Dedicated admin sign-in page. Separate URL from the general /login used by
  * customers/dealers. The backend independently enforces that only accounts
@@ -25,11 +28,17 @@ const AdminLoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!identifier.trim()) {
+    const normalizedIdentifier = identifier.trim();
+    if (!normalizedIdentifier) {
       setError('Please enter your administrator email address or phone number');
       return;
     }
-    if (!password) {
+    const isEmail = normalizedIdentifier.includes('@');
+    if ((isEmail && !EMAIL_REGEX.test(normalizedIdentifier)) || (!isEmail && !PHONE_REGEX.test(normalizedIdentifier))) {
+      setError(isEmail ? 'Please enter a valid administrator email address.' : 'Please enter a valid 10-digit Indian mobile number.');
+      return;
+    }
+    if (password.length < 6) {
       setError('Please enter your administrator password');
       return;
     }
@@ -38,9 +47,9 @@ const AdminLoginPage = () => {
     setError(null);
 
     try {
-      const response = await sendOtp(identifier, 'admin', undefined, password);
+      const response = await sendOtp(normalizedIdentifier, 'admin', undefined, password);
       if (response.success) {
-        navigate('/admin/verify-otp', { state: { identifier, portal: 'admin' } });
+        navigate('/admin/verify-otp', { state: { identifier: normalizedIdentifier, portal: 'admin' } });
       } else {
         setError(response.message || 'Failed to send OTP code');
       }

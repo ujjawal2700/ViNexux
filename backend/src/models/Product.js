@@ -64,6 +64,16 @@ const productSchema = new mongoose.Schema(
       ref: 'Category',
       required: [true, 'Category ID is required'],
     },
+    modelNumber: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Model number cannot exceed 100 characters'],
+    },
+    brandId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Brand',
+      index: true,
+    },
     description: {
       type: String,
       trim: true,

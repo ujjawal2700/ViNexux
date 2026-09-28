@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import enquiryService from '../../services/enquiryService';
 import contentService from '../../services/contentService';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-import { StatusBadge, Badge } from '../../components/ui/Badge';
+import { StatusBadge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/ErrorState';
@@ -19,7 +19,6 @@ import {
   ArrowLeft,
   Clock,
   MessageSquare,
-  ShieldCheck,
 } from 'lucide-react';
 
 export const EnquiryDetailPage = () => {
@@ -87,7 +86,7 @@ export const EnquiryDetailPage = () => {
     (enquiry.items || []).forEach((item, idx) => {
       text += `${idx + 1}. ${item.productName || 'Equipment'} (Qty: ${item.quantity})\n`;
     });
-    text += `\nPlease provide me with an update on this quotation. Thank you!`;
+    text += `\nPlease provide me with an update on this enquiry. Thank you!`;
     return `https://wa.me/${supportPhone}?text=${encodeURIComponent(text)}`;
   };
 

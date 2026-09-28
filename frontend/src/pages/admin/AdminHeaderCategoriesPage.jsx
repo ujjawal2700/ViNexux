@@ -44,6 +44,7 @@ const AdminHeaderCategoriesPage = () => {
     sortOrder: 0,
   });
   const [formSubmitting, setFormSubmitting] = useState(false);
+  const [categoryImageFile, setCategoryImageFile] = useState(null);
   const [formError, setFormError] = useState('');
 
   // Delete State
@@ -115,6 +116,7 @@ const AdminHeaderCategoriesPage = () => {
   }, [filteredCategories, page, pageSize]);
 
   const handleOpenCreate = () => {
+    setCategoryImageFile(null);
     setEditingCategory(null);
     setFormData({
       name: '',
@@ -129,6 +131,7 @@ const AdminHeaderCategoriesPage = () => {
   };
 
   const handleOpenEdit = (category) => {
+    setCategoryImageFile(null);
     setEditingCategory(category);
     setFormData({
       name: category.name || '',
@@ -152,11 +155,14 @@ const AdminHeaderCategoriesPage = () => {
     setFormSubmitting(true);
     setFormError('');
     try {
+      const uploadedImage = categoryImageFile
+        ? await adminService.uploadCmsImage(categoryImageFile, 'vinexus/categories')
+        : null;
       const payload = {
         name: formData.name.trim(),
         slug: formData.slug.trim() || undefined,
         parentId: null, // Always root / Header Category
-        image: formData.image.trim() || undefined,
+        image: uploadedImage?.data?.url || formData.image.trim() || undefined,
         description: formData.description.trim() || undefined,
         isActive: formData.isActive,
         sortOrder: Number(formData.sortOrder) || 0,
@@ -379,11 +385,12 @@ const AdminHeaderCategoriesPage = () => {
             />
           </FormField>
 
-          <FormField label="Category Image URL (Optional)">
+          <FormField label="Category Image">
+            <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={(e) => setCategoryImageFile(e.target.files?.[0] || null)} className="mb-2 block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-muted file:px-3 file:py-2 file:text-xs file:font-semibold" />
             <Input
               value={formData.image}
               onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-              placeholder="https://..."
+              placeholder="Existing image URL or optional external URL"
             />
           </FormField>
 

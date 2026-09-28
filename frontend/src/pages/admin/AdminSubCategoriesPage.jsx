@@ -17,6 +17,7 @@ import ErrorState from '../../components/ui/ErrorState';
 import Toast from '../../components/ui/Toast';
 import Pagination from '../../components/ui/Pagination';
 import { Plus, Edit2, Trash2, GitBranch, Search, Layers, FolderTree, Info } from 'lucide-react';
+import CategoryFilterBuilder from '../../components/admin/CategoryFilterBuilder';
 
 /**
  * Dedicated Sub Category Management Page (Tier 3 Categories - Optional)
@@ -44,8 +45,10 @@ const AdminSubCategoriesPage = () => {
     description: '',
     isActive: true,
     sortOrder: 0,
+    filterDefinitions: [],
   });
   const [formSubmitting, setFormSubmitting] = useState(false);
+  const [categoryImageFile, setCategoryImageFile] = useState(null);
   const [formError, setFormError] = useState('');
 
   // Delete State
@@ -151,6 +154,7 @@ const AdminSubCategoriesPage = () => {
   }, [searchTerm, headerFilter, mainFilter, statusFilter]);
 
   const handleOpenCreate = () => {
+    setCategoryImageFile(null);
     setEditingCategory(null);
     setFormData({
       name: '',
@@ -160,12 +164,14 @@ const AdminSubCategoriesPage = () => {
       description: '',
       isActive: true,
       sortOrder: (subCategories.length || 0) + 1,
+      filterDefinitions: [],
     });
     setFormError('');
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (category) => {
+    setCategoryImageFile(null);
     setEditingCategory(category);
     setFormData({
       name: category.name || '',
@@ -175,6 +181,7 @@ const AdminSubCategoriesPage = () => {
       description: category.description || '',
       isActive: category.isActive !== undefined ? category.isActive : true,
       sortOrder: category.sortOrder || 0,
+      filterDefinitions: category.filterDefinitions || [],
     });
     setFormError('');
     setIsModalOpen(true);
@@ -194,14 +201,18 @@ const AdminSubCategoriesPage = () => {
     setFormSubmitting(true);
     setFormError('');
     try {
+      const uploadedImage = categoryImageFile
+        ? await adminService.uploadCmsImage(categoryImageFile, 'vinexus/categories')
+        : null;
       const payload = {
         name: formData.name.trim(),
         slug: formData.slug.trim() || undefined,
         parentId: formData.parentId,
-        image: formData.image.trim() || undefined,
+        image: uploadedImage?.data?.url || formData.image.trim() || undefined,
         description: formData.description.trim() || undefined,
         isActive: formData.isActive,
         sortOrder: Number(formData.sortOrder) || 0,
+        filterDefinitions: formData.filterDefinitions,
       };
 
       if (editingCategory) {
@@ -501,11 +512,12 @@ const AdminSubCategoriesPage = () => {
             />
           </FormField>
 
-          <FormField label="Category Image URL (Optional)">
+          <FormField label="Category Image">
+            <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={(e) => setCategoryImageFile(e.target.files?.[0] || null)} className="mb-2 block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-muted file:px-3 file:py-2 file:text-xs file:font-semibold" />
             <Input
               value={formData.image}
               onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-              placeholder="https://..."
+              placeholder="Existing image URL or optional external URL"
             />
           </FormField>
 
@@ -517,6 +529,11 @@ const AdminSubCategoriesPage = () => {
               rows={3}
             />
           </FormField>
+
+          <CategoryFilterBuilder
+            value={formData.filterDefinitions}
+            onChange={(filterDefinitions) => setFormData({ ...formData, filterDefinitions })}
+          />
 
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Sort Order Position">

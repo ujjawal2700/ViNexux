@@ -148,7 +148,14 @@ export const footerContentSchema = {
     companyDescription: z.string().trim().max(500).optional(),
     email: z.string().trim().email({ message: 'Invalid email address format' }).optional().or(z.literal('')),
     phone: z.string().trim().optional(),
+    whatsappNumber: z.string().trim().max(20).optional(),
+    whatsappMessageNote: z.string().trim().max(500).optional(),
     address: z.string().trim().optional(),
+    mapUrl: z.string().trim().max(1000).optional(),
+    aboutHeading: z.string().trim().max(80).optional(),
+    quickLinksHeading: z.string().trim().max(80).optional(),
+    legalLinksHeading: z.string().trim().max(80).optional(),
+    contactHeading: z.string().trim().max(80).optional(),
     quickLinks: z
       .array(
         z.object({
@@ -167,6 +174,17 @@ export const footerContentSchema = {
         })
       )
       .optional(),
+    socialLinks: z
+      .array(
+        z.object({
+          label: z.string().trim().min(1),
+          url: z.string().trim().min(1),
+          sortOrder: z.number().int().min(0).optional().default(0),
+        })
+      )
+      .max(20)
+      .optional(),
+    copyrightText: z.string().trim().max(250).optional(),
     isActive: z.boolean().optional().default(true),
   }),
 };

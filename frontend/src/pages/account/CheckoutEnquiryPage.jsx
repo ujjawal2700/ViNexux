@@ -21,7 +21,6 @@ import {
   ShieldCheck,
   ArrowRight,
   ArrowLeft,
-  Lock,
 } from 'lucide-react';
 
 export const CheckoutEnquiryPage = () => {
@@ -37,6 +36,12 @@ export const CheckoutEnquiryPage = () => {
   // Delivery address is picked from the saved address book (see
   // AddressPicker) - no more ad hoc typing at checkout.
   const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [contact, setContact] = useState({
+    fullName: user?.fullName || user?.name || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+  });
+  const [deliveryAddress, setDeliveryAddress] = useState({ line1: '', line2: '', city: '', state: '', pincode: '' });
 
   // WhatsApp number to reach the submitter on - there's no WhatsApp
   // Business API integration, so admin follows up via a wa.me deep link
@@ -56,15 +61,19 @@ export const CheckoutEnquiryPage = () => {
     try {
       const res = await cartService.getCart();
       const cartData = res.data?.cart || res.cart || res.data;
-      const items = cartData?.items || [];
+      const selectedIds = JSON.parse(sessionStorage.getItem('vinexus_enquiry_selected_products') || '[]');
+      const allItems = cartData?.items || [];
+      const items = selectedIds.length
+        ? allItems.filter((item) => selectedIds.includes(String(item.productId?._id || item.productId)))
+        : allItems;
 
       if (!items || items.length === 0) {
         toast.info('Your cart is empty. Please add products before checking out.');
-        navigate('/account/cart');
+        navigate('/cart');
         return;
       }
 
-      setCart(cartData);
+      setCart({ ...cartData, items });
     } catch (err) {
       console.error('Checkout cart verification error:', err);
       setError('Unable to load cart items for checkout.');
@@ -93,6 +102,15 @@ export const CheckoutEnquiryPage = () => {
       return;
     }
 
+    if (contact.fullName.trim().length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email.trim()) || !/^[6-9]\d{9}$/.test(contact.phone)) {
+      toast.error('Please enter a valid full name, email, and 10-digit mobile number.');
+      return;
+    }
+    if (!deliveryAddress.line1.trim() || !deliveryAddress.city.trim() || !deliveryAddress.state.trim() || !/^\d{6}$/.test(deliveryAddress.pincode)) {
+      toast.error('Please complete the editable delivery address and 6-digit pincode.');
+      return;
+    }
+
     const cleanedWhatsapp = whatsappNumber.replace(/\D/g, '').slice(-10);
     if (!/^[6-9]\d{9}$/.test(cleanedWhatsapp)) {
       setWhatsappError('Please enter a valid 10-digit WhatsApp number');
@@ -105,6 +123,11 @@ export const CheckoutEnquiryPage = () => {
       setIsSubmitting(true);
       const payload = {
         addressId: selectedAddressId,
+        contactName: contact.fullName.trim(),
+        contactEmail: contact.email.trim().toLowerCase(),
+        contactPhone: contact.phone,
+        deliveryAddress,
+        selectedProductIds: items.map((item) => String(item.productId?._id || item.productId)),
         whatsappNumber: cleanedWhatsapp,
         message: message.trim() || undefined,
       };
@@ -113,6 +136,7 @@ export const CheckoutEnquiryPage = () => {
       const createdEnquiry = res.data?.enquiry || res.enquiry || res.data;
 
       toast.success(`Enquiry #${createdEnquiry.enquiryNumber || 'VNX'} submitted successfully!`);
+      sessionStorage.removeItem('vinexus_enquiry_selected_products');
 
       const enquiryId = createdEnquiry._id || createdEnquiry.id;
       if (enquiryId) {
@@ -171,7 +195,7 @@ export const CheckoutEnquiryPage = () => {
           </Link>
           <h1 className="text-3xl font-extrabold text-foreground tracking-tight flex items-center gap-3">
             <FileCheck className="w-7 h-7 text-primary" />
-            <span>Submit Quotation Enquiry</span>
+            <span>Send Enquiry</span>
           </h1>
         </div>
       </div>
@@ -181,35 +205,19 @@ export const CheckoutEnquiryPage = () => {
         {/* Left Column: Contact Preview & Delivery Address Picker */}
         <div className="lg:col-span-7 space-y-6">
 
-          {/* SECTION 1: VERIFIED CONTACT INFO (READ-ONLY) */}
+          {/* SECTION 1: EDITABLE CONTACT INFO */}
           <Card className="bg-card p-6 rounded-2xl border border-border space-y-4 shadow-sm">
             <CardHeader className="p-0 pb-3 border-b border-border flex items-center justify-between">
               <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
                 <User className="w-4 h-4 text-primary" />
-                <span>Verified Contact Information (Read-Only)</span>
+                <span>Contact Information</span>
               </CardTitle>
-              <Lock className="w-3.5 h-3.5 text-muted-foreground" />
             </CardHeader>
 
             <CardContent className="p-0 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-              <div className="space-y-1 bg-background p-3 rounded-xl border border-border">
-                <span className="text-[#9a6870] block text-[10px]">Contact Person</span>
-                <span className="font-bold text-foreground truncate block">
-                  {user?.fullName || user?.name || 'Vinexus Account'}
-                </span>
-              </div>
-              <div className="space-y-1 bg-background p-3 rounded-xl border border-border">
-                <span className="text-[#9a6870] block text-[10px]">Email Address</span>
-                <span className="font-mono font-medium text-foreground truncate block">
-                  {user?.email || 'N/A'}
-                </span>
-              </div>
-              <div className="space-y-1 bg-background p-3 rounded-xl border border-border">
-                <span className="text-[#9a6870] block text-[10px]">Phone Number</span>
-                <span className="font-mono font-medium text-foreground truncate block">
-                  {user?.phone || 'N/A'}
-                </span>
-              </div>
+              <Input label="Full Name" value={contact.fullName} onChange={(e) => setContact({ ...contact, fullName: e.target.value })} />
+              <Input label="Email" type="email" value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} />
+              <Input label="Phone" type="tel" value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })} />
             </CardContent>
           </Card>
 
@@ -223,7 +231,17 @@ export const CheckoutEnquiryPage = () => {
             </CardHeader>
 
             <CardContent className="p-0">
-              <AddressPicker selectedAddressId={selectedAddressId} onSelect={setSelectedAddressId} />
+              <AddressPicker selectedAddressId={selectedAddressId} onSelect={(id, address) => {
+                setSelectedAddressId(id);
+                if (address) setDeliveryAddress({ line1: address.line1 || '', line2: address.line2 || '', city: address.city || '', state: address.state || '', pincode: address.pincode || '' });
+              }} />
+              {selectedAddressId && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                <Input label="Address Line 1" value={deliveryAddress.line1} onChange={(e) => setDeliveryAddress({ ...deliveryAddress, line1: e.target.value })} />
+                <Input label="Address Line 2" value={deliveryAddress.line2} onChange={(e) => setDeliveryAddress({ ...deliveryAddress, line2: e.target.value })} />
+                <Input label="City" value={deliveryAddress.city} onChange={(e) => setDeliveryAddress({ ...deliveryAddress, city: e.target.value })} />
+                <Input label="State" value={deliveryAddress.state} onChange={(e) => setDeliveryAddress({ ...deliveryAddress, state: e.target.value })} />
+                <Input label="Pincode" value={deliveryAddress.pincode} onChange={(e) => setDeliveryAddress({ ...deliveryAddress, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })} />
+              </div>}
             </CardContent>
           </Card>
 
@@ -328,7 +346,7 @@ export const CheckoutEnquiryPage = () => {
                 isDisabled={!selectedAddressId || whatsappNumber.replace(/\D/g, '').length !== 10}
                 rightIcon={<ArrowRight className="w-4 h-4" />}
               >
-                Submit Commercial Enquiry
+                Send Enquiry
               </Button>
             </CardFooter>
           </Card>
@@ -336,10 +354,10 @@ export const CheckoutEnquiryPage = () => {
           <div className="p-4 rounded-xl bg-card border border-border text-xs text-muted-foreground space-y-1 shadow-sm">
             <div className="font-bold text-foreground flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-700" />
-              <span>Automated Google Sheet & Admin Alert</span>
+              <span>Database, Google Sheet & Email Confirmation</span>
             </div>
             <p className="text-[11px] leading-relaxed">
-              Upon submission, your lead is saved to our central database, appended to commercial Google Sheets, and dispatched via WhatsApp alert to Vinexus engineers.
+              Upon submission, your enquiry is saved to our database, appended to the connected Google Sheet, and emailed to the configured admin address. A confirmation email is also sent to you when email delivery is available.
             </p>
           </div>
         </div>

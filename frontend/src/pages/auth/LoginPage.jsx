@@ -5,6 +5,9 @@ import { Mail, Lock, ShieldCheck, User, MessageSquare, Check } from 'lucide-reac
 import SignupWizard from './SignupWizard';
 import { cn } from '../../lib/utils';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_REGEX = /^[6-9]\d{9}$/;
+
 export const LoginPage = ({ initialTab = 'login' }) => {
   const [searchParams] = useSearchParams();
   const queryMode = searchParams.get('mode') || searchParams.get('tab');
@@ -40,13 +43,28 @@ export const LoginPage = ({ initialTab = 'login' }) => {
     setActiveTab(tab);
     setError(null);
     setIdentifier('');
+    navigate(tab === 'signup' ? '/register' : '/login', { replace: true });
   };
 
   // Handle Sign In submission (OTP flow)
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    if (!identifier.trim()) {
+    const normalizedIdentifier = identifier.trim();
+    if (!normalizedIdentifier) {
       setError('Please enter a valid email address or phone number');
+      return;
+    }
+    const isEmail = normalizedIdentifier.includes('@');
+    if ((isEmail && !EMAIL_REGEX.test(normalizedIdentifier)) || (!isEmail && !PHONE_REGEX.test(normalizedIdentifier))) {
+      setError(isEmail ? 'Please enter a valid email address.' : 'Please enter a valid 10-digit Indian mobile number.');
+      return;
+    }
+    if (otpChannel === 'sms' && isEmail) {
+      setError('Enter your registered mobile number to receive the OTP by SMS.');
+      return;
+    }
+    if (otpChannel === 'email' && !isEmail) {
+      setError('Enter your registered email address to receive the OTP by email.');
       return;
     }
 
@@ -54,9 +72,9 @@ export const LoginPage = ({ initialTab = 'login' }) => {
     setError(null);
 
     try {
-      const response = await sendOtp(identifier.trim());
+      const response = await sendOtp(normalizedIdentifier);
       if (response.success) {
-        navigate('/verify-otp', { state: { identifier: identifier.trim(), from: location.state?.from?.pathname } });
+        navigate('/verify-otp', { state: { identifier: normalizedIdentifier, from: location.state?.from?.pathname } });
       } else {
         setError(response.message || 'Failed to send verification code.');
       }

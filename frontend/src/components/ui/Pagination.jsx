@@ -1,5 +1,4 @@
 import React from 'react';
-import Button from './Button';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 export const Pagination = ({
@@ -8,7 +7,7 @@ export const Pagination = ({
   totalItems,
   pageSize,
   onPageChange,
-  showItemCount = true,
+  variant = 'default',
   className = '',
 }) => {
   if (totalPages <= 1 && !totalItems) return null;
@@ -53,6 +52,39 @@ export const Pagination = ({
 
   const startItem = pageSize ? (currentPage - 1) * pageSize + 1 : null;
   const endItem = pageSize && totalItems ? Math.min(currentPage * pageSize, totalItems) : null;
+
+  const navigation = (
+    <div className="flex items-center gap-1 sm:gap-1.5">
+      {totalPages > 1 && (
+        <button type="button" onClick={handlePrev} disabled={currentPage <= 1} className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-[#800020] disabled:opacity-40 disabled:cursor-not-allowed transition-all text-xs cursor-pointer" title="Previous Page" aria-label="Previous Page">
+          <ChevronLeft className="w-3.5 h-3.5" />
+        </button>
+      )}
+      {pages.map((p, idx) => p === '...' ? (
+        <span key={`catalog-dots-${idx}`} className="px-1.5 text-xs text-gray-400 font-semibold select-none">...</span>
+      ) : (
+        <button key={p} type="button" onClick={() => onPageChange && onPageChange(p)} className={`min-w-7 h-7 sm:min-w-8 sm:h-8 px-2 rounded-md text-xs font-semibold transition-all cursor-pointer ${currentPage === p ? 'bg-[#800020] text-white shadow-xs font-bold border border-[#800020]' : 'bg-white border border-gray-200 text-[#800020] hover:bg-[#fff9fa] hover:border-[#800020]/40'}`}>
+          {p}
+        </button>
+      ))}
+      {totalPages > 1 && (
+        <button type="button" onClick={handleNext} disabled={currentPage >= totalPages} className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-[#800020] disabled:opacity-40 disabled:cursor-not-allowed transition-all text-xs cursor-pointer" title="Next Page" aria-label="Next Page">
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+      )}
+    </div>
+  );
+
+  if (variant === 'catalog') {
+    return (
+      <div className={`flex flex-col items-center justify-center gap-3 pt-1 pb-4 w-full ${className}`}>
+        {navigation}
+        <div className="text-sm text-gray-500 font-medium text-center">
+          Showing {totalItems === 0 ? 0 : startItem}-{endItem || 0} of {totalItems || 0} products · Page {currentPage} of {Math.max(totalPages, 1)}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`flex flex-wrap items-center justify-between gap-3 py-3 px-2 w-full ${className}`}>

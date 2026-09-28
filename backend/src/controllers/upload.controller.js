@@ -1,25 +1,5 @@
-import { getStorageProvider, createStorageProvider } from '../integrations/storage/index.js';
-import { config } from '../config/env.js';
-import { AppError } from '../utils/AppError.js';
+import { storageService } from '../services/storage/storage.service.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
-
-/**
- * Helper to determine if real Cloudinary keys are set in environment
- */
-const isCloudinaryConfigured = () => {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || config.cloudinaryCloudName;
-  const apiKey = process.env.CLOUDINARY_API_KEY || config.cloudinaryApiKey;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET || config.cloudinaryApiSecret;
-
-  return (
-    cloudName &&
-    apiKey &&
-    apiSecret &&
-    !cloudName.includes('your_') &&
-    !apiKey.includes('your_') &&
-    !apiSecret.includes('your_')
-  );
-};
 
 /**
  * Controller to upload a single image to Cloudinary (or DevStorage fallback)
@@ -36,12 +16,7 @@ export const uploadImage = async (req, res, next) => {
     const folder = req.body.folder || 'vinexus/products';
     const category = req.body.category || 'general';
 
-    // Choose active provider: use Cloudinary if configured, otherwise fallback gracefully
-    const provider = isCloudinaryConfigured()
-      ? createStorageProvider('cloudinary')
-      : getStorageProvider();
-
-    const uploadResult = await provider.uploadFile({
+    const uploadResult = await storageService.uploadFile({
       buffer: req.file.buffer,
       originalname: req.file.originalname,
       mimetype: req.file.mimetype,
@@ -51,10 +26,7 @@ export const uploadImage = async (req, res, next) => {
 
     return res.status(HTTP_STATUS.OK).json({
       success: true,
-      message: isCloudinaryConfigured()
-        ? 'Image uploaded successfully to Cloudinary'
-        : 'Image uploaded in dev mode (Cloudinary keys pending in backend/.env)',
-      isCloudinaryActive: isCloudinaryConfigured(),
+      message: 'Image uploaded successfully',
       data: {
         url: uploadResult.url,
         publicId: uploadResult.publicId,
@@ -83,12 +55,8 @@ export const uploadMultipleImages = async (req, res, next) => {
     const folder = req.body.folder || 'vinexus/products';
     const category = req.body.category || 'general';
 
-    const provider = isCloudinaryConfigured()
-      ? createStorageProvider('cloudinary')
-      : getStorageProvider();
-
     const uploadPromises = files.map((file) =>
-      provider.uploadFile({
+      storageService.uploadFile({
         buffer: file.buffer,
         originalname: file.originalname,
         mimetype: file.mimetype,
@@ -102,7 +70,6 @@ export const uploadMultipleImages = async (req, res, next) => {
     return res.status(HTTP_STATUS.OK).json({
       success: true,
       message: `${results.length} images uploaded successfully`,
-      isCloudinaryActive: isCloudinaryConfigured(),
       data: {
         images: results.map((r) => ({
           url: r.url,
@@ -130,11 +97,7 @@ export const deleteImage = async (req, res, next) => {
       });
     }
 
-    const provider = isCloudinaryConfigured()
-      ? createStorageProvider('cloudinary')
-      : getStorageProvider();
-
-    const result = await provider.deleteFile(publicId);
+    const result = await storageService.deleteFile(publicId);
 
     return res.status(HTTP_STATUS.OK).json({
       success: true,

@@ -13,9 +13,6 @@ import {
   User,
   Mail,
   Phone,
-  Lock,
-  Eye,
-  EyeOff,
   ArrowLeft,
   Save,
   AlertCircle,
@@ -150,16 +147,15 @@ const DealerKycSection = () => {
         pincode: formData.pincode.trim() || undefined,
       };
 
-      let res;
       if (profile) {
-        res = await dealerService.updateDealerProfile(payload);
+        await dealerService.updateDealerProfile(payload);
         toast.success('Dealer profile updated successfully!');
       } else {
-        res = await dealerService.createDealerProfile(payload);
+        await dealerService.createDealerProfile(payload);
         toast.success('Dealer profile created successfully!');
       }
 
-      setProfile(res.data?.profile || res.profile || res.data);
+      await fetchProfile();
     } catch (err) {
       console.error('Save profile error:', err);
       toast.error(err.response?.data?.message || 'Failed to save dealer profile.');
@@ -441,12 +437,6 @@ export const ProfileUpdatePage = () => {
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || user?.identifier || '');
 
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -456,16 +446,17 @@ export const ProfileUpdatePage = () => {
       setError('Full Name, Email Address, and Mobile Number are required.');
       return;
     }
-
-    if (newPassword) {
-      if (newPassword.length < 6) {
-        setError('New password must be at least 6 characters long.');
-        return;
-      }
-      if (newPassword !== confirmPassword) {
-        setError('New password and Confirm Password do not match.');
-        return;
-      }
+    if (fullName.trim().length < 2 || fullName.trim().length > 100) {
+      setError('Full Name must be between 2 and 100 characters.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (!/^[6-9]\d{9}$/.test(phone.trim())) {
+      setError('Please enter a valid 10-digit Indian mobile number.');
+      return;
     }
 
     setLoading(true);
@@ -476,13 +467,12 @@ export const ProfileUpdatePage = () => {
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(),
         phone: phone.trim(),
-        ...(newPassword ? { currentPassword, newPassword } : {}),
       };
 
       const res = await updateProfile(payload);
 
       if (res.success) {
-        toast.success('Profile updated successfully! New credentials are now active.');
+        toast.success('Profile updated successfully!');
         setTimeout(() => {
           navigate('/account/profile');
         }, 1000);
@@ -536,7 +526,7 @@ export const ProfileUpdatePage = () => {
                   type="text"
                   required
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={(e) => setFullName(e.target.value.slice(0, 100))}
                   placeholder="Enter Full Name"
                   className="w-full bg-muted/40 border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-2xl pl-11 pr-4 py-3 text-xs text-foreground placeholder-muted-foreground outline-none transition-all font-medium"
                 />
@@ -571,72 +561,10 @@ export const ProfileUpdatePage = () => {
                     type="tel"
                     required
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="Enter Mobile Number"
-                    className="w-full bg-muted/40 border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-2xl pl-11 pr-4 py-3 text-xs text-foreground placeholder-muted-foreground outline-none transition-all font-medium"
-                  />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card p-6 rounded-2xl border border-border space-y-5 shadow-sm">
-          <CardHeader className="p-0 pb-3 border-b border-border">
-            <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
-              <Lock className="w-4 h-4 text-primary" /> Security & Password Update
-            </CardTitle>
-          </CardHeader>
-
-          <CardContent className="p-0 space-y-4 text-xs">
-            <p className="text-xs text-muted-foreground font-medium">
-              Leave password fields blank if you do not wish to change your current password.
-            </p>
-
-            <div>
-              <label className="block text-[11px] font-bold text-foreground uppercase tracking-wider mb-1.5">Current Password</label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2" />
-                <input
-                  type={showCurrentPassword ? 'text' : 'password'}
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter Current Password"
-                  className="w-full bg-muted/40 border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-2xl pl-11 pr-11 py-3 text-xs text-foreground placeholder-muted-foreground outline-none transition-all font-medium"
-                />
-                <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[11px] font-bold text-foreground uppercase tracking-wider mb-1.5">New Password</label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2" />
-                  <input
-                    type={showNewPassword ? 'text' : 'password'}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter New Password"
-                    className="w-full bg-muted/40 border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-2xl pl-11 pr-11 py-3 text-xs text-foreground placeholder-muted-foreground outline-none transition-all font-medium"
-                  />
-                  <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-foreground uppercase tracking-wider mb-1.5">Confirm New Password</label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Re-enter New Password"
+                    inputMode="numeric"
+                    maxLength={10}
                     className="w-full bg-muted/40 border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-2xl pl-11 pr-4 py-3 text-xs text-foreground placeholder-muted-foreground outline-none transition-all font-medium"
                   />
                 </div>

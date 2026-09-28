@@ -683,7 +683,7 @@ async function seed() {
     },
     {
       title: 'Authorized Dealer Wholesale Portal',
-      subtitle: 'Approved dealers unlock exclusive B2B pricing, instant quotation generation, and bulk order discounts.',
+      subtitle: 'Approved dealers unlock exclusive B2B pricing and bulk order discounts.',
       image: {
         url: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=1600&q=80',
         publicId: 'hero-banner-2',
@@ -770,10 +770,7 @@ async function seed() {
     phone: '+91 800 555 WINE (9463)',
     address: 'Building 4B, Commercial Electronics Complex, MIDC Industrial Area, Mumbai, India - 400001',
     quickLinks: [
-      { label: 'All Products', url: '/products', sortOrder: 1 },
-      { label: 'Category Directory', url: '/categories', sortOrder: 2 },
       { label: 'Dealer Portal Login', url: '/login', sortOrder: 3 },
-      { label: 'Component Library', url: '/ui-preview', sortOrder: 4 },
     ],
     legalLinks: [
       { label: 'Privacy Policy', url: '/content/pages/privacy-policy', sortOrder: 1 },
@@ -790,19 +787,19 @@ async function seed() {
     {
       slug: 'privacy-policy',
       title: 'Privacy Policy & Data Security',
-      content: '<p>Vinexus Security Platforms respects your business privacy. We collect personal and company details solely to provide wholesale quotation services, dealer KYC verification, and product shipment processing.</p><h3>Data Protection</h3><p>We do not share your company details, GSTIN, or order history with unauthorized third parties. All traffic is encrypted using SSL/TLS protocols.</p>',
+      content: '<p>Vinexus Security Platforms respects your business privacy. We collect personal and company details solely to handle product enquiries, dealer KYC verification, and product shipment processing.</p><h3>Data Protection</h3><p>We do not share your company details, GSTIN, or order history with unauthorized third parties. All traffic is encrypted using SSL/TLS protocols.</p>',
       isPublished: true,
     },
     {
       slug: 'terms-and-conditions',
       title: 'Terms & Conditions of Service',
-      content: '<p>Welcome to Vinexus. By accessing our catalog or registering as a B2B dealer, you agree to our standard terms of distribution.</p><h3>Quotation & B2B Pricing</h3><p>Prices listed on quotation requests remain valid for 15 days from issuance date. Dealer wholesale pricing is reserved exclusively for KYC-verified security installers and resellers.</p>',
+      content: '<p>Welcome to Vinexus. By accessing our catalog or registering as a B2B dealer, you agree to our standard terms of distribution.</p><h3>Enquiries & B2B Pricing</h3><p>Prices shown in an enquiry are snapshots and may change until confirmed by our team. Dealer wholesale pricing is reserved exclusively for KYC-verified security installers and resellers.</p>',
       isPublished: true,
     },
     {
       slug: 'about-us',
       title: 'About Vinexus Security Platforms',
-      content: '<p>Vinexus is a technology-driven security infrastructure distributor supplying high-performance CCTV cameras, NVRs, and PoE network equipment across India.</p><p>We empower dealers and enterprise system integrators with instant digital quotation tools, transparent wholesale pricing, and direct technical support.</p>',
+      content: '<p>Vinexus is a technology-driven security infrastructure distributor supplying high-performance CCTV cameras, NVRs, and PoE network equipment across India.</p><p>We empower dealers and enterprise system integrators with simple product enquiries, transparent wholesale pricing, and direct technical support.</p>',
       isPublished: true,
     },
   ];

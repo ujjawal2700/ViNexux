@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useSearchParams, Link, useNavigate, useParams } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import productService from '../../services/productService';
 import categoryService from '../../services/categoryService';
 import ProductCard from '../../components/products/ProductCard';
@@ -8,17 +8,21 @@ import { Pagination } from '../../components/ui/Pagination';
 import { SkeletonCard } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../../components/ui/DropdownMenu';
 import NotFoundPage from './NotFoundPage';
-import { ALL_BRANDS } from './BrandsPage';
+import useAuth from '../../hooks/useAuth';
 import {
   buildCategoryPath,
   buildCategoryTrail,
   buildBrandUrl,
-  slugify,
 } from '../../utils/categoryUrls';
 import {
   Filter,
-  RefreshCw,
   ChevronRight,
   ChevronDown,
   LayoutGrid,
@@ -28,7 +32,18 @@ import {
   PackageCheck,
   Layers,
   Cpu,
+  Check,
 } from 'lucide-react';
+
+const SORT_OPTIONS = [
+  { value: 'default', label: 'Default' },
+  { value: 'name_asc', label: 'Name (A - Z)' },
+  { value: 'name_desc', label: 'Name (Z - A)' },
+  { value: 'price_asc', label: 'Price (Low > High)' },
+  { value: 'price_desc', label: 'Price (High > Low)' },
+  { value: 'model_asc', label: 'Model (A - Z)' },
+  { value: 'model_desc', label: 'Model (Z - A)' },
+];
 
 export const ProductsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -40,19 +55,20 @@ export const ProductsPage = () => {
   const targetCategorySlug = !brandSlug ? (param3 || param2 || headerSlug || '') : '';
 
   // URL Query Parameters
+  const { user } = useAuth();
   const initialSearch = searchParams.get('search') || '';
   const initialCategory = searchParams.get('categoryId') || searchParams.get('category') || '';
   const initialBrand = searchParams.get('brand') || '';
 
   // Local state
-  const [searchTerm, setSearchTerm] = useState(initialSearch);
-  const [selectedCategoryId, setSelectedCategoryId] = useState('');
-  const [selectedBrands, setSelectedBrands] = useState(() => (initialBrand ? [initialBrand.toUpperCase()] : []));
+  const searchTerm = initialSearch;
+
+
   const [selectedSpecs, setSelectedSpecs] = useState({}); // { "Wattage": ["65w"], ... }
   const [inStockOnly, setInStockOnly] = useState(false);
-  const [sortOption, setSortOption] = useState('default'); // default | price_asc | price_desc | newest | name_asc
+  const [sortOption, setSortOption] = useState('default');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(12);
+  const itemsPerPage = 28;
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   // Accordion toggle states in sidebar
@@ -67,6 +83,8 @@ export const ProductsPage = () => {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
+  const [categoryError, setCategoryError] = useState(null);
+  const [facets, setFacets] = useState({ brands: [], specs: [] });
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
 
   // UI state
@@ -77,11 +95,11 @@ export const ProductsPage = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await categoryService.getCategories({ limit: 500, isActive: true });
+        const res = await categoryService.getCategoryTree();
         const list = res.data?.categories || res.categories || [];
         setCategories(list);
-      } catch (err) {
-        console.warn('Failed to load categories for catalog filter:', err);
+      } catch {
+        setCategoryError('Unable to load categories. Please retry.');
       } finally {
         setCategoriesLoaded(true);
       }
@@ -89,112 +107,29 @@ export const ProductsPage = () => {
     fetchCategories();
   }, []);
 
-  // Resolve brand name from URL brandSlug or query parameter
-  const resolvedBrand = useMemo(() => {
-    const rawBrand = brandSlug || searchParams.get('brand');
-    if (!rawBrand) return null;
-    const s = slugify(rawBrand);
-    const matched = ALL_BRANDS.find((b) => slugify(b.name) === s);
-    if (matched) return matched.name;
-    return brandSlug ? null : rawBrand.replace(/-/g, ' ').toUpperCase();
-  }, [brandSlug, searchParams]);
-
-  // Match category object from hierarchical route parameter
+  // Validate the entire URL chain, not just the last slug. A laptop child
+  // cannot be resolved under a different header such as /security/....
   const routeCategory = useMemo(() => {
-    if (!targetCategorySlug || categories.length === 0) return null;
-    const target = targetCategorySlug.toLowerCase();
-    return (
-      categories.find(
-        (c) =>
-          (c.slug && c.slug.toLowerCase() === target) ||
-          slugify(c.name) === target ||
-          c.name.toLowerCase() === target
-      ) || null
-    );
-  }, [targetCategorySlug, categories]);
-
-  // 2. Synchronize selectedCategoryId & brand from URL
-  useEffect(() => {
-    const querySearch = searchParams.get('search') || '';
-    setSearchTerm(querySearch);
-
-    // If on a Brand Route (/brands/:brandSlug)
-    if (resolvedBrand) {
-      setSelectedBrands([resolvedBrand.toUpperCase()]);
-      setSelectedCategoryId('');
-      return;
+    if (!targetCategorySlug) return null;
+    let parentId = null;
+    let current = null;
+    for (const slug of [headerSlug, param2, param3].filter(Boolean)) {
+      current = categories.find((category) => category.slug === slug.toLowerCase()
+        && String(category.parentId?._id || category.parentId || '') === String(parentId || ''));
+      if (!current) return null;
+      parentId = current._id;
     }
-
-    // If on a Category Route (/:headerSlug/...)
-    if (routeCategory) {
-      setSelectedCategoryId(routeCategory._id);
-      setSelectedBrands([]);
-      return;
-    }
-
-    // If query params (/products?categoryId=...&brand=...)
-    const queryBrand = searchParams.get('brand') || '';
-    if (queryBrand) {
-      setSelectedBrands([queryBrand.toUpperCase()]);
-    } else if (!brandSlug) {
-      setSelectedBrands([]);
-    }
-
-    const rawCategory = searchParams.get('categoryId') || searchParams.get('category') || '';
-    if (rawCategory && !/^[0-9a-fA-F]{24}$/.test(rawCategory) && categories.length > 0) {
-      const matched = categories.find(
-        (c) => c.slug === rawCategory.toLowerCase() || slugify(c.name) === rawCategory.toLowerCase()
-      );
-      if (matched) {
-        setSelectedCategoryId(matched._id);
-        return;
-      }
-    }
-    if (!targetCategorySlug) {
-      setSelectedCategoryId(rawCategory);
-    }
-  }, [searchParams, categories, resolvedBrand, routeCategory, brandSlug, targetCategorySlug]);
-
-  // Helper to extract brand name from product specs or name
-  const getProductBrand = useCallback((p) => {
-    const specBrand = p.specifications?.find(
-      (s) => s.key?.toLowerCase() === 'brand' || s.key?.toLowerCase() === 'manufacturer'
-    )?.value;
-    if (specBrand && specBrand.trim()) return specBrand.trim().toUpperCase();
-
-    const upperName = (p.name || '').toUpperCase();
-    const commonBrands = [
-      'ACER',
-      'HP',
-      'DELL',
-      'MSI',
-      'ASUS',
-      'LENOVO',
-      'SAMSUNG',
-      'LOGITECH',
-      'WD',
-      'WESTERN DIGITAL',
-      'HIKVISION',
-      'CP PLUS',
-      'DAHUA',
-      'D-LINK',
-      'TPLINK',
-      'ZEBRONICS',
-    ];
-
-    for (const b of commonBrands) {
-      if (upperName.includes(b)) {
-        return b;
-      }
-    }
-    return 'OTHER';
-  }, []);
-
-  // Active Brand filter from URL or state
-  const activeBrandParam = searchParams.get('brand') || (selectedBrands.length === 1 && !selectedCategoryId ? selectedBrands[0] : '');
+    return current;
+  }, [categories, headerSlug, param2, param3, targetCategorySlug]);
+  const queryCategory = categories.find((category) => category._id === initialCategory || category.slug === initialCategory);
+  const selectedCategoryId = targetCategorySlug ? (routeCategory?._id || '') : (queryCategory?._id || initialCategory);
+  const resolvedBrand = initialBrand || (brandSlug ? brandSlug.replace(/-/g, ' ').toUpperCase() : null);
+  const selectedBrands = useMemo(() => resolvedBrand ? [resolvedBrand.toUpperCase()] : [], [resolvedBrand]);
+  const activeBrandParam = resolvedBrand || '';
 
   // 3. Fetch products from API
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async (signal) => {
+    if (!categoriesLoaded || categoryError || (targetCategorySlug && !routeCategory)) return;
     setIsLoading(true);
     setError(null);
 
@@ -211,6 +146,15 @@ export const ProductsPage = () => {
       } else if (sortOption === 'name_asc') {
         sortBy = 'name';
         sortOrder = 'asc';
+      } else if (sortOption === 'name_desc') {
+        sortBy = 'name';
+        sortOrder = 'desc';
+      } else if (sortOption === 'model_asc') {
+        sortBy = 'modelNumber';
+        sortOrder = 'asc';
+      } else if (sortOption === 'model_desc') {
+        sortBy = 'modelNumber';
+        sortOrder = 'desc';
       } else if (sortOption === 'newest') {
         sortBy = 'createdAt';
         sortOrder = 'desc';
@@ -233,16 +177,17 @@ export const ProductsPage = () => {
 
       if (selectedCategoryId && /^[0-9a-fA-F]{24}$/.test(selectedCategoryId)) {
         query.categoryId = selectedCategoryId;
-      } else if (targetCategorySlug) {
-        query.category = targetCategorySlug;
+      } else if (initialCategory) {
+        query.category = initialCategory;
       }
 
-      const brandToQuery = resolvedBrand || searchParams.get('brand') || (selectedBrands.length === 1 ? selectedBrands[0] : '');
-      if (brandToQuery) {
-        query.brand = brandToQuery;
-      }
-
-      const response = await productService.getProducts(query);
+      if (brandSlug && !initialBrand) query.brandSlug = brandSlug;
+      else if (initialBrand) query.brand = initialBrand;
+      if (inStockOnly) query.inStock = 'true';
+      if (Object.values(selectedSpecs).some((values) => values.length)) query.specs = JSON.stringify(selectedSpecs);
+      const response = await productService.getProducts(query, { signal });
+      if (signal?.aborted) return;
+      setFacets(response.data?.facets || { brands: [], specs: [] });
       const productList = response.data?.products || response.products || [];
       const pageInfo = response.data?.pagination || response.pagination || {
         page: 1,
@@ -253,79 +198,25 @@ export const ProductsPage = () => {
       setProducts(productList);
       setPagination(pageInfo);
     } catch (err) {
+      if (signal?.aborted || err.code === 'ERR_CANCELED') return;
+      setProducts([]);
       console.error('Catalog products fetch error:', err);
       setError('Unable to load catalog products. Please check your connection.');
     } finally {
-      setIsLoading(false);
+      if (!signal?.aborted) setIsLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchTerm, selectedCategoryId, targetCategorySlug, sortOption, searchParams, selectedBrands, resolvedBrand]);
+  }, [currentPage, itemsPerPage, searchTerm, selectedCategoryId, targetCategorySlug, sortOption, initialCategory, initialBrand, brandSlug, inStockOnly, selectedSpecs, categoriesLoaded, categoryError, routeCategory, user?.id, user?.dealerStatus]);
 
   useEffect(() => {
-    fetchProducts();
+    const controller = new AbortController();
+    fetchProducts(controller.signal);
+    return () => controller.abort();
   }, [fetchProducts]);
 
-  // Compute Brand Counts from fetched products
-  const availableBrands = useMemo(() => {
-    const counts = {};
-    products.forEach((p) => {
-      const b = getProductBrand(p);
-      counts[b] = (counts[b] || 0) + 1;
-    });
-    return Object.entries(counts)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count);
-  }, [products, getProductBrand]);
-
-  // Dynamic Specifications filters (e.g., Wattage, Pin Size) extracted from products
-  const dynamicSpecs = useMemo(() => {
-    const specMap = {};
-    products.forEach((p) => {
-      (p.specifications || []).forEach((spec) => {
-        if (!spec.key || !spec.value) return;
-        const key = spec.key.trim();
-        const lowerKey = key.toLowerCase();
-        if (lowerKey === 'brand' || lowerKey === 'manufacturer') return;
-
-        specMap[key] = specMap[key] || {};
-        specMap[key][spec.value] = (specMap[key][spec.value] || 0) + 1;
-      });
-    });
-
-    return Object.entries(specMap)
-      .map(([key, vals]) => ({
-        key,
-        values: Object.entries(vals).map(([val, count]) => ({ val, count })),
-      }))
-      .filter((s) => s.values.length > 0 && s.values.length <= 15);
-  }, [products]);
-
-  // Filter products by selected brands, spec attributes, and in-stock checkbox
-  const displayedProducts = useMemo(() => {
-    return products.filter((p) => {
-      // Brand filter
-      if (selectedBrands.length > 0) {
-        const b = getProductBrand(p);
-        if (!selectedBrands.includes(b)) return false;
-      }
-      // Dynamic specs filter
-      for (const [specKey, selectedVals] of Object.entries(selectedSpecs)) {
-        if (selectedVals && selectedVals.length > 0) {
-          const productSpecVal = p.specifications?.find(
-            (s) => s.key?.toLowerCase() === specKey.toLowerCase()
-          )?.value;
-          if (!productSpecVal || !selectedVals.includes(productSpecVal)) {
-            return false;
-          }
-        }
-      }
-      // Stock filter
-      if (inStockOnly) {
-        const isAvailable = p.isActive !== false;
-        if (!isAvailable) return false;
-      }
-      return true;
-    });
-  }, [products, selectedBrands, selectedSpecs, inStockOnly, getProductBrand]);
+  const availableBrands = facets.brands;
+  const dynamicSpecs = facets.specs;
+  // Filtering and pagination are performed together by MongoDB.
+  const displayedProducts = products;
 
   // Current Active Category Object
   const activeCategory = useMemo(() => {
@@ -367,40 +258,8 @@ export const ProductsPage = () => {
     ];
   }, [resolvedBrand, selectedBrands, selectedCategoryId, activeCategory, categories]);
 
-  // Categories under this Brand or Standard hierarchy
-  const brandCategories = useMemo(() => {
-    const activeBrand = searchParams.get('brand') || (selectedBrands.length === 1 ? selectedBrands[0] : '');
-    if (!activeBrand) return null;
-
-    const catMap = {};
-    products.forEach((p) => {
-      const catObj = p.categoryId;
-      if (!catObj) return;
-      const cId = typeof catObj === 'object' ? catObj._id : catObj;
-      const found = categories.find((c) => c._id === cId?.toString());
-      if (found) {
-        // Group by Header/Root Category if found, or direct category
-        const pId = found.parentId?._id || found.parentId;
-        const rootCat = pId ? categories.find((c) => c._id === pId.toString()) : found;
-        const targetId = rootCat?._id || found._id;
-        const targetName = rootCat?.name || found.name;
-        catMap[targetId] = catMap[targetId] || { _id: targetId, name: targetName, count: 0 };
-        catMap[targetId].count += 1;
-      }
-    });
-
-    return Object.values(catMap);
-  }, [searchParams, selectedBrands, products, categories]);
-
   // Related categories for sidebar (siblings or children)
   const categoryNavigation = useMemo(() => {
-    if (brandCategories && brandCategories.length > 0) {
-      return {
-        type: 'brand',
-        items: brandCategories,
-      };
-    }
-
     if (!activeCategory) {
       return {
         type: 'root',
@@ -437,32 +296,20 @@ export const ProductsPage = () => {
       type: 'root',
       items: categories.filter((c) => !c.parentId),
     };
-  }, [brandCategories, activeCategory, categories]);
+  }, [activeCategory, categories]);
 
-  // Toggle brand selection
+  // Keep search and category constraints when changing a brand.
   const handleToggleBrand = (brandName) => {
-    setCurrentPage(1);
-    const newParams = new URLSearchParams(searchParams);
-    if (selectedBrands.includes(brandName)) {
-      setSelectedBrands([]);
-      newParams.delete('brand');
-      setSearchParams(newParams);
-      if (brandSlug) {
-        navigate('/brands');
-      }
-    } else {
-      setSelectedBrands([brandName]);
-      if (!activeCategory) {
-        navigate(buildBrandUrl(brandName));
-      } else {
-        newParams.set('brand', brandName);
-        setSearchParams(newParams);
-      }
-    }
+    const next = new URLSearchParams(searchParams);
+    if (selectedBrands.includes(brandName)) next.delete('brand');
+    else next.set('brand', brandName);
+    if (brandSlug) navigate(`/search?${next}`);
+    else setSearchParams(next);
   };
 
   // Toggle spec filter
   const handleToggleSpec = (key, val) => {
+    setCurrentPage(1);
     setSelectedSpecs((prev) => {
       const currentList = prev[key] || [];
       const updatedList = currentList.includes(val)
@@ -472,39 +319,25 @@ export const ProductsPage = () => {
     });
   };
 
-  // Switch category
+  // Preserve search/brand when navigating to a different category.
   const handleSelectCategory = (catId) => {
-    setCurrentPage(1);
-    if (selectedCategoryId === catId || !catId) {
-      setSelectedCategoryId('');
-      if (resolvedBrand) {
-        navigate(buildBrandUrl(resolvedBrand));
-      } else {
-        navigate('/products');
-      }
-    } else {
-      const cat = categories.find((c) => String(c._id) === String(catId));
-      if (cat) {
-        navigate(buildCategoryPath(cat, categories));
-      } else {
-        navigate(`/products?categoryId=${catId}`);
-      }
-    }
+    const next = new URLSearchParams(searchParams);
+    next.delete('category');
+    next.delete('categoryId');
+    if (resolvedBrand) next.set('brand', resolvedBrand);
+    const category = categories.find((item) => String(item._id) === String(catId));
+    const path = catId && category ? buildCategoryPath(category, categories) : (activeCategory ? buildCategoryPath(activeCategory, categories) : '/');
+    navigate(`${path}${next.size ? `?${next}` : ''}`);
     setIsMobileFilterOpen(false);
   };
 
-  // Reset all filters
   const handleResetFilters = () => {
-    setSearchTerm('');
-    setSelectedBrands([]);
     setSelectedSpecs({});
     setInStockOnly(false);
-    setSelectedCategoryId('');
     setSortOption('default');
     setCurrentPage(1);
-    setSearchParams({});
     setIsMobileFilterOpen(false);
-    navigate('/products');
+    navigate(activeCategory ? buildCategoryPath(activeCategory, categories) : '/');
   };
 
   // Compute Page Header Title (Matching Mega Jaipur: "Branded Laptop", "Laptop Hinges", "ACER")
@@ -681,7 +514,7 @@ export const ProductsPage = () => {
       </div>
 
       {/* 4. Dynamic Specification Accordions (matching Wattage & Pin Size in screenshot) */}
-      {dynamicSpecs.slice(0, 3).map((specGroup) => (
+      {dynamicSpecs.map((specGroup) => (
         <div key={specGroup.key} className="border-b border-gray-200 pb-3">
           <button
             type="button"
@@ -695,7 +528,7 @@ export const ProductsPage = () => {
           >
             <div className="flex items-center gap-2">
               <Cpu className="w-4 h-4 text-primary" />
-              <span className="truncate">{specGroup.key}</span>
+              <span className="truncate">{specGroup.label || specGroup.key}{specGroup.unit ? ` (${specGroup.unit})` : ''}</span>
             </div>
             <ChevronDown
               className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
@@ -766,7 +599,7 @@ export const ProductsPage = () => {
                 <input
                   type="checkbox"
                   checked={inStockOnly}
-                  onChange={(e) => setInStockOnly(e.target.checked)}
+                  onChange={(e) => { setInStockOnly(e.target.checked); setCurrentPage(1); }}
                   className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#800020] cursor-pointer"
                 />
                 <span
@@ -787,6 +620,8 @@ export const ProductsPage = () => {
     </div>
   );
 
+  if (categoryError) return <ErrorState title="Categories unavailable" description={categoryError} onRetry={() => window.location.reload()} />;
+
   // If a category was requested in the URL path but does not exist
   if (targetCategorySlug && categoriesLoaded && !routeCategory) {
     return <NotFoundPage />;
@@ -798,8 +633,8 @@ export const ProductsPage = () => {
   }
 
   return (
-    <div className="w-full bg-[#f8f9fa] min-h-screen pb-12">
-      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5">
+    <div className="w-full bg-[#f8f9fa]">
+      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-0 space-y-5">
         {/* 1. BREADCRUMBS & CENTERED BRAND/CATEGORY TITLE (matching Screenshot) */}
         <div className="flex flex-col items-center justify-center relative space-y-2 pb-2">
           {/* Breadcrumb row */}
@@ -825,9 +660,49 @@ export const ProductsPage = () => {
           </nav>
 
           {/* Centered Large Title (matching Screenshot: e.g. "ACER") */}
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900 tracking-tight text-center uppercase">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#800020] tracking-tight text-center">
             {pageTitle}
           </h1>
+
+          <div className="w-full sm:w-auto sm:absolute sm:right-0 sm:bottom-2 flex items-center justify-between sm:justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsMobileFilterOpen(true)}
+              className="lg:hidden flex items-center gap-1.5 px-3 py-2.5 rounded-lg border border-gray-300 bg-white text-xs font-bold text-gray-700 hover:border-[#800020] transition-colors cursor-pointer"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
+              <span>Filters</span>
+            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Sort products"
+                  className="w-48 flex items-center justify-between gap-3 text-sm font-semibold text-gray-800 bg-white border border-[#800020] rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#800020]/20 cursor-pointer shadow-2xs"
+                >
+                  <span>{SORT_OPTIONS.find((option) => option.value === sortOption)?.label || 'Default'}</span>
+                  <ChevronDown className="w-4 h-4 text-[#800020]" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 border-[#800020]/25">
+                {SORT_OPTIONS.map((option) => (
+                  <DropdownMenuItem
+                    key={option.value}
+                    onSelect={() => {
+                      setSortOption(option.value);
+                      setCurrentPage(1);
+                    }}
+                    className={sortOption === option.value
+                      ? 'bg-[#800020] text-white focus:bg-[#800020] focus:text-white'
+                      : 'text-gray-800 focus:bg-[#800020]/10 focus:text-[#800020]'}
+                  >
+                    <span className="flex-1">{option.label}</span>
+                    {sortOption === option.value && <Check className="w-4 h-4" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         {/* 2. TWO-COLUMN LAYOUT: SIDEBAR (lg:col-span-3) + PRODUCT GRID (lg:col-span-9) */}
@@ -839,76 +714,6 @@ export const ProductsPage = () => {
 
           {/* MAIN PRODUCT CATALOG CONTENT */}
           <main className="lg:col-span-9 xl:col-span-9 2xl:col-span-10 space-y-4">
-            {/* Top Bar: Results Count + Mobile Filter Button + Sort Dropdown */}
-            <div className="bg-white rounded-lg border border-gray-200 px-4 py-3 flex items-center justify-between gap-3 shadow-2xs flex-wrap">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsMobileFilterOpen(true)}
-                  className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded border border-gray-300 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-                >
-                  <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
-                  <span>Filters</span>
-                </button>
-
-                <div className="text-xs text-gray-500 font-medium">
-                  Showing{' '}
-                  <span className="font-bold text-gray-900">{displayedProducts.length}</span>{' '}
-                  item(s)
-                  {activeBrandParam && (
-                    <span>
-                      {' '}
-                      for brand "<span className="text-primary font-bold">{activeBrandParam}</span>"
-                    </span>
-                  )}
-                  {searchTerm && (
-                    <span>
-                      {' '}
-                      for search "<span className="text-primary font-bold">{searchTerm}</span>"
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Controls: Per Page & Sort */}
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-gray-500 font-medium hidden sm:inline">Per page:</span>
-                  <select
-                    value={itemsPerPage}
-                    onChange={(e) => {
-                      setItemsPerPage(Number(e.target.value));
-                      setCurrentPage(1);
-                    }}
-                    className="text-xs font-semibold text-gray-800 bg-white border border-gray-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-[#800020] cursor-pointer hover:border-gray-400 transition-colors shadow-2xs"
-                  >
-                    <option value={8}>8 / page</option>
-                    <option value={12}>12 / page</option>
-                    <option value={24}>24 / page</option>
-                    <option value={48}>48 / page</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-gray-500 font-medium hidden sm:inline">Sort:</span>
-                  <select
-                    value={sortOption}
-                    onChange={(e) => {
-                      setSortOption(e.target.value);
-                      setCurrentPage(1);
-                    }}
-                    className="text-xs font-semibold text-gray-800 bg-white border border-gray-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-[#800020] cursor-pointer hover:border-gray-400 transition-colors shadow-2xs"
-                  >
-                    <option value="default">Default</option>
-                    <option value="price_asc">Price: Low to High</option>
-                    <option value="price_desc">Price: High to Low</option>
-                    <option value="newest">Newest Arrivals</option>
-                    <option value="name_asc">Name: A-Z</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
             {/* Active Filter Chips */}
             {(selectedBrands.length > 0 || inStockOnly || Object.keys(selectedSpecs).some(k => selectedSpecs[k]?.length > 0)) && (
               <div className="flex items-center flex-wrap gap-2 pt-1">
@@ -946,7 +751,7 @@ export const ProductsPage = () => {
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
                     <span>In Stock Only</span>
                     <button
-                      onClick={() => setInStockOnly(false)}
+                      onClick={() => { setInStockOnly(false); setCurrentPage(1); }}
                       className="hover:text-emerald-900 font-bold ml-0.5 cursor-pointer"
                     >
                       ×
@@ -955,7 +760,11 @@ export const ProductsPage = () => {
                 )}
                 <button
                   onClick={() => {
-                    setSelectedBrands([]);
+                    const next = new URLSearchParams(searchParams);
+                    next.delete('brand');
+                    if (brandSlug) navigate(`/search?${next}`);
+                    else setSearchParams(next);
+                    setCurrentPage(1);
                     setSelectedSpecs({});
                     setInStockOnly(false);
                   }}
@@ -968,32 +777,33 @@ export const ProductsPage = () => {
 
             {/* PRODUCT CARDS HIGH-DENSITY GRID (matching Screenshot: 4-5 cards per row on large displays) */}
             {isLoading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-3.5">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-3 sm:gap-3.5">
                 {[...Array(8)].map((_, i) => (
                   <SkeletonCard key={i} />
                 ))}
               </div>
             ) : error ? (
-              <ErrorState title="Catalog Error" description={error} onRetry={fetchProducts} />
+              <ErrorState title="Catalog Error" description={error} onRetry={() => fetchProducts()} />
             ) : displayedProducts.length > 0 ? (
               <>
-                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-3.5">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-3 sm:gap-3.5">
                   {displayedProducts.map((product) => (
                     <ProductCard
                       key={product._id}
                       product={product}
-                      onCartUpdated={fetchProducts}
+                      onCartUpdated={() => fetchProducts()}
                     />
                   ))}
                 </div>
 
                 {/* BACKEND PAGINATION */}
-                <div className="pt-6 border-t border-gray-200">
+                <div className="pt-5">
                   <Pagination
                     currentPage={currentPage}
                     totalPages={pagination.totalPages}
                     totalItems={pagination.total}
                     pageSize={itemsPerPage}
+                    variant="catalog"
                     onPageChange={(page) => {
                       setCurrentPage(page);
                       window.scrollTo({ top: 120, behavior: 'smooth' });
@@ -1032,4 +842,9 @@ export const ProductsPage = () => {
   );
 };
 
-export default ProductsPage;
+// URL changes start a fresh query and reset pagination/spec filters.
+const CatalogRoutePage = () => {
+  const location = useLocation();
+  return <ProductsPage key={location.pathname + location.search} />;
+};
+export default CatalogRoutePage;

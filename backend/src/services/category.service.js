@@ -42,7 +42,7 @@ export const categoryService = {
   /**
    * Create a new category.
    */
-  async createCategory({ name, slug, parentId, image, description, isActive = true, sortOrder = 0 }) {
+  async createCategory({ name, slug, parentId, image, description, isActive = true, sortOrder = 0, filterDefinitions = [] }) {
     const finalSlug = slug ? slug.trim().toLowerCase() : slugify(name);
 
     // Check for duplicate slug
@@ -81,6 +81,7 @@ export const categoryService = {
       description: description ? description.trim() : undefined,
       isActive,
       sortOrder,
+      filterDefinitions,
     });
 
     return category;
@@ -250,6 +251,7 @@ export const categoryService = {
     if (updateData.description !== undefined) category.description = updateData.description ? updateData.description.trim() : null;
     if (updateData.isActive !== undefined) category.isActive = updateData.isActive;
     if (updateData.sortOrder !== undefined) category.sortOrder = updateData.sortOrder;
+    if (updateData.filterDefinitions !== undefined) category.filterDefinitions = updateData.filterDefinitions;
 
     await category.save();
 

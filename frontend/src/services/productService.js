@@ -1,12 +1,16 @@
 import apiClient from '../api/axios';
 
 export const productService = {
+  async getBrands() {
+    const response = await apiClient.get('/products/brands');
+    return response.data;
+  },
   /**
    * Fetch catalog product listing with search, filtering, and pagination.
    * @param {Object} params - { search, categoryId, isFeatured, isActive, page, limit, sortBy, sortOrder }
    */
-  async getProducts(params = {}) {
-    const response = await apiClient.get('/products', { params });
+  async getProducts(params = {}, options = {}) {
+    const response = await apiClient.get('/products', { ...options, params });
     return response.data;
   },
 

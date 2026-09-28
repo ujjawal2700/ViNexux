@@ -2,12 +2,14 @@ import { Enquiry } from '../models/Enquiry.js';
 import { Cart } from '../models/Cart.js';
 import { User } from '../models/User.js';
 import { Product } from '../models/Product.js';
-import { validateProductAndCategoryActive } from './cart.service.js';
+import { calculateApplicablePrice, validateProductAndCategoryActive } from './cart.service.js';
 import { AppError } from '../utils/AppError.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../constants/errorCodes.js';
 import { googleSheetsService } from './googleSheets/googleSheets.service.js';
 import { whatsAppService } from './whatsapp/whatsapp.service.js';
+import { emailService } from './email/email.service.js';
+import { FooterContent } from '../models/FooterContent.js';
 
 const escapeRegex = (string) => {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -23,7 +25,6 @@ const ALLOWED_STATUS_TRANSITIONS = {
   contacted: ['in-progress', 'closed', 'spam'],
   'in-progress': ['closed', 'spam'],
   processing: ['in-progress', 'closed', 'spam'], // backward compatibility
-  quoted: ['in-progress', 'closed', 'spam'], // backward compatibility
   closed: ['closed'],
   completed: ['closed'], // backward compatibility
   cancelled: ['closed', 'spam'], // backward compatibility
@@ -78,15 +79,21 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
     );
   }
 
-  // 3. Validate that every product in cart is active and belongs to an active category
-  for (const item of cart.items) {
+  const selectedIds = new Set(payload.selectedProductIds || []);
+  const selectedItems = cart.items.filter((item) => selectedIds.size === 0 || selectedIds.has(String(item.productId)));
+  if (!selectedItems.length) {
+    throw new AppError('No selected cart products were found', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
+  }
+
+  // 3. Validate selected products against the live catalog.
+  for (const item of selectedItems) {
     await validateProductAndCategoryActive(item.productId);
   }
 
   // 4. Build Contact Snapshot
-  const contactName = user.fullName || user.name || 'Vinexus Customer';
-  const contactEmail = user.email;
-  const contactPhone = user.phone;
+  const contactName = payload.contactName || user.fullName || user.name || 'Vinexus Customer';
+  const contactEmail = payload.contactEmail || user.email;
+  const contactPhone = payload.contactPhone || user.phone;
   const userType = user.role === 'dealer' ? 'dealer' : 'customer';
 
   // 5. Build Delivery Address Snapshot - resolved from the user's saved
@@ -100,7 +107,7 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
       ERROR_CODES.BAD_REQUEST
     );
   }
-  const deliveryAddress = {
+  const deliveryAddress = payload.deliveryAddress || {
     line1: savedAddress.line1,
     line2: savedAddress.line2 || '',
     city: savedAddress.city,
@@ -119,10 +126,10 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
 
   // 7. Build Enquiry Items Snapshot (productName & priceShown snapshots)
   const enquiryItems = [];
-  for (const item of cart.items) {
+  for (const item of selectedItems) {
     const product = await Product.findById(item.productId);
     const productName = product ? product.name : 'Vinexus Product';
-    const priceShown = item.priceSnapshot !== undefined ? item.priceSnapshot : 0;
+    const priceShown = product ? await calculateApplicablePrice(userId, product) : 0;
 
     enquiryItems.push({
       productId: item.productId,
@@ -153,21 +160,40 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
     syncedToGoogleSheet: false,
   });
 
-  // 10. Clear cart after successful enquiry creation
-  cart.items = [];
+  const footer = await FooterContent.findOne({ isActive: true }).lean();
+  const addressText = [deliveryAddress.line1, deliveryAddress.line2, deliveryAddress.city, deliveryAddress.state, deliveryAddress.pincode].filter(Boolean).join(', ');
+  const itemsText = enquiryItems
+    .map((item) => `${item.productName} — Qty ${item.quantity} × ₹${item.priceShown} = ₹${item.quantity * item.priceShown}`)
+    .join('\n');
+  const adminText = `Enquiry: ${enquiryNumber}\nName: ${contactName}\nEmail: ${contactEmail}\nPhone: ${contactPhone}\nAddress: ${addressText}\n\nProducts:\n${itemsText}\n\nMessage: ${message || '-'}`;
+  const emailJobs = [];
+  if (footer?.email) {
+    emailJobs.push(emailService.sendEmail({ to: footer.email, subject: `New enquiry ${enquiryNumber}`, text: adminText }));
+  }
+  if (contactEmail) {
+    emailJobs.push(emailService.sendEmail({
+      to: contactEmail,
+      subject: `We received your enquiry ${enquiryNumber}`,
+      text: `Hello ${contactName},\n\nYour enquiry has been received. Our team will contact you shortly.\n\n${itemsText}`,
+    }));
+  }
+  if (emailJobs.length) {
+    const results = await Promise.allSettled(emailJobs);
+    enquiry.notifiedViaEmail = results.some((result) => result.status === 'fulfilled');
+    await enquiry.save();
+    results.filter((result) => result.status === 'rejected').forEach((result) => {
+      console.error('[EnquiryService] Email notification failed silently:', result.reason?.message || result.reason);
+    });
+  }
+
+  // 10. Remove only the submitted products; unselected cart items stay available.
+  cart.items = cart.items.filter((item) => !selectedIds.has(String(item.productId)));
   await cart.save();
 
   // 11. Attempt Google Sheets Sync (Isolated operation; does not throw or break enquiry creation if sync fails)
   await googleSheetsService.syncEnquiryToSheet(enquiry);
 
-  // 12. Attempt WhatsApp Notification (Isolated operation; does not throw or break enquiry creation if notification fails)
-  try {
-    await whatsAppService.sendEnquiryCreatedNotification(enquiry);
-  } catch (err) {
-    console.error('[EnquiryService] WhatsApp notification failed silently:', err.message);
-  }
-
-  // 13. Populate and return enquiry record
+  // 12. Populate and return enquiry record
 
   return await enquiry.populate([
     { path: 'userId', select: 'fullName email phone role accountStatus' },

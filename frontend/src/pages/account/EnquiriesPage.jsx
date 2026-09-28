@@ -9,7 +9,7 @@ import { Pagination } from '../../components/ui/Pagination';
 import { SkeletonTable } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
-import { FileText, Eye, Calendar, RefreshCw } from 'lucide-react';
+import { FileText, Eye } from 'lucide-react';
 
 export const EnquiriesPage = () => {
   const [enquiries, setEnquiries] = useState([]);
@@ -130,7 +130,7 @@ export const EnquiriesPage = () => {
       {/* Header */}
       <div className="border-b border-border pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-primary">Quotations & Leads</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-primary">Enquiries & Leads</span>
           <h1 className="text-3xl font-extrabold text-foreground tracking-tight flex items-center gap-3">
             <FileText className="w-7 h-7 text-primary" />
             <span>Enquiry History</span>
@@ -181,9 +181,9 @@ export const EnquiriesPage = () => {
       ) : (
         <EmptyState
           title="No Enquiries Submitted Yet"
-          description="Build a cart in our product catalog and submit a quotation enquiry to see it listed here."
+          description="Build a cart in our product catalog and send an enquiry to see it listed here."
           actionLabel="Explore Product Catalog"
-          onAction={() => window.location.assign('/products')}
+          onAction={() => window.location.assign('/')}
         />
       )}
     </div>

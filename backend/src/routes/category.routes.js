@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   createCategory,
+  getCategoryTree,
   getCategories,
   getCategoryById,
   updateCategory,
@@ -19,6 +20,7 @@ import {
 const router = Router();
 
 // Public Category Endpoints
+router.get('/tree', getCategoryTree);
 router.get('/', validate(getCategoriesQuerySchema), getCategories);
 router.get('/:id', validate(getCategoryByIdSchema), getCategoryById);
 

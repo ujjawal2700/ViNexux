@@ -26,6 +26,7 @@ import {
   ChevronRight,
   Layers,
   GitBranch
+  ,Tags
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -60,6 +61,7 @@ const AdminLayout = () => {
     { label: 'Overview Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
     { label: 'Category Management', path: '/admin/categories', icon: FolderTree },
     { label: 'Product Catalog', path: '/admin/products', icon: Package },
+    { label: 'Brand Management', path: '/admin/brands', icon: Tags },
     { label: 'Dealer Verification', path: '/admin/dealers', icon: Users, badgeCount: pendingKycCount },
     { label: 'Customer Accounts', path: '/admin/customers', icon: UserCheck },
     { label: 'B2C Enquiries', path: '/admin/enquiries/customers', icon: Inbox },

@@ -336,7 +336,7 @@ const runCartEnquiryPRDTests = async () => {
     // Step C: status in-progress -> closed + admin note 3
     const s3 = await request(`/api/admin/enquiries/${enq._id}/status`, { method: 'PUT', headers: adminHeaders }, {
       status: 'closed',
-      note: 'Admin Note 3: Quotation sent and deal closed.',
+      note: 'Admin Note 3: Pricing shared and deal closed.',
     });
     console.log(`   Status Update 3 (in-progress -> closed): ${s3.status}, status: ${s3.body.data?.enquiry?.status}`);
     if (s3.status !== 200 || s3.body.data?.enquiry?.status !== 'closed' || s3.body.data?.enquiry?.notes.length !== 3) {

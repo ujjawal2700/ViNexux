@@ -215,7 +215,7 @@ const AdminCustomerDetailPage = () => {
           <div className="p-6 rounded-2xl bg-card border border-border text-center space-y-2">
             <Package className="w-8 h-8 text-muted-foreground mx-auto opacity-50" />
             <p className="text-xs font-semibold text-muted-foreground">
-              No product enquiries or quotation requests submitted by this customer yet.
+              No product enquiries submitted by this customer yet.
             </p>
           </div>
         ) : (

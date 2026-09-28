@@ -1,15 +1,17 @@
+import { Image } from '../components/ui/Image';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 import contentService from '../services/contentService';
 import cartService from '../services/cartService';
+import guestCartService from '../services/guestCartService';
 import wishlistService from '../services/wishlistService';
 import categoryService from '../services/categoryService';
 import productService from '../services/productService';
 import { ROLES } from '../constants';
 import Logo from '../components/ui/Logo';
 import { Drawer } from '../components/ui/Drawer';
-import { slugify } from '../utils/categoryUrls';
+import { slugify, buildCategoryPath, buildProductPath } from '../utils/categoryUrls';
 import {
   Search,
   Mic,
@@ -41,24 +43,14 @@ import {
   Cpu,
   Layers,
   Smartphone,
+  MapPin,
+  Mail,
 } from 'lucide-react';
 
-const CATEGORY_BAR_ITEMS = [
-  { name: 'Desktop', slug: 'desktop' },
-  { name: 'Laptop', slug: 'laptop' },
-  { name: 'Storage', slug: 'storage' },
-  { name: 'Display', slug: 'display' },
-  { name: 'Peripherals', slug: 'peripherals' },
-  { name: 'Printers & Scanners', slug: 'printers-scanners' },
-  { name: 'Security', slug: 'security' },
-  { name: 'Networking', slug: 'networking' },
-  { name: 'Software', slug: 'software' },
-  { name: 'Mobility', slug: 'mobility' },
-  { name: 'Cables', slug: 'cables' },
-  { name: 'Connector & Converter', slug: 'connector-converter' },
-  { name: 'Accessories CCTV & Networking', slug: 'accessories-cctv-networking' },
-  { name: 'Telecom', slug: 'telecom' },
-];
+const STORE_MAP_URL = 'https://maps.app.goo.gl/QSuzGqkbp2HxMHLp6';
+const CONTACT_PHONE_DISPLAY = '8209224481';
+const CONTACT_PHONE_LINK = '+918209224481';
+const WHATSAPP_NUMBER = '918209224481';
 
 const getHeaderCategoryIcon = (name = '', slug = '') => {
   const s = (slug + ' ' + name).toLowerCase();
@@ -114,6 +106,9 @@ const PublicLayout = () => {
 
   // Category Mega Menu & Navigation State
   const [allCategories, setAllCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState(null);
+  const [categoryRetry, setCategoryRetry] = useState(0);
   const [hoveredHeaderId, setHoveredHeaderId] = useState(null);
   const closeTimeoutRef = useRef(null);
 
@@ -133,31 +128,31 @@ const PublicLayout = () => {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  // Fetch full category hierarchy on mount
+  // Re-read on navigation/focus so admin catalog edits are reflected without
+  // a hardcoded menu or a persistent stale cache.
   useEffect(() => {
+    let active = true;
     const fetchCats = async () => {
       try {
-        const res = await categoryService.getCategories({ limit: 500, sortBy: 'sortOrder', sortOrder: 'asc' });
-        const list = res.data?.categories || res.categories || [];
-        setAllCategories(list);
-      } catch (err) {
-        console.warn('Failed to load categories for nav bar:', err);
+        const res = await categoryService.getCategoryTree();
+        if (!active) return;
+        setAllCategories(res.data?.categories || []);
+        setCategoriesError(null);
+      } catch {
+        if (!active) return;
+        setAllCategories([]);
+        setCategoriesError('Categories unavailable');
+      } finally {
+        if (active) setCategoriesLoading(false);
       }
     };
     fetchCats();
-  }, []);
+    window.addEventListener('focus', fetchCats);
+    return () => { active = false; window.removeEventListener('focus', fetchCats); };
+  }, [location.pathname, categoryRetry]);
 
   // Category Tree: Headers -> Mains -> Subs
   const categoryTree = useMemo(() => {
-    if (!allCategories || allCategories.length === 0) {
-      return CATEGORY_BAR_ITEMS.map((item, idx) => ({
-        _id: `fallback-${idx}`,
-        name: item.name,
-        slug: item.slug,
-        mainCategories: [],
-      }));
-    }
-
     const headers = allCategories.filter((c) => !c.parentId);
     return headers.map((header) => {
       const mains = allCategories.filter((c) => {
@@ -303,15 +298,15 @@ const PublicLayout = () => {
 
   // Fetch Cart Item Count, Subtotal, and Cart Items
   const fetchCartData = useCallback(async () => {
-    if (!isAuthenticated || user?.role === 'admin') {
+    if (user?.role === 'admin') {
       setCartCount(0);
       setCartSubtotal(0);
       setCartItems([]);
       return;
     }
     try {
-      const response = await cartService.getCart();
-      const cart = response?.data?.cart || response?.data || response?.cart || response;
+      const response = isAuthenticated ? await cartService.getCart() : guestCartService.getCart();
+      const cart = isAuthenticated ? (response?.data?.cart || response?.data || response?.cart || response) : response;
       const rawItems = cart?.items || [];
       // Filter valid items where product exists
       const items = rawItems.filter((i) => i && (i.productId?._id || i.productId));
@@ -326,9 +321,7 @@ const PublicLayout = () => {
           item.priceSnapshot !== undefined
             ? item.priceSnapshot
             : (prod.standardPrice || prod.price || 0);
-        const cdDiscount = Math.round(unitPrice * 0.015);
-        const effectivePrice = Math.max(0, unitPrice - cdDiscount);
-        return acc + effectivePrice * (item.quantity || 1);
+        return acc + unitPrice * (item.quantity || 1);
       }, 0);
 
       setCartCount(count);
@@ -356,9 +349,7 @@ const PublicLayout = () => {
             item.priceSnapshot !== undefined
               ? item.priceSnapshot
               : (prod.standardPrice || prod.price || 0);
-          const cdDiscount = Math.round(unitPrice * 0.015);
-          const effectivePrice = Math.max(0, unitPrice - cdDiscount);
-          return acc + effectivePrice * (item.quantity || 1);
+          return acc + unitPrice * (item.quantity || 1);
         }, 0);
 
         setCartCount(count);
@@ -396,9 +387,7 @@ const PublicLayout = () => {
             item.priceSnapshot !== undefined
               ? item.priceSnapshot
               : (p.standardPrice || p.price || 0);
-          const cdDiscount = Math.round(uPrice * 0.015);
-          const effectivePrice = Math.max(0, uPrice - cdDiscount);
-          return acc + effectivePrice * (item.quantity || 1);
+          return acc + uPrice * (item.quantity || 1);
         }, 0);
         setCartCount(count);
         setCartSubtotal(subtotal);
@@ -438,9 +427,7 @@ const PublicLayout = () => {
               item.priceSnapshot !== undefined
                 ? item.priceSnapshot
                 : (p.standardPrice || p.price || 0);
-            const cdDiscount = Math.round(uPrice * 0.015);
-            const effectivePrice = Math.max(0, uPrice - cdDiscount);
-            return acc + effectivePrice * (item.quantity || 1);
+            return acc + uPrice * (item.quantity || 1);
           }, 0);
           setCartSubtotal(newSubtotal);
 
@@ -494,9 +481,7 @@ const PublicLayout = () => {
             item.priceSnapshot !== undefined
               ? item.priceSnapshot
               : (p.standardPrice || p.price || 0);
-          const cdDiscount = Math.round(uPrice * 0.015);
-          const effectivePrice = Math.max(0, uPrice - cdDiscount);
-          return acc + effectivePrice * (item.quantity || 1);
+          return acc + uPrice * (item.quantity || 1);
         }, 0);
         setCartSubtotal(newSubtotal);
 
@@ -510,7 +495,8 @@ const PublicLayout = () => {
         })
       );
 
-      await cartService.removeItem(productId);
+      if (isAuthenticated) await cartService.removeItem(productId);
+      else guestCartService.removeItem(productId);
       await fetchCartData();
     } catch (err) {
       console.error('Failed to remove cart item:', err);
@@ -536,11 +522,21 @@ const PublicLayout = () => {
     fetchFooter();
   }, []);
 
+  const searchCategory = useMemo(() => {
+    const path = location.pathname.replace(/\/$/, '');
+    return allCategories.find((category) => buildCategoryPath(category, allCategories) === path);
+  }, [allCategories, location.pathname]);
+  const searchTarget = useCallback((text) => {
+    const query = new URLSearchParams(location.search);
+    query.set('search', text);
+    return `${searchCategory ? location.pathname : '/search'}?${query}`;
+  }, [searchCategory, location.pathname, location.search]);
+
   // Handle Header Search Submit
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (headerSearch.trim()) {
-      navigate(`/products?search=${encodeURIComponent(headerSearch.trim())}`);
+      navigate(searchTarget(headerSearch.trim()));
       setIsMobileMenuOpen(false);
       setIsSearchOpen(false);
     }
@@ -548,6 +544,7 @@ const PublicLayout = () => {
 
   // Debounced Live Search Suggestions
   useEffect(() => {
+    let active = true;
     const query = headerSearch.trim();
     if (!query) {
       setSearchSuggestions([]);
@@ -565,26 +562,31 @@ const PublicLayout = () => {
       try {
         const res = await productService.getProducts({
           search: query,
+          ...(searchCategory ? { categoryId: searchCategory._id } : {}),
           limit: 8,
           isActive: true,
         });
         const prods = res?.data?.products || res?.products || [];
+        if (!active) return;
         setSearchSuggestions(prods);
         setIsSearchOpen(true);
       } catch (err) {
+        if (!active) return;
+        setSearchSuggestions([]);
         console.warn('Live search error:', err);
         setSearchSuggestions([]);
       } finally {
-        setIsSearching(false);
+        if (active) setIsSearching(false);
       }
     }, 250);
 
     return () => {
+      active = false;
       if (searchDebounceRef.current) {
         clearTimeout(searchDebounceRef.current);
       }
     };
-  }, [headerSearch]);
+  }, [headerSearch, searchCategory]);
 
   // Click outside and keydown listeners to dismiss search dropdown
   useEffect(() => {
@@ -617,22 +619,13 @@ const PublicLayout = () => {
 
   // Format product search row data
   const formatSearchProduct = (prod) => {
-    const fallbackImgs = [
-      'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&auto=format&fit=crop&q=80',
-    ];
-    let img = prod?.images?.[0]?.url || prod?.image;
-    if (!img || typeof img !== 'string' || !img.startsWith('http')) {
-      const hash = (prod?._id || prod?.name || '0').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      img = fallbackImgs[hash % fallbackImgs.length];
-    }
+    const img = prod?.images?.[0]?.url || prod?.image;
 
     const brand =
       prod.specifications?.find((s) => s.key?.toLowerCase() === 'brand')?.value ||
       (typeof prod.categoryId === 'object' ? prod.categoryId?.name : 'OEM');
 
-    const price = prod.standardPrice || prod.price || 0;
+    const price = prod.applicablePrice ?? prod.standardPrice ?? 0;
 
     const pidCode = prod.sku
       ? `A${prod.sku.replace(/[^0-9]/g, '').slice(-4) || prod.sku.slice(-4).toUpperCase()}`
@@ -642,16 +635,8 @@ const PublicLayout = () => {
       prod.specifications?.find((s) => s.key?.toLowerCase().includes('code') || s.key?.toLowerCase().includes('item cd'))?.value ||
       (prod.sku ? prod.sku.replace(/[^A-Za-z0-9]/g, '').slice(-7).toUpperCase() : (prod._id || '1INGRUO').slice(-7).toUpperCase());
 
-    const stock = prod.stock ?? 10;
-    let stockText = 'In Stock';
-    let stockClass = 'text-emerald-600 font-medium text-[11px]';
-    if (stock <= 0) {
-      stockText = 'Out of Stock';
-      stockClass = 'text-red-500 font-medium text-[11px]';
-    } else if (stock <= 5) {
-      stockText = 'Low Stock';
-      stockClass = 'text-amber-600 font-medium text-[11px]';
-    }
+    const stockText = prod.stockStatus === 'in-stock' ? 'In Stock' : prod.stockStatus === 'out-of-stock' ? 'Out of Stock' : 'On Request';
+    const stockClass = 'text-gray-600 font-medium text-[11px]';
 
     return { img, brand, price, pidCode, itemCd, stockText, stockClass };
   };
@@ -674,7 +659,7 @@ const PublicLayout = () => {
             </div>
             <div
               onClick={() => {
-                navigate(`/products?search=${encodeURIComponent(headerSearch.trim())}`);
+                navigate(searchTarget(headerSearch.trim()));
                 setIsSearchOpen(false);
               }}
               className="border-t border-gray-100 flex items-center justify-between px-4 py-3 text-sm text-[#800020] hover:bg-gray-50 cursor-pointer font-medium transition-colors group"
@@ -695,20 +680,17 @@ const PublicLayout = () => {
                   <div
                     key={prod._id}
                     onClick={() => {
-                      navigate(`/products/${prod._id}`);
+                      navigate(buildProductPath(prod, allCategories));
                       setIsSearchOpen(false);
                     }}
                     className="flex items-center px-4 py-2.5 hover:bg-gray-50 cursor-pointer transition-colors group"
                   >
                     <div className="w-11 h-11 sm:w-12 sm:h-12 rounded border border-gray-200 p-1 flex items-center justify-center shrink-0 bg-white mr-3">
-                      <img
+                      <Image
                         src={img}
                         alt={prod.name}
                         className="w-full h-full object-contain"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=800&auto=format&fit=crop&q=80';
-                        }}
+
                       />
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
@@ -726,9 +708,7 @@ const PublicLayout = () => {
                           {stockText}
                         </span>
                       </div>
-                      <div className="text-[11px] text-gray-400 font-mono tracking-tight mt-0.5">
-                        PID: {pidCode}&nbsp;&nbsp;Item CD: {itemCd}
-                      </div>
+                      {(prod.modelNumber || prod.specifications?.find((s) => s.key?.toLowerCase().includes('model'))?.value) && <div className="text-[11px] text-gray-400 mt-0.5">Model: {prod.modelNumber || prod.specifications.find((s) => s.key?.toLowerCase().includes('model'))?.value}</div>}
                     </div>
                   </div>
                 );
@@ -736,7 +716,7 @@ const PublicLayout = () => {
             </div>
             <div
               onClick={() => {
-                navigate(`/products?search=${encodeURIComponent(headerSearch.trim())}`);
+                navigate(searchTarget(headerSearch.trim()));
                 setIsSearchOpen(false);
               }}
               className="border-t border-gray-100 flex items-center justify-between px-4 py-2.5 text-xs text-[#800020] hover:bg-gray-50 cursor-pointer font-medium transition-colors group"
@@ -793,7 +773,7 @@ const PublicLayout = () => {
         </div>
 
         {/* Main Header Row */}
-        <div className="w-full px-3 sm:px-6 lg:px-8 2xl:px-12 py-3 sm:py-3.5 flex items-center justify-between gap-3 sm:gap-4 lg:gap-6 border-b border-gray-200">
+        <div className="w-full px-3 sm:px-5 lg:px-6 min-[1750px]:px-8 2xl:px-10 py-3 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-3 lg:gap-4 min-[1750px]:gap-5 border-b border-gray-200">
           
           {/* Logo & Brand Name */}
           <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
@@ -817,7 +797,7 @@ const PublicLayout = () => {
           <form
             ref={desktopSearchRef}
             onSubmit={handleSearchSubmit}
-            className="flex-1 max-w-3xl xl:max-w-4xl 2xl:max-w-5xl hidden md:flex items-center mx-2 lg:mx-4 relative"
+            className="flex-1 min-w-0 max-w-3xl xl:max-w-4xl min-[1750px]:max-w-3xl 2xl:max-w-4xl hidden md:flex items-center mx-1 lg:mx-2 min-[1750px]:mx-3 relative"
           >
             <div className="relative w-full flex items-center">
               <input
@@ -867,50 +847,52 @@ const PublicLayout = () => {
           </form>
 
           {/* Action Icons & Details Cluster */}
-          <div className="flex items-center gap-3 sm:gap-4 xl:gap-5 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 min-[1750px]:gap-4 shrink-0">
             
-            {/* Call Us: Bare Phone Icon (Text reveals at 75% zoom / min-[1650px]) */}
+            {/* Contact details appear when browser zoom-out provides a wide viewport. */}
             <a
-              href="tel:+918949940610"
-              className="flex items-center gap-2 text-gray-800 hover:text-primary transition-colors p-1 group"
-              title="Call Us: 89 49 94 0610"
+              href={`tel:${CONTACT_PHONE_LINK}`}
+              className="hidden md:flex items-center gap-2 text-gray-800 hover:text-primary transition-colors p-1 group"
+              title={`Call ${CONTACT_PHONE_DISPLAY}`}
             >
               <Phone className="w-5 h-5 sm:w-6 sm:h-6 text-gray-800 group-hover:text-primary group-hover:scale-105 transition-all shrink-0" />
-              <div className="hidden min-[1650px]:flex flex-col text-left leading-tight">
-                <span className="text-xs font-black text-gray-900 whitespace-nowrap">89 49 94 0610</span>
-                <span className="text-[10px] text-gray-500 font-medium whitespace-nowrap">Call us</span>
+              <div className="hidden min-[1750px]:flex flex-col text-left leading-tight">
+                <span className="text-xs font-black text-gray-900 whitespace-nowrap">{CONTACT_PHONE_DISPLAY}</span>
+                <span className="text-[10px] text-gray-500 font-medium whitespace-nowrap">Call Us</span>
               </div>
             </a>
 
             {/* Store Location: Bare Store Icon (Text reveals at 75% zoom / min-[1650px]) */}
-            <Link
-              to="/categories"
-              className="flex items-center gap-2 text-gray-800 hover:text-primary transition-colors p-1 group"
+            <a
+              href={STORE_MAP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden md:flex items-center gap-2 text-gray-800 hover:text-primary transition-colors p-1 group"
               title="Store Location - Directions to the Store"
             >
               <Store className="w-5 h-5 sm:w-6 sm:h-6 text-gray-800 group-hover:text-primary group-hover:scale-105 transition-all shrink-0" />
-              <div className="hidden min-[1650px]:flex flex-col text-left leading-tight">
+              <div className="hidden min-[1750px]:flex flex-col text-left leading-tight">
                 <span className="text-xs font-black text-gray-900 whitespace-nowrap">Store Location</span>
                 <span className="text-[10px] text-gray-500 font-medium whitespace-nowrap">Directions to the Store</span>
               </div>
-            </Link>
+            </a>
 
-            {/* WhatsApp: Bare WhatsApp Icon in Brand Green (Text reveals at 75% zoom / min-[1650px]) */}
+            {/* WhatsApp chat */}
             <a
-              href="https://wa.me/918949940610?text=Hello%20ViNexus%2C%20I%20need%20assistance%20with%20products"
+              href={`https://wa.me/${WHATSAPP_NUMBER}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 hover:opacity-85 transition-opacity p-1 group"
-              title="WhatsApp: 89 49 94 0610 - Connect with Us"
+              className="hidden md:flex items-center gap-2 hover:opacity-85 transition-opacity p-1 group"
+              title="Chat on WhatsApp"
             >
               <div className="w-5 h-5 sm:w-6 sm:h-6 text-[#25D366] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                 <svg className="w-full h-full fill-current" viewBox="0 0 24 24">
                   <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
                 </svg>
               </div>
-              <div className="hidden min-[1650px]:flex flex-col text-left leading-tight">
-                <span className="text-xs font-black text-gray-900 whitespace-nowrap">89 49 94 0610</span>
-                <span className="text-[10px] text-gray-500 font-medium whitespace-nowrap">Connect with Us</span>
+              <div className="hidden min-[1750px]:flex flex-col text-left leading-tight">
+                <span className="text-xs font-black text-gray-900 whitespace-nowrap">Chat With Us</span>
+                <span className="text-[10px] text-gray-500 font-medium whitespace-nowrap">Available 24/7</span>
               </div>
             </a>
 
@@ -950,14 +932,14 @@ const PublicLayout = () => {
               <span className="text-[10px] sm:text-[11px] font-semibold mt-1">Wishlist</span>
             </Link>
 
-            {/* Quotation */}
+            {/* Enquiries */}
             <Link
-              to="/account/quotations"
-              title="Quotation / Inquiries"
+              to="/account/enquiries"
+              title="Enquiries"
               className="hidden sm:flex flex-col items-center text-gray-700 hover:text-primary transition-colors text-center px-1 group"
             >
               <FileText className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-105 transition-transform" />
-              <span className="text-[10px] sm:text-[11px] font-semibold mt-1">Quotation</span>
+              <span className="text-[10px] sm:text-[11px] font-semibold mt-1">Enquiries</span>
             </Link>
 
             {/* Cart Box: [X item(s) - ₹Y] + Maroon Cart Badge with Hover Dropdown (Matching Image 1) */}
@@ -977,7 +959,7 @@ const PublicLayout = () => {
                 to="/cart"
                 className="relative flex items-center border-[1.5px] border-primary rounded-md hover:shadow-sm transition-all group shrink-0 h-10 sm:h-11 overflow-visible"
               >
-                <span className="px-2.5 sm:px-3 text-xs sm:text-sm font-semibold text-gray-900 bg-white group-hover:bg-gray-50 transition-colors whitespace-nowrap rounded-l-[5px] h-full flex items-center">
+                <span className="hidden sm:flex px-2.5 sm:px-3 text-xs sm:text-sm font-semibold text-gray-900 bg-white group-hover:bg-gray-50 transition-colors whitespace-nowrap rounded-l-[5px] h-full items-center">
                   {cartCount} item(s) - ₹{(Number(cartSubtotal) || 0).toLocaleString('en-IN')}
                 </span>
                 <div className="relative bg-primary text-white w-10 sm:w-11 h-full flex items-center justify-center rounded-r-[4px]">
@@ -1023,9 +1005,7 @@ const PublicLayout = () => {
                             const price =
                               item.priceSnapshot || item.price || product.standardPrice || product.price || 0;
                             const img =
-                              product.images?.[0]?.url ||
-                              product.image ||
-                              'https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=200';
+                              product.images?.[0]?.url || product.image;
                             const pid =
                               product.sku ||
                               (product._id ? `A${String(product._id).slice(-4).toUpperCase()}` : 'A2522');
@@ -1040,25 +1020,22 @@ const PublicLayout = () => {
                                 className="pt-2.5 first:pt-0 flex items-start gap-3 group/item"
                               >
                                 <div className="w-14 h-14 bg-white rounded-lg border border-gray-200 p-1 shrink-0 flex items-center justify-center overflow-hidden">
-                                  <img
+                                  <Image
                                     src={img}
                                     alt={product.name || 'Product'}
-                                    className="max-h-full max-w-full object-contain"
+                                    objectFit="object-contain" className="h-full w-full"
                                   />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <Link
-                                    to={`/products/${product._id}`}
+                                    to={buildProductPath(product, allCategories)}
                                     onClick={() => setIsCartHovered(false)}
                                     className="text-xs font-bold text-gray-900 line-clamp-2 leading-snug hover:text-[#800020] transition-colors block"
                                     title={product.name}
                                   >
                                     {product.name || 'Product'}
                                   </Link>
-                                  <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-1.5 flex-wrap">
-                                    <span>• Product ID: {pid}</span>
-                                    <span>• Item CD: {itemCd}</span>
-                                  </p>
+                                  {(product.modelNumber || product.specifications?.find((s) => s.key?.toLowerCase().includes('model'))?.value) && <p className="text-[11px] text-gray-500 mt-1">Model: {product.modelNumber || product.specifications.find((s) => s.key?.toLowerCase().includes('model'))?.value}</p>}
                                 </div>
                                 <div className="text-right shrink-0 flex flex-col items-end justify-between self-stretch">
                                   <span className="text-[11px] text-gray-400 font-medium">
@@ -1180,6 +1157,9 @@ const PublicLayout = () => {
                 <span>Shop By Brand</span>
               </Link>
 
+              {categoriesLoading && <span role="status" className="px-3 text-xs">Loading categories...</span>}
+              {categoriesError && <button className="px-3 text-xs" onClick={() => setCategoryRetry((value) => value + 1)}>{categoriesError}. Retry</button>}
+              {!categoriesLoading && !categoriesError && categoryTree.length === 0 && <span className="px-3 text-xs">No categories available</span>}
               {/* Horizontal Categories with compact gaps and clear readable font matching Mega Jaipur */}
               <div className="flex items-center gap-1 h-full whitespace-nowrap">
                 {categoryTree.map((header) => {
@@ -1249,21 +1229,13 @@ const PublicLayout = () => {
 
               <div className="w-full bg-white rounded-md shadow-2xl border border-gray-200 overflow-hidden text-left animate-in fade-in slide-in-from-top-1 duration-150">
                 {/* Dropdown Header Bar (Solid Maroon theme) */}
-                <div className="bg-[#800020] text-white px-4 py-2.5 flex items-center justify-between">
+                <div className="bg-[#800020] text-white px-4 py-2.5 flex items-center">
                   <div className="flex items-center gap-2.5 font-bold text-sm sm:text-base tracking-wide text-white">
                     <div className="w-6 h-6 rounded bg-white/15 flex items-center justify-center shrink-0">
                       {getHeaderCategoryIcon(hoveredHeader.name, hoveredHeader.slug)}
                     </div>
                     <span>{hoveredHeader.name}</span>
                   </div>
-                  <Link
-                    to={`/${hoveredHeader.slug || slugify(hoveredHeader.name)}`}
-                    onClick={() => setHoveredHeaderId(null)}
-                    className="text-xs text-white/90 hover:text-white flex items-center gap-1 font-semibold transition-colors no-underline px-2 py-1 rounded hover:bg-white/10"
-                  >
-                    <span>View All {hoveredHeader.name} Products</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
                 </div>
 
                 {/* Dropdown Body: 3-column grid matching user screenshot */}
@@ -1349,7 +1321,6 @@ const PublicLayout = () => {
         <div className="space-y-4 pt-2 text-sm text-left">
           <div className="flex flex-col gap-1 font-medium border-b border-gray-200 pb-3">
             <Link to="/" className="px-3 py-2 rounded hover:bg-gray-100">Home</Link>
-            <Link to="/products" className="px-3 py-2 rounded hover:bg-gray-100">All Products</Link>
             <Link to="/wishlist" className="px-3 py-2 rounded hover:bg-gray-100 flex items-center justify-between">
               <span>Wishlist</span>
               {wishlistCount > 0 && (
@@ -1362,25 +1333,29 @@ const PublicLayout = () => {
               <span>Shop By Brand</span>
               <Store className="w-4 h-4 text-primary" />
             </Link>
-            <Link to="/categories" className="px-3 py-2 rounded hover:bg-gray-100">Categories</Link>
             <Link to="/cart" className="px-3 py-2 rounded hover:bg-gray-100">
               Shopping Cart ({cartCount})
             </Link>
-            <Link to="/account/quotations" className="px-3 py-2 rounded hover:bg-gray-100">Quotations</Link>
+            <Link to="/account/enquiries" className="px-3 py-2 rounded hover:bg-gray-100">Enquiries</Link>
           </div>
 
           <div className="font-semibold text-xs text-gray-500 uppercase tracking-wider px-3">
             Categories
           </div>
           <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
-            {CATEGORY_BAR_ITEMS.map((item, idx) => (
-              <Link
-                key={idx}
-                to={`/${item.slug || slugify(item.name)}`}
-                className="px-3 py-1.5 text-xs text-gray-700 hover:text-primary hover:bg-gray-50 rounded"
-              >
-                {item.name}
-              </Link>
+            {categoriesLoading && <span role="status">Loading categories...</span>}
+            {categoriesError && <button onClick={() => setCategoryRetry((value) => value + 1)}>{categoriesError}. Retry</button>}
+            {categoryTree.map((header) => (
+              <details key={header._id} className="px-3 py-2">
+                <summary className="font-semibold cursor-pointer">{header.name}</summary>
+                <Link className="block py-2 text-primary" to={buildCategoryPath(header, allCategories)}>View all {header.name}</Link>
+                {header.mainCategories.map((main) => (
+                  <div key={main._id} className="pl-3 py-1">
+                    <Link className="font-medium" to={buildCategoryPath(main, allCategories)}>{main.name}</Link>
+                    {main.subCategories.map((sub) => <Link key={sub._id} className="block pl-3 py-1 text-gray-600" to={buildCategoryPath(sub, allCategories)}>{sub.name}</Link>)}
+                  </div>
+                ))}
+              </details>
             ))}
           </div>
 
@@ -1464,116 +1439,36 @@ const PublicLayout = () => {
         <Outlet />
       </main>
 
-      {/* 5. MULTI-COLUMN BLACK FOOTER (Full Width) */}
-      <footer className="w-full bg-[#111111] text-white pt-8 pb-6 px-3 sm:px-6 lg:px-8 2xl:px-12 mt-4 sm:mt-6 text-left">
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 pb-10 border-b border-neutral-800 text-xs">
-          
-          {/* Col 1: About */}
+      {footerData && <footer className="w-full bg-[#111111] text-white px-6 pt-10 text-left">
+        <div className="mx-auto max-w-[1500px] grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-16 pb-9">
           <div className="space-y-3">
-            <h4 className="text-sm font-bold text-white tracking-wide">About</h4>
-            <p className="text-gray-300 leading-relaxed text-[11px]">
-              Since 2008, innovation, passion, and reliability come together to deliver the finest IT & surveillance hardware — CCTV cameras, NVRs, PoE switches, networking equipment, routers, and accessories — empowering businesses across India to succeed in an ever-evolving digital world.
-            </p>
-          </div>
-
-          {/* Col 2: Information */}
-          <div className="space-y-3">
-            <h4 className="text-sm font-bold text-white tracking-wide">Information</h4>
-            <ul className="space-y-2 text-[11px] text-gray-300">
-              <li>
-                <Link to="/content/pages/about-us" className="hover:text-white hover:underline transition-colors">
-                  About Us
-                </Link>
-              </li>
-              <li>
-                <Link to="/content/pages/shipping-policy" className="hover:text-white hover:underline transition-colors">
-                  Shipping Policy
-                </Link>
-              </li>
-              <li>
-                <Link to="/content/pages/privacy-policy" className="hover:text-white hover:underline transition-colors">
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link to="/content/pages/terms-and-conditions" className="hover:text-white hover:underline transition-colors">
-                  Terms & Conditions
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Col 3: Contact Details */}
-          <div className="space-y-3">
-            <h4 className="text-sm font-bold text-white tracking-wide">Contact Details</h4>
-            <div className="text-[11px] text-gray-300 space-y-1.5">
-              <p className="font-semibold text-white">Vi Nexus Platforms, Jaipur</p>
-              <p>2nd Floor, 21, Sudarshanpura Industrial Area</p>
-              <p>22 Godown, Jaipur – 302006</p>
-              <p className="pt-2 flex items-center gap-1.5 font-bold text-white">
-                <Phone className="w-3.5 h-3.5 text-rose-300" />
-                <a href="tel:+918949940610" className="hover:underline">+91 89499 40610</a>
-              </p>
-              <p className="flex items-center gap-1.5 text-gray-300">
-                <span>✉️</span>
-                <a href="mailto:sales@vinexus.com" className="hover:underline">sales@vinexus.com</a>
-              </p>
-            </div>
-          </div>
-
-          {/* Col 4: Bank Details */}
-          <div className="space-y-3">
-            <h4 className="text-sm font-bold text-white tracking-wide">Bank Details</h4>
-            <div className="text-[11px] text-gray-300 space-y-1.5">
-              <p><strong className="text-white">Name :</strong> Vi Nexus Platforms</p>
-              <p><strong className="text-white">A/c Number :</strong> 12342320000433</p>
-              <p><strong className="text-white">IFSC :</strong> HDFC0001430</p>
-              <p><strong className="text-white">Branch :</strong> Subhash Nagar, Jaipur</p>
-              <p className="pt-1">
-                <strong className="text-white">UPI :</strong> <span className="underline cursor-pointer hover:text-white">View QR Code</span>
-              </p>
-            </div>
-          </div>
-
-          {/* Col 5: Sales & Support */}
-          <div className="space-y-3">
-            <h4 className="text-sm font-bold text-white tracking-wide">Sales & Support</h4>
-            <div className="text-[11px] text-gray-300 space-y-1">
-              {[
-                { label: 'Sales Jaipur', phone: '7073888300' },
-                { label: 'Billing Counter', phone: '8302885197' },
-                { label: 'Sales Rest of Rajasthan', phone: '9460193000' },
-                { label: 'Sales Rest of India', phone: '7849909082' },
-                { label: 'Sales Laptop Accessories', phone: '8302885196' },
-                { label: 'Sales CCTV Surveillance', phone: '8302885193' },
-                { label: 'Sales Networking', phone: '7849831942' },
-                { label: 'Sales Printer Accessories', phone: '7849831945' },
-                { label: 'Dispatch', phone: '8302885194' },
-                { label: 'RMA / Replacements', phone: '9358861191' },
-                { label: 'Accounts', phone: '9358861193' },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between gap-1 text-[10px]">
-                  <span className="truncate">{item.label}</span>
-                  <a
-                    href={`https://wa.me/91${item.phone}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 font-mono text-gray-200 hover:text-emerald-400 shrink-0 font-medium"
-                  >
-                    <span>{item.phone}</span>
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
-                  </a>
-                </div>
+            <h4 className="font-bold text-xl">{footerData.aboutHeading || 'About'}</h4>
+            {footerData.companyDescription && <p className="text-[15px] text-white/90 leading-7">{footerData.companyDescription}</p>}
+            {(footerData.socialLinks || []).length > 0 && <div className="flex flex-wrap gap-2 pt-2">
+              {[...(footerData.socialLinks || [])].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)).map((link, index) => (
+                <a key={`${link.label}-${index}`} href={link.url} target="_blank" rel="noopener noreferrer" className="rounded-md border border-white/20 px-2.5 py-1.5 text-xs text-gray-200 hover:border-white/50 hover:text-white">{link.label}</a>
               ))}
-            </div>
+            </div>}
+          </div>
+          <div className="space-y-2 text-[15px]">
+            <h4 className="font-bold text-xl text-white mb-4">{footerData.quickLinksHeading || 'Information'}</h4>
+            {[...(footerData.quickLinks || []), ...(footerData.legalLinks || [])]
+              .filter((link) => !['all products', 'category directory', 'component library'].includes((link.label || '').trim().toLowerCase()))
+              .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)).map((link, index) => (
+              <a key={`${link.label}-${index}`} className="block text-white/90 hover:text-white hover:underline" href={link.url}>{link.label}</a>
+            ))}
+          </div>
+          <div className="space-y-3 text-[15px] text-white/90">
+            <h4 className="font-bold text-xl text-white mb-4">{footerData.contactHeading || 'Contact Details'}</h4>
+            {footerData.address && <a className="flex items-start gap-2 hover:text-white hover:underline leading-6" href={footerData.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(footerData.address)}`} target="_blank" rel="noopener noreferrer"><MapPin className="w-4 h-4 mt-1 shrink-0" /> <span>{footerData.address}</span></a>}
+            {footerData.phone && <a className="flex items-center gap-2 hover:text-white hover:underline" href={`tel:${footerData.phone.replace(/[^+\d]/g, '')}`}><Phone className="w-4 h-4 shrink-0" /> {footerData.phone}</a>}
+            {footerData.email && <a className="flex items-center gap-2 hover:text-white hover:underline" href={`mailto:${footerData.email}`}><Mail className="w-4 h-4 shrink-0" /> {footerData.email}</a>}
           </div>
         </div>
-
-        {/* Footer Bottom Bar */}
-        <div className="w-full pt-4 text-center text-[11px] text-gray-400">
-          <p>© 2008–2026 Vi Nexus, Jaipur. All Rights Reserved.</p>
-        </div>
-      </footer>
+        <p className="mx-auto max-w-[1500px] border-t border-white/15 py-5 text-center text-sm text-white/90">
+          {(footerData.copyrightText || '© {year} {company}. All Rights Reserved.').replace(/\{year\}/g, String(new Date().getFullYear())).replace(/\{company\}/g, footerData.companyName || '')}
+        </p>
+      </footer>}
     </div>
   );
 };

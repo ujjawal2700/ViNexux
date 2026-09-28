@@ -1,3 +1,5 @@
+import { AppError } from '../utils/AppError.js';
+import { getPublicCategories } from '../services/catalog.service.js';
 import { categoryService } from '../services/category.service.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -15,7 +17,15 @@ export const createCategory = asyncHandler(async (req, res) => {
 });
 
 export const getCategories = asyncHandler(async (req, res) => {
-  const result = await categoryService.getCategories(req.query);
+  let categories = await getPublicCategories();
+  if (req.query.parentId !== undefined) {
+    const parentId = req.query.parentId === 'null' ? '' : req.query.parentId;
+    categories = categories.filter((category) => String(category.parentId?._id || '') === parentId);
+  }
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 20));
+  const total = categories.length;
+  const result = { categories: categories.slice((page - 1) * limit, page * limit), pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
 
   return ApiResponse.success(
     res,
@@ -27,7 +37,8 @@ export const getCategories = asyncHandler(async (req, res) => {
 
 export const getCategoryById = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const category = await categoryService.getCategoryById(id);
+  const category = (await getPublicCategories()).find((item) => String(item._id) === id);
+  if (!category) throw new AppError('Category not found', 404, 'NOT_FOUND');
 
   return ApiResponse.success(
     res,
@@ -68,3 +79,5 @@ export default {
   updateCategory,
   deleteCategory,
 };
+
+export const getCategoryTree = asyncHandler(async (req, res) => ApiResponse.success(res, 'Active category hierarchy retrieved', { categories: await getPublicCategories() }));

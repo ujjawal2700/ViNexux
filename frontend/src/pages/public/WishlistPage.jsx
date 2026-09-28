@@ -5,6 +5,8 @@ import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
 import wishlistService from '../../services/wishlistService';
 import cartService from '../../services/cartService';
+import guestCartService from '../../services/guestCartService';
+import { buildProductPath } from '../../utils/categoryUrls';
 
 export const WishlistPage = () => {
   const { isAuthenticated, user } = useAuth();
@@ -72,7 +74,8 @@ export const WishlistPage = () => {
           })
         );
       } else {
-        window.dispatchEvent(new CustomEvent('cart-updated'));
+        const updatedCart = guestCartService.addItem(product, 1);
+        window.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart: updatedCart } }));
       }
 
       toast.success(`Added "${product.name || 'item'}" to cart`);
@@ -119,7 +122,7 @@ export const WishlistPage = () => {
 
           {/* Right Action: Browse Products Button */}
           <Link
-            to="/products"
+            to="/"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-red-50 hover:bg-red-100 text-[#800020] text-xs sm:text-[13px] font-semibold transition-colors shadow-2xs cursor-pointer active:scale-98"
           >
             <Store className="w-4 h-4 text-[#800020]" />
@@ -142,7 +145,7 @@ export const WishlistPage = () => {
             </p>
             <div className="pt-2">
               <Link
-                to="/products"
+                to="/"
                 className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[#800020] hover:bg-[#66001a] text-white text-xs sm:text-sm font-semibold transition-colors shadow-xs"
               >
                 <Store className="w-4 h-4" />
@@ -166,16 +169,6 @@ export const WishlistPage = () => {
                   product.image ||
                   'https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=300';
 
-                // Clean PID (e.g. P972, A3773)
-                const pid = product.sku?.replace(/[^0-9]/g, '')
-                  ? `P${product.sku.replace(/[^0-9]/g, '').slice(-4)}`
-                  : `P${String(prodId || '').slice(-4).toUpperCase()}`;
-
-                // Clean ITEM CD (e.g. 03G32DI, 11O3HDY)
-                const itemCd =
-                  product.specifications?.find((s) => s.key?.toLowerCase().includes('code'))?.value ||
-                  `1H${String(product.sku || prodId || 'VNX').replace(/[^A-Z0-9]/gi, '').slice(-5).toUpperCase()}`;
-
                 return (
                   <div
                     key={prodId}
@@ -193,7 +186,7 @@ export const WishlistPage = () => {
                     <div className="flex items-center gap-3 py-1 flex-1">
                       {/* Image Thumbnail */}
                       <Link
-                        to={`/products/${prodId}`}
+                        to={buildProductPath(product)}
                         className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 flex items-center justify-center bg-white rounded p-1 overflow-hidden"
                       >
                         <img
@@ -206,7 +199,7 @@ export const WishlistPage = () => {
                       {/* Product Info */}
                       <div className="flex-1 min-w-0 space-y-1">
                         <Link
-                          to={`/products/${prodId}`}
+                          to={buildProductPath(product)}
                           className="text-xs font-semibold text-gray-900 hover:text-[#420b45] line-clamp-2 leading-tight block transition-colors"
                           title={product.name}
                         >
@@ -223,19 +216,7 @@ export const WishlistPage = () => {
                           </span>
                         </div>
 
-                        {/* PID badge */}
-                        <div>
-                          <span className="text-[10px] font-mono font-medium text-[#420b45] bg-[#f5edf6] px-1.5 py-0.5 rounded inline-block leading-none">
-                            PID: {pid}
-                          </span>
-                        </div>
-
-                        {/* ITEM CD badge */}
-                        <div>
-                          <span className="text-[10px] font-mono font-medium text-[#420b45] bg-[#f5edf6] px-1.5 py-0.5 rounded inline-block leading-none">
-                            ITEM CD: {itemCd}
-                          </span>
-                        </div>
+                        {product.modelNumber && <div className="text-[10px] text-gray-500">Model: {product.modelNumber}</div>}
                       </div>
                     </div>
 

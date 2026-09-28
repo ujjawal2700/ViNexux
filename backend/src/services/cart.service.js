@@ -83,6 +83,21 @@ const formatPopulatedCart = async (cart, userId) => {
     };
   }
 
+  // Always refresh stored prices from current database state. A dealer
+  // approval/rejection/revocation or an admin price edit therefore applies
+  // on the next cart read without trusting an older snapshot.
+  let pricingChanged = false;
+  for (const item of cart.items || []) {
+    const product = await Product.findById(item.productId);
+    if (!product) continue;
+    const currentPrice = await calculateApplicablePrice(userId, product);
+    if (item.priceSnapshot !== currentPrice) {
+      item.priceSnapshot = currentPrice;
+      pricingChanged = true;
+    }
+  }
+  if (pricingChanged) await cart.save();
+
   await cart.populate({
     path: 'items.productId',
     select: 'sku name categoryId description images specifications isFeatured isActive standardPrice',

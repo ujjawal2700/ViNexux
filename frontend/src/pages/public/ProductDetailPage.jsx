@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import productService from '../../services/productService';
 import categoryService from '../../services/categoryService';
 import cartService from '../../services/cartService';
+import guestCartService from '../../services/guestCartService';
 import wishlistService from '../../services/wishlistService';
 import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
@@ -55,6 +56,7 @@ export const ProductDetailPage = () => {
   const [error, setError] = useState(null);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
+  const [hasNameCopied, setHasNameCopied] = useState(false);
 
   // Quick Enquiry Modal State
   const [isEnquiryModalOpen, setIsEnquiryModalOpen] = useState(false);
@@ -70,7 +72,7 @@ export const ProductDetailPage = () => {
   useEffect(() => {
     const fetchCats = async () => {
       try {
-        const res = await categoryService.getCategories({ limit: 500, isActive: true });
+        const res = await categoryService.getCategoryTree();
         const list = res.data?.categories || res.categories || [];
         setCategories(list);
       } catch (err) {
@@ -83,7 +85,7 @@ export const ProductDetailPage = () => {
   // 2. Fetch product data
   const fetchProduct = useCallback(async () => {
     if (!productId) {
-      setError('Product ID is missing');
+      setError('Product reference is missing');
       setIsLoading(false);
       return;
     }
@@ -126,7 +128,7 @@ export const ProductDetailPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [productId]);
+  }, [productId, user?.id, user?.dealerStatus]);
 
   useEffect(() => {
     fetchProduct();
@@ -171,7 +173,7 @@ export const ProductDetailPage = () => {
 
     return [
       { label: 'Home', path: '/' },
-      { label: 'Products', path: '/products' },
+      { label: 'Home', path: '/' },
       { label: product?.name || 'Product Details', path: null },
     ];
   }, [brandSlug, product, categories]);
@@ -183,7 +185,7 @@ export const ProductDetailPage = () => {
     if (catObj) {
       return buildCategoryPath(catObj, categories);
     }
-    return '/products';
+    return '/';
   }, [product, categories]);
 
   const categoryName = useMemo(() => {
@@ -199,18 +201,18 @@ export const ProductDetailPage = () => {
   const standardPrice = product?.standardPrice || 0;
   const dealerPrice = product?.dealerPrice || 0;
 
-  let displayPrice = standardPrice;
+  let displayPrice = product?.applicablePrice ?? standardPrice;
   let hasDealerDiscount = false;
 
   if (isApprovedDealer && dealerPrice > 0) {
-    displayPrice = dealerPrice;
+    displayPrice = product?.applicablePrice ?? dealerPrice;
     if (standardPrice > dealerPrice) {
       hasDealerDiscount = true;
     }
   }
 
   // Stock status: isActive = true means available in stock
-  const isInStock = Boolean(product?.isActive);
+  const isInStock = product?.stockStatus !== 'out-of-stock';
 
   // Format Currency (INR ₹)
   const formatCurrency = (amount) => {
@@ -233,8 +235,8 @@ export const ProductDetailPage = () => {
     }
 
     if (!isAuthenticated) {
-      toast.info('Please log in to add products to your cart.');
-      navigate('/login');
+      const updatedCart = guestCartService.addItem(product, quantity);
+      window.dispatchEvent(new CustomEvent('cart-item-added', { detail: { product, quantity, displayPrice, cart: updatedCart } }));
       return;
     }
 
@@ -291,6 +293,13 @@ export const ProductDetailPage = () => {
     setTimeout(() => setHasCopied(false), 2000);
   };
 
+  const handleCopyName = () => {
+    navigator.clipboard.writeText(product?.name || '');
+    setHasNameCopied(true);
+    toast.success('Product name copied to clipboard!');
+    setTimeout(() => setHasNameCopied(false), 2000);
+  };
+
   // Share
   const handleShare = () => {
     if (navigator.share) {
@@ -306,6 +315,7 @@ export const ProductDetailPage = () => {
 
   // Extracted Brand info
   const brandName = useMemo(() => {
+    if (product?.brandId?.name) return product.brandId.name;
     const fromSpec = product?.specifications?.find((s) => s.key.toLowerCase() === 'brand')?.value;
     if (fromSpec) return fromSpec;
     if (product?.brand) return product.brand;
@@ -315,17 +325,11 @@ export const ProductDetailPage = () => {
 
   // Model & Item code from specifications
   const modelName = useMemo(() => {
+    if (product?.modelNumber) return product.modelNumber;
     const fromSpec = product?.specifications?.find(
       (s) => s.key.toLowerCase().includes('model') || s.key.toLowerCase().includes('series')
     )?.value;
     return fromSpec || product?.name?.split(' ')[1] || 'Standard Series';
-  }, [product]);
-
-  const itemCode = useMemo(() => {
-    const fromSpec = product?.specifications?.find(
-      (s) => s.key.toLowerCase().includes('code') || s.key.toLowerCase().includes('part')
-    )?.value;
-    return fromSpec || (product?.sku ? product.sku.slice(0, 8).toUpperCase() : 'VNX-ITEM');
   }, [product]);
 
   const warrantyText = useMemo(() => {
@@ -338,21 +342,26 @@ export const ProductDetailPage = () => {
     const phone = '918949940610';
     const message = `Hello ViNexus, I am interested in:
 *Product:* ${product?.name || ''}
-*PID / SKU:* ${product?.sku || ''}
-*Item CD:* ${itemCode}
 *Model:* ${modelName}
 *Status:* ${isInStock ? 'In Stock' : 'Out of Stock (Special Request)'}
 *Price:* ${formatCurrency(displayPrice)}
 *Link:* ${window.location.href}
 
-Please share commercial quotation and availability.`;
+Please share current pricing and availability.`;
 
     return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-  }, [product, modelName, itemCode, isInStock, displayPrice]);
+  }, [product, modelName, isInStock, displayPrice]);
 
   // Submit Enquiry Modal Form
   const handleSubmitEnquiry = async (e) => {
     e.preventDefault();
+    if (!isAuthenticated) {
+      guestCartService.addItem(product, quantity);
+      toast.info('Please sign up or log in to send your enquiry. Your cart will be kept.');
+      setIsEnquiryModalOpen(false);
+      navigate('/login', { state: { from: window.location.pathname } });
+      return;
+    }
     if (!enquiryForm.phone || enquiryForm.phone.length < 10) {
       toast.error('Please enter a valid 10-digit WhatsApp/Mobile number');
       return;
@@ -384,6 +393,16 @@ Please share commercial quotation and availability.`;
     }
   };
 
+  const requireLoginForEnquiry = () => {
+    if (isAuthenticated) {
+      setIsEnquiryModalOpen(true);
+      return;
+    }
+    guestCartService.addItem(product, quantity);
+    toast.info('Please sign up or log in to send your enquiry. Your cart will be kept.');
+    navigate('/login', { state: { from: window.location.pathname } });
+  };
+
   // Structured Full Specifications List (Matching Image 2)
   const fullSpecifications = useMemo(() => {
     if (!product) return [];
@@ -396,7 +415,7 @@ Please share commercial quotation and availability.`;
     // Add all existing specs from product.specifications if not already present
     if (product.specifications && Array.isArray(product.specifications)) {
       product.specifications.forEach((s) => {
-        if (s.key && s.value && s.key.toLowerCase() !== 'brand' && s.key.toLowerCase() !== 'model') {
+        if (s.key && s.value && s.key.toLowerCase() !== 'brand' && !s.key.toLowerCase().includes('model')) {
           list.push({ key: s.key, value: s.value });
         }
       });
@@ -418,14 +437,7 @@ Please share commercial quotation and availability.`;
   // Product Images Gallery (Safe for hooks order)
   const images = useMemo(() => {
     if (!product) return [{ url: '' }];
-    let list = product.images && product.images.length > 0 ? product.images : [{ url: '' }];
-    if (list.length === 1 && list[0].url) {
-      list = [
-        list[0],
-        { url: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=800&auto=format&fit=crop&q=80', altText: `${product.name} Alternate Angle` },
-      ];
-    }
-    return list;
+    return product.images?.length ? product.images : [{ url: '' }];
   }, [product]);
 
   const currentImage = images[selectedImageIndex]?.url || images[0]?.url || '';
@@ -559,7 +571,7 @@ Please share commercial quotation and availability.`;
                 {product.name}
               </h1>
 
-              {/* Action Icons: Heart (Wishlist), Copy Link, Share */}
+              {/* Product actions */}
               <div className="flex items-center gap-3 pt-0.5">
                 <button
                   type="button"
@@ -576,20 +588,20 @@ Please share commercial quotation and availability.`;
 
                 <button
                   type="button"
-                  onClick={handleCopyLink}
-                  className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:text-[#800020] hover:border-gray-300 transition-all cursor-pointer"
-                  title="Copy Product Link"
+                  onClick={handleCopyName}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:text-[#800020]"
+                  title="Copy Product Name"
                 >
-                  {hasCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                  {hasNameCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />} Copy Name
                 </button>
 
                 <button
                   type="button"
-                  onClick={handleShare}
-                  className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:text-[#800020] hover:border-gray-300 transition-all cursor-pointer"
-                  title="Share Product"
+                  onClick={handleCopyLink}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:text-[#800020]"
+                  title="Copy Product Link"
                 >
-                  <Share2 className="w-4 h-4" />
+                  {hasCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />} Copy Link
                 </button>
               </div>
             </div>
@@ -599,7 +611,9 @@ Please share commercial quotation and availability.`;
               className="border border-gray-200 rounded-lg px-3 py-1.5 min-w-[70px] text-center font-black text-sm text-[#800020] bg-white shadow-2xs shrink-0 flex items-center justify-center uppercase tracking-wider"
               title={`Brand: ${brandName}`}
             >
-              {brandName}
+              {product?.brandId?.logo?.url
+                ? <img src={product.brandId.logo.url} alt={brandName} className="max-h-12 max-w-24 object-contain" />
+                : brandName}
             </div>
           </div>
 
@@ -607,29 +621,7 @@ Please share commercial quotation and availability.`;
           <div className="border border-gray-200 rounded-xl overflow-hidden shadow-2xs bg-white text-xs">
             <table className="w-full text-left border-collapse">
               <tbody>
-                {/* 1. Product ID */}
-                <tr className="border-b border-gray-100 hover:bg-gray-50/50">
-                  <td className="px-4 py-2.5 font-medium text-gray-600 w-2/5 flex items-center gap-2">
-                    <span className="text-[#800020] font-bold text-sm">#</span>
-                    <span>Product ID</span>
-                  </td>
-                  <td className="px-4 py-2.5 font-mono font-bold text-gray-900">
-                    {product.sku || product._id?.slice(-6).toUpperCase()}
-                  </td>
-                </tr>
-
-                {/* 2. Item CD */}
-                <tr className="border-b border-gray-100 hover:bg-gray-50/50">
-                  <td className="px-4 py-2.5 font-medium text-gray-600 flex items-center gap-2">
-                    <span className="text-gray-400 font-bold">::</span>
-                    <span>Item CD</span>
-                  </td>
-                  <td className="px-4 py-2.5 font-mono text-gray-800">
-                    {itemCode}
-                  </td>
-                </tr>
-
-                {/* 3. Model */}
+                {/* Model */}
                 <tr className="border-b border-gray-100 hover:bg-gray-50/50">
                   <td className="px-4 py-2.5 font-medium text-gray-600 flex items-center gap-2">
                     <span className="text-gray-400 font-bold">▣</span>
@@ -739,7 +731,7 @@ Please share commercial quotation and availability.`;
                 <Tag className="w-3 h-3 text-[#800020]" />
                 {hasDealerDiscount
                   ? `CD DISCOUNT: ${formatCurrency(standardPrice - dealerPrice)}`
-                  : `CD DISCOUNT: ${formatCurrency(Math.max(50, Math.round(displayPrice * 0.03)))}`}
+                  : 'Price shown above'}
               </span>
             </div>
 
@@ -747,7 +739,7 @@ Please share commercial quotation and availability.`;
             {isInStock ? (
               <div className="w-full py-2 px-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>IN STOCK</span>
+                <span>{product?.stockStatus === 'in-stock' ? 'IN STOCK' : 'AVAILABILITY ON REQUEST'}</span>
               </div>
             ) : (
               <div className="w-full py-2 px-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center justify-center gap-2">
@@ -800,13 +792,13 @@ Please share commercial quotation and availability.`;
               </button>
             </div>
 
-            {/* Add to Quotation / Send Enquiry Button */}
+            {/* Send Enquiry Button */}
             {/* RULE: If product available (in stock) -> Send Enquiry button is DISABLED */}
             {/* If product out of stock -> Send Enquiry button is ENABLED */}
             <div>
               <button
                 type="button"
-                onClick={() => setIsEnquiryModalOpen(true)}
+                onClick={requireLoginForEnquiry}
                 disabled={isInStock}
                 className={`w-full h-10 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 border transition-all ${
                   !isInStock
@@ -834,6 +826,12 @@ Please share commercial quotation and availability.`;
                 href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={(event) => {
+                  if (!isAuthenticated) {
+                    event.preventDefault();
+                    requireLoginForEnquiry();
+                  }
+                }}
                 className="p-2.5 rounded-xl border border-gray-200 hover:border-[#25D366] hover:bg-emerald-50/40 transition-all flex flex-col justify-between group cursor-pointer text-left"
                 title="Send Enquiry to WhatsApp"
               >
@@ -854,9 +852,9 @@ Please share commercial quotation and availability.`;
               {/* Option 2: Send Enquiry */}
               <button
                 type="button"
-                onClick={() => setIsEnquiryModalOpen(true)}
+                onClick={requireLoginForEnquiry}
                 className="p-2.5 rounded-xl border border-gray-200 hover:border-[#800020] hover:bg-rose-50/40 transition-all flex flex-col justify-between group cursor-pointer text-left"
-                title="Submit B2B Quotation Enquiry"
+                title="Send Product Enquiry"
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[11px] font-bold text-gray-900 group-hover:text-[#800020] transition-colors flex items-center gap-1">
@@ -946,7 +944,7 @@ Please share commercial quotation and availability.`;
       )}
 
       {/* =========================================================================
-          5. DIRECT PRODUCT ENQUIRY MODAL (B2B / Out of Stock / Custom Quotation)
+          5. DIRECT PRODUCT ENQUIRY MODAL (B2B / Out of Stock)
          ========================================================================= */}
       {isEnquiryModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">

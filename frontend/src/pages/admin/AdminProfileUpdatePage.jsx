@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
@@ -39,6 +39,15 @@ export const AdminProfileUpdatePage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Session restoration is asynchronous. Hydrate the form when the admin
+  // record arrives instead of leaving inputs empty after a direct page load.
+  useEffect(() => {
+    if (!currentAdmin) return;
+    setFullName(currentAdmin.fullName || currentAdmin.name || '');
+    setEmail(currentAdmin.email || '');
+    setPhone(currentAdmin.phone || currentAdmin.phoneNumber || '');
+  }, [currentAdmin]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!fullName.trim() || !email.trim() || !phone.trim()) {
@@ -46,9 +55,28 @@ export const AdminProfileUpdatePage = () => {
       return;
     }
 
+    if (fullName.trim().length < 2 || fullName.trim().length > 100) {
+      setError('Full Name must contain between 2 and 100 characters.');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Enter a valid admin email address.');
+      return;
+    }
+
+    if (!/^[6-9]\d{9}$/.test(phone.trim())) {
+      setError('Enter a valid 10-digit Indian mobile number.');
+      return;
+    }
+
     if (newPassword) {
-      if (newPassword.length < 6) {
-        setError('New password must be at least 6 characters long.');
+      if (!currentPassword) {
+        setError('Current password is required to set a new password.');
+        return;
+      }
+      if (newPassword.length < 8) {
+        setError('New password must be at least 8 characters long.');
         return;
       }
       if (newPassword !== confirmPassword) {
@@ -73,7 +101,7 @@ export const AdminProfileUpdatePage = () => {
           : {}),
       };
 
-      const res = await updateProfile(payload);
+      const res = await updateProfile(payload, 'admin');
 
       if (res.success) {
         toast.success('Admin profile updated successfully! New credentials are active.');
@@ -137,6 +165,7 @@ export const AdminProfileUpdatePage = () => {
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
+                  maxLength={100}
                   placeholder="Enter Full Name"
                   className="w-full bg-muted/40 border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-2xl pl-11 pr-4 py-3 text-xs text-foreground placeholder-muted-foreground outline-none transition-all font-medium"
                 />
@@ -171,7 +200,9 @@ export const AdminProfileUpdatePage = () => {
                     type="tel"
                     required
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    inputMode="numeric"
+                    maxLength={10}
                     placeholder="Enter Mobile Phone"
                     className="w-full bg-muted/40 border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-2xl pl-11 pr-4 py-3 text-xs text-foreground placeholder-muted-foreground outline-none transition-all font-medium"
                   />

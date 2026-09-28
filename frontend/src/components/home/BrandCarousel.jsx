@@ -1,3 +1,4 @@
+import useCatalogBrands from '../../hooks/useCatalogBrands';
 import React, { useRef, useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -9,6 +10,7 @@ import { buildBrandUrl } from '../../utils/categoryUrls';
  */
 const BrandLogo = ({ brand }) => {
   const { name } = brand;
+  if (brand.logo?.url) return <img src={brand.logo.url} alt={name} className="max-h-full max-w-full object-contain" />;
 
   switch (name) {
     case 'XPG':
@@ -262,38 +264,10 @@ const BrandLogo = ({ brand }) => {
   }
 };
 
-const BRAND_LIST = [
-  { name: 'XPG', logoText: 'XPG', color: '#ed1c24' },
-  { name: 'ZEBRONICS', logoText: 'ZEBRONICS', color: '#1a1a1a' },
-  { name: 'ZOTAC', logoText: 'ZOTAC', color: '#ff6200' },
-  { name: 'PRAMA', logoText: 'PRAMA', color: '#005baa' },
-  { name: 'AARVEX', logoText: 'AARVEX', color: '#2d3748' },
-  { name: 'acer', logoText: 'acer', color: '#83b81a' },
-  { name: 'ADATA', logoText: 'ADATA', color: '#0054a6' },
-  { name: 'AOYi', logoText: 'AOYi', color: '#0083ca' },
-  { name: 'Alite', logoText: 'Alite', color: '#c52026' },
-  { name: 'amazon', logoText: 'amazon', color: '#ff9900' },
-  { name: 'HP', logoText: 'HP', color: '#0096d6' },
-  { name: 'DELL', logoText: 'DELL', color: '#007db8' },
-  { name: 'ASUS', logoText: 'ASUS', color: '#00539b' },
-  { name: 'LENOVO', logoText: 'Lenovo', color: '#e2231a' },
-  { name: 'MSI', logoText: 'msi', color: '#ed1c24' },
-  { name: 'SAMSUNG', logoText: 'SAMSUNG', color: '#034ea2' },
-  { name: 'HIKVISION', logoText: 'HIKVISION', color: '#d32f2f' },
-  { name: 'CP PLUS', logoText: 'CP PLUS', color: '#c62828' },
-  { name: 'DAHUA', logoText: 'dahua', color: '#d9232d' },
-  { name: 'Western Digital', logoText: 'WD', color: '#005ca9' },
-  { name: 'SEAGATE', logoText: 'SEAGATE', color: '#68bc45' },
-  { name: 'D-Link', logoText: 'D-Link', color: '#0099cc' },
-  { name: 'tp-link', logoText: 'tp-link', color: '#19b1aa' },
-  { name: 'Logitech', logoText: 'logitech', color: '#00b8fc' },
-  { name: 'Canon', logoText: 'Canon', color: '#cc0000' },
-  { name: 'SONY', logoText: 'SONY', color: '#000000' },
-  { name: 'SanDisk', logoText: 'SanDisk', color: '#e31837' },
-  { name: 'CISCO', logoText: 'CISCO', color: '#005073' },
-];
+
 
 export const BrandCarousel = () => {
+  const { brands, loading, error, reload } = useCatalogBrands();
   const scrollRef = useRef(null);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -316,7 +290,7 @@ export const BrandCarousel = () => {
 
     animId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(animId);
-  }, [isPaused]);
+  }, [isPaused, brands]);
 
   const scrollManual = (direction) => {
     if (scrollRef.current) {
@@ -328,8 +302,12 @@ export const BrandCarousel = () => {
     }
   };
 
+  if (loading) return <p className="px-6 py-3" role="status">Loading brands...</p>;
+  if (error) return <button className="px-6 py-3" onClick={reload}>{error} Retry</button>;
+  if (!brands.length) return null;
+
   // Double list for seamless continuous looping
-  const displayBrands = [...BRAND_LIST, ...BRAND_LIST];
+  const displayBrands = [...brands, ...brands];
 
   return (
     <div

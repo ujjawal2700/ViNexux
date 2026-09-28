@@ -207,7 +207,7 @@ export const VerifyOtpPage = () => {
             </button>
             <button
               type="button"
-              onClick={() => navigate('/login?tab=signup')}
+              onClick={() => navigate('/register')}
               className="py-2.5 bg-[#fdf2f4] hover:bg-[#fae1e6] text-[#800020] hover:text-[#590016] font-semibold text-xs sm:text-sm rounded text-center transition-colors select-none cursor-pointer"
             >
               Register

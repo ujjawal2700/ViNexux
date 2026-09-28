@@ -257,7 +257,7 @@ const UiPreviewPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
           <EmptyState
             title="No Enquiries Submitted Yet"
-            description="When customers send quotation enquiries, they will appear in this centralized inbox."
+            description="When customers send enquiries, they will appear in this centralized inbox."
             actionLabel="Submit First Enquiry"
             onAction={() => toast.info('Navigating to enquiry submission...')}
           />

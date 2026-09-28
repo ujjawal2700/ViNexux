@@ -26,6 +26,7 @@ import {
   resetPasswordSchema,
   forceLoginSchema,
   refreshTokenSchema,
+  updateProfileSchema,
 } from '../validators/auth.validator.js';
 
 const router = Router();
@@ -44,6 +45,6 @@ router.post('/refresh-token', validate(refreshTokenSchema), refreshToken);
 // Protected Authentication Endpoints
 router.post('/logout', authenticate, logout);
 router.get('/me', authenticate, getCurrentUser);
-router.put('/profile', authenticate, updateProfile);
+router.put('/profile', authenticate, validate(updateProfileSchema), updateProfile);
 
 export default router;

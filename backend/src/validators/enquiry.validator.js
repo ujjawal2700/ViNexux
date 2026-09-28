@@ -22,6 +22,17 @@ export const createEnquirySchema = {
     addressId: z
       .string({ required_error: 'Please select or add a delivery address before submitting an enquiry' })
       .refine(isValidObjectId, { message: 'Invalid address ID format' }),
+    contactName: z.string().trim().min(2).max(100),
+    contactEmail: z.string().trim().email().max(254),
+    contactPhone: z.string().trim().regex(/^[6-9]\d{9}$/),
+    deliveryAddress: z.object({
+      line1: z.string().trim().min(2).max(200),
+      line2: z.string().trim().max(200).optional().default(''),
+      city: z.string().trim().min(2).max(100),
+      state: z.string().trim().min(2).max(100),
+      pincode: z.string().trim().regex(/^\d{6}$/),
+    }),
+    selectedProductIds: z.array(z.string().refine(isValidObjectId)).min(1),
     // The number admin should reach the submitter on via WhatsApp (wa.me
     // deep link - see admin enquiry pages). May differ from their account
     // phone, so it's collected explicitly rather than assumed.

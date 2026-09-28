@@ -1,6 +1,10 @@
 import apiClient from '../api/axios';
 
 export const categoryService = {
+  async getCategoryTree() {
+    const response = await apiClient.get('/categories/tree');
+    return response.data;
+  },
   /**
    * Fetch category listing with optional query parameters.
    * @param {Object} params - { page, limit, parentId, isActive, sortBy, sortOrder }

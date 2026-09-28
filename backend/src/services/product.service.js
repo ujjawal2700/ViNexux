@@ -1,10 +1,41 @@
 import mongoose from 'mongoose';
 import { Product } from '../models/Product.js';
 import { Category } from '../models/Category.js';
+import { Brand } from '../models/Brand.js';
 import { storageService } from './storage/storage.service.js';
 import { AppError } from '../utils/AppError.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../constants/errorCodes.js';
+import { effectiveFilterDefinitions, getPublicCategories } from './catalog.service.js';
+
+const validateCategorySpecifications = async (categoryId, specifications = []) => {
+  const categories = await getPublicCategories();
+  const definitions = effectiveFilterDefinitions(categories, categoryId);
+  const valuesByKey = new Map();
+  for (const specification of specifications) {
+    const key = specification.key.trim().toLowerCase();
+    if (!valuesByKey.has(key)) valuesByKey.set(key, []);
+    valuesByKey.get(key).push(specification.value.trim());
+  }
+  for (const definition of definitions) {
+    const values = valuesByKey.get(definition.key.toLowerCase()) || [];
+    if (definition.isRequired && values.length === 0) {
+      throw new AppError(`${definition.label} is required for this category.`, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+    }
+    if (['select', 'multi-select'].includes(definition.inputType)) {
+      const allowed = new Set(definition.options.map((option) => option.toLowerCase()));
+      if (values.some((value) => !allowed.has(value.toLowerCase()))) {
+        throw new AppError(`${definition.label} contains an option not configured for this category.`, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+      }
+    }
+    if (definition.inputType === 'number' && values.some((value) => !Number.isFinite(Number(value)))) {
+      throw new AppError(`${definition.label} must be numeric.`, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+    }
+    if (definition.inputType === 'boolean' && values.some((value) => !['yes', 'no', 'true', 'false'].includes(value.toLowerCase()))) {
+      throw new AppError(`${definition.label} must be Yes or No.`, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+    }
+  }
+};
 
 /**
  * Safely escape regex special characters to prevent regex injection or ReDoS attacks.
@@ -19,7 +50,7 @@ export const productService = {
   /**
    * Create a new product.
    */
-  async createProduct({ sku, name, categoryId, description, images = [], specifications = [], standardPrice = 0, dealerPrice = 0, isFeatured = false, isActive = true }) {
+  async createProduct({ sku, name, modelNumber, categoryId, brandId, description, images = [], specifications = [], standardPrice = 0, dealerPrice = 0, isFeatured = false, isActive = true }) {
     const uppercaseSku = sku.trim().toUpperCase();
 
     // Check duplicate SKU
@@ -48,14 +79,27 @@ export const productService = {
         ERROR_CODES.BAD_REQUEST
       );
     }
+    await validateCategorySpecifications(categoryId, specifications);
+    const brand = brandId && await Brand.findOne({ _id: brandId, isActive: true });
+    if (!brand) throw new AppError('Please select an active managed brand.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+    if (!modelNumber?.trim()) throw new AppError('Model number is required.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+    const normalizedSpecifications = [
+      ...specifications.filter((specification) => !/^(brand|manufacturer)$/i.test(specification.key)),
+      { key: 'Brand', value: brand.name },
+    ];
+    if (isActive && images.length === 0) {
+      throw new AppError('At least one uploaded product image is required before publishing.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+    }
 
     const product = await Product.create({
       sku: uppercaseSku,
       name: name.trim(),
+      modelNumber: modelNumber.trim(),
       categoryId,
+      brandId,
       description: description ? description.trim() : undefined,
       images,
-      specifications,
+      specifications: normalizedSpecifications,
       standardPrice,
       dealerPrice,
       isFeatured,
@@ -179,6 +223,7 @@ export const productService = {
     const [products, total] = await Promise.all([
       Product.find(filter)
         .populate('categoryId', 'name slug')
+        .populate('brandId', 'name slug logo isActive')
         .sort(sortOptions)
         .skip(skip)
         .limit(parsedLimit)
@@ -210,6 +255,7 @@ export const productService = {
 
     const product = await Product.findById(id)
       .populate('categoryId', 'name slug parentId')
+      .populate('brandId', 'name slug logo isActive')
       .select('-__v');
 
     if (!product) {
@@ -270,6 +316,7 @@ export const productService = {
 
     // Preserve existing fields that were not supplied
     if (updateData.name) product.name = updateData.name.trim();
+    if (updateData.modelNumber !== undefined) product.modelNumber = updateData.modelNumber.trim();
     if (updateData.description !== undefined) product.description = updateData.description ? updateData.description.trim() : null;
     if (updateData.images !== undefined) product.images = updateData.images;
     if (updateData.specifications !== undefined) product.specifications = updateData.specifications;
@@ -277,7 +324,20 @@ export const productService = {
     if (updateData.dealerPrice !== undefined) product.dealerPrice = updateData.dealerPrice;
     if (updateData.isFeatured !== undefined) product.isFeatured = updateData.isFeatured;
     if (updateData.isActive !== undefined) product.isActive = updateData.isActive;
+    if (updateData.brandId !== undefined) {
+      const brand = await Brand.findOne({ _id: updateData.brandId, isActive: true });
+      if (!brand) throw new AppError('Please select an active managed brand.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+      product.brandId = updateData.brandId;
+      product.specifications = [
+        ...(product.specifications || []).filter((specification) => !/^(brand|manufacturer)$/i.test(specification.key)),
+        { key: 'Brand', value: brand.name },
+      ];
+    }
 
+    await validateCategorySpecifications(product.categoryId, product.specifications);
+    if (product.isActive && (!product.images || product.images.length === 0)) {
+      throw new AppError('At least one uploaded product image is required before publishing.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+    }
     await product.save();
 
     return product;

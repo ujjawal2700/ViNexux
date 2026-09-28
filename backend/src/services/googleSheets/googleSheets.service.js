@@ -30,7 +30,11 @@ export const googleSheetsService = {
     // Format items array into human-readable summary string and compute total quantity
     const items = Array.isArray(enquiry.items) ? enquiry.items : [];
     const itemsSummary = items
-      .map((item) => `${item.productName || 'Product'} (Qty: ${item.quantity || 1})`)
+      .map((item) => {
+        const quantity = Number(item.quantity) || 1;
+        const unitPrice = Number(item.priceShown) || 0;
+        return `${item.productName || 'Product'} (Qty: ${quantity}, Unit: ₹${unitPrice}, Total: ₹${quantity * unitPrice})`;
+      })
       .join('; ');
     const totalQuantity = items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
 

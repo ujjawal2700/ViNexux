@@ -62,6 +62,7 @@ export const deleteBanner = async (id) => {
   if (!banner) {
     throw new AppError('Banner not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
   }
+  if (banner.image?.publicId) await storageService.deleteFile(banner.image.publicId);
   return { message: 'Banner deleted successfully' };
 };
 
@@ -126,6 +127,7 @@ export const deletePromoBanner = async (id) => {
   if (!promoBanner) {
     throw new AppError('Promotional banner not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
   }
+  if (promoBanner.image?.publicId) await storageService.deleteFile(promoBanner.image.publicId);
   return { message: 'Promotional banner deleted successfully' };
 };
 
@@ -316,7 +318,7 @@ export const updateFooterContent = async (payload) => {
 
 export const getPublicFooterContent = async () => {
   const footer = await FooterContent.findOne({ isActive: true }).lean();
-  return footer || { companyName: 'Vinexus', quickLinks: [], legalLinks: [] };
+  return footer || null;
 };
 
 export const uploadBannerImage = async (id, file) => {

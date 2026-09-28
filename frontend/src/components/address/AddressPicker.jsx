@@ -31,7 +31,7 @@ export const AddressPicker = ({ selectedAddressId, onSelect }) => {
       // selected yet - a sane starting point, not a hard requirement.
       if (!selectedAddressId && list.length > 0) {
         const defaultAddr = list.find((a) => a.isDefault) || list[0];
-        onSelect(defaultAddr._id);
+        onSelect(defaultAddr._id, defaultAddr);
       }
     } catch (err) {
       console.error('Failed to load saved addresses:', err);
@@ -55,7 +55,7 @@ export const AddressPicker = ({ selectedAddressId, onSelect }) => {
       setIsAdding(false);
       // Auto-select the newly created address (it's the last entry returned).
       const newest = list[list.length - 1];
-      if (newest) onSelect(newest._id);
+      if (newest) onSelect(newest._id, newest);
       toast.success('Address saved and selected.');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save address.');
@@ -90,7 +90,7 @@ export const AddressPicker = ({ selectedAddressId, onSelect }) => {
           address={addr}
           selectable
           selected={selectedAddressId === addr._id}
-          onSelect={onSelect}
+          onSelect={() => onSelect(addr._id, addr)}
         />
       ))}
 

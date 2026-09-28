@@ -1,28 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-const DEFAULT_SLIDES = [
-  {
-    id: 1,
-    title: 'ViNexus Advanced 4K AI Surveillance & Enterprise CCTV',
-    image: '/banners/cctv_hero_banner.jpg',
-    link: '/category/security/cctv-cameras',
-  },
-  {
-    id: 2,
-    title: 'Unleash Next-Gen Enterprise Computing',
-    image: '/banners/laptop_hero_banner.jpg',
-    link: '/category/laptop/branded-laptop',
-  },
-  {
-    id: 3,
-    title: 'Scale Your Network with Enterprise PoE Infrastructure',
-    image: '/banners/networking_hero_banner.jpg',
-    link: '/category/networking/poe-switch',
-  },
-];
 
-const HeroBannerSlider = ({ slides = DEFAULT_SLIDES, autoPlayInterval = 5000 }) => {
+
+const HeroBannerSlider = ({ slides = [], autoPlayInterval = 5000 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const touchStartX = useRef(0);
@@ -73,6 +54,8 @@ const HeroBannerSlider = ({ slides = DEFAULT_SLIDES, autoPlayInterval = 5000 }) 
     }
   };
 
+  if (!totalSlides) return null;
+
   return (
     <div
       className="relative w-full overflow-hidden select-none bg-gray-100 group z-10"
@@ -96,9 +79,7 @@ const HeroBannerSlider = ({ slides = DEFAULT_SLIDES, autoPlayInterval = 5000 }) 
             key={slide.id || idx}
             className="w-full shrink-0 h-full relative"
           >
-            <div
-              className="block w-full h-full relative overflow-hidden select-none"
-            >
+            <div className="block w-full h-full relative overflow-hidden select-none">
               <img
                 src={slide.image}
                 alt={slide.title}

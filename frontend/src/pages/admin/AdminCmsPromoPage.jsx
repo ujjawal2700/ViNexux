@@ -38,6 +38,7 @@ const AdminCmsPromoPage = () => {
   // Image Upload Modal State
   const [uploadPromoTarget, setUploadPromoTarget] = useState(null);
   const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
   const [imageUploading, setImageUploading] = useState(false);
 
   // Delete Confirm State
@@ -76,6 +77,8 @@ const AdminCmsPromoPage = () => {
       isActive: true,
     });
     setFormError('');
+    setImageFile(null);
+    setImagePreview('');
     setIsModalOpen(true);
   };
 
@@ -90,6 +93,8 @@ const AdminCmsPromoPage = () => {
       isActive: promo.isActive !== undefined ? promo.isActive : true,
     });
     setFormError('');
+    setImageFile(null);
+    setImagePreview(promo.image?.url || '');
     setIsModalOpen(true);
   };
 
@@ -97,6 +102,10 @@ const AdminCmsPromoPage = () => {
     e.preventDefault();
     if (!formData.title.trim()) {
       setFormError('Title is required');
+      return;
+    }
+    if (!editingPromo && !imageFile) {
+      setFormError('Please choose a promotional banner image from your system.');
       return;
     }
 
@@ -109,6 +118,7 @@ const AdminCmsPromoPage = () => {
 
     setFormSubmitting(true);
     setFormError('');
+    let newlyUploadedPublicId = '';
     try {
       const payload = {
         title: formData.title.trim(),
@@ -119,21 +129,26 @@ const AdminCmsPromoPage = () => {
         isActive: formData.isActive,
       };
 
-      if (!editingPromo) {
-        payload.image = { url: 'https://via.placeholder.com/600x200?text=Promo+Banner' };
-      }
-
       if (editingPromo) {
         await adminService.updatePromoBannerAdmin(editingPromo._id, payload);
+        if (imageFile) await adminService.uploadPromoBannerImageAdmin(editingPromo._id, imageFile);
         setToast({ message: 'Promotional banner updated!', type: 'success' });
       } else {
+        const upload = await adminService.uploadCmsImage(imageFile, 'vinexus/promotional-banners');
+        payload.image = { url: upload.data.url, publicId: upload.data.publicId };
+        newlyUploadedPublicId = upload.data.publicId;
         await adminService.createPromoBannerAdmin(payload);
         setToast({ message: 'Promotional banner created!', type: 'success' });
       }
 
       setIsModalOpen(false);
+      setImageFile(null);
+      setImagePreview('');
       fetchPromos();
     } catch (err) {
+      if (!editingPromo && newlyUploadedPublicId) {
+        await adminService.deleteStoredImage(newlyUploadedPublicId).catch(() => {});
+      }
       console.error('Save promo banner error:', err);
       setFormError(err.response?.data?.message || 'Failed to save promotional banner');
     } finally {
@@ -237,7 +252,9 @@ const AdminCmsPromoPage = () => {
                   <Table.Cell className="font-mono text-xs text-muted-foreground font-bold">#{p.sortOrder || 0}</Table.Cell>
                   <Table.Cell>
                     <div className="w-20 h-10 rounded-lg border border-border bg-card overflow-hidden">
-                      <img src={p.image?.url || 'https://via.placeholder.com/200x100'} alt={p.title} className="w-full h-full object-cover" />
+                      {p.image?.url
+                        ? <img src={p.image.url} alt={p.title} className="w-full h-full object-cover" />
+                        : <span className="flex h-full items-center justify-center text-[10px] text-muted-foreground">No image</span>}
                     </div>
                   </Table.Cell>
                   <Table.Cell className="text-xs font-bold text-foreground">{p.title}</Table.Cell>
@@ -307,11 +324,26 @@ const AdminCmsPromoPage = () => {
             />
           </FormField>
 
+          <FormField label={editingPromo ? 'Replace Promo Image (Optional)' : 'Promo Image'} required={!editingPromo} hint="Choose JPEG, PNG or WebP; max 5MB">
+            <input
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              onChange={(e) => {
+                const file = e.target.files?.[0] || null;
+                setImageFile(file);
+                setImagePreview(file ? URL.createObjectURL(file) : (editingPromo?.image?.url || ''));
+              }}
+              className="block w-full text-xs text-muted-foreground file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-muted file:text-foreground"
+              required={!editingPromo}
+            />
+            {imagePreview && <img src={imagePreview} alt="Promotional banner preview" className="mt-3 h-28 w-full rounded-lg border border-border object-cover" />}
+          </FormField>
+
           <FormField label="Target URL Link">
             <Input
               value={formData.link}
               onChange={(e) => setFormData({ ...formData, link: e.target.value })}
-              placeholder="e.g. /products?category=nvrs"
+              placeholder="e.g. /security/cctv/nvrs"
             />
           </FormField>
 

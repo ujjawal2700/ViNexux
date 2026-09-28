@@ -27,9 +27,11 @@ export const createProductSchema = {
       .trim()
       .min(2, { message: 'Product name must be at least 2 characters' })
       .max(150, { message: 'Product name cannot exceed 150 characters' }),
+    modelNumber: z.string({ required_error: 'Model number is required' }).trim().min(1).max(100),
     categoryId: z
       .string({ required_error: 'Category ID is required' })
       .refine(isValidObjectId, { message: 'Invalid categoryId format. Must be a valid MongoDB ObjectId' }),
+    brandId: z.string({ required_error: 'Brand is required' }).refine(isValidObjectId, { message: 'Invalid brandId format' }),
     description: z
       .string()
       .trim()
@@ -73,6 +75,8 @@ export const updateProductSchema = {
       .string()
       .refine(isValidObjectId, { message: 'Invalid categoryId format. Must be a valid MongoDB ObjectId' })
       .optional(),
+    modelNumber: z.string().trim().min(1).max(100).optional(),
+    brandId: z.string().refine(isValidObjectId, { message: 'Invalid brandId format' }).optional(),
     description: z
       .string()
       .trim()
@@ -107,7 +111,15 @@ export const deleteProductSchema = {
 
 export const getProductsQuerySchema = {
   query: z.object({
-    search: z.string().optional(),
+    search: z.string().max(200).optional(),
+    brandSlug: z.string().max(150).optional(),
+    inStock: z.enum(['true', 'false']).optional(),
+    minPrice: z.coerce.number().min(0).optional(),
+    maxPrice: z.coerce.number().min(0).optional(),
+    specs: z.string().max(10000).refine((value) => {
+      try { return z.record(z.string().max(100), z.array(z.string().max(255)).max(30)).safeParse(JSON.parse(value)).success; }
+      catch { return false; }
+    }, { message: 'Specifications must be a JSON object of string arrays' }).optional(),
     categoryId: z.string().optional(),
     category: z.string().optional(),
     categorySlug: z.string().optional(),
@@ -125,7 +137,7 @@ export const getProductsQuerySchema = {
       })
       .optional(),
     sortBy: z
-      .enum(['name', 'sku', 'createdAt', 'standardPrice', 'dealerPrice', 'sortOrder', 'updatedAt'], {
+      .enum(['name', 'modelNumber', 'sku', 'createdAt', 'standardPrice', 'dealerPrice', 'sortOrder', 'updatedAt'], {
         invalid_type_error: 'Invalid sortBy field',
       })
       .optional(),

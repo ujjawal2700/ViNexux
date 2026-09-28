@@ -23,7 +23,6 @@ import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
 import ProductsPage from '../pages/public/ProductsPage';
 import ProductDetailPage from '../pages/public/ProductDetailPage';
 import WishlistPage from '../pages/public/WishlistPage';
-import CategoriesPage from '../pages/public/CategoriesPage';
 import BrandsPage from '../pages/public/BrandsPage';
 import CmsPage from '../pages/public/CmsPage';
 import UnauthorizedPage from '../pages/public/UnauthorizedPage';
@@ -51,6 +50,7 @@ import AdminHeaderCategoriesPage from '../pages/admin/AdminHeaderCategoriesPage'
 import AdminMainCategoriesPage from '../pages/admin/AdminMainCategoriesPage';
 import AdminSubCategoriesPage from '../pages/admin/AdminSubCategoriesPage';
 import AdminProductsPage from '../pages/admin/AdminProductsPage';
+import AdminBrandsPage from '../pages/admin/AdminBrandsPage';
 import AdminProductDetailPage from '../pages/admin/AdminProductDetailPage';
 import AdminDealersPage from '../pages/admin/AdminDealersPage';
 import AdminDealerDetailPage from '../pages/admin/AdminDealerDetailPage';
@@ -81,11 +81,12 @@ const AppRoutes = () => {
       {/* PUBLIC ROUTES (WITH PUBLIC LAYOUT) */}
       <Route element={<PublicLayout />}>
         <Route path="/" element={<HomePage />} />
-        <Route path="/products" element={<ProductsPage />} />
-        <Route path="/products/:id" element={<ProductDetailPage />} />
+        <Route path="/products" element={<Navigate to="/" replace />} />
+        <Route path="/products/:id" element={<Navigate to="/" replace />} />
+        <Route path="/search" element={<ProductsPage />} />
         <Route path="/wishlist" element={<WishlistPage />} />
         <Route path="/cart" element={<CartPage />} />
-        <Route path="/categories" element={<CategoriesPage />} />
+        <Route path="/categories" element={<Navigate to="/" replace />} />
         <Route path="/brands" element={<BrandsPage />} />
         <Route path="/shop-by-brand" element={<BrandsPage />} />
         <Route path="/content/pages/:slug" element={<CmsPage />} />
@@ -99,7 +100,7 @@ const AppRoutes = () => {
         <Route element={<PublicRoute restricted={true} portal="customer" />}>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<LoginPage initialTab="signup" />} />
-          <Route path="/signup" element={<LoginPage initialTab="signup" />} />
+          <Route path="/signup" element={<Navigate to="/register" replace />} />
           <Route path="/customer/login" element={<Navigate to="/login" replace />} />
           <Route path="/verify-otp" element={<VerifyOtpPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -114,7 +115,6 @@ const AppRoutes = () => {
             <Route path="/account/enquiries" element={<EnquiriesPage />} />
             <Route path="/account/enquiries/:id" element={<EnquiryDetailPage />} />
             <Route path="/account/profile" element={<ProfilePage />} />
-            <Route path="/account/quotations" element={<ProfilePage initialTab="quotations" />} />
             <Route path="/account/profile/update" element={<ProfileUpdatePage />} />
           </Route>
         </Route>
@@ -137,7 +137,7 @@ const AppRoutes = () => {
         <Route path="/dealer/profile/update" element={<Navigate to="/account/profile/update" replace />} />
         <Route path="/dealer/kyc" element={<Navigate to="/account/profile/update" replace />} />
         <Route path="/dealer/kyc/status" element={<Navigate to="/account/profile" replace />} />
-        <Route path="/dealer/pricing" element={<Navigate to="/products" replace />} />
+        <Route path="/dealer/pricing" element={<Navigate to="/" replace />} />
 
         {/* HIERARCHICAL BRAND & CATEGORY ROUTES (SEO-Friendly multi-level URLs matching Mega Jaipur) */}
         {/* Brand: /brands/:brandSlug and /brands/:brandSlug/:id */}
@@ -173,6 +173,7 @@ const AppRoutes = () => {
             <Route path="/admin/categories/main" element={<AdminMainCategoriesPage />} />
             <Route path="/admin/categories/sub" element={<AdminSubCategoriesPage />} />
             <Route path="/admin/products" element={<AdminProductsPage />} />
+            <Route path="/admin/brands" element={<AdminBrandsPage />} />
             <Route path="/admin/products/new" element={<AdminProductDetailPage />} />
             <Route path="/admin/products/:id" element={<AdminProductDetailPage />} />
             <Route path="/admin/dealers" element={<AdminDealersPage />} />

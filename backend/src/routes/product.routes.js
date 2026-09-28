@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import {
   createProduct,
+  getBrands,
   getProducts,
   getProductById,
   updateProduct,
   deleteProduct,
 } from '../controllers/product.controller.js';
 import { validate } from '../middlewares/validate.js';
-import { authenticate, authorize } from '../middlewares/auth.middleware.js';
+import { authenticate, authorize, optionalAuthenticate } from '../middlewares/auth.middleware.js';
 import {
   createProductSchema,
   updateProductSchema,
@@ -19,8 +20,9 @@ import {
 const router = Router();
 
 // Public Product Catalog Endpoints
-router.get('/', validate(getProductsQuerySchema), getProducts);
-router.get('/:id', validate(getProductByIdSchema), getProductById);
+router.get('/brands', getBrands);
+router.get('/', optionalAuthenticate, validate(getProductsQuerySchema), getProducts);
+router.get('/:id', optionalAuthenticate, validate(getProductByIdSchema), getProductById);
 
 // Protected Admin Product Operations
 router.post('/', authenticate, authorize('admin'), validate(createProductSchema), createProduct);

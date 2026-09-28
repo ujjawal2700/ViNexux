@@ -1,3 +1,6 @@
+import contentService from '../../services/contentService';
+import { ErrorState } from '../../components/ui/ErrorState';
+import useAuth from '../../hooks/useAuth';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import categoryService from '../../services/categoryService';
@@ -7,7 +10,34 @@ import BrandCarousel from '../../components/home/BrandCarousel';
 import CategorySlider from '../../components/home/CategorySlider';
 import HeroBannerSlider from '../../components/home/HeroBannerSlider';
 
+const HomePageSkeleton = () => (
+  <div className="w-full min-h-screen bg-gray-50 pb-16 space-y-6 sm:space-y-8" role="status" aria-label="Loading storefront">
+    <div className="w-full h-[200px] sm:h-[260px] md:h-[320px] lg:h-[380px] xl:h-[430px] 2xl:h-[460px] bg-gray-200 animate-pulse" />
+
+    <div className="w-full px-3 sm:px-6 lg:px-8 2xl:px-12">
+      <div className="flex gap-3 overflow-hidden">
+        {Array.from({ length: 8 }).map((_, index) => (
+          <div key={index} className="h-24 min-w-36 flex-1 rounded-lg bg-gray-200 animate-pulse" />
+        ))}
+      </div>
+    </div>
+
+    <div className="w-full px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-4">
+      <div className="h-6 w-44 rounded bg-gray-200 animate-pulse" />
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div key={index} className="h-72 rounded-xl bg-gray-200 animate-pulse" />
+        ))}
+      </div>
+    </div>
+    <span className="sr-only">Loading catalog</span>
+  </div>
+);
+
 export const HomePage = () => {
+  const { user } = useAuth();
+  const [banners, setBanners] = useState([]);
+  const [error, setError] = useState(null);
   // Slider categories
   const [categories, setCategories] = useState([]);
 
@@ -20,72 +50,50 @@ export const HomePage = () => {
   // Load all homepage data
   const loadData = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
     try {
-      // 1. Fetch Categories
-      let rootCats = [];
-      try {
-        const catRes = await categoryService.getCategories({ limit: 100, isActive: true });
-        const allCats = catRes.data?.categories || catRes.categories || [];
-        // Extract strictly root/header categories (those with no parentId)
-        rootCats = allCats.filter((c) => !c.parentId);
-        setCategories(rootCats);
-      } catch (e) {
-        console.warn('Category fetch error:', e);
-      }
+      const [bannerResponse, catRes, featured, newest] = await Promise.all([
+        contentService.getBanners(), categoryService.getCategoryTree(),
+        productService.getProducts({ sortBy: 'updatedAt', sortOrder: 'desc', limit: 6 }),
+        productService.getProducts({ sortBy: 'createdAt', sortOrder: 'desc', limit: 6 }),
+      ]);
+      setBanners((bannerResponse.data?.banners || []).map((banner) => ({ ...banner, id: banner._id, image: banner.image?.url, link: banner.link || '/' })));
+      const rootCats = (catRes.data?.categories || []).filter((category) => !category.parentId);
+      setCategories(rootCats);
+      setUpdatedProducts(featured.data?.products || []);
+      setNewArrivals(newest.data?.products || []);
+      setIsLoading(false);
 
-      // 2. Fetch Featured/Updated Products & New Arrivals
-      try {
-        const prodRes = await productService.getProducts({ isActive: true, limit: 30 });
-        const prodList = prodRes.data?.products || prodRes.products || [];
-        setUpdatedProducts(prodList.slice(0, 6));
-        setNewArrivals([...prodList].reverse().slice(0, 6));
-      } catch (e) {
-        console.error('Products fetch error:', e);
-      }
-
-      // 3. Fetch products for all Header Categories line by line (max 8 products, no View All)
-      if (rootCats.length > 0) {
-        try {
-          const sections = await Promise.all(
-            rootCats.map(async (cat) => {
-              try {
-                const res = await productService.getProducts({
-                  categoryId: cat._id,
-                  isActive: true,
-                  limit: 8,
-                });
-                const prods = res.data?.products || res.products || [];
-                return {
-                  category: cat,
-                  products: prods.slice(0, 8),
-                };
-              } catch (err) {
-                console.warn(`Failed to load products for header category ${cat.name}:`, err);
-                return { category: cat, products: [] };
-              }
-            })
-          );
-          // Only show categories that have products available
-          setHeaderCategorySections(sections.filter((s) => s.products && s.products.length > 0));
-        } catch (err) {
-          console.error('Failed to load header category sections:', err);
-        }
-      }
+      // Category product rows are below the fold. Load them after the main
+      // storefront is visible so they do not block the hero banner.
+      const sectionResults = await Promise.allSettled(rootCats.map(async (category) => {
+        const response = await productService.getProducts({ categoryId: category._id, limit: 8 });
+        return { category, products: response.data?.products || [] };
+      }));
+      const sections = sectionResults
+        .filter((result) => result.status === 'fulfilled' && result.value.products.length)
+        .map((result) => result.value);
+      setHeaderCategorySections(sections);
+    } catch {
+      setError('Unable to load the storefront. Please retry.');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user?.id, user?.dealerStatus]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  if (error) return <ErrorState title="Storefront unavailable" description={error} onRetry={loadData} />;
+  if (isLoading) return <HomePageSkeleton />;
 
   return (
     <div className="w-full bg-gray-50 pb-16 space-y-6 sm:space-y-8">
       
       {/* 1. HERO WIDE BANNER SLIDER */}
       <section className="relative w-full overflow-hidden shadow-xs">
-        <HeroBannerSlider />
+        <HeroBannerSlider slides={banners} />
       </section>
 
       {/* 2. ALL BRANDS WITH LOGOS SLIDING RIGHT TO LEFT */}
@@ -105,7 +113,7 @@ export const HomePage = () => {
             Updated Products
           </h2>
           <Link
-            to="/products"
+            to="/"
             className="text-xs font-semibold text-primary hover:underline"
           >
             View All
@@ -126,7 +134,7 @@ export const HomePage = () => {
             New Arrivals
           </h2>
           <Link
-            to="/products"
+            to="/"
             className="text-xs font-semibold text-primary hover:underline"
           >
             View All

@@ -119,6 +119,43 @@ export const adminService = {
     return response.data;
   },
 
+  async uploadCmsImage(file, folder = 'vinexus/banners') {
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('folder', folder);
+    formData.append('category', 'cms');
+    const response = await apiClient.post('/admin/upload/image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  async deleteStoredImage(publicId) {
+    const response = await apiClient.delete('/admin/upload/image', { data: { publicId } });
+    return response.data;
+  },
+
+  async getBrandsAdmin() {
+    const response = await apiClient.get('/admin/brands');
+    return response.data;
+  },
+  async createBrandAdmin(data) {
+    const response = await apiClient.post('/admin/brands', data);
+    return response.data;
+  },
+  async syncBrandsFromProducts() {
+    const response = await apiClient.post('/admin/brands/sync-from-products');
+    return response.data;
+  },
+  async updateBrandAdmin(id, data) {
+    const response = await apiClient.put(`/admin/brands/${id}`, data);
+    return response.data;
+  },
+  async deleteBrandAdmin(id) {
+    const response = await apiClient.delete(`/admin/brands/${id}`);
+    return response.data;
+  },
+
   // --- DEALER & KYC MANAGEMENT ---
   /**
    * Fetch paginated dealer accounts & KYC status list.

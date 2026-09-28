@@ -1,5 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import authService from '../services/authService';
+import cartService from '../services/cartService';
+import guestCartService from '../services/guestCartService';
 import { setAccessToken } from '../api/axios';
 import { getStoredRefreshToken, setStoredRefreshToken, clearStoredRefreshToken } from '../utils/tokenStorage';
 import { ROLES } from '../constants';
@@ -66,6 +68,22 @@ export const AuthProvider = ({ children }) => {
           setStoredRefreshToken(newRefresh, 'customer');
         }
         setUser(u);
+
+        // Merge the standard-price guest cart into the authenticated cart.
+        // The backend recalculates every item using the account's current
+        // dealer approval status, so client-stored prices are never trusted.
+        const guestItems = guestCartService.getItems();
+        if (guestItems.length) {
+          try {
+            for (const item of guestItems) {
+              const productId = item.productId?._id || item.productId;
+              if (productId) await cartService.addItem(productId, item.quantity || 1);
+            }
+            guestCartService.clear();
+          } catch (err) {
+            console.warn('Guest cart retained because account cart sync failed:', err);
+          }
+        }
       }
     }
   }, []);
@@ -222,15 +240,34 @@ export const AuthProvider = ({ children }) => {
   const adminLogout = () => logout('admin');
 
   // Update Profile
-  const updateUserProfile = async (profileData) => {
-    const response = await authService.updateProfile(profileData);
+  const updateUserProfile = async (profileData, portal = 'customer') => {
+    const isAdminSession = portal === 'admin';
+    const requestToken = isAdminSession ? adminAccessToken : accessToken;
+    const requestPortal = isAdminSession ? 'admin' : 'customer';
+    const response = await authService.updateProfile(profileData, requestToken, requestPortal);
     if (response.success && response.data?.user) {
       const updated = response.data.user;
-      if (updated.role === ROLES.ADMIN) {
-        setAdminUser((prev) => ({ ...prev, ...updated }));
-      } else {
-        setUser((prev) => ({ ...prev, ...updated }));
+      const isAdminUpdate = updated.role === ROLES.ADMIN;
+      const activeToken = isAdminUpdate ? adminAccessToken : accessToken;
+      let freshUser = updated;
+
+      // Read the saved record back through the authenticated API so the UI
+      // uses the database result rather than retaining submitted form state.
+      if (activeToken) {
+        try {
+          const refreshed = await authService.getMe(activeToken, isAdminUpdate ? 'admin' : 'customer');
+          freshUser = refreshed.data?.user || refreshed.data || updated;
+        } catch (err) {
+          console.warn('Profile saved, but refreshing the latest profile failed:', err);
+        }
       }
+
+      if (isAdminUpdate) {
+        setAdminUser((prev) => ({ ...prev, ...freshUser }));
+      } else {
+        setUser((prev) => ({ ...prev, ...freshUser }));
+      }
+      response.data.user = freshUser;
     }
     return response;
   };

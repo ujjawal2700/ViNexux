@@ -11,6 +11,7 @@ import Toast from '../../components/ui/Toast';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { SkeletonCard } from '../../components/ui/Skeleton';
 import ErrorState from '../../components/ui/ErrorState';
+import { getEffectiveFilterDefinitions } from '../../utils/categoryFilters';
 import {
   ArrowLeft,
   Save,
@@ -38,34 +39,7 @@ import {
   UploadCloud,
   Check,
   HelpCircle,
-  Link as LinkIcon,
 } from 'lucide-react';
-
-const POPULAR_BRANDS = [
-  'ASUS',
-  'DELL',
-  'HP',
-  'Lenovo',
-  'Acer',
-  'Apple',
-  'SAMSUNG',
-  'dahua',
-  'HIKVISION',
-  'CP PLUS',
-  'tp-link',
-  'CISCO',
-  'D-Link',
-  'Western Digital',
-  'SEAGATE',
-  'SanDisk',
-  'Crucial',
-  'Canon',
-  'Epson',
-  'Logitech',
-  'Microsoft',
-  'Quick Heal',
-  'CORSAIR',
-];
 
 const PRESET_HIGHLIGHT_OPTIONS = [
   { label: 'High Performance', text: 'Ultra High Performance & Speed', icon: Zap },
@@ -95,6 +69,7 @@ const AdminProductDetailPage = () => {
   const [activeTab, setActiveTab] = useState('general');
   const [product, setProduct] = useState(null);
   const [categoriesList, setCategoriesList] = useState([]);
+  const [brandsList, setBrandsList] = useState([]);
   const [loading, setLoading] = useState(!isCreateMode);
   const [loadError, setLoadError] = useState(null);
 
@@ -103,6 +78,7 @@ const AdminProductDetailPage = () => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [brandName, setBrandName] = useState('');
+  const [selectedBrandId, setSelectedBrandId] = useState('');
   const [sku, setSku] = useState('');
   const [modelNumber, setModelNumber] = useState('');
   const [warranty, setWarranty] = useState('1 Year Official Warranty');
@@ -141,7 +117,6 @@ const AdminProductDetailPage = () => {
   const [imagesList, setImagesList] = useState([]);
   const [imageFile, setImageFile] = useState(null);
   const [imageAltText, setImageAltText] = useState('');
-  const [imageUrlInput, setImageUrlInput] = useState('');
   const [stagedImages, setStagedImages] = useState([]);
   const stagedImagesRef = React.useRef([]);
   const [imageDeleteTarget, setImageDeleteTarget] = useState(null);
@@ -184,11 +159,41 @@ const AdminProductDetailPage = () => {
     });
   }, [categoriesList, selectedMainId]);
 
+  const selectedEffectiveCategoryId = selectedSubId || selectedMainId;
+  const categoryFilterDefinitions = useMemo(
+    () => getEffectiveFilterDefinitions(categoriesList, selectedEffectiveCategoryId),
+    [categoriesList, selectedEffectiveCategoryId]
+  );
+  const configuredFilterKeys = useMemo(
+    () => new Set(categoryFilterDefinitions.map((definition) => definition.key.toLowerCase())),
+    [categoryFilterDefinitions]
+  );
+  const manualSpecifications = useMemo(
+    () => specifications.map((spec, index) => ({ spec, index })).filter(({ spec }) => !configuredFilterKeys.has(spec.key.toLowerCase())),
+    [specifications, configuredFilterKeys]
+  );
+
+  const getCategorySpecValues = (key) => specifications
+    .filter((spec) => spec.key.toLowerCase() === key.toLowerCase())
+    .map((spec) => spec.value);
+
+  const setCategorySpecValues = (definition, values) => {
+    const cleanValues = values.map((value) => String(value).trim()).filter(Boolean);
+    setSpecifications((previous) => [
+      ...previous.filter((spec) => spec.key.toLowerCase() !== definition.key.toLowerCase()),
+      ...cleanValues.map((value) => ({ key: definition.key, value })),
+    ]);
+  };
+
   // Load all categories
   const loadCategories = useCallback(async () => {
     try {
-      const catRes = await adminService.getCategories({ limit: 500, sortBy: 'sortOrder', sortOrder: 'asc' });
+      const [catRes, brandRes] = await Promise.all([
+        adminService.getCategories({ limit: 500, sortBy: 'sortOrder', sortOrder: 'asc' }),
+        adminService.getBrandsAdmin(),
+      ]);
       setCategoriesList(catRes.data?.categories || []);
+      setBrandsList((brandRes.data?.brands || []).filter((brand) => brand.isActive));
     } catch (err) {
       console.error('Failed to load categories:', err);
     }
@@ -207,6 +212,8 @@ const AdminProductDetailPage = () => {
       setName(prod.name || '');
       setSku(prod.sku || '');
       setDescription(prod.description || '');
+      setModelNumber(prod.modelNumber || '');
+      setSelectedBrandId(String(prod.brandId?._id || prod.brandId || ''));
       setStandardPrice(prod.standardPrice !== undefined ? String(prod.standardPrice) : '');
       setDealerPrice(prod.dealerPrice !== undefined ? String(prod.dealerPrice) : '');
       setIsFeatured(!!prod.isFeatured);
@@ -331,27 +338,24 @@ const AdminProductDetailPage = () => {
   // Staging / Adding Images
   const handleStageFile = (file) => {
     if (!file) return;
+    if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
+      setToast({ message: 'Only JPEG, PNG and WebP product images are allowed.', type: 'error' });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setToast({ message: 'Each product image must be 5MB or smaller.', type: 'error' });
+      return;
+    }
+    if (imagesList.length + stagedImages.length >= 8) {
+      setToast({ message: 'A product can have up to 8 images.', type: 'error' });
+      return;
+    }
     const previewUrl = URL.createObjectURL(file);
     setStagedImages((prev) => [...prev, { file, altText: imageAltText || name || 'Product image', previewUrl }]);
     setImageFile(null);
     setImageAltText('');
     const fileInput = document.getElementById('variant-file-input');
     if (fileInput) fileInput.value = '';
-  };
-
-  const handleAddImageUrl = (e) => {
-    e.preventDefault();
-    if (!imageUrlInput.trim()) return;
-    setImagesList((prev) => [
-      ...prev,
-      {
-        url: imageUrlInput.trim(),
-        altText: imageAltText || name || 'Product image',
-        sortOrder: prev.length,
-      },
-    ]);
-    setImageUrlInput('');
-    setImageAltText('');
   };
 
   const handleRemoveStagedImage = (index) => {
@@ -419,13 +423,32 @@ const AdminProductDetailPage = () => {
       setActiveTab('general');
       return;
     }
+    if (!selectedBrandId) {
+      setFormError('Please select a managed brand in General Info.');
+      setActiveTab('general');
+      return;
+    }
+    if (!modelNumber.trim()) {
+      setFormError('Please enter the product model number in General Info.');
+      setActiveTab('general');
+      return;
+    }
 
     // 2. Validate Category Hierarchy
     // Remember user requirement: Sub category is strictly optional!
-    const effectiveCategoryId = selectedSubId || selectedMainId;
+    const effectiveCategoryId = selectedEffectiveCategoryId;
     if (!effectiveCategoryId) {
       setFormError('Please select at least a Main Group and Specific Category in the Groups card.');
       setActiveTab('groups');
+      return;
+    }
+
+    const missingFilter = categoryFilterDefinitions.find(
+      (definition) => definition.isRequired && getCategorySpecValues(definition.key).length === 0
+    );
+    if (missingFilter) {
+      setFormError(`Please enter ${missingFilter.label || missingFilter.key} in the Highlights card.`);
+      setActiveTab('highlights');
       return;
     }
 
@@ -439,6 +462,11 @@ const AdminProductDetailPage = () => {
     }
     if (isNaN(dPrice) || dPrice < 0) {
       setFormError('Please enter a valid Dealer Sale Price in Item Variants.');
+      setActiveTab('variants');
+      return;
+    }
+    if (imagesList.length + stagedImages.length === 0) {
+      setFormError('Please upload at least one product image in Item Variants.');
       setActiveTab('variants');
       return;
     }
@@ -471,16 +499,19 @@ const AdminProductDetailPage = () => {
 
       const payload = {
         name: name.trim(),
+        modelNumber: modelNumber.trim(),
         sku: sku.trim().toUpperCase(),
         categoryId: effectiveCategoryId,
+        brandId: selectedBrandId,
         description: description.trim() || undefined,
         standardPrice: sPrice,
         dealerPrice: dPrice,
         isFeatured: Boolean(isFeatured),
-        isActive: status === 'published',
+        isActive: isCreateMode ? false : status === 'published',
         specifications: allSpecs,
         images: imagesList.map((img, i) => ({
           url: img.url,
+          ...(img.publicId ? { publicId: img.publicId } : {}),
           altText: img.altText || name.trim(),
           sortOrder: i,
         })),
@@ -493,13 +524,12 @@ const AdminProductDetailPage = () => {
         // Upload any staged files
         if (newId && stagedImages.length > 0) {
           for (const staged of stagedImages) {
-            try {
-              await adminService.uploadProductImage(newId, staged.file, staged.altText || name);
-            } catch (imgErr) {
-              console.error('Staged image upload error:', imgErr);
-            }
+            await adminService.uploadProductImage(newId, staged.file, staged.altText || name);
           }
         }
+
+        if (!newId) throw new Error('Product was created without an ID.');
+        await adminService.updateProduct(newId, { isActive: status === 'published' });
 
         setToast({ message: 'Product created and published successfully!', type: 'success' });
         setTimeout(() => {
@@ -705,31 +735,18 @@ const AdminProductDetailPage = () => {
               {/* Brand & SKU Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <FormField label="BRAND NAME" required hint="Choose popular brand or enter custom name">
-                    <div className="space-y-2">
-                      <Input
-                        value={brandName}
-                        onChange={(e) => setBrandName(e.target.value)}
-                        placeholder="e.g. ASUS, HP, Dell, Hikvision, CP PLUS..."
-                        required
-                      />
-                      <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pt-1">
-                        {POPULAR_BRANDS.slice(0, 12).map((b) => (
-                          <button
-                            key={b}
-                            type="button"
-                            onClick={() => setBrandName(b)}
-                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border transition-all ${
-                              brandName === b
-                                ? 'bg-[#800020] text-white border-[#800020]'
-                                : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-[#800020]/40'
-                            }`}
-                          >
-                            {b}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                  <FormField label="BRAND" required hint="Managed in Admin → Brand Management">
+                    <Select
+                      value={selectedBrandId}
+                      onChange={(e) => {
+                        const brandId = e.target.value;
+                        setSelectedBrandId(brandId);
+                        setBrandName(brandsList.find((brand) => brand._id === brandId)?.name || '');
+                      }}
+                      placeholder="Select a brand"
+                      options={brandsList.map((brand) => ({ value: brand._id, label: brand.name }))}
+                      required
+                    />
                   </FormField>
                 </div>
 
@@ -988,25 +1005,6 @@ const AdminProductDetailPage = () => {
                   ))}
                 </div>
 
-                {/* Optional Image URL Input */}
-                <form onSubmit={handleAddImageUrl} className="flex gap-2 pt-2">
-                  <Input
-                    value={imageUrlInput}
-                    onChange={(e) => setImageUrlInput(e.target.value)}
-                    placeholder="Or paste external image URL (e.g. https://images.unsplash.com/...)"
-                    className="text-xs"
-                  />
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    size="sm"
-                    isDisabled={!imageUrlInput.trim()}
-                    leftIcon={<LinkIcon className="w-3.5 h-3.5" />}
-                    className="shrink-0 text-xs border-gray-300"
-                  >
-                    Add URL
-                  </Button>
-                </form>
               </div>
 
               {/* Bottom Nav Bar */}
@@ -1268,9 +1266,45 @@ const AdminProductDetailPage = () => {
 
               {/* Detailed Technical Specifications Section */}
               <div className="pt-4 border-t border-[#f0e6e8] space-y-4">
+                {categoryFilterDefinitions.length > 0 && (
+                  <div className="space-y-3 rounded-xl border border-[#e7d5da] bg-[#fdfbfb] p-4">
+                    <div>
+                      <h4 className="text-xs font-black uppercase tracking-wider text-gray-900">Category-specific fields</h4>
+                      <p className="text-[11px] text-gray-500">These fields come from the selected category and power storefront filters.</p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {categoryFilterDefinitions.map((definition) => {
+                        const values = getCategorySpecValues(definition.key);
+                        const label = `${definition.label || definition.key}${definition.unit ? ` (${definition.unit})` : ''}`;
+                        return (
+                          <div key={definition.key} className="space-y-1.5">
+                            <label className="text-[11px] font-bold text-gray-700">{label}{definition.isRequired ? ' *' : ''}</label>
+                            {definition.inputType === 'multi-select' ? (
+                              <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 bg-white p-2">
+                                {(definition.options || []).map((option) => (
+                                  <label key={option} className="flex items-center gap-1.5 text-xs">
+                                    <input type="checkbox" checked={values.includes(option)} onChange={(event) => setCategorySpecValues(definition, event.target.checked ? [...values, option] : values.filter((value) => value !== option))} /> {option}
+                                  </label>
+                                ))}
+                              </div>
+                            ) : definition.inputType === 'select' || definition.inputType === 'boolean' ? (
+                              <select className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs" value={values[0] || ''} onChange={(event) => setCategorySpecValues(definition, [event.target.value])}>
+                                <option value="">Select {definition.label || definition.key}</option>
+                                {(definition.inputType === 'boolean' ? ['Yes', 'No'] : definition.options || []).map((option) => <option key={option} value={option}>{option}</option>)}
+                              </select>
+                            ) : (
+                              <Input type={definition.inputType === 'number' ? 'number' : 'text'} value={values[0] || ''} onChange={(event) => setCategorySpecValues(definition, [event.target.value])} placeholder={`Enter ${definition.label || definition.key}`} className="text-xs" />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <h4 className="text-xs font-black uppercase tracking-wider text-gray-900">
-                    Additional Technical Specifications ({specifications.length})
+                    Additional Technical Specifications ({manualSpecifications.length})
                   </h4>
                   <p className="text-[11px] text-gray-500">
                     Add detailed hardware specs (Processor, RAM, Resolution, Ports, Power, etc.)
@@ -1318,9 +1352,9 @@ const AdminProductDetailPage = () => {
                   </Button>
                 </div>
 
-                {specifications.length > 0 && (
+                {manualSpecifications.length > 0 && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                    {specifications.map((sp, idx) => (
+                    {manualSpecifications.map(({ spec: sp, index: idx }) => (
                       <div
                         key={idx}
                         className="flex items-center justify-between bg-[#fdfbfb] px-3 py-2 rounded-lg text-xs border border-gray-200"

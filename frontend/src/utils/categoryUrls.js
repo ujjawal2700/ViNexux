@@ -16,6 +16,7 @@ export const RESERVED_ROOT_SLUGS = new Set([
   'brands',
   'shop-by-brand',
   'products',
+  'search',
   'content',
   'unauthorized',
   'not-found',
@@ -63,7 +64,7 @@ export const getCategorySlug = (category) => {
  * e.g. /laptop/laptop-spares/laptop-hinges
  */
 export const buildCategoryPath = (category, allCategories = []) => {
-  if (!category) return '/products';
+  if (!category) return '/';
 
   const chain = [];
   let curr = category;
@@ -81,8 +82,17 @@ export const buildCategoryPath = (category, allCategories = []) => {
       : null;
   }
 
-  if (chain.length === 0) return '/products';
+  if (chain.length === 0) return '/';
   return '/' + chain.join('/');
+};
+
+export const buildProductPath = (product, allCategories = []) => {
+  if (!product?._id) return '/';
+  if (product.categoryPath) return `${product.categoryPath}/${product._id}`;
+  const categoryId = product.categoryId?._id || product.categoryId;
+  const category = allCategories.find((item) => String(item._id) === String(categoryId));
+  const categoryPath = buildCategoryPath(category || product.categoryId, allCategories);
+  return categoryPath === '/' ? '/' : `${categoryPath}/${product._id}`;
 };
 
 /**
@@ -129,9 +139,11 @@ export const buildCategoryTrail = (category, allCategories = []) => {
 /**
  * Build brand URL
  */
-export const buildBrandUrl = (brandName = '') => {
-  if (!brandName) return '/brands';
-  return `/brands/${slugify(brandName)}`;
+export const buildBrandUrl = (brand = '') => {
+  const brandSlug = typeof brand === 'object' ? brand?.slug : '';
+  const brandName = typeof brand === 'object' ? brand?.name : brand;
+  if (!brandSlug && !brandName) return '/brands';
+  return `/brands/${brandSlug || slugify(brandName)}`;
 };
 
 /**

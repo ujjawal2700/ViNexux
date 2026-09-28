@@ -30,8 +30,15 @@ const AdminCmsFooterPage = () => {
     whatsappNumber: '8769959424',
     whatsappMessageNote: 'Please confirm live stock availability, delivery timeline & share official GST commercial invoice.',
     address: '',
+    mapUrl: '',
+    aboutHeading: 'About',
+    quickLinksHeading: 'Information',
+    legalLinksHeading: 'Legal',
+    contactHeading: 'Contact Us',
     quickLinks: [],
     legalLinks: [],
+    socialLinks: [],
+    copyrightText: '© {year} {company}. All Rights Reserved.',
     isActive: true,
   });
 
@@ -43,7 +50,7 @@ const AdminCmsFooterPage = () => {
       setError(null);
       setSuccessMessage('');
       const res = await adminService.getFooterContentAdmin();
-      const data = res?.data || res || {};
+      const data = res?.data?.footer || res?.footer || res?.data || res || {};
 
       setFormData({
         companyName: data.companyName || '',
@@ -53,12 +60,21 @@ const AdminCmsFooterPage = () => {
         whatsappNumber: data.whatsappNumber || '8769959424',
         whatsappMessageNote: data.whatsappMessageNote || 'Please confirm live stock availability, delivery timeline & share official GST commercial invoice.',
         address: data.address || '',
+        mapUrl: data.mapUrl || '',
+        aboutHeading: data.aboutHeading || 'About',
+        quickLinksHeading: data.quickLinksHeading || 'Information',
+        legalLinksHeading: data.legalLinksHeading || 'Legal',
+        contactHeading: data.contactHeading || 'Contact Us',
         quickLinks: Array.isArray(data.quickLinks)
           ? data.quickLinks.map((link) => ({ label: link.label || '', url: link.url || '' }))
           : [],
         legalLinks: Array.isArray(data.legalLinks)
           ? data.legalLinks.map((link) => ({ label: link.label || '', url: link.url || '' }))
           : [],
+        socialLinks: Array.isArray(data.socialLinks)
+          ? data.socialLinks.map((link) => ({ label: link.label || '', url: link.url || '' }))
+          : [],
+        copyrightText: data.copyrightText || '© {year} {company}. All Rights Reserved.',
         isActive: data.isActive !== undefined ? data.isActive : true,
       });
     } catch (err) {
@@ -111,6 +127,22 @@ const AdminCmsFooterPage = () => {
     setFormData({ ...formData, legalLinks: updated });
   };
 
+  const handleSocialLinkChange = (index, field, value) => {
+    const updated = [...formData.socialLinks];
+    updated[index][field] = value;
+    setFormData({ ...formData, socialLinks: updated });
+  };
+
+  const handleAddSocialLink = () => setFormData({
+    ...formData,
+    socialLinks: [...formData.socialLinks, { label: '', url: '' }],
+  });
+
+  const handleRemoveSocialLink = (index) => setFormData({
+    ...formData,
+    socialLinks: formData.socialLinks.filter((_, i) => i !== index),
+  });
+
   const validateForm = () => {
     const errors = {};
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
@@ -138,6 +170,12 @@ const AdminCmsFooterPage = () => {
       errors.legalLinks = lLinkErrors.join(' ');
     }
 
+    const socialErrors = [];
+    formData.socialLinks.forEach((link, idx) => {
+      if ((link.label && !link.url) || (!link.label && link.url)) socialErrors.push(`Social link #${idx + 1} requires both a Label and a URL.`);
+    });
+    if (socialErrors.length) errors.socialLinks = socialErrors.join(' ');
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -152,11 +190,15 @@ const AdminCmsFooterPage = () => {
       // Clean empty links before submitting
       const cleanedQuickLinks = formData.quickLinks
         .filter((l) => l.label.trim() && l.url.trim())
-        .map((l) => ({ label: l.label.trim(), url: l.url.trim() }));
+        .map((l, index) => ({ label: l.label.trim(), url: l.url.trim(), sortOrder: index }));
 
       const cleanedLegalLinks = formData.legalLinks
         .filter((l) => l.label.trim() && l.url.trim())
-        .map((l) => ({ label: l.label.trim(), url: l.url.trim() }));
+        .map((l, index) => ({ label: l.label.trim(), url: l.url.trim(), sortOrder: index }));
+
+      const cleanedSocialLinks = formData.socialLinks
+        .filter((l) => l.label.trim() && l.url.trim())
+        .map((l, index) => ({ label: l.label.trim(), url: l.url.trim(), sortOrder: index }));
 
       const payload = {
         companyName: formData.companyName.trim(),
@@ -166,8 +208,15 @@ const AdminCmsFooterPage = () => {
         whatsappNumber: formData.whatsappNumber ? formData.whatsappNumber.trim() : '8769959424',
         whatsappMessageNote: formData.whatsappMessageNote ? formData.whatsappMessageNote.trim() : '',
         address: formData.address.trim(),
+        mapUrl: formData.mapUrl.trim(),
+        aboutHeading: formData.aboutHeading.trim(),
+        quickLinksHeading: formData.quickLinksHeading.trim(),
+        legalLinksHeading: formData.legalLinksHeading.trim(),
+        contactHeading: formData.contactHeading.trim(),
         quickLinks: cleanedQuickLinks,
         legalLinks: cleanedLegalLinks,
+        socialLinks: cleanedSocialLinks,
+        copyrightText: formData.copyrightText.trim(),
         isActive: Boolean(formData.isActive),
       };
 
@@ -175,7 +224,7 @@ const AdminCmsFooterPage = () => {
       setSuccessMessage('Footer configuration saved successfully!');
 
       // Update state with returned payload or cleaned local data
-      const updated = res?.data || payload;
+      const updated = res?.data?.footer || res?.footer || res?.data || payload;
       setFormData({
         companyName: updated.companyName || '',
         companyDescription: updated.companyDescription || '',
@@ -184,8 +233,15 @@ const AdminCmsFooterPage = () => {
         whatsappNumber: updated.whatsappNumber || '8769959424',
         whatsappMessageNote: updated.whatsappMessageNote || 'Please confirm live stock availability, delivery timeline & share official GST commercial invoice.',
         address: updated.address || '',
+        mapUrl: updated.mapUrl || '',
+        aboutHeading: updated.aboutHeading || 'About',
+        quickLinksHeading: updated.quickLinksHeading || 'Information',
+        legalLinksHeading: updated.legalLinksHeading || 'Legal',
+        contactHeading: updated.contactHeading || 'Contact Us',
         quickLinks: Array.isArray(updated.quickLinks) ? updated.quickLinks : cleanedQuickLinks,
         legalLinks: Array.isArray(updated.legalLinks) ? updated.legalLinks : cleanedLegalLinks,
+        socialLinks: Array.isArray(updated.socialLinks) ? updated.socialLinks : cleanedSocialLinks,
+        copyrightText: updated.copyrightText || '© {year} {company}. All Rights Reserved.',
         isActive: updated.isActive !== undefined ? updated.isActive : true,
       });
     } catch (err) {
@@ -271,6 +327,10 @@ const AdminCmsFooterPage = () => {
                 rows={3}
               />
             </FormField>
+
+            <FormField label="About Column Heading">
+              <Input value={formData.aboutHeading} onChange={(e) => setFormData({ ...formData, aboutHeading: e.target.value })} placeholder="About" />
+            </FormField>
           </Card>
 
           {/* Contact Details */}
@@ -296,7 +356,7 @@ const AdminCmsFooterPage = () => {
                 />
               </FormField>
 
-              <FormField label="WhatsApp Orders & Quotation Number (Cart Deep Link)">
+              <FormField label="WhatsApp Enquiry Number (Cart Deep Link)">
                 <Input
                   type="text"
                   value={formData.whatsappNumber}
@@ -305,7 +365,7 @@ const AdminCmsFooterPage = () => {
                 />
               </FormField>
 
-              <FormField label="WhatsApp Quotation Closing Note">
+              <FormField label="WhatsApp Enquiry Closing Note">
                 <Input
                   type="text"
                   value={formData.whatsappMessageNote}
@@ -323,6 +383,10 @@ const AdminCmsFooterPage = () => {
                 rows={2}
               />
             </FormField>
+
+            <FormField label="Address Google Maps URL">
+              <Input value={formData.mapUrl} onChange={(e) => setFormData({ ...formData, mapUrl: e.target.value })} placeholder="https://maps.app.goo.gl/..." />
+            </FormField>
           </Card>
 
           {/* Quick Links */}
@@ -336,6 +400,10 @@ const AdminCmsFooterPage = () => {
                 + Add Link
               </Button>
             </div>
+
+            <FormField label="Quick Links Column Heading">
+              <Input value={formData.quickLinksHeading} onChange={(e) => setFormData({ ...formData, quickLinksHeading: e.target.value })} placeholder="Information" />
+            </FormField>
 
             {formErrors.quickLinks && <FormError message={formErrors.quickLinks} />}
 
@@ -355,7 +423,7 @@ const AdminCmsFooterPage = () => {
                     />
                     <Input
                       type="text"
-                      placeholder="URL (e.g. /products)"
+                      placeholder="URL (e.g. /laptop/branded-laptop)"
                       value={link.url}
                       onChange={(e) => handleQuickLinkChange(idx, 'url', e.target.value)}
                       className="flex-1"
@@ -385,6 +453,10 @@ const AdminCmsFooterPage = () => {
                 + Add Legal Link
               </Button>
             </div>
+
+            <FormField label="Legal Links Column Heading">
+              <Input value={formData.legalLinksHeading} onChange={(e) => setFormData({ ...formData, legalLinksHeading: e.target.value })} placeholder="Legal" />
+            </FormField>
 
             {formErrors.legalLinks && <FormError message={formErrors.legalLinks} />}
 
@@ -421,6 +493,41 @@ const AdminCmsFooterPage = () => {
                 ))}
               </div>
             )}
+          </Card>
+
+          {/* Social links and footer strip */}
+          <Card className="p-6 space-y-4">
+            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Social Links & Footer Strip</h3>
+                <p className="text-xs text-gray-500">Add any social platform or external contact link.</p>
+              </div>
+              <Button type="button" variant="secondary" size="sm" onClick={handleAddSocialLink}>+ Add Social Link</Button>
+            </div>
+
+            <FormField label="Contact Column Heading">
+              <Input value={formData.contactHeading} onChange={(e) => setFormData({ ...formData, contactHeading: e.target.value })} placeholder="Contact Us" />
+            </FormField>
+
+            {formErrors.socialLinks && <FormError message={formErrors.socialLinks} />}
+            {formData.socialLinks.length === 0 ? (
+              <p className="text-xs text-gray-400 italic">No social links configured.</p>
+            ) : (
+              <div className="space-y-3">
+                {formData.socialLinks.map((link, idx) => (
+                  <div key={idx} className="flex items-center space-x-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <span className="text-xs font-bold text-gray-400 w-6">#{idx + 1}</span>
+                    <Input placeholder="Platform (e.g. Instagram)" value={link.label} onChange={(e) => handleSocialLinkChange(idx, 'label', e.target.value)} className="flex-1" />
+                    <Input placeholder="Profile URL" value={link.url} onChange={(e) => handleSocialLinkChange(idx, 'url', e.target.value)} className="flex-1" />
+                    <Button type="button" variant="danger" size="sm" onClick={() => handleRemoveSocialLink(idx)}>Remove</Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <FormField label="Copyright / Bottom Text">
+              <Input value={formData.copyrightText} onChange={(e) => setFormData({ ...formData, copyrightText: e.target.value })} placeholder="All rights reserved." />
+            </FormField>
           </Card>
 
           {/* Submit bar */}

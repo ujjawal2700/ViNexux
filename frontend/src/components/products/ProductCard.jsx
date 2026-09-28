@@ -1,11 +1,14 @@
+import { Image } from '../ui/Image';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
 import cartService from '../../services/cartService';
+import guestCartService from '../../services/guestCartService';
 import wishlistService from '../../services/wishlistService';
-import { Minus, Plus, Check, Heart, FileText } from 'lucide-react';
+import { Minus, Plus, Check, Heart } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { buildProductPath } from '../../utils/categoryUrls';
 
 export const ProductCard = ({ product, onCartUpdated, className }) => {
   const { user, isAuthenticated } = useAuth();
@@ -28,18 +31,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
 
   if (!product) return null;
 
-  // Fallback high quality Unsplash images
-  const fallbackImages = [
-    'https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&auto=format&fit=crop&q=80',
-  ];
-
-  let primaryImage = product.images?.[0]?.url || product.image;
-  if (!primaryImage || typeof primaryImage !== 'string' || !primaryImage.startsWith('http')) {
-    const hash = (product._id || product.name || '0').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    primaryImage = fallbackImages[hash % fallbackImages.length];
-  }
+  const primaryImage = product.images?.[0]?.url || product.image;
 
   // Determine user role for pricing presentation
   const isApprovedDealer = user?.role === 'dealer' && (user?.dealerStatus === 'approved' || user?.kycStatus === 'approved');
@@ -48,23 +40,15 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
   const standardPrice = product.standardPrice || 0;
   const dealerPrice = product.dealerPrice || 0;
 
-  let displayPrice = standardPrice;
+  let displayPrice = product?.applicablePrice ?? standardPrice;
   let hasDealerDiscount = false;
 
   if (isApprovedDealer && dealerPrice > 0) {
-    displayPrice = dealerPrice;
+    displayPrice = product?.applicablePrice ?? dealerPrice;
     if (standardPrice > dealerPrice) {
       hasDealerDiscount = true;
     }
   }
-
-  // Consistent PID & Item CD codes
-  const pidCode = product.sku
-    ? `P${product.sku.replace(/[^A-Z0-9]/gi, '').slice(-4).toUpperCase()}`
-    : `P${(product._id || '8075').slice(-4).toUpperCase()}`;
-  const itemCd = product.sku
-    ? product.sku.slice(0, 8).toUpperCase()
-    : (product._id || '0Y1NAWW').slice(-7).toUpperCase();
 
   // Brand tag
   const brandName =
@@ -101,8 +85,10 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
     e.stopPropagation();
 
     if (!isAuthenticated) {
-      toast.info('Please log in to add products to your cart.');
-      navigate('/login');
+      const updatedCart = guestCartService.addItem(product, quantity);
+      window.dispatchEvent(new CustomEvent('cart-item-added', { detail: { product, quantity, displayPrice, cart: updatedCart } }));
+      setIsAdded(true);
+      setTimeout(() => setIsAdded(false), 2000);
       return;
     }
 
@@ -145,33 +131,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
   };
 
   const handleCardClick = () => {
-    const pathname = window.location.pathname.replace(/\/+$/, '');
-
-    // If on a Brand route: /brands/acer -> /brands/acer/:id
-    if (pathname.startsWith('/brands/') && !pathname.includes(product._id)) {
-      navigate(`${pathname}/${product._id}`);
-      return;
-    }
-
-    // If on a Hierarchical Category route: e.g. /laptop/branded-laptop -> /laptop/branded-laptop/:id
-    const isExcluded =
-      pathname === '' ||
-      pathname === '/' ||
-      pathname.startsWith('/products') ||
-      pathname.startsWith('/cart') ||
-      pathname.startsWith('/wishlist') ||
-      pathname.startsWith('/account') ||
-      pathname.startsWith('/admin') ||
-      pathname.startsWith('/categories') ||
-      pathname.startsWith('/brands') ||
-      pathname.startsWith('/content');
-
-    if (!isExcluded && !pathname.includes(product._id)) {
-      navigate(`${pathname}/${product._id}`);
-      return;
-    }
-
-    navigate(`/products/${product._id}`);
+    navigate(buildProductPath(product));
   };
 
   return (
@@ -200,10 +160,11 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
           />
         </button>
 
-        <img
+        <Image
           src={primaryImage}
           alt={product.name}
-          className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
+          objectFit="object-contain"
+          className="h-full w-full transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
         />
       </div>
@@ -215,15 +176,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
           {product.name}
         </h3>
 
-        {/* PID and Item CD row */}
-        <div className="flex items-center flex-wrap gap-1 text-[10px] sm:text-[11px] text-gray-500 font-medium">
-          <span className="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 whitespace-nowrap">
-            PID: <strong className="text-gray-700 font-semibold">{pidCode}</strong>
-          </span>
-          <span className="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 truncate max-w-[120px]">
-            Item CD: <strong className="text-gray-700 font-semibold">{itemCd}</strong>
-          </span>
-        </div>
+        {product.modelNumber && <div className="text-[10px] sm:text-[11px] text-gray-500 font-medium">Model: <strong className="text-gray-700">{product.modelNumber}</strong></div>}
 
         {/* Price & In Stock row */}
         <div className="flex items-center justify-between gap-1 pt-1">
@@ -241,7 +194,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
           <div className="flex items-center gap-1.5">
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 inline-block"></span>
-              In Stock
+              {product.stockStatus === 'in-stock' ? 'In Stock' : product.stockStatus === 'out-of-stock' ? 'Out of Stock' : 'On Request'}
             </span>
             <span className="text-[10px] sm:text-[11px] text-gray-500 font-bold uppercase truncate max-w-[65px] sm:max-w-[85px]" title={brandName}>
               {brandName}
@@ -249,12 +202,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
           </div>
         </div>
 
-        {/* CD Discount Badge (Matching Mega Jaipur: CD DISCOUNT: ₹...) */}
-        <div className="flex items-center gap-1.5 pt-0.5">
-          <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/90 text-[9px] sm:text-[9.5px] font-bold tracking-tight">
-            CD DISCOUNT: ₹{Math.max(15, Math.round((Number(displayPrice) || 0) * 0.015)).toLocaleString('en-IN')}
-          </span>
-        </div>
+        {hasDealerDiscount && <div className="text-xs text-emerald-700">Dealer saving: ?{(standardPrice - displayPrice).toLocaleString('en-IN')}</div>}
 
         {/* Sub-label: Quantity Slabs Not Applicable */}
         <div className="text-[10px] text-gray-400 select-none pt-0.5">
@@ -262,8 +210,8 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
         </div>
       </div>
 
-      {/* Interactive Actions Row: Quantity Stepper + ADD TO CART + Quote Button */}
-      <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between gap-1.5 sm:gap-2 w-full">
+      {/* Interactive Actions Row: Quantity Stepper + ADD TO CART */}
+      <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center gap-1.5 w-full min-w-0">
         {/* Quantity Stepper [- 1 +] */}
         <div
           onClick={(e) => e.stopPropagation()}
@@ -272,18 +220,18 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
           <button
             type="button"
             onClick={handleDecrement}
-            className="px-2 h-full text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors flex items-center justify-center font-bold"
+            className="w-6 h-full text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors flex items-center justify-center font-bold"
             aria-label="Decrease quantity"
           >
             <Minus className="w-3 h-3" />
           </button>
-          <span className="px-2 text-center font-bold text-gray-800 select-none min-w-[20px] text-xs">
+          <span className="w-6 text-center font-bold text-gray-800 select-none text-xs">
             {quantity}
           </span>
           <button
             type="button"
             onClick={handleIncrement}
-            className="px-2 h-full text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors flex items-center justify-center font-bold"
+            className="w-6 h-full text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors flex items-center justify-center font-bold"
             aria-label="Increase quantity"
           >
             <Plus className="w-3 h-3" />
@@ -296,7 +244,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
           disabled={!product.isActive || isAdding}
           onClick={handleAddToCart}
           className={cn(
-            "flex-1 h-9 px-2 sm:px-3 rounded text-[11px] sm:text-xs font-bold tracking-wider uppercase transition-all duration-150 flex items-center justify-center gap-1 shadow-2xs whitespace-nowrap",
+            "flex-1 min-w-0 h-9 px-1 rounded text-[9px] sm:text-[10px] font-bold uppercase transition-all duration-150 flex items-center justify-center gap-1 shadow-2xs whitespace-nowrap",
             isAdded
               ? "bg-emerald-600 text-white hover:bg-emerald-700"
               : "bg-primary hover:bg-primary/90 text-white active:scale-98"
@@ -313,19 +261,6 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
           )}
         </button>
 
-        {/* Quotation / Enquiry Icon Button (Matching Mega Jaipur) */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            navigate('/account/quotations');
-          }}
-          title="Quotation / Inquiry"
-          className="h-9 w-9 rounded border border-gray-300 hover:border-primary hover:text-primary flex items-center justify-center text-gray-500 bg-white transition-colors shrink-0 cursor-pointer"
-        >
-          <FileText className="w-4 h-4" />
-        </button>
       </div>
     </div>
   );
