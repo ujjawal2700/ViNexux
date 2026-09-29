@@ -76,7 +76,12 @@ export const HomePage = () => {
       // storefront is visible so they do not block the hero banner.
       const sectionResults = await Promise.allSettled(rootCats.map(async (category) => {
         const response = await productService.getProducts(
+<<<<<<< HEAD
           { categoryId: category._id, limit: 8 }
+=======
+          { categoryId: category._id, limit: 8 },
+          { skipGlobalLoader: true }
+>>>>>>> 934d1a4eab67a41edc8a69992a0070b627ee5747
         );
         return { category, products: response.data?.products || [] };
       }));

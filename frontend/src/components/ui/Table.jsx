@@ -1,5 +1,10 @@
 import React from 'react';
+<<<<<<< HEAD
 import { SkeletonTable } from './Skeleton';
+=======
+import { Skeleton } from './Skeleton';
+import { LoadingPill } from './GlobalRequestLoader';
+>>>>>>> 934d1a4eab67a41edc8a69992a0070b627ee5747
 
 const wrapperClass = (className = '') =>
   `w-full overflow-x-auto rounded-2xl border border-border bg-card relative shadow-xs ${className}`;
@@ -41,6 +46,14 @@ export const Table = ({
     const rows = data || [];
     return (
       <div className={wrapperClass(className)}>
+<<<<<<< HEAD
+=======
+        {isLoading && rows.length > 0 && (
+          <div className="absolute inset-0 bg-card/70 backdrop-blur-xs flex items-center justify-center z-10">
+            <LoadingPill message="Updating table..." />
+          </div>
+        )}
+>>>>>>> 934d1a4eab67a41edc8a69992a0070b627ee5747
         <table className="w-full text-left text-sm text-foreground border-collapse">
           <thead className={theadClass}>
             <tr>
@@ -55,7 +68,15 @@ export const Table = ({
             </tr>
           </thead>
           <tbody className={tbodyClass}>
-            {rows.length > 0 ? (
+            {isLoading && rows.length === 0 ? (
+              Array.from({ length: 6 }).map((_, rowIndex) => (
+                <tr key={rowIndex}>
+                  {columns.map((column, columnIndex) => (
+                    <td key={column.key || columnIndex} className="px-6 py-4"><Skeleton className="h-5 w-full" /></td>
+                  ))}
+                </tr>
+              ))
+            ) : rows.length > 0 ? (
               rows.map((row, rowIdx) => (
                 <tr key={row._id || row.id || rowIdx} className={rowClass}>
                   {columns.map((col, colIdx) => (
@@ -84,6 +105,14 @@ export const Table = ({
   // Compound components API
   return (
     <div className={wrapperClass(className)}>
+<<<<<<< HEAD
+=======
+      {isLoading && (
+        <div className="absolute inset-0 min-h-40 bg-card/70 backdrop-blur-xs flex items-center justify-center z-10">
+          <LoadingPill message="Updating table..." />
+        </div>
+      )}
+>>>>>>> 934d1a4eab67a41edc8a69992a0070b627ee5747
       <table className="w-full text-left text-sm text-foreground border-collapse">
         {children}
       </table>

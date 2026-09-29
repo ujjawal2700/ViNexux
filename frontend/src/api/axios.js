@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getStoredRefreshToken, setStoredRefreshToken, clearStoredRefreshToken } from '../utils/tokenStorage';
+import { loadingTracker } from '../utils/loadingTracker';
 
 // Normalize VITE_API_BASE_URL so a misconfigured value (missing "/api",
 // or with a trailing slash) still resolves correctly, instead of silently
@@ -42,6 +43,12 @@ const apiClient = axios.create({
 // Request Interceptor: Attach Access Token if present
 apiClient.interceptors.request.use(
   (config) => {
+    if (!config.skipGlobalLoader) {
+      config._globalLoaderTracked = true;
+      const method = (config.method || 'get').toLowerCase();
+      const message = config.loadingMessage || (method === 'get' ? 'Loading content...' : 'Processing request...');
+      loadingTracker.start(message);
+    }
     const isAdminEndpoint = config.portal === 'admin' || config.url?.startsWith('/admin') || config.url?.includes('/admin/');
     const token = isAdminEndpoint
       ? (inMemoryAdminAccessToken || inMemoryAccessToken)
@@ -53,6 +60,10 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => {
+<<<<<<< HEAD
+=======
+    if (error.config?._globalLoaderTracked) loadingTracker.finish();
+>>>>>>> 934d1a4eab67a41edc8a69992a0070b627ee5747
     return Promise.reject(error);
   }
 );
@@ -73,9 +84,19 @@ const processQueue = (error, token = null) => {
 };
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response.config?._globalLoaderTracked) {
+      response.config._globalLoaderTracked = false;
+      loadingTracker.finish();
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
+    if (originalRequest?._globalLoaderTracked) {
+      originalRequest._globalLoaderTracked = false;
+      loadingTracker.finish();
+    }
 
     // Do not attempt refresh on auth endpoints themselves
     const isAuthEndpoint = originalRequest.url?.includes('/auth/login') ||
