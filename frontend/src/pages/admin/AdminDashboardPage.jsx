@@ -146,7 +146,7 @@ const AdminDashboardPage = () => {
               Categories
             </Button>
           </Link>
-          <Link to="/admin/enquiries">
+          <Link to="/admin/enquiries/customers">
             <Button variant="outline" size="sm" className="text-xs">
               <Inbox className="w-3.5 h-3.5 mr-1.5 text-primary" />
               Manage Leads
@@ -173,7 +173,7 @@ const AdminDashboardPage = () => {
               </h3>
               <p className="text-[11px] text-muted-foreground">Latest 5 leads submitted across portal</p>
             </div>
-            <Link to="/admin/enquiries" className="text-xs text-primary hover:text-accent font-bold flex items-center gap-1">
+            <Link to="/admin/enquiries/customers" className="text-xs text-primary hover:text-accent font-bold flex items-center gap-1">
               View All <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>

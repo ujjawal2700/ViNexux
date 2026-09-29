@@ -50,7 +50,7 @@ export const productService = {
   /**
    * Create a new product.
    */
-  async createProduct({ sku, name, modelNumber, model, informationPhone, productUrl, categoryId, brandId, description, images = [], specifications = [], standardPrice = 0, dealerPrice = 0, isFeatured = false, isActive = true }) {
+  async createProduct({ sku, name, modelNumber, model, informationPhone, productUrl, categoryId, brandId, description, images = [], specifications = [], standardPrice = 0, dealerPrice = 0, isActive = true }) {
     const uppercaseSku = sku.trim().toUpperCase();
 
     // Check duplicate SKU
@@ -108,8 +108,7 @@ export const productService = {
       specifications: normalizedSpecifications,
       standardPrice,
       dealerPrice,
-      isFeatured,
-      isActive,
+isActive,
     });
 
     return product;
@@ -125,8 +124,7 @@ export const productService = {
       category,
       categorySlug: rawCategorySlug,
       brand,
-      isFeatured,
-      isActive,
+isActive,
       page = 1,
       limit = 20,
       sortBy = 'createdAt',
@@ -205,11 +203,6 @@ export const productService = {
         const allCategoryIds = [foundCategory._id, ...directChildIds, ...subChildren.map((c) => c._id)];
         filter.categoryId = { $in: allCategoryIds };
       }
-    }
-
-    // Filter by isFeatured flag
-    if (isFeatured !== undefined) {
-      filter.isFeatured = isFeatured === 'true' || isFeatured === true;
     }
 
     // Filter by isActive flag
@@ -335,7 +328,6 @@ export const productService = {
     if (updateData.specifications !== undefined) product.specifications = updateData.specifications;
     if (updateData.standardPrice !== undefined) product.standardPrice = updateData.standardPrice;
     if (updateData.dealerPrice !== undefined) product.dealerPrice = updateData.dealerPrice;
-    if (updateData.isFeatured !== undefined) product.isFeatured = updateData.isFeatured;
     if (updateData.isActive !== undefined) product.isActive = updateData.isActive;
     if (updateData.brandId !== undefined) {
       const brand = await Brand.findOne({ _id: updateData.brandId, isActive: true });

@@ -44,13 +44,17 @@ export const removeBrand = asyncHandler(async (req, res) => {
 });
 
 export const syncBrandsFromProducts = asyncHandler(async (_req, res) => {
-  const names = await Product.distinct('specifications.value', { 'specifications.key': { $regex: /^(brand|manufacturer)$/i } });
-  for (const name of names.filter(Boolean)) {
-    await Brand.updateOne(
-      { name: { $regex: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
-      { $setOnInsert: { name: name.trim(), slug: slugify(name), isActive: true } },
-      { upsert: true }
-    );
+  const brandAgg = await Product.aggregate([
+    { $unwind: '$specifications' },
+    { $match: { 'specifications.key': { $regex: /^brand$/i } } },
+    { $group: { _id: { $trim: { input: '$specifications.value' } } } },
+  ]);
+  const names = brandAgg.map((b) => b._id).filter(Boolean);
+  for (const name of names) {
+    const existing = await Brand.findOne({ name: { $regex: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+    if (!existing) {
+      await Brand.create({ name: name.trim(), slug: slugify(name), isActive: true });
+    }
   }
   const brands = await Brand.find().sort({ sortOrder: 1, name: 1 }).lean();
   ApiResponse.success(res, 'Existing product brands imported', { brands });

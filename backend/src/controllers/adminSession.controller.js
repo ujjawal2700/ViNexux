@@ -2,6 +2,7 @@ import {
   listSessions,
   getSessionById,
   revokeSession,
+  deleteSession,
 } from '../services/session.service.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -39,3 +40,15 @@ export const revokeSessionController = asyncHandler(async (req, res) => {
     HTTP_STATUS.OK
   );
 });
+
+export const deleteSessionController = asyncHandler(async (req, res) => {
+  const result = await deleteSession(req.params.id);
+
+  return ApiResponse.success(
+    res,
+    'Session deleted successfully',
+    result,
+    HTTP_STATUS.OK
+  );
+});
+

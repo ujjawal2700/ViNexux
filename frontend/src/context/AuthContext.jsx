@@ -88,6 +88,33 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  // Listen for global session expiration events (e.g. forced revocation by admin)
+  useEffect(() => {
+    const handleSessionExpiredEvent = (e) => {
+      const portal = e.detail?.portal;
+      if (portal === 'admin') {
+        setAdminUser(null);
+        setAdminAccessTokenState(null);
+        setAccessToken(null, 'admin');
+        clearStoredRefreshToken('admin');
+        if (window.location.pathname.startsWith('/admin') && !window.location.pathname.includes('/login')) {
+          window.location.href = '/admin/login';
+        }
+      } else {
+        setUser(null);
+        setAccessTokenState(null);
+        setAccessToken(null, 'customer');
+        clearStoredRefreshToken('customer');
+        if (window.location.pathname !== '/') {
+          window.location.href = '/';
+        }
+      }
+    };
+
+    window.addEventListener('session-expired', handleSessionExpiredEvent);
+    return () => window.removeEventListener('session-expired', handleSessionExpiredEvent);
+  }, []);
+
   // Restore sessions on initial application load
   useEffect(() => {
     const restoreSession = async () => {
@@ -108,6 +135,19 @@ export const AuthProvider = ({ children }) => {
           console.warn('Customer session restoration failed:', err);
           clearStoredRefreshToken('customer');
           setAccessToken(null, 'customer');
+          setUser(null);
+          setAccessTokenState(null);
+          try {
+            sessionStorage.setItem('pending_session_toast', 'Your session has expired. Please login again.');
+          } catch (e) {}
+          window.dispatchEvent(
+            new CustomEvent('session-expired', {
+              detail: { portal: 'customer', message: 'Your session has expired. Please login again.' },
+            })
+          );
+          if (window.location.pathname.startsWith('/account') || window.location.pathname.startsWith('/customer') || window.location.pathname.startsWith('/dealer')) {
+            window.location.href = '/';
+          }
         }
       }
 

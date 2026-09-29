@@ -66,7 +66,15 @@ export const listSessions = async (query = {}) => {
     const searchConditions = [
       { sessionId: new RegExp(safeSearch, 'i') },
       { ipAddress: new RegExp(safeSearch, 'i') },
+      { userAgent: new RegExp(safeSearch, 'i') },
+      { device: new RegExp(safeSearch, 'i') },
+      { browser: new RegExp(safeSearch, 'i') },
+      { os: new RegExp(safeSearch, 'i') },
     ];
+
+    if (mongoose.Types.ObjectId.isValid(search.trim())) {
+      searchConditions.push({ _id: search.trim() });
+    }
 
     if (matchingUserIds.length > 0) {
       searchConditions.push({ userId: { $in: matchingUserIds } });
@@ -93,9 +101,11 @@ export const listSessions = async (query = {}) => {
   return {
     sessions,
     pagination: {
+      total: totalItems,
       totalItems,
       totalPages: Math.ceil(totalItems / limit) || 1,
       currentPage: page,
+      page,
       limit,
     },
   };
@@ -158,4 +168,38 @@ export const revokeSession = async (id) => {
     'userId',
     'fullName name email phone role accountStatus isPhoneVerified isEmailVerified'
   );
+};
+
+/**
+ * Admin: Delete revoked or expired session from audit directory
+ * Note: Active sessions cannot be deleted.
+ */
+export const deleteSession = async (id) => {
+  let session;
+  if (mongoose.Types.ObjectId.isValid(id)) {
+    session = await Session.findById(id);
+  }
+  if (!session) {
+    session = await Session.findOne({ sessionId: id });
+  }
+
+  if (!session) {
+    throw new AppError('Session not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
+  }
+
+  const isSessionActive = session.isActive && new Date(session.expiresAt) > new Date();
+  if (isSessionActive) {
+    throw new AppError(
+      'Cannot delete an active session. Please revoke the session first before deleting.',
+      HTTP_STATUS.BAD_REQUEST,
+      ERROR_CODES.BAD_REQUEST
+    );
+  }
+
+  await Session.deleteOne({ _id: session._id });
+
+  return {
+    deletedSessionId: session.sessionId,
+    id: session._id,
+  };
 };

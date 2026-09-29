@@ -193,7 +193,7 @@ const AppRoutes = () => {
                 is what resets them correctly). */}
             <Route path="/admin/enquiries/customers" element={<AdminEnquiriesPage key="customer" forcedUserType="customer" />} />
             <Route path="/admin/enquiries/dealers" element={<AdminEnquiriesPage key="dealer" forcedUserType="dealer" />} />
-            <Route path="/admin/enquiries" element={<Navigate to="/admin/enquiries/dealers" replace />} />
+            <Route path="/admin/enquiries" element={<Navigate to="/admin/enquiries/customers" replace />} />
             <Route path="/admin/enquiries/:id" element={<AdminEnquiryDetailPage />} />
             <Route path="/admin/sessions" element={<AdminSessionsPage />} />
             <Route path="/admin/reports" element={<AdminReportsPage />} />

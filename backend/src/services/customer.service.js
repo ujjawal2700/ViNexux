@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { User } from '../models/User.js';
 import { Session } from '../models/Session.js';
 import { AppError } from '../utils/AppError.js';
@@ -37,6 +38,9 @@ export const listCustomers = async (query = {}) => {
       { email: new RegExp(safeSearch, 'i') },
       { phone: new RegExp(safeSearch, 'i') },
     ];
+    if (mongoose.Types.ObjectId.isValid(search.trim())) {
+      searchFilter.push({ _id: search.trim() });
+    }
 
     if (filter.$or) {
       filter.$and = [{ $or: filter.$or }, { $or: searchFilter }];
@@ -59,9 +63,11 @@ export const listCustomers = async (query = {}) => {
   return {
     customers,
     pagination: {
+      total: totalItems,
       totalItems,
       totalPages: Math.ceil(totalItems / limit) || 1,
       currentPage: page,
+      page,
       limit,
     },
   };

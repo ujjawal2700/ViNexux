@@ -10,8 +10,8 @@ import { Plus, MapPin } from 'lucide-react';
 /**
  * Checkout-specific address selector: pick one saved address, or add a new
  * one inline (which saves it to the address book and auto-selects it).
- * Lighter than AddressBookSection - no edit/delete here, just "must pick
- * exactly one to proceed."
+ * When adding a new address, shows only the address form for focused entry.
+ * After saving, displays all saved address cards with the new one selected.
  */
 export const AddressPicker = ({ selectedAddressId, onSelect }) => {
   const toast = useToast();
@@ -24,7 +24,7 @@ export const AddressPicker = ({ selectedAddressId, onSelect }) => {
     setIsLoading(true);
     try {
       const res = await addressService.listAddresses();
-      const list = res.data?.addresses || [];
+      const list = res.data?.addresses || res.addresses || (Array.isArray(res.data) ? res.data : []);
       setAddresses(list);
 
       // Pre-select the default address (or the only one) if nothing is
@@ -50,7 +50,7 @@ export const AddressPicker = ({ selectedAddressId, onSelect }) => {
     setIsSaving(true);
     try {
       const res = await addressService.createAddress(data);
-      const list = res.data?.addresses || [];
+      const list = res.data?.addresses || res.addresses || (Array.isArray(res.data) ? res.data : []);
       setAddresses(list);
       setIsAdding(false);
       // Auto-select the newly created address (it's the last entry returned).
@@ -73,9 +73,25 @@ export const AddressPicker = ({ selectedAddressId, onSelect }) => {
     );
   }
 
+  // When adding a new address, show ONLY the clean new address form
+  if (isAdding) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between pb-1 border-b border-border">
+          <span className="text-xs font-bold text-foreground">Add New Delivery Address</span>
+        </div>
+        <AddressForm
+          isSaving={isSaving}
+          onCancel={() => setIsAdding(false)}
+          onSubmit={handleCreate}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
-      {addresses.length === 0 && !isAdding && (
+      {addresses.length === 0 && (
         <div className="p-6 text-center bg-background rounded-xl border border-dashed border-border">
           <MapPin className="w-6 h-6 text-muted-foreground mx-auto mb-2" />
           <p className="text-xs text-muted-foreground">
@@ -94,13 +110,15 @@ export const AddressPicker = ({ selectedAddressId, onSelect }) => {
         />
       ))}
 
-      {isAdding ? (
-        <AddressForm isSaving={isSaving} onCancel={() => setIsAdding(false)} onSubmit={handleCreate} />
-      ) : (
-        <Button type="button" variant="outline" size="sm" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={() => setIsAdding(true)}>
-          Add New Address
-        </Button>
-      )}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        leftIcon={<Plus className="w-3.5 h-3.5" />}
+        onClick={() => setIsAdding(true)}
+      >
+        Add New Address
+      </Button>
     </div>
   );
 };

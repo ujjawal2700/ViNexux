@@ -27,6 +27,7 @@ const AdminDealersPage = () => {
   // Filters & Search
   const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
   const [cityFilter, setCityFilter] = useState('');
   const [stateFilter, setStateFilter] = useState('');
@@ -52,6 +53,15 @@ const AdminDealersPage = () => {
   // Toast State
   const [toast, setToast] = useState(null);
 
+  // Debounce search
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(handler);
+  }, [search]);
+
   const fetchDealers = async () => {
     setLoading(true);
     setError(null);
@@ -62,14 +72,24 @@ const AdminDealersPage = () => {
         sortBy,
         sortOrder,
       };
-      if (search.trim()) params.search = search.trim();
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
       if (statusFilter) params.status = statusFilter;
       if (cityFilter.trim()) params.city = cityFilter.trim();
       if (stateFilter.trim()) params.state = stateFilter.trim();
 
       const res = await adminService.getDealers(params);
-      setDealers(res.data?.dealers || []);
-      setPagination(res.data?.pagination || { page: 1, limit: 20, totalPages: 1, total: 0 });
+      const dealerList = res.data?.dealers || [];
+      const p = res.data?.pagination || {};
+      const total = p.total ?? p.totalItems ?? p.totalCount ?? 0;
+
+      setDealers(dealerList);
+      setPagination({
+        page: p.currentPage || p.page || page,
+        limit: p.limit || 20,
+        totalPages: p.totalPages || Math.ceil(total / (p.limit || 20)) || 1,
+        total,
+        totalItems: total,
+      });
     } catch (err) {
       console.error('Error fetching admin dealers list:', err);
       setError(err.response?.data?.message || 'Failed to load dealer directory');
@@ -80,7 +100,7 @@ const AdminDealersPage = () => {
 
   useEffect(() => {
     fetchDealers();
-  }, [page, statusFilter, sortBy, sortOrder]);
+  }, [page, statusFilter, sortBy, sortOrder, debouncedSearch]);
 
   const handleApproveConfirm = async () => {
     if (!approveTarget) return;
@@ -156,6 +176,10 @@ const AdminDealersPage = () => {
       <FilterBar
         search={search}
         onSearchChange={(e) => setSearch(e.target.value)}
+        onSearchSubmit={() => {
+          setDebouncedSearch(search);
+          setPage(1);
+        }}
         searchPlaceholder="Search by company name, GSTIN, PAN, or email..."
         filters={[
           {
@@ -185,6 +209,7 @@ const AdminDealersPage = () => {
         }}
         onReset={() => {
           setSearch('');
+          setDebouncedSearch('');
           setStatusFilter('');
           setCityFilter('');
           setStateFilter('');
@@ -192,11 +217,7 @@ const AdminDealersPage = () => {
           setSortBy('createdAt');
           setSortOrder('desc');
         }}
-      >
-        <Button variant="outline" size="sm" onClick={() => { setPage(1); fetchDealers(); }} className="text-xs shrink-0">
-          Apply Search
-        </Button>
-      </FilterBar>
+      />
 
       {/* Table Content */}
       {loading ? (

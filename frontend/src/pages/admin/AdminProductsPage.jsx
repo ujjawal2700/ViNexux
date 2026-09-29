@@ -18,8 +18,7 @@ import {
   Edit2,
   Trash2,
   Package,
-  Star,
-  Image as ImageIcon,
+Image as ImageIcon,
   FileSpreadsheet,
 } from 'lucide-react';
 
@@ -33,9 +32,17 @@ const AdminProductsPage = () => {
 
   // Filters & Search
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(handler);
+  }, [search]);
   const [categoryIdFilter, setCategoryIdFilter] = useState('');
   const [isActiveFilter, setIsActiveFilter] = useState('');
-  const [isFeaturedFilter, setIsFeaturedFilter] = useState('');
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('desc');
@@ -52,14 +59,21 @@ const AdminProductsPage = () => {
     setError(null);
     try {
       const params = { page, limit: 20, sortBy, sortOrder };
-      if (search.trim()) params.search = search.trim();
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
       if (categoryIdFilter) params.categoryId = categoryIdFilter;
       if (isActiveFilter !== '') params.isActive = isActiveFilter;
-      if (isFeaturedFilter !== '') params.isFeatured = isFeaturedFilter;
 
       const res = await adminService.getProducts(params);
       setProducts(res.data?.products || []);
-      setPagination(res.data?.pagination || { page: 1, limit: 20, totalPages: 1, total: 0 });
+      const p = res.data?.pagination || {};
+      const total = p.total ?? p.totalItems ?? p.totalCount ?? 0;
+      setPagination({
+        page: p.currentPage || p.page || page,
+        limit: p.limit || 20,
+        totalPages: p.totalPages || Math.ceil(total / (p.limit || 20)) || 1,
+        total,
+        totalItems: total,
+      });
 
       if (categoriesList.length === 0) {
         const catRes = await adminService.getCategories({ limit: 500, sortBy: 'sortOrder', sortOrder: 'asc' });
@@ -76,7 +90,7 @@ const AdminProductsPage = () => {
   useEffect(() => {
     fetchProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, categoryIdFilter, isActiveFilter, isFeaturedFilter, sortBy, sortOrder]);
+  }, [page, categoryIdFilter, isActiveFilter, sortBy, sortOrder, debouncedSearch]);
 
   const handleSearchSubmit = () => {
     setPage(1);
@@ -121,6 +135,10 @@ const AdminProductsPage = () => {
       <FilterBar
         search={search}
         onSearchChange={(e) => setSearch(e.target.value)}
+        onSearchSubmit={() => {
+          setDebouncedSearch(search);
+          setPage(1);
+        }}
         searchPlaceholder="Search by SKU or Product Name..."
         filters={[
           {
@@ -162,17 +180,6 @@ const AdminProductsPage = () => {
               { value: 'false', label: 'Inactive Products Only' },
             ],
           },
-          {
-            value: isFeaturedFilter,
-            onChange: (val) => {
-              setIsFeaturedFilter(val);
-              setPage(1);
-            },
-            options: [
-              { value: '', label: 'All Products' },
-              { value: 'true', label: 'Featured Products Only' },
-            ],
-          },
         ]}
         sortOptions={[
           { value: 'createdAt', label: 'Sort by Creation Date' },
@@ -187,18 +194,14 @@ const AdminProductsPage = () => {
         }}
         onReset={() => {
           setSearch('');
+          setDebouncedSearch('');
           setCategoryIdFilter('');
           setIsActiveFilter('');
-          setIsFeaturedFilter('');
           setPage(1);
           setSortBy('createdAt');
           setSortOrder('desc');
         }}
-      >
-        <Button variant="outline" size="sm" onClick={handleSearchSubmit} className="text-xs shrink-0">
-          Apply Search
-        </Button>
-      </FilterBar>
+      />
 
       {/* Table & Catalog Content */}
       {loading ? (
@@ -230,7 +233,6 @@ const AdminProductsPage = () => {
                 <Table.Head>Category</Table.Head>
                 <Table.Head>Standard Price</Table.Head>
                 <Table.Head>Dealer Price</Table.Head>
-                <Table.Head>Featured</Table.Head>
                 <Table.Head>Status</Table.Head>
                 <Table.Head className="text-right">Actions</Table.Head>
               </Table.Row>
@@ -269,15 +271,6 @@ const AdminProductsPage = () => {
                     </Table.Cell>
                     <Table.Cell className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400">
                       ₹{Number(prod.dealerPrice || 0).toLocaleString('en-IN')}
-                    </Table.Cell>
-                    <Table.Cell>
-                      {prod.isFeatured ? (
-                        <Badge variant="warning" className="gap-1">
-                          <Star className="w-3 h-3 fill-current" /> Featured
-                        </Badge>
-                      ) : (
-                        <span className="text-[10px] text-muted-foreground">Standard</span>
-                      )}
                     </Table.Cell>
                     <Table.Cell>
                       <StatusBadge status={prod.isActive ? 'active' : 'inactive'} />

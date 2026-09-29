@@ -7,6 +7,7 @@ import { RotateCcw } from 'lucide-react';
 const FilterBar = ({
   search,
   onSearchChange,
+  onSearchSubmit,
   searchPlaceholder = 'Search records...',
   filters = [],
   sortOptions = [],
@@ -25,6 +26,12 @@ const FilterBar = ({
               value={search || ''}
               onChange={onSearchChange}
               placeholder={searchPlaceholder}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && onSearchSubmit) {
+                  e.preventDefault();
+                  onSearchSubmit();
+                }
+              }}
             />
           </div>
         )}
@@ -42,19 +49,13 @@ const FilterBar = ({
 
         {/* Sort Select */}
         {sortOptions.length > 0 && onSortChange && (
-          <div className="w-full lg:w-52 flex items-center gap-2">
+          <div className="w-full lg:w-48">
             <Select
               value={sortBy || ''}
               onChange={(e) => onSortChange(e.target.value, sortOrder)}
               options={sortOptions}
             />
-            <button
-              onClick={() => onSortChange(sortBy, sortOrder === 'asc' ? 'desc' : 'asc')}
-              title={`Sort ${sortOrder === 'asc' ? 'Ascending' : 'Descending'}`}
-              className="px-2.5 py-2 rounded-lg bg-muted border border-border text-xs font-semibold text-foreground hover:bg-[#ebd5da] transition-colors"
-            >
-              {sortOrder === 'asc' ? '↑' : '↓'}
-            </button>
+            
           </div>
         )}
 

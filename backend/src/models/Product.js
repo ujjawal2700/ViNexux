@@ -114,10 +114,6 @@ const productSchema = new mongoose.Schema(
       default: 0,
       min: [0, 'Dealer price cannot be negative'],
     },
-    isFeatured: {
-      type: Boolean,
-      default: false,
-    },
     isActive: {
       type: Boolean,
       default: true,
@@ -130,9 +126,6 @@ const productSchema = new mongoose.Schema(
 
 // Compound index for querying active products by category
 productSchema.index({ categoryId: 1, isActive: 1 });
-
-// Compound index for querying active featured products (e.g. homepage showcase)
-productSchema.index({ isFeatured: 1, isActive: 1 });
 
 export const Product = mongoose.model('Product', productSchema);
 export default Product;

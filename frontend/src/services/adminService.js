@@ -317,6 +317,14 @@ export const adminService = {
     return response.data;
   },
 
+  /**
+   * Delete a revoked or expired user session from audit directory.
+   */
+  async deleteSession(id) {
+    const response = await apiClient.delete(`/admin/sessions/${id}`);
+    return response.data;
+  },
+
   // --- CMS MANAGEMENT ---
   // Banners
   async getBannersAdmin() {

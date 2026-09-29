@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import fs from 'fs';
+import path from 'path';
+
+const fileContent = `import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import adminService from '../../services/adminService';
 import Button from '../../components/ui/Button';
@@ -16,7 +19,8 @@ import {
   ArrowLeft,
   Save,
   Plus,
-ImagePlus,
+  Star,
+  ImagePlus,
   Trash2,
   Tag,
   Layers,
@@ -83,6 +87,7 @@ const AdminProductDetailPage = () => {
 
   // Status & Visibility
   const [status, setStatus] = useState('published'); // 'published' | 'draft'
+  const [isFeatured, setIsFeatured] = useState(false);
 
   // Specifications
   const [specifications, setSpecifications] = useState([]);
@@ -193,6 +198,7 @@ const AdminProductDetailPage = () => {
       setSelectedBrandId(String(prod.brandId?._id || prod.brandId || ''));
       setStandardPrice(prod.standardPrice !== undefined ? String(prod.standardPrice) : '');
       setDealerPrice(prod.dealerPrice !== undefined ? String(prod.dealerPrice) : '');
+      setIsFeatured(!!prod.isFeatured);
       setStatus(prod.isActive ? 'published' : 'draft');
       setImagesList(prod.images || []);
 
@@ -255,7 +261,7 @@ const AdminProductDetailPage = () => {
     const selectedBrand = brandsList.find((b) => String(b._id) === String(selectedBrandId));
     const brandPrefix = (selectedBrand?.name || 'VNX').replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase();
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    const newSku = `${brandPrefix}-${randomSuffix}`;
+    const newSku = \`\${brandPrefix}-\${randomSuffix}\`;
     setSku(newSku);
   };
 
@@ -375,7 +381,7 @@ const AdminProductDetailPage = () => {
       (definition) => definition.isRequired && getCategorySpecValues(definition.key).length === 0
     );
     if (missingFilter) {
-      setFormError(`Please enter ${missingFilter.label || missingFilter.key} in the Specifications card.`);
+      setFormError(\`Please enter \${missingFilter.label || missingFilter.key} in the Specifications card.\`);
       setActiveTab('specifications');
       return;
     }
@@ -418,6 +424,7 @@ const AdminProductDetailPage = () => {
         description: description.trim() || undefined,
         standardPrice: sPrice,
         dealerPrice: dPrice,
+        isFeatured: Boolean(isFeatured),
         isActive: isCreateMode ? false : status === 'published',
         specifications: allSpecs,
         images: imagesList.map((img, i) => ({
@@ -557,16 +564,16 @@ const AdminProductDetailPage = () => {
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all text-xs font-bold ${
+                  className={\`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all text-xs font-bold \${
                     isActive
                       ? 'bg-[#fdf2f4] text-[#800020] border border-[#f5d6dc] shadow-xs'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border border-transparent'
-                  }`}
+                  }\`}
                 >
                   <div
-                    className={`p-1.5 rounded-lg shrink-0 ${
+                    className={\`p-1.5 rounded-lg shrink-0 \${
                       isActive ? 'bg-[#800020] text-white' : 'bg-gray-100 text-gray-500'
-                    }`}
+                    }\`}
                   >
                     <Icon className="w-4 h-4" />
                   </div>
@@ -599,6 +606,22 @@ const AdminProductDetailPage = () => {
               <p className="text-[10px] text-gray-500 mt-1.5">
                 {status === 'published' ? 'Active in catalog and visible for order inquiries' : 'Hidden from public storefront'}
               </p>
+            </div>
+
+            <div className="pt-3 border-t border-[#f0e6e8]">
+              <label className="flex items-center justify-between cursor-pointer">
+                <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                  Featured Product
+                </span>
+                <input
+                  type="checkbox"
+                  checked={isFeatured}
+                  onChange={(e) => setIsFeatured(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 accent-[#800020]"
+                />
+              </label>
+              <p className="text-[10px] text-gray-400 mt-1">Highlighted on homepage showcases</p>
             </div>
           </div>
         </div>
@@ -928,7 +951,7 @@ const AdminProductDetailPage = () => {
                       placeholder="Select Header Category"
                       options={headerCategories.map((h) => ({
                         value: h._id,
-                        label: `${h.name} (Header)`,
+                        label: \`\${h.name} (Header)\`,
                       }))}
                       required
                       className="font-semibold text-xs"
@@ -1057,7 +1080,7 @@ const AdminProductDetailPage = () => {
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {categoryFilterDefinitions.map((definition) => {
                       const values = getCategorySpecValues(definition.key);
-                      const label = `${definition.label || definition.key}${definition.unit ? ` (${definition.unit})` : ''}`;
+                      const label = \`\${definition.label || definition.key}\${definition.unit ? \` (\${definition.unit})\` : ''}\`;
                       return (
                         <div key={definition.key} className="space-y-1.5">
                           <label className="text-[11px] font-bold text-gray-700">{label}{definition.isRequired ? ' *' : ''}</label>
@@ -1075,7 +1098,7 @@ const AdminProductDetailPage = () => {
                               {(definition.inputType === 'boolean' ? ['Yes', 'No'] : definition.options || []).map((option) => <option key={option} value={option}>{option}</option>)}
                             </select>
                           ) : (
-                            <Input type={definition.inputType === 'number' ? 'number' : 'text'} value={values[0] || ''} onChange={(event) => setCategorySpecValues(definition, [event.target.value])} placeholder={`Enter ${definition.label || definition.key}`} className="text-xs" />
+                            <Input type={definition.inputType === 'number' ? 'number' : 'text'} value={values[0] || ''} onChange={(event) => setCategorySpecValues(definition, [event.target.value])} placeholder={\`Enter \${definition.label || definition.key}\`} className="text-xs" />
                           )}
                         </div>
                       );
@@ -1245,3 +1268,8 @@ const AdminProductDetailPage = () => {
 };
 
 export default AdminProductDetailPage;
+`;
+
+const targetPath = path.resolve('frontend/src/pages/admin/AdminProductDetailPage.jsx');
+fs.writeFileSync(targetPath, fileContent, 'utf8');
+console.log('Successfully written AdminProductDetailPage.jsx');

@@ -31,7 +31,7 @@ export const Select = React.forwardRef(({
           } rounded-xl pl-4 pr-10 py-2.5 text-sm text-foreground placeholder-muted-foreground/70 transition-all focus-ring disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
           {...props}
         >
-          {placeholder && (
+          {placeholder && !options.some((opt) => (opt.value ?? opt.id) === '') && (
             <option value="" disabled className="bg-card text-[#9a6870]">
               {placeholder}
             </option>

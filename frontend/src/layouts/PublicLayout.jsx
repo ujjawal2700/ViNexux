@@ -756,7 +756,7 @@ const PublicLayout = () => {
       {/* 1. STICKY HEADER CONTAINER (Locks top announcement + main header + category nav at top when scrolling) */}
       <header className="sticky top-0 z-50 w-full bg-white shadow-xs">
         
-        {/* Top Announcement Bar (Mega Jaipur Style: Welcome back, {FULL_NAME}, you are now logged in. Logout) */}
+        {/* Top Announcement Bar */}
         <div className="w-full bg-white border-b border-gray-200 py-1 sm:py-1.5 px-4 text-center text-xs text-gray-600 font-medium tracking-wide">
           {isAuthenticated ? (
             <span>

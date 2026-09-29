@@ -112,6 +112,19 @@ apiClient.interceptors.response.use(
 
       if (!refreshToken) {
         setAccessToken(null, portal);
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem('pending_session_toast', 'Your session has expired. Please login again.');
+          } catch (e) {}
+          window.dispatchEvent(
+            new CustomEvent('session-expired', {
+              detail: {
+                portal,
+                message: 'Your session has expired. Please login again.',
+              },
+            })
+          );
+        }
         return Promise.reject(error);
       }
 
@@ -153,6 +166,19 @@ apiClient.interceptors.response.use(
         processQueue(refreshErr, null);
         clearStoredRefreshToken(portal);
         setAccessToken(null, portal);
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem('pending_session_toast', 'Your session has expired. Please login again.');
+          } catch (e) {}
+          window.dispatchEvent(
+            new CustomEvent('session-expired', {
+              detail: {
+                portal,
+                message: 'Your session has expired. Please login again.',
+              },
+            })
+          );
+        }
         return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;

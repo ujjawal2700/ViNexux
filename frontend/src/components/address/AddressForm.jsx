@@ -4,9 +4,9 @@ import { Button } from '../ui/Button';
 import { Save, X } from 'lucide-react';
 
 /**
- * Add/edit form for one saved address. Field set and validation lifted
- * directly from the old CheckoutEnquiryPage inline address form, plus a
- * `label` field and `isDefault` checkbox for the address-book use case.
+ * Add/edit form for one saved address.
+ * Uses a container <div> instead of a nested <form> to prevent illegal
+ * nested-form behavior and accidental parent form submissions (e.g. at Checkout).
  */
 export const AddressForm = ({ initialValues, onSubmit, onCancel, isSaving = false }) => {
   const [values, setValues] = useState({
@@ -43,7 +43,10 @@ export const AddressForm = ({ initialValues, onSubmit, onCancel, isSaving = fals
   };
 
   const handleSubmit = (e) => {
-    e.preventDefault();
+    if (e) {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    }
     if (!validate()) return;
     onSubmit({
       label: values.label.trim() || 'Address',
@@ -56,8 +59,19 @@ export const AddressForm = ({ initialValues, onSubmit, onCancel, isSaving = fals
     });
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      handleSubmit(e);
+    }
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 p-4 rounded-xl bg-muted/40 border border-dashed border-border">
+    <div
+      onKeyDown={handleKeyDown}
+      className="space-y-4 p-4 rounded-xl bg-muted/40 border border-dashed border-border"
+    >
       <Input
         label="Label (Optional)"
         name="label"
@@ -125,16 +139,30 @@ export const AddressForm = ({ initialValues, onSubmit, onCancel, isSaving = fals
       </label>
 
       <div className="flex items-center gap-2 pt-1">
-        <Button type="submit" variant="primary" size="sm" isLoading={isSaving} leftIcon={<Save className="w-3.5 h-3.5" />}>
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          isLoading={isSaving}
+          onClick={handleSubmit}
+          leftIcon={<Save className="w-3.5 h-3.5" />}
+        >
           Save Address
         </Button>
         {onCancel && (
-          <Button type="button" variant="ghost" size="sm" onClick={onCancel} isDisabled={isSaving} leftIcon={<X className="w-3.5 h-3.5" />}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onCancel}
+            isDisabled={isSaving}
+            leftIcon={<X className="w-3.5 h-3.5" />}
+          >
             Cancel
           </Button>
         )}
       </div>
-    </form>
+    </div>
   );
 };
 

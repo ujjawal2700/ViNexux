@@ -4,7 +4,6 @@ import useAuth from '../../hooks/useAuth';
 import { ArrowRight, ShieldCheck, ShieldAlert, Lock } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import Logo from '../../components/ui/Logo';
-import ThemeToggle from '../../components/ui/ThemeToggle';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^[6-9]\d{9}$/;
@@ -63,8 +62,6 @@ const AdminLoginPage = () => {
   return (
     <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-background bg-grid-pattern">
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
-
-      <ThemeToggle className="absolute top-6 right-6 z-10" />
 
       <div className="w-full max-w-md p-8 sm:p-10 rounded-3xl border border-border shadow-2xl relative z-10 bg-card">
         <div className="flex flex-col items-center text-center mb-8">

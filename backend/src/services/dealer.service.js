@@ -218,11 +218,31 @@ export const listDealers = async (query = {}) => {
 
   if (search) {
     const safeSearch = escapeRegex(search);
-    filter.$or = [
+    const matchingUsers = await User.find({
+      $or: [
+        { fullName: new RegExp(safeSearch, 'i') },
+        { name: new RegExp(safeSearch, 'i') },
+        { email: new RegExp(safeSearch, 'i') },
+        { phone: new RegExp(safeSearch, 'i') },
+      ],
+    }).select('_id').lean();
+
+    const searchOr = [
       { companyName: new RegExp(safeSearch, 'i') },
       { gstin: new RegExp(safeSearch, 'i') },
       { pan: new RegExp(safeSearch, 'i') },
     ];
+
+    if (matchingUsers.length > 0) {
+      searchOr.push({ userId: { $in: matchingUsers.map((u) => u._id) } });
+    }
+
+    if (filter.$or) {
+      filter.$and = [{ $or: filter.$or }, { $or: searchOr }];
+      delete filter.$or;
+    } else {
+      filter.$or = searchOr;
+    }
   }
 
   const skip = (page - 1) * limit;
@@ -239,9 +259,11 @@ export const listDealers = async (query = {}) => {
   return {
     dealers,
     pagination: {
+      total: totalItems,
       totalItems,
       totalPages: Math.ceil(totalItems / limit) || 1,
       currentPage: page,
+      page,
       limit,
     },
   };

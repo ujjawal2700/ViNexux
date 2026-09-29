@@ -12,7 +12,7 @@ import Skeleton from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 import ErrorState from '../../components/ui/ErrorState';
 import Toast from '../../components/ui/Toast';
-import { ShieldAlert, Eye, LogOut, Laptop, Smartphone, Globe, Clock } from 'lucide-react';
+import { ShieldAlert, Eye, LogOut, Laptop, Smartphone, Globe, Clock, Trash2 } from 'lucide-react';
 
 const AdminSessionsPage = () => {
   const [sessions, setSessions] = useState([]);
@@ -22,6 +22,7 @@ const AdminSessionsPage = () => {
 
   // Filters & Search
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [userTypeFilter, setUserTypeFilter] = useState('');
   const [page, setPage] = useState(1);
@@ -35,8 +36,21 @@ const AdminSessionsPage = () => {
   const [revokeTarget, setRevokeTarget] = useState(null);
   const [revokeLoading, setRevokeLoading] = useState(false);
 
+  // Delete Session State
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   // Toast Notifications
   const [toast, setToast] = useState(null);
+
+  // Debounce search input
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(handler);
+  }, [search]);
 
   const fetchSessions = async () => {
     setLoading(true);
@@ -48,13 +62,23 @@ const AdminSessionsPage = () => {
         sortBy,
         sortOrder,
       };
-      if (search.trim()) params.search = search.trim();
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
       if (statusFilter) params.status = statusFilter;
       if (userTypeFilter) params.userType = userTypeFilter;
 
       const res = await adminService.getSessions(params);
-      setSessions(res.data?.sessions || []);
-      setPagination(res.data?.pagination || { page: 1, limit: 20, totalPages: 1, total: 0 });
+      const sessionList = res.data?.sessions || [];
+      const p = res.data?.pagination || {};
+      const total = p.total ?? p.totalItems ?? p.totalCount ?? 0;
+
+      setSessions(sessionList);
+      setPagination({
+        page: p.currentPage || p.page || page,
+        limit: p.limit || 20,
+        totalPages: p.totalPages || Math.ceil(total / (p.limit || 20)) || 1,
+        total,
+        totalItems: total,
+      });
     } catch (err) {
       console.error('Error fetching active sessions directory:', err);
       setError(err.response?.data?.message || 'Failed to load user session audit directory');
@@ -65,7 +89,7 @@ const AdminSessionsPage = () => {
 
   useEffect(() => {
     fetchSessions();
-  }, [page, statusFilter, userTypeFilter, sortBy, sortOrder]);
+  }, [page, statusFilter, userTypeFilter, sortBy, sortOrder, debouncedSearch]);
 
   const handleRevokeConfirm = async () => {
     if (!revokeTarget) return;
@@ -83,6 +107,22 @@ const AdminSessionsPage = () => {
     }
   };
 
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      await adminService.deleteSession(deleteTarget._id || deleteTarget.sessionId);
+      setToast({ message: 'Session record deleted successfully!', type: 'success' });
+      setDeleteTarget(null);
+      fetchSessions();
+    } catch (err) {
+      console.error('Session delete error:', err);
+      setToast({ message: err.response?.data?.message || 'Failed to delete session', type: 'error' });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -90,13 +130,17 @@ const AdminSessionsPage = () => {
       <AdminPageHeader
         title="Active Sessions Audit & Control"
         subtitle="Monitor active single-session device logins, IP access records & force terminate unauthorized active sessions"
-        badge={`${pagination.total} Session Records`}
+        badge={`${pagination.total ?? 0} Session Records`}
       />
 
       {/* Filter Bar */}
       <FilterBar
         search={search}
         onSearchChange={(e) => setSearch(e.target.value)}
+        onSearchSubmit={() => {
+          setDebouncedSearch(search);
+          setPage(1);
+        }}
         searchPlaceholder="Search by sessionId, IP address, or user name/email..."
         filters={[
           {
@@ -139,17 +183,14 @@ const AdminSessionsPage = () => {
         }}
         onReset={() => {
           setSearch('');
+          setDebouncedSearch('');
           setStatusFilter('');
           setUserTypeFilter('');
           setPage(1);
           setSortBy('createdAt');
           setSortOrder('desc');
         }}
-      >
-        <Button variant="outline" size="sm" onClick={() => { setPage(1); fetchSessions(); }} className="text-xs shrink-0">
-          Apply Search
-        </Button>
-      </FilterBar>
+      />
 
       {/* Table Content */}
       {loading ? (
@@ -225,7 +266,7 @@ const AdminSessionsPage = () => {
                       )}
                     </Table.Cell>
                     <Table.Cell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-1.5">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -247,6 +288,27 @@ const AdminSessionsPage = () => {
                             <LogOut className="w-3.5 h-3.5 mr-1" /> Force Revoke
                           </Button>
                         )}
+
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={isSessionActive}
+                          onClick={() => {
+                            if (!isSessionActive) setDeleteTarget(sess);
+                          }}
+                          className={`h-8 px-2 text-xs ${
+                            isSessionActive
+                              ? 'opacity-40 cursor-not-allowed text-muted-foreground hover:bg-transparent'
+                              : 'text-rose-600 hover:text-rose-800 hover:bg-rose-50'
+                          }`}
+                          title={
+                            isSessionActive
+                              ? 'Active session cannot be deleted. Revoke first.'
+                              : 'Delete session record from audit table'
+                          }
+                        >
+                          <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
+                        </Button>
                       </div>
                     </Table.Cell>
                   </Table.Row>
@@ -360,6 +422,18 @@ const AdminSessionsPage = () => {
         message={`Are you sure you want to force terminate session "${revokeTarget?.sessionId}"? The user will be immediately logged out on their device.`}
         confirmText="Revoke Session"
         isLoading={revokeLoading}
+        variant="danger"
+      />
+
+      {/* Delete Session Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Session Record"
+        message={`Are you sure you want to permanently delete session "${deleteTarget?.sessionId || deleteTarget?._id}" from the audit history? This action cannot be undone.`}
+        confirmText="Delete Record"
+        isLoading={deleteLoading}
         variant="danger"
       />
     </div>

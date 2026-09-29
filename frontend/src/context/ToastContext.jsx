@@ -1,4 +1,4 @@
-import React, { createContext, useState, useCallback } from 'react';
+import React, { createContext, useState, useCallback, useEffect } from 'react';
 import ToastContainer from '../components/ui/Toast';
 
 export const ToastContext = createContext(null);
@@ -21,6 +21,24 @@ export const ToastProvider = ({ children }) => {
   const removeToast = useCallback((id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
+
+  useEffect(() => {
+    try {
+      const pending = sessionStorage.getItem('pending_session_toast');
+      if (pending) {
+        sessionStorage.removeItem('pending_session_toast');
+        addToast(pending, 'warning', 6000);
+      }
+    } catch (e) {}
+
+    const handleSessionExpired = (e) => {
+      const msg = e.detail?.message || 'Your session has expired. Please login again.';
+      addToast(msg, 'warning', 6000);
+    };
+
+    window.addEventListener('session-expired', handleSessionExpired);
+    return () => window.removeEventListener('session-expired', handleSessionExpired);
+  }, [addToast]);
 
   const toast = {
     success: (msg, duration) => addToast(msg, 'success', duration),

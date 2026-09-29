@@ -34,9 +34,11 @@ export const getBanners = async (query = {}) => {
   return {
     banners,
     pagination: {
+      total: totalItems,
       totalItems,
       totalPages: Math.ceil(totalItems / limit) || 1,
       currentPage: page,
+      page,
       limit,
     },
   };
@@ -96,9 +98,11 @@ export const getPromoBanners = async (query = {}) => {
   return {
     promotionalBanners,
     pagination: {
+      total: totalItems,
       totalItems,
       totalPages: Math.ceil(totalItems / limit) || 1,
       currentPage: page,
+      page,
       limit,
     },
   };
@@ -176,9 +180,11 @@ export const getCmsPages = async (query = {}) => {
   return {
     pages,
     pagination: {
+      total: totalItems,
       totalItems,
       totalPages: Math.ceil(totalItems / limit) || 1,
       currentPage: page,
+      page,
       limit,
     },
   };
@@ -256,9 +262,11 @@ export const getTrustBadges = async (query = {}) => {
   return {
     trustBadges,
     pagination: {
+      total: totalItems,
       totalItems,
       totalPages: Math.ceil(totalItems / limit) || 1,
       currentPage: page,
+      page,
       limit,
     },
   };

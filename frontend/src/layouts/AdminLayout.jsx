@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 import adminService from '../services/adminService';
-import ThemeToggle from '../components/ui/ThemeToggle';
 import Logo from '../components/ui/Logo';
 import { 
   LayoutDashboard, 
@@ -305,7 +304,6 @@ const AdminLayout = () => {
             <Link to="/admin/profile" className="hover:text-primary transition-colors">
               Admin: <strong className="text-foreground font-bold underline decoration-primary/30 underline-offset-4">{currentAdmin?.fullName || currentAdmin?.name || currentAdmin?.email || 'Administrator'}</strong>
             </Link>
-            <ThemeToggle />
           </div>
         </header>
 

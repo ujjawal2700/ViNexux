@@ -23,6 +23,7 @@ const AdminCustomersPage = () => {
 
   // Filters & Search
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [accountStatusFilter, setAccountStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState('createdAt');
@@ -36,6 +37,15 @@ const AdminCustomersPage = () => {
   // Toast Notifications
   const [toast, setToast] = useState(null);
 
+  // Debounce search
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(handler);
+  }, [search]);
+
   const fetchCustomers = async () => {
     setLoading(true);
     setError(null);
@@ -46,12 +56,22 @@ const AdminCustomersPage = () => {
         sortBy,
         sortOrder,
       };
-      if (search.trim()) params.search = search.trim();
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
       if (accountStatusFilter) params.accountStatus = accountStatusFilter;
 
       const res = await adminService.getCustomers(params);
-      setCustomers(res.data?.customers || []);
-      setPagination(res.data?.pagination || { page: 1, limit: 20, totalPages: 1, total: 0 });
+      const customerList = res.data?.customers || [];
+      const p = res.data?.pagination || {};
+      const total = p.total ?? p.totalItems ?? p.totalCount ?? 0;
+
+      setCustomers(customerList);
+      setPagination({
+        page: p.currentPage || p.page || page,
+        limit: p.limit || 20,
+        totalPages: p.totalPages || Math.ceil(total / (p.limit || 20)) || 1,
+        total,
+        totalItems: total,
+      });
     } catch (err) {
       console.error('Error fetching customers directory:', err);
       setError(err.response?.data?.message || 'Failed to load customer accounts');
@@ -62,7 +82,7 @@ const AdminCustomersPage = () => {
 
   useEffect(() => {
     fetchCustomers();
-  }, [page, accountStatusFilter, sortBy, sortOrder]);
+  }, [page, accountStatusFilter, sortBy, sortOrder, debouncedSearch]);
 
   const handleToggleStatusConfirm = async () => {
     if (!statusTarget || !targetNewStatus) return;
@@ -95,6 +115,10 @@ const AdminCustomersPage = () => {
       <FilterBar
         search={search}
         onSearchChange={(e) => setSearch(e.target.value)}
+        onSearchSubmit={() => {
+          setDebouncedSearch(search);
+          setPage(1);
+        }}
         searchPlaceholder="Search customer by name, email, or phone..."
         filters={[
           {
@@ -124,16 +148,13 @@ const AdminCustomersPage = () => {
         }}
         onReset={() => {
           setSearch('');
+          setDebouncedSearch('');
           setAccountStatusFilter('');
           setPage(1);
           setSortBy('createdAt');
           setSortOrder('desc');
         }}
-      >
-        <Button variant="outline" size="sm" onClick={() => { setPage(1); fetchCustomers(); }} className="text-xs shrink-0">
-          Apply Search
-        </Button>
-      </FilterBar>
+      />
 
       {/* Content Table */}
       {loading ? (

@@ -12,7 +12,7 @@ import Skeleton from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 import ErrorState from '../../components/ui/ErrorState';
 import Toast from '../../components/ui/Toast';
-import { Inbox, Eye, FileSpreadsheet, MessageCircle } from 'lucide-react';
+import { Inbox, Eye, FileSpreadsheet, MessageCircle, ChevronDown } from 'lucide-react';
 import { buildEnquiryWhatsAppLink } from '../../lib/whatsapp';
 import { groupEnquiryItems } from '../../lib/enquiryItems';
 
@@ -38,6 +38,15 @@ const AdminEnquiriesPage = ({ forcedUserType }) => {
 
   // Filters & Search
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(handler);
+  }, [search]);
   const [statusFilter, setStatusFilter] = useState('');
   const [userTypeFilter, setUserTypeFilter] = useState(forcedUserType || '');
   const [page, setPage] = useState(1);
@@ -60,13 +69,21 @@ const AdminEnquiriesPage = ({ forcedUserType }) => {
         sortBy,
         sortOrder,
       };
-      if (search.trim()) params.search = search.trim();
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
       if (statusFilter) params.status = statusFilter;
       if (userTypeFilter) params.userType = userTypeFilter;
 
       const res = await adminService.getEnquiries(params);
       setEnquiries(res.data?.enquiries || []);
-      setPagination(res.data?.pagination || { page: 1, limit: 20, totalPages: 1, total: 0 });
+      const p = res.data?.pagination || {};
+      const total = p.total ?? p.totalItems ?? p.totalCount ?? 0;
+      setPagination({
+        page: p.currentPage || p.page || page,
+        limit: p.limit || 20,
+        totalPages: p.totalPages || Math.ceil(total / (p.limit || 20)) || 1,
+        total,
+        totalItems: total,
+      });
     } catch (err) {
       console.error('Error fetching enquiries list:', err);
       setError(err.response?.data?.message || 'Failed to load enquiries list');
@@ -77,7 +94,7 @@ const AdminEnquiriesPage = ({ forcedUserType }) => {
 
   useEffect(() => {
     fetchEnquiries();
-  }, [page, statusFilter, userTypeFilter, sortBy, sortOrder]);
+  }, [page, statusFilter, userTypeFilter, sortBy, sortOrder, debouncedSearch]);
 
   const handleStatusChange = async (enquiryId, currentStatus, newStatus) => {
     if (currentStatus === newStatus) return;
@@ -125,6 +142,10 @@ const AdminEnquiriesPage = ({ forcedUserType }) => {
       <FilterBar
         search={search}
         onSearchChange={(e) => setSearch(e.target.value)}
+        onSearchSubmit={() => {
+          setDebouncedSearch(search);
+          setPage(1);
+        }}
         searchPlaceholder="Search lead #, contact name, email, or message..."
         filters={[
           {
@@ -172,17 +193,14 @@ const AdminEnquiriesPage = ({ forcedUserType }) => {
         }}
         onReset={() => {
           setSearch('');
+          setDebouncedSearch('');
           setStatusFilter('');
           setUserTypeFilter(forcedUserType || '');
           setPage(1);
           setSortBy('createdAt');
           setSortOrder('desc');
         }}
-      >
-        <Button variant="outline" size="sm" onClick={() => { setPage(1); fetchEnquiries(); }} className="text-xs shrink-0">
-          Apply Search
-        </Button>
-      </FilterBar>
+      />
 
       {/* Table Content */}
       {loading ? (
@@ -257,13 +275,35 @@ const AdminEnquiriesPage = ({ forcedUserType }) => {
                         ₹{Number(enquiryTotal).toLocaleString('en-IN')}
                       </div>
                     </Table.Cell>
-                    <Table.Cell className="min-w-[140px]">
-                      <Select
-                        value={enq.status}
-                        onChange={(e) => handleStatusChange(enq._id, enq.status, e.target.value)}
-                        options={statusOptions}
-                        className="text-xs py-1 h-8"
-                      />
+                    <Table.Cell className="min-w-[155px]">
+                      <div className="relative inline-block w-full max-w-[155px]">
+                        <select
+                          value={enq.status}
+                          onChange={(e) => handleStatusChange(enq._id, enq.status, e.target.value)}
+                          className={`w-full appearance-none text-[11px] font-bold uppercase tracking-wider rounded-lg pl-3 pr-7 py-2 border cursor-pointer transition-all shadow-xs focus:outline-none focus:ring-2 focus:ring-primary/20 ${
+                            enq.status === 'closed'
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                              : enq.status === 'in-progress'
+                              ? 'bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100'
+                              : enq.status === 'contacted'
+                              ? 'bg-purple-50 text-purple-800 border-purple-300 hover:bg-purple-100'
+                              : enq.status === 'spam'
+                              ? 'bg-rose-50 text-rose-800 border-rose-300 hover:bg-rose-100'
+                              : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+                          }`}
+                        >
+                          {statusOptions.map((opt) => (
+                            <option
+                              key={opt.value}
+                              value={opt.value}
+                              className="bg-card text-foreground font-semibold py-1"
+                            >
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none opacity-60" />
+                      </div>
                     </Table.Cell>
                     <Table.Cell className="text-right">
                       <div className="flex items-center justify-end gap-1">

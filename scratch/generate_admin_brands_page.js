@@ -1,4 +1,7 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import fs from 'fs';
+import path from 'path';
+
+const fileContent = `import React, { useEffect, useState, useMemo, useRef } from 'react';
 import {
   Plus,
   Pencil,
@@ -175,10 +178,10 @@ export default function AdminBrandsPage() {
 
       if (editing) {
         await adminService.updateBrandAdmin(editing._id, payload);
-        setToast({ message: `Brand "${payload.name}" updated successfully.`, type: 'success' });
+        setToast({ message: \`Brand "\${payload.name}" updated successfully.\`, type: 'success' });
       } else {
         await adminService.createBrandAdmin(payload);
-        setToast({ message: `Brand "${payload.name}" created successfully.`, type: 'success' });
+        setToast({ message: \`Brand "\${payload.name}" created successfully.\`, type: 'success' });
       }
 
       setOpen(false);
@@ -198,7 +201,7 @@ export default function AdminBrandsPage() {
     try {
       const res = await adminService.deleteBrandAdmin(deleteTarget._id);
       setToast({
-        message: res.message || `Brand "${deleteTarget.name}" processed successfully.`,
+        message: res.message || \`Brand "\${deleteTarget.name}" processed successfully.\`,
         type: 'success',
       });
       setDeleteTarget(null);
@@ -274,7 +277,7 @@ export default function AdminBrandsPage() {
       <AdminPageHeader
         title="Brand Management"
         subtitle="Create, organize and maintain manufacturer brands and storefront showcase logos"
-        badge={`${brands.length} Total Brands`}
+        badge={\`\${brands.length} Total Brands\`}
         action={
           <Button variant="primary" size="sm" onClick={() => showForm()}>
             <Plus className="w-4 h-4 mr-1.5" /> Add Brand
@@ -458,7 +461,7 @@ export default function AdminBrandsPage() {
       <Modal
         isOpen={open}
         onClose={() => setOpen(false)}
-        title={editing ? `Edit Brand: ${editing.name}` : 'Add New Brand'}
+        title={editing ? \`Edit Brand: \${editing.name}\` : 'Add New Brand'}
       >
         <form onSubmit={handleSave} className="space-y-4">
           <FormError message={error} />
@@ -522,7 +525,7 @@ export default function AdminBrandsPage() {
                     {logoFile ? logoFile.name : 'Current Brand Logo'}
                   </p>
                   <p className="text-[10px] text-muted-foreground mt-0.5">
-                    {logoFile ? `${(logoFile.size / 1024).toFixed(1)} KB` : 'Cloud Stored Logo'}
+                    {logoFile ? \`\${(logoFile.size / 1024).toFixed(1)} KB\` : 'Cloud Stored Logo'}
                   </p>
                   <div className="flex items-center gap-2 mt-2">
                     <Button
@@ -631,7 +634,7 @@ export default function AdminBrandsPage() {
         title="Delete Brand"
         message={
           deleteTarget
-            ? `Are you sure you want to remove "${deleteTarget.name}"? If products are attached to this brand, it will be safely deactivated to protect catalog integrity.`
+            ? \`Are you sure you want to remove "\${deleteTarget.name}"? If products are attached to this brand, it will be safely deactivated to protect catalog integrity.\`
             : ''
         }
         confirmText="Confirm Delete"
@@ -641,3 +644,8 @@ export default function AdminBrandsPage() {
     </div>
   );
 }
+`;
+
+const targetPath = path.resolve('frontend/src/pages/admin/AdminBrandsPage.jsx');
+fs.writeFileSync(targetPath, fileContent, 'utf8');
+console.log('Successfully written AdminBrandsPage.jsx');

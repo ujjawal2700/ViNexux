@@ -118,8 +118,8 @@ export const CheckoutEnquiryPage = () => {
       toast.error('Please enter a valid full name, email, and 10-digit mobile number.');
       return;
     }
-    if (!deliveryAddress.line1.trim() || !deliveryAddress.city.trim() || !deliveryAddress.state.trim() || !/^\d{6}$/.test(deliveryAddress.pincode)) {
-      toast.error('Please complete the editable delivery address and 6-digit pincode.');
+    if (!deliveryAddress?.line1?.trim() || !deliveryAddress?.city?.trim() || !deliveryAddress?.state?.trim() || !/^\d{6}$/.test(deliveryAddress?.pincode || '')) {
+      toast.error('Please select a valid delivery address with a 6-digit pincode.');
       return;
     }
 
@@ -202,7 +202,7 @@ export const CheckoutEnquiryPage = () => {
       {/* Header */}
       <div className="border-b border-border pb-6 flex items-center justify-between">
         <div>
-          <Link to="/account/cart" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1 mb-2 font-medium">
+          <Link to="/cart" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1 mb-2 font-medium">
             <ArrowLeft className="w-3.5 h-3.5" /> Return to Cart
           </Link>
           <h1 className="text-3xl font-extrabold text-foreground tracking-tight flex items-center gap-3">
@@ -243,17 +243,21 @@ export const CheckoutEnquiryPage = () => {
             </CardHeader>
 
             <CardContent className="p-0">
-              <AddressPicker selectedAddressId={selectedAddressId} onSelect={(id, address) => {
-                setSelectedAddressId(id);
-                if (address) setDeliveryAddress({ line1: address.line1 || '', line2: address.line2 || '', city: address.city || '', state: address.state || '', pincode: address.pincode || '' });
-              }} />
-              {selectedAddressId && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-                <Input label="Address Line 1" value={deliveryAddress.line1} onChange={(e) => setDeliveryAddress({ ...deliveryAddress, line1: e.target.value })} />
-                <Input label="Address Line 2" value={deliveryAddress.line2} onChange={(e) => setDeliveryAddress({ ...deliveryAddress, line2: e.target.value })} />
-                <Input label="City" value={deliveryAddress.city} onChange={(e) => setDeliveryAddress({ ...deliveryAddress, city: e.target.value })} />
-                <Input label="State" value={deliveryAddress.state} onChange={(e) => setDeliveryAddress({ ...deliveryAddress, state: e.target.value })} />
-                <Input label="Pincode" value={deliveryAddress.pincode} onChange={(e) => setDeliveryAddress({ ...deliveryAddress, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })} />
-              </div>}
+              <AddressPicker
+                selectedAddressId={selectedAddressId}
+                onSelect={(id, address) => {
+                  setSelectedAddressId(id);
+                  if (address) {
+                    setDeliveryAddress({
+                      line1: address.line1 || '',
+                      line2: address.line2 || '',
+                      city: address.city || '',
+                      state: address.state || '',
+                      pincode: address.pincode || '',
+                    });
+                  }
+                }}
+              />
             </CardContent>
           </Card>
 

@@ -258,9 +258,11 @@ export const getMyEnquiries = async (userId, query = {}) => {
   return {
     enquiries,
     pagination: {
+      total: totalItems,
       totalItems,
       totalPages: Math.ceil(totalItems / limit) || 1,
       currentPage: page,
+      page,
       limit,
     },
   };
@@ -311,13 +313,35 @@ export const listAllEnquiries = async (query = {}) => {
 
   if (search) {
     const safeSearch = escapeRegex(search);
-    filter.$or = [
+    const matchingUsers = await User.find({
+      $or: [
+        { fullName: new RegExp(safeSearch, 'i') },
+        { name: new RegExp(safeSearch, 'i') },
+        { email: new RegExp(safeSearch, 'i') },
+        { phone: new RegExp(safeSearch, 'i') },
+      ],
+    }).select('_id').lean();
+
+    const searchOr = [
       { enquiryNumber: new RegExp(safeSearch, 'i') },
       { contactName: new RegExp(safeSearch, 'i') },
       { contactEmail: new RegExp(safeSearch, 'i') },
       { contactPhone: new RegExp(safeSearch, 'i') },
+      { whatsappNumber: new RegExp(safeSearch, 'i') },
       { message: new RegExp(safeSearch, 'i') },
+      { 'items.productName': new RegExp(safeSearch, 'i') },
     ];
+
+    if (matchingUsers.length > 0) {
+      searchOr.push({ userId: { $in: matchingUsers.map((u) => u._id) } });
+    }
+
+    if (filter.$or) {
+      filter.$and = [{ $or: filter.$or }, { $or: searchOr }];
+      delete filter.$or;
+    } else {
+      filter.$or = searchOr;
+    }
   }
 
   const skip = (page - 1) * limit;
@@ -343,9 +367,11 @@ export const listAllEnquiries = async (query = {}) => {
   return {
     enquiries,
     pagination: {
+      total: totalItems,
       totalItems,
       totalPages: Math.ceil(totalItems / limit) || 1,
       currentPage: page,
+      page,
       limit,
     },
   };

@@ -19,11 +19,9 @@ import {
   Inbox, 
   Users, 
   UserCheck, 
-  Package, 
-  Calendar, 
-  Filter, 
-  RefreshCw,
-  Clock,
+  Package,
+Filter,
+Clock,
   CheckCircle2,
   XCircle,
   ShieldAlert
@@ -36,10 +34,6 @@ const AdminReportsPage = () => {
   const [summaryData, setSummaryData] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [summaryError, setSummaryError] = useState(null);
-
-  // Date Range Filters
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
 
   // Enquiry Report State
   const [enquiryReport, setEnquiryReport] = useState(null);
@@ -81,8 +75,6 @@ const AdminReportsPage = () => {
     setEnquiryLoading(true);
     try {
       const params = { page: enquiryPage, limit: 20 };
-      if (startDate) params.startDate = startDate;
-      if (endDate) params.endDate = endDate;
       if (enquiryStatusFilter) params.status = enquiryStatusFilter;
       if (enquiryUserTypeFilter) params.userType = enquiryUserTypeFilter;
 
@@ -100,8 +92,6 @@ const AdminReportsPage = () => {
     setDealerLoading(true);
     try {
       const params = { page: dealerPage, limit: 20 };
-      if (startDate) params.startDate = startDate;
-      if (endDate) params.endDate = endDate;
       if (dealerStatusFilter) params.status = dealerStatusFilter;
 
       const res = await adminService.getDealerReport(params);
@@ -118,8 +108,6 @@ const AdminReportsPage = () => {
     setCustomerLoading(true);
     try {
       const params = { page: customerPage, limit: 20 };
-      if (startDate) params.startDate = startDate;
-      if (endDate) params.endDate = endDate;
       if (customerStatusFilter) params.accountStatus = customerStatusFilter;
 
       const res = await adminService.getCustomerReport(params);
@@ -140,7 +128,7 @@ const AdminReportsPage = () => {
     if (activeTab === 'enquiries') fetchEnquiryReport();
     if (activeTab === 'dealers') fetchDealerReport();
     if (activeTab === 'customers') fetchCustomerReport();
-  }, [activeTab, startDate, endDate, enquiryPage, enquiryStatusFilter, enquiryUserTypeFilter, dealerPage, dealerStatusFilter, customerPage, customerStatusFilter]);
+  }, [activeTab, enquiryPage, enquiryStatusFilter, enquiryUserTypeFilter, dealerPage, dealerStatusFilter, customerPage, customerStatusFilter]);
 
   return (
     <div className="space-y-6">
@@ -152,8 +140,8 @@ const AdminReportsPage = () => {
         badge="Live Telemetry"
       />
 
-      {/* Date Filter & Tab Bar */}
-      <div className="bg-card border border-border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+      {/* Tab Bar */}
+      <div className="bg-card border border-border rounded-xl p-3 flex flex-wrap items-center justify-between gap-4 shadow-sm">
         {/* Navigation Tabs */}
         <div className="flex flex-wrap items-center gap-1.5 bg-background p-1 rounded-lg border border-border">
           {[
@@ -179,31 +167,6 @@ const AdminReportsPage = () => {
               </button>
             );
           })}
-        </div>
-
-        {/* Global Date Range Range Filter */}
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-muted-foreground font-medium flex items-center gap-1">
-            <Calendar className="w-3.5 h-3.5 text-primary" /> Range:
-          </span>
-          <Input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="w-36 text-xs py-1"
-          />
-          <span className="text-[#9a6870]">to</span>
-          <Input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="w-36 text-xs py-1"
-          />
-          {(startDate || endDate) && (
-            <Button variant="ghost" size="sm" iconOnly title="Clear Dates" onClick={() => { setStartDate(''); setEndDate(''); }}>
-              <RefreshCw className="w-3.5 h-3.5 text-primary" />
-            </Button>
-          )}
         </div>
       </div>
 
@@ -359,8 +322,6 @@ const AdminReportsPage = () => {
             onReset={() => {
               setEnquiryStatusFilter('');
               setEnquiryUserTypeFilter('');
-              setStartDate('');
-              setEndDate('');
               setEnquiryPage(1);
             }}
           />
@@ -462,8 +423,6 @@ const AdminReportsPage = () => {
             ]}
             onReset={() => {
               setDealerStatusFilter('');
-              setStartDate('');
-              setEndDate('');
               setDealerPage(1);
             }}
           />
@@ -552,8 +511,6 @@ const AdminReportsPage = () => {
             ]}
             onReset={() => {
               setCustomerStatusFilter('');
-              setStartDate('');
-              setEndDate('');
               setCustomerPage(1);
             }}
           />

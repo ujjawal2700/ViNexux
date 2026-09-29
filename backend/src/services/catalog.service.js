@@ -122,14 +122,15 @@ export const getPublicBrands = async () => {
   ]);
   const managedNames = new Set(managed.map((brand) => brand.name.toLowerCase()));
   const legacyCountByName = new Map(legacy.map((brand) => [brand._id.toLowerCase(), brand.count]));
-  return [
+  const allActiveBrands = [
     ...managed.map((brand) => ({
       ...brand,
       count: Math.max(countById.get(String(brand._id)) || 0, legacyCountByName.get(brand.name.toLowerCase()) || 0),
-    })).filter((brand) => brand.count > 0),
+    })),
     ...legacy.filter((brand) => !managedNames.has(brand._id.toLowerCase()))
-      .map((brand) => ({ name: brand._id, slug: slugify(brand._id), count: brand.count, legacy: true })),
+      .map((brand) => ({ name: brand._id, slug: slugify(brand._id), count: brand.count, sortOrder: 9999, legacy: true })),
   ];
+  return allActiveBrands.sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0) || a.name.localeCompare(b.name));
 };
 
 export const getPublicProducts = async (query = {}, user = null) => {
@@ -147,7 +148,6 @@ export const getPublicProducts = async (query = {}, user = null) => {
   }
   const match = { isActive: true, categoryId: { $in: allowedIds } };
   if (query.id) match._id = new mongoose.Types.ObjectId(query.id);
-  if (query.isFeatured !== undefined) match.isFeatured = String(query.isFeatured) === 'true';
   if (query.search?.trim()) {
     const regex = new RegExp(escapeRegex(query.search.trim()), 'i');
     const matchingCategories = categories.filter((category) => regex.test(category.name) || regex.test(category.slug));

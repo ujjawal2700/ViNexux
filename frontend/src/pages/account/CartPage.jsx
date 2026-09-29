@@ -145,12 +145,20 @@ export const CartPage = () => {
     };
     fetchFooterPhone();
   }, []);
-
   // 4. Initial fetch & listen to live cart-updated events
   useEffect(() => {
     fetchCartData();
-    window.addEventListener('cart-updated', fetchCartData);
-    return () => window.removeEventListener('cart-updated', fetchCartData);
+    const handleCartUpdated = (e) => {
+      // Ignore self-dispatched events to prevent stale background refetches during quantity updates
+      if (e?.detail?.source === 'cart-page') return;
+      if (e?.detail?.cart) {
+        setCart(e.detail.cart);
+        return;
+      }
+      fetchCartData();
+    };
+    window.addEventListener('cart-updated', handleCartUpdated);
+    return () => window.removeEventListener('cart-updated', handleCartUpdated);
   }, [fetchCartData]);
 
   // Raw items array from cart
