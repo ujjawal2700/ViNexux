@@ -346,9 +346,6 @@ export const productService = {
     }
 
     await validateCategorySpecifications(product.categoryId, product.specifications);
-    if (product.isActive && (!product.images || product.images.length === 0)) {
-      throw new AppError('At least one uploaded product image is required before publishing.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
-    }
     await product.save();
 
     return product;

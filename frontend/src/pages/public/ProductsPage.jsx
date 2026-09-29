@@ -567,20 +567,20 @@ export const ProductsPage = () => {
           {/* Breadcrumb row */}
           <nav
             aria-label="Breadcrumb"
-            className="flex w-full items-center flex-wrap gap-1.5 text-xs text-gray-500 font-medium lg:absolute lg:left-0 lg:w-auto lg:max-w-[35%]"
+            className="flex w-full min-w-0 max-w-full items-center flex-nowrap gap-2 overflow-x-auto whitespace-nowrap text-sm sm:text-base text-[#800020] font-medium lg:absolute lg:left-0 lg:w-auto lg:max-w-[35%]"
           >
             {breadcrumbTrail.map((crumb, idx) => (
               <React.Fragment key={crumb.label + idx}>
-                {idx > 0 && <ChevronRight className="w-3.5 h-3.5 text-gray-400 shrink-0" />}
+                {idx > 0 && <ChevronRight className="w-4 h-4 text-[#800020] shrink-0" />}
                 {crumb.path ? (
                   <Link
                     to={crumb.path}
-                    className="hover:text-primary hover:underline transition-colors"
+                    className="shrink-0 hover:text-[#650019] transition-colors"
                   >
                     {crumb.label}
                   </Link>
                 ) : (
-                  <span className="text-gray-800 font-semibold">{crumb.label}</span>
+                  <span className="shrink-0 text-[#800020] font-semibold">{crumb.label}</span>
                 )}
               </React.Fragment>
             ))}

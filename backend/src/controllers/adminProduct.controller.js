@@ -4,6 +4,24 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { Product } from '../models/Product.js';
 import { Category } from '../models/Category.js';
+import { createProductImportTemplate, previewProductImport, commitProductImport } from '../services/productImport.service.js';
+
+export const downloadProductImportTemplate = asyncHandler(async (req, res) => {
+  const buffer = await createProductImportTemplate();
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename="vinexus-product-import-template.xlsx"');
+  return res.send(Buffer.from(buffer));
+});
+
+export const previewProductImportUpload = asyncHandler(async (req, res) => {
+  const result = await previewProductImport(req.files.workbook[0].buffer, req.files.imagesZip?.[0]?.buffer);
+  return ApiResponse.success(res, 'Import preview ready', result, HTTP_STATUS.OK);
+});
+
+export const commitProductImportUpload = asyncHandler(async (req, res) => {
+  const result = await commitProductImport(req.files.workbook[0].buffer, req.files.imagesZip?.[0]?.buffer);
+  return ApiResponse.success(res, 'Bulk import finished', result, HTTP_STATUS.OK);
+});
 
 /**
  * Admin Create Product

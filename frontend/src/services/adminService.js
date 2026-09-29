@@ -52,6 +52,27 @@ export const adminService = {
   },
 
   // --- PRODUCT MANAGEMENT ---
+  async downloadProductImportTemplate() {
+    const response = await apiClient.get('/admin/products/import/template', { responseType: 'blob' });
+    return response.data;
+  },
+
+  async previewProductImport(workbook, imagesZip) {
+    const formData = new FormData();
+    formData.append('workbook', workbook);
+    if (imagesZip) formData.append('imagesZip', imagesZip);
+    const response = await apiClient.post('/admin/products/import/preview', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+    return response.data;
+  },
+
+  async commitProductImport(workbook, imagesZip) {
+    const formData = new FormData();
+    formData.append('workbook', workbook);
+    if (imagesZip) formData.append('imagesZip', imagesZip);
+    const response = await apiClient.post('/admin/products/import/commit', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+    return response.data;
+  },
+
   /**
    * Fetch paginated product catalog for admin with search & filters.
    */

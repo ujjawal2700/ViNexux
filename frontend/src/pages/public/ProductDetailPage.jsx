@@ -377,21 +377,21 @@ export const ProductDetailPage = () => {
     <div className="w-full px-3 sm:px-6 lg:px-8 2xl:px-12 py-4 sm:py-6 space-y-10 bg-white min-h-screen text-gray-900 font-sans">
       
       {/* 1. TOP BREADCRUMBS (Matching Given Image - No left gap) */}
-      <div className="flex items-center justify-between gap-3 text-xs border-b border-gray-200 pb-3">
-        <nav aria-label="Breadcrumb" className="flex items-center flex-wrap gap-1.5 text-gray-500 text-xs">
+      <div className="flex items-center justify-between gap-3 border-b border-gray-200 pb-3">
+        <nav aria-label="Breadcrumb" className="flex min-w-0 max-w-full items-center flex-nowrap gap-2 overflow-x-auto whitespace-nowrap text-sm sm:text-base text-[#800020] font-medium">
           {breadcrumbTrail.map((crumb, idx) => {
             const isLast = idx === breadcrumbTrail.length - 1;
             return (
               <React.Fragment key={idx}>
-                {idx > 0 && <ChevronRight className="w-3.5 h-3.5 text-gray-400 shrink-0" />}
+                {idx > 0 && <ChevronRight className="w-4 h-4 text-[#800020] shrink-0" />}
                 {isLast || !crumb.path ? (
-                  <span className="font-bold text-gray-900 truncate max-w-[200px] sm:max-w-xs md:max-w-md">
+                  <span className="font-semibold text-[#800020] shrink-0">
                     {crumb.label}
                   </span>
                 ) : (
                   <Link
                     to={crumb.path}
-                    className="hover:text-[#800020] transition-colors truncate"
+                    className="shrink-0 hover:text-[#650019] transition-colors"
                   >
                     {crumb.label}
                   </Link>

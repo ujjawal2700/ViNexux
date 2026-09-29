@@ -8,10 +8,14 @@ import {
   uploadImage,
   deleteImage,
   seedTestStockQuantities,
+  downloadProductImportTemplate,
+  previewProductImportUpload,
+  commitProductImportUpload,
 } from '../controllers/adminProduct.controller.js';
 import { validate } from '../middlewares/validate.js';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 import { uploadSingle } from '../middlewares/upload.middleware.js';
+import { uploadProductImport } from '../middlewares/productImportUpload.middleware.js';
 import {
   createProductSchema,
   updateProductSchema,
@@ -25,6 +29,9 @@ const router = Router();
 // Protected Admin Product Routes (authenticate + authorize('admin'))
 router.post('/', authenticate, authorize('admin'), validate(createProductSchema), createProduct);
 router.get('/', authenticate, authorize('admin'), validate(getProductsQuerySchema), getProducts);
+router.get('/import/template', authenticate, authorize('admin'), downloadProductImportTemplate);
+router.post('/import/preview', authenticate, authorize('admin'), uploadProductImport, previewProductImportUpload);
+router.post('/import/commit', authenticate, authorize('admin'), uploadProductImport, commitProductImportUpload);
 router.get('/:id', authenticate, authorize('admin'), validate(getProductByIdSchema), getProductById);
 router.put('/:id', authenticate, authorize('admin'), validate(updateProductSchema), updateProduct);
 router.delete('/:id', authenticate, authorize('admin'), validate(deleteProductSchema), deleteProduct);

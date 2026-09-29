@@ -161,7 +161,7 @@ const AdminProductDetailPage = () => {
     });
   }, [categoriesList, selectedMainId]);
 
-  const selectedEffectiveCategoryId = selectedSubId || selectedMainId;
+  const selectedEffectiveCategoryId = selectedSubId || selectedMainId || selectedHeaderId;
   const categoryFilterDefinitions = useMemo(
     () => getEffectiveFilterDefinitions(categoriesList, selectedEffectiveCategoryId),
     [categoriesList, selectedEffectiveCategoryId]
@@ -446,10 +446,9 @@ const AdminProductDetailPage = () => {
     }
 
     // 2. Validate Category Hierarchy
-    // Remember user requirement: Sub category is strictly optional!
     const effectiveCategoryId = selectedEffectiveCategoryId;
     if (!effectiveCategoryId) {
-      setFormError('Please select at least a Main Group and Specific Category in the Groups card.');
+      setFormError('Please select a Header Category in the Groups card.');
       setActiveTab('groups');
       return;
     }
@@ -1068,7 +1067,7 @@ const AdminProductDetailPage = () => {
                   Category Hierarchy & Groups
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Select the main parent category. Sub-category is strictly optional.
+                  Select a Header Category. Main and Sub Categories are optional.
                 </p>
               </div>
 
@@ -1077,7 +1076,7 @@ const AdminProductDetailPage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {/* MAIN GROUP (Header Category) */}
                   <FormField
-                    label="MAIN GROUP *"
+                    label="HEADER CATEGORY *"
                     required
                     hint="Top-level parent category (e.g. Laptop, Desktop, Storage)"
                   >
@@ -1088,7 +1087,7 @@ const AdminProductDetailPage = () => {
                         setSelectedMainId('');
                         setSelectedSubId('');
                       }}
-                      placeholder="Select Main Group"
+                      placeholder="Select Header Category"
                       options={headerCategories.map((h) => ({
                         value: h._id,
                         label: `${h.name} (Header)`,
@@ -1100,9 +1099,8 @@ const AdminProductDetailPage = () => {
 
                   {/* SPECIFIC CATEGORY (Main Category) */}
                   <FormField
-                    label="SPECIFIC CATEGORY *"
-                    required
-                    hint="Primary product classification under the Main Group"
+                    label="MAIN CATEGORY (OPTIONAL)"
+                    hint="Leave empty to assign the product directly to the Header Category."
                   >
                     <Select
                       value={selectedMainId}
@@ -1110,13 +1108,12 @@ const AdminProductDetailPage = () => {
                         setSelectedMainId(e.target.value);
                         setSelectedSubId('');
                       }}
-                      placeholder={selectedHeaderId ? 'Select Category' : 'Select Main Group First'}
+                      placeholder={selectedHeaderId ? 'Use Header Category directly' : 'Select Header Category First'}
                       isDisabled={!selectedHeaderId || mainCategories.length === 0}
-                      options={mainCategories.map((m) => ({
-                        value: m._id,
-                        label: m.name,
-                      }))}
-                      required
+                      options={[
+                        { value: '', label: 'Assign directly to Header Category' },
+                        ...mainCategories.map((m) => ({ value: m._id, label: m.name })),
+                      ]}
                       className="font-semibold text-xs"
                     />
                   </FormField>
@@ -1167,7 +1164,7 @@ const AdminProductDetailPage = () => {
                           {currentMainObj.name}
                         </span>
                       ) : (
-                        <span className="text-gray-400 italic">Select Category...</span>
+                        <span className="text-gray-600 italic">Directly in Header Category</span>
                       )}
                       {currentSubObj && (
                         <>
@@ -1182,10 +1179,15 @@ const AdminProductDetailPage = () => {
                           ✓ Direct assignment to Main Category (Sub-category omitted)
                         </span>
                       )}
+                      {!currentMainObj && (
+                        <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                          Direct assignment to Header Category
+                        </span>
+                      )}
                     </>
                   ) : (
                     <span className="text-gray-500 text-xs italic">
-                      Please select a Main Group and Specific Category to establish catalog placement.
+                      Please select a Header Category to establish catalog placement.
                     </span>
                   )}
                 </div>

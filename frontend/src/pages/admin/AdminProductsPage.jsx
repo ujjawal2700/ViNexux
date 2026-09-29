@@ -20,6 +20,7 @@ import {
   Package,
   Star,
   Image as ImageIcon,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 const AdminProductsPage = () => {
@@ -106,12 +107,14 @@ const AdminProductsPage = () => {
         title="Product Catalog Management"
         subtitle="Manage hardware models, laptops, desktops, cameras, networking, SKUs, wholesale dealer pricing & specs"
         badge={`${pagination.total} Total Products`}
-        action={
-          <Button variant="primary" size="sm" onClick={() => navigate('/admin/products/new')}>
-            <Plus className="w-4 h-4 mr-1.5" />
-            Add Product
+        action={<div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => navigate('/admin/products/import')}>
+            <FileSpreadsheet className="w-4 h-4 mr-1.5" /> Bulk Import
           </Button>
-        }
+          <Button variant="primary" size="sm" onClick={() => navigate('/admin/products/new')}>
+            <Plus className="w-4 h-4 mr-1.5" /> Add Product
+          </Button>
+        </div>}
       />
 
       {/* Filter & Search Bar */}

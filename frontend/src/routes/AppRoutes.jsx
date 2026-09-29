@@ -51,6 +51,7 @@ import AdminSubCategoriesPage from '../pages/admin/AdminSubCategoriesPage';
 import AdminProductsPage from '../pages/admin/AdminProductsPage';
 import AdminBrandsPage from '../pages/admin/AdminBrandsPage';
 import AdminProductDetailPage from '../pages/admin/AdminProductDetailPage';
+import AdminProductImportPage from '../pages/admin/AdminProductImportPage';
 import AdminDealersPage from '../pages/admin/AdminDealersPage';
 import AdminDealerDetailPage from '../pages/admin/AdminDealerDetailPage';
 import AdminCustomersPage from '../pages/admin/AdminCustomersPage';
@@ -175,6 +176,7 @@ const AppRoutes = () => {
             <Route path="/admin/products" element={<AdminProductsPage />} />
             <Route path="/admin/brands" element={<AdminBrandsPage />} />
             <Route path="/admin/products/new" element={<AdminProductDetailPage />} />
+            <Route path="/admin/products/import" element={<AdminProductImportPage />} />
             <Route path="/admin/products/:id" element={<AdminProductDetailPage />} />
             <Route path="/admin/dealers" element={<AdminDealersPage />} />
             <Route path="/admin/dealers/:id" element={<AdminDealerDetailPage />} />
