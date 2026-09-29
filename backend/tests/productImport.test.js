@@ -31,8 +31,11 @@ setStorageProvider({
 
 const makeWorkbook = async (values) => {
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(Buffer.from(await createProductImportTemplate()));
-  const sheet = workbook.getWorksheet('Products');
+  const sheet = workbook.addWorksheet('Products');
+  sheet.addRow(['SKU', 'Model Number', 'Model', 'Product Name', 'Brand', 'Header Category',
+    'Main Category', 'Sub Category', 'Standard Price', 'Dealer Price', 'Stock Quantity',
+    'Description', 'Information Phone', 'Product URL', 'Warranty', 'Country of Origin',
+    'HSN Code', 'Variant', 'Specifications JSON', 'Featured', 'Publish', 'Image Files']);
   for (const value of values) sheet.addRow(value);
   return Buffer.from(await workbook.xlsx.writeBuffer());
 };
@@ -49,13 +52,13 @@ try {
   archive.file('header.png', image);
   archive.file('main.png', image);
   const imageZip = await archive.generateAsync({ type: 'nodebuffer' });
-  const row = (sku, modelNumber, name, mainName, quantity, imageName) => [
+  const row = (sku, modelNumber, name, mainName, quantity, imageName, productUrl = '') => [
     sku, modelNumber, 'IdeaPad', name, 'ACER', 'Laptop', mainName, '', 45999, 42999,
-    quantity, 'A laptop with warranty', '', '1 Year', 'India', '', '', '{"RAM":"16GB"}',
+    quantity, 'A laptop with warranty', '', productUrl, '1 Year', 'India', '', '', '{"RAM":"16GB"}',
     'No', 'Yes', imageName,
   ];
   const workbook = await makeWorkbook([
-    row('LAP-HEADER', 'MODEL-HEADER', 'Header Laptop', '', 3, 'header.png'),
+    row('LAP-HEADER', 'MODEL-HEADER', 'Header Laptop', '', 3, 'header.png', 'https://example.test/products/header'),
     row('LAP-MAIN', 'MODEL-MAIN', 'Main Laptop', 'Branded Laptop', 8, 'main.png'),
   ]);
   const preview = await previewProductImport(workbook, imageZip);
@@ -72,6 +75,7 @@ try {
   assert.equal(headerProduct.modelNumber, 'MODEL-HEADER');
   assert.equal(headerProduct.standardPrice, 45999);
   assert.equal(headerProduct.dealerPrice, 42999);
+  assert.equal(headerProduct.productUrl, 'https://example.test/products/header');
   assert.equal(headerProduct.images.length, 1);
   assert.equal(headerProduct.images[0].url, 'https://example.test/product-1.webp');
   assert.equal(headerProduct.isActive, true);
@@ -81,6 +85,7 @@ try {
   const listed = await getPublicProducts({ categoryId: String(header._id) });
   assert.equal(listed.pagination.total, 2);
   assert.ok(listed.products.every((product) => product.images.length === 1));
+  assert.equal(listed.products.find((product) => product.sku === 'LAP-HEADER').productUrl, 'https://example.test/products/header');
 
   const duplicate = await previewProductImport(workbook, imageZip);
   assert.equal(duplicate.invalid, 2, 'Existing SKU and model numbers are rejected');
@@ -89,6 +94,9 @@ try {
   assert.equal(invalidPreview.invalid, 1);
   await assert.rejects(() => commitProductImport(invalidWorkbook, imageZip), /invalid rows/i);
   assert.equal(await Product.countDocuments(), 2, 'Invalid import must not write products');
+  const invalidUrlWorkbook = await makeWorkbook([row('LAP-BAD-URL', 'MODEL-BAD-URL', 'Invalid URL Laptop', '', 3, '', 'javascript:alert(1)')]);
+  const invalidUrlPreview = await previewProductImport(invalidUrlWorkbook);
+  assert.equal(invalidUrlPreview.invalid, 1, 'Product URLs must use HTTP or HTTPS');
   const duplicateRows = await makeWorkbook([
     row('LAP-REPEATED', 'MODEL-ONE', 'Repeated One', '', 3, 'header.png'),
     row('LAP-REPEATED', 'MODEL-ONE', 'Repeated Two', '', 3, 'main.png'),
@@ -97,7 +105,7 @@ try {
   assert.equal(repeatedPreview.invalid, 1, 'Repeated model number in the same workbook is rejected');
   assert.notEqual(repeatedPreview.rows[0].sku, repeatedPreview.rows[1].sku, 'Repeated SKU is replaced with a generated unique SKU');
   const missingSpecValues = row('LAP-NORAM', 'MODEL-NORAM', 'No RAM Laptop', '', 3, 'header.png');
-  missingSpecValues[17] = '';
+  missingSpecValues[18] = '';
   assert.match((await previewProductImport(await makeWorkbook([missingSpecValues]), imageZip)).rows[0].errors.join(' '), /Memory is required/);
   const badArchive = new JSZip();
   badArchive.file('header.png', 'not an image');
@@ -110,8 +118,8 @@ try {
   const newCategoryRow = row('', 'MODEL-TABLET', 'Apple Full Size Tablet', 'Full Size Tablet', 6, '');
   newCategoryRow[4] = 'Apple';
   newCategoryRow[5] = 'Tablets';
-  newCategoryRow[17] = '';
-  newCategoryRow[19] = '';
+  newCategoryRow[18] = '';
+  newCategoryRow[20] = '';
   const tabletWorkbook = await makeWorkbook([newCategoryRow]);
   const tabletPreview = await previewProductImport(tabletWorkbook);
   assert.equal(tabletPreview.valid, 1);
@@ -203,6 +211,72 @@ try {
   assert.equal(await Product.countDocuments(), 5, 'Failed image upload writes no products');
   assert.equal(await Category.countDocuments({ name: 'New Category On Failure' }), 0);
   assert.equal(await Brand.countDocuments({ name: 'New Brand On Failure' }), 0);
+  const currentTemplate = new ExcelJS.Workbook();
+  await currentTemplate.xlsx.load(Buffer.from(await createProductImportTemplate()));
+  const currentSheet = currentTemplate.getWorksheet('Products');
+  const currentHeaders = currentSheet.getRow(1).values.slice(1);
+  assert.deepEqual(currentHeaders, [
+    'Model Number', 'Model', 'Product Name', 'Brand', 'Header Category',
+    'Main Category (Optional)', 'Sub Category (Optional)', 'Standard Price',
+    'Dealer Price', 'Stock Quantity', 'Product URL', 'Warranty', 'Variant', 'Specifications',
+  ]);
+  assert.equal(currentSheet.rowCount, 1, 'Products sheet starts empty');
+  assert.equal(currentTemplate.getWorksheet('Examples').rowCount, 4, 'Three examples are separate from imported products');
+  assert.match(currentTemplate.getWorksheet('Instructions').getCell('A8').text, /Alt\+Enter/);
+  const makeCurrentWorkbook = async (rows) => {
+    const book = new ExcelJS.Workbook();
+    await book.xlsx.load(Buffer.from(await createProductImportTemplate()));
+    rows.forEach((values) => book.getWorksheet('Products').addRow(values));
+    return Buffer.from(await book.xlsx.writeBuffer());
+  };
+  const currentRow = (number, specs = 'RAM: 16GB\nStorage: 512GB SSD') => [
+    number, 'IdeaPad', `Current format ${number}`, 'Lenovo', 'Laptop', 'Branded Laptop', '',
+    45999, 42999, 2, 'https://www.lenovo.com/in/en/', '1 Year', '', specs,
+  ];
+  const currentWorkbook = await makeCurrentWorkbook([
+    currentRow('CURRENT-001'), currentRow('CURRENT-002', 'RAM: 8GB; Storage: 256GB SSD'),
+    currentRow('CURRENT-003', 'RAM: 16GB  Storage: 1TB SSD'),
+  ]);
+  const currentPreview = await previewProductImport(currentWorkbook);
+  assert.equal(currentPreview.valid, 3);
+  assert.equal(currentPreview.invalid, 0);
+  assert.equal(currentPreview.imageCount, 0);
+  const currentImport = await commitProductImport(currentWorkbook);
+  assert.equal(currentImport.created, 3, 'Only Products sheet rows are imported');
+  const currentProduct = await Product.findOne({ modelNumber: 'CURRENT-001' }).lean();
+  assert.match(currentProduct.sku, /^VNX-/);
+  assert.equal(currentProduct.images.length, 0);
+  assert.equal(currentProduct.isActive, true);
+  assert.equal(currentProduct.specifications.find((spec) => spec.key === 'Storage').value, '512GB SSD');
+  assert.equal(currentProduct.specifications.find((spec) => spec.key === 'Warranty').value, '1 Year');
+  assert.equal((await Product.findOne({ modelNumber: 'CURRENT-003' }).lean()).specifications.find((spec) => spec.key === 'Storage').value, '1TB SSD');
+  const malformedBatch = await makeCurrentWorkbook([
+    currentRow('CURRENT-GOOD'), currentRow('CURRENT-BAD', 'RAM 16GB'),
+  ]);
+  assert.match((await previewProductImport(malformedBatch)).rows[1].errors.join(' '), /Specification.*name and value/);
+  await assert.rejects(() => commitProductImport(malformedBatch), /invalid rows/i);
+  assert.equal(await Product.countDocuments({ modelNumber: { $in: ['CURRENT-GOOD', 'CURRENT-BAD'] } }), 0);
+  const repeatedCurrent = await makeCurrentWorkbook([currentRow('SAME-MODEL'), currentRow('SAME-MODEL')]);
+  assert.equal((await previewProductImport(repeatedCurrent)).invalid, 1);
+  const currentNoRam = await makeCurrentWorkbook([currentRow('CURRENT-NORAM', 'Storage: 512GB SSD')]);
+  assert.match((await previewProductImport(currentNoRam)).rows[0].errors.join(' '), /Memory is required/);
+  const newFormatCategory = currentRow('CURRENT-NEW-CATEGORY', 'Display: 11 inch');
+  newFormatCategory[3] = 'New Tablet Brand';
+  newFormatCategory[4] = 'New Tablets';
+  newFormatCategory[5] = 'Full Size';
+  newFormatCategory[6] = 'WiFi';
+  const newFormatHeaderOnly = currentRow('CURRENT-HEADER-ONLY', 'Size: 10 inch');
+  newFormatHeaderOnly[3] = 'New Tablet Brand';
+  newFormatHeaderOnly[4] = 'New Tablets';
+  newFormatHeaderOnly[5] = '';
+  const newFormatWorkbook = await makeCurrentWorkbook([newFormatCategory, newFormatHeaderOnly]);
+  const newFormatPreview = await previewProductImport(newFormatWorkbook);
+  assert.equal(newFormatPreview.valid, 2);
+  assert.deepEqual(newFormatPreview.newCategories.map((item) => item.name), ['New Tablets', 'Full Size', 'WiFi']);
+  assert.deepEqual(newFormatPreview.newBrands.map((item) => item.name), ['New Tablet Brand']);
+  assert.equal((await commitProductImport(newFormatWorkbook)).created, 2);
+  const newHeader = await Category.findOne({ name: 'New Tablets' }).lean();
+  assert.equal(String((await Product.findOne({ modelNumber: 'CURRENT-HEADER-ONLY' }).lean()).categoryId), String(newHeader._id));
   console.log('Product import integration passed: template, preview, images, header/main categories, database and catalog.');
 } finally {
   if (server) await new Promise((resolve) => server.close(resolve));

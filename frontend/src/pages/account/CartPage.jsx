@@ -309,6 +309,11 @@ export const CartPage = () => {
     };
   }, [items, selectedItemIds]);
 
+  const selectedLineCount = items.filter((item) => {
+    const product = item.productId || {};
+    return selectedItemIds.has(String(product._id || item.productId || item._id));
+  }).length;
+
   // Proceed to Checkout Handler
   const handleProceedCheckout = () => {
     if (selectedItemIds.size === 0) {
@@ -426,7 +431,7 @@ export const CartPage = () => {
   }
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 2xl:px-12 py-6 space-y-10 bg-white text-gray-900 min-h-screen">
+    <div className={`storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 py-6 space-y-8 bg-white text-gray-900 min-h-screen ${items.length ? 'pb-24 md:pb-6' : ''}`}>
       
       {/* 1. TOP HEADER (Matching Mega Jaipur Reference Image) */}
       <div className="flex items-baseline gap-2.5 border-b border-gray-200 pb-3">
@@ -466,7 +471,49 @@ export const CartPage = () => {
              ======================================================== */}
           <div className="lg:col-span-8 space-y-4">
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-2xs">
-              <div className="overflow-x-auto">
+              <div className="space-y-3 p-3 md:hidden">
+                <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs font-semibold text-gray-800">
+                  <input type="checkbox" checked={selectedLineCount === items.length} onChange={handleToggleSelectAll} className="h-4 w-4 accent-[#800020]" />
+                  <span className="flex-1">Select all items</span>
+                  <span className="text-gray-500">{selectedLineCount}/{items.length}</span>
+                </label>
+                {items.map((item) => {
+                  const prod = item.productId || {};
+                  const prodId = String(prod._id || item.productId || item._id);
+                  const unitPrice = item.priceSnapshot !== undefined ? item.priceSnapshot : (prod.standardPrice || prod.price || 0);
+                  const availableStock = getAvailableStock(prod);
+                  const isAtStockLimit = availableStock !== null && (item.quantity || 1) >= availableStock;
+                  const imgUrl = prod.images?.[0]?.url || prod.image || '';
+                  return (
+                    <div key={prodId} className={`rounded-lg border border-gray-200 bg-white p-3 ${selectedItemIds.has(prodId) ? '' : 'opacity-60'}`}>
+                      <div className="flex items-start gap-2.5">
+                        <input type="checkbox" aria-label={`Select ${prod.name || 'product'}`} checked={selectedItemIds.has(prodId)} onChange={() => handleToggleSelectItem(prodId)} className="mt-3 h-4 w-4 shrink-0 accent-[#800020]" />
+                        <Link to={buildProductPath(prod)} className="flex h-16 w-16 shrink-0 items-center justify-center rounded border border-gray-200 bg-white p-1">
+                          {imgUrl ? <img src={imgUrl} alt={prod.name || 'Product'} className="max-h-full max-w-full object-contain" /> : <span className="text-[10px] text-gray-400">No image</span>}
+                        </Link>
+                        <div className="min-w-0 flex-1">
+                          <Link to={buildProductPath(prod)} className="line-clamp-2 text-xs font-semibold leading-snug text-gray-900">{prod.name || 'Vinexus Product'}</Link>
+                          <p className="mt-1 truncate text-[10px] text-gray-600">Model: {prod.modelNumber || prod.model || '—'}</p>
+                          <p className="mt-1 text-[11px] font-semibold text-gray-800">{formatCurrency(unitPrice)} each</p>
+                        </div>
+                        <button type="button" onClick={() => handleRemoveItem(prodId, prod.name)} disabled={updatingItemId === prodId} aria-label={`Remove ${prod.name || 'product'}`} className="p-1 text-gray-500 hover:text-rose-600"><Trash2 className="h-4 w-4" /></button>
+                      </div>
+                      <div className="mt-3 flex items-end justify-between gap-2 border-t border-gray-100 pt-2.5">
+                        <div>
+                          <div className="inline-flex items-center overflow-hidden rounded border border-gray-300 bg-white">
+                            <button type="button" onClick={() => handleUpdateQuantity(prodId, (item.quantity || 1) - 1, prod)} disabled={(item.quantity || 1) <= 1 || updatingItemId === prodId} aria-label="Decrease quantity" className="flex h-8 w-8 items-center justify-center disabled:opacity-30"><Minus className="h-4 w-4" /></button>
+                            <span className="flex h-8 w-8 items-center justify-center border-x border-gray-200 text-xs font-semibold">{item.quantity || 1}</span>
+                            <button type="button" onClick={() => handleUpdateQuantity(prodId, (item.quantity || 1) + 1, prod)} disabled={updatingItemId === prodId || availableStock === 0} aria-label="Increase quantity" className="flex h-8 w-8 items-center justify-center disabled:opacity-30"><Plus className="h-4 w-4" /></button>
+                          </div>
+                          {isAtStockLimit && <p className="mt-1 text-[10px] font-semibold text-[#800020]">Limited stock</p>}
+                        </div>
+                        <span className="text-sm font-bold text-[#800020]">{formatCurrency(unitPrice * (item.quantity || 1))}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-[#f5edf6] text-xs font-semibold text-[#420b45] uppercase tracking-wider border-y border-[#eddced] select-none">
@@ -635,7 +682,7 @@ export const CartPage = () => {
           {/* ========================================================
               RIGHT COLUMN: ORDER SUMMARY CARD (Matching Reference Image)
              ======================================================== */}
-          <div className="lg:col-span-4 sticky top-24 space-y-4">
+          <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-4">
             <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-2xs space-y-4 text-left">
               <h2 className="text-base font-semibold text-[#420b45] tracking-tight">
                 Order Summary
@@ -722,6 +769,11 @@ export const CartPage = () => {
           </div>
         </div>
       )}
+
+      {items.length > 0 && <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-gray-200 bg-white px-4 py-3 shadow-[0_-6px_20px_rgba(0,0,0,0.08)] md:hidden">
+        <div className="min-w-0 flex-1"><p className="text-[10px] text-gray-600">TOTAL ({selectedCount} ITEMS)</p><p className="truncate text-base font-bold text-[#800020]">{formatCurrency(grandTotal)}</p></div>
+        <button type="button" onClick={handleProceedCheckout} disabled={selectedCount === 0} className="min-h-10 rounded-md bg-[#800020] px-4 text-xs font-bold text-white disabled:opacity-50">Send Enquiry</button>
+      </div>}
 
       {/* 4. FOOTER is rendered automatically by PublicLayout below this main container */}
     </div>

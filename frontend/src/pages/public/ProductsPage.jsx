@@ -32,6 +32,7 @@ import {
   Layers,
   Cpu,
   Check,
+  ArrowUpDown,
 } from 'lucide-react';
 
 const SORT_OPTIONS = [
@@ -543,7 +544,7 @@ export const ProductsPage = () => {
   if (!categoriesLoaded && (targetCategorySlug || initialCategory)) {
     return (
       <div className="w-full bg-[#f8f9fa]">
-        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-0 space-y-2">
+        <div className="storefront-container px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-0 space-y-2">
           <div className="min-h-12 flex items-center justify-center">
             <div className="h-8 w-48 rounded bg-gray-200 animate-pulse" aria-label="Loading category" />
           </div>
@@ -551,7 +552,7 @@ export const ProductsPage = () => {
             <aside className="hidden lg:block lg:col-span-3 xl:col-span-3 2xl:col-span-2 bg-white rounded-lg border border-gray-200 p-4">
               <FilterSidebarSkeleton />
             </aside>
-            <div className="lg:col-span-9 xl:col-span-9 2xl:col-span-10 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-3 sm:gap-3.5">
+            <div className="lg:col-span-9 xl:col-span-9 2xl:col-span-10 storefront-product-grid gap-3 sm:gap-3.5">
               {[...Array(12)].map((_, i) => <ProductCardSkeleton key={i} />)}
             </div>
           </div>
@@ -562,14 +563,13 @@ export const ProductsPage = () => {
 
   return (
     <div className="w-full bg-[#f8f9fa]">
-      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-0 space-y-2">
+      <div className="storefront-container px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-0 space-y-2">
         {/* 1. BREADCRUMBS & CENTERED BRAND/CATEGORY TITLE (matching Screenshot) */}
-        <div className="relative flex min-h-12 flex-col items-center justify-center gap-2 lg:flex-row">
+        <div className="relative flex min-h-12 items-center justify-between gap-2 lg:justify-center">
           {/* Breadcrumb row */}
           <nav
             aria-label="Breadcrumb"
-            className="flex w-full min-w-0 max-w-full items-center flex-nowrap gap-2 overflow-x-auto whitespace-nowrap text-sm sm:text-base text-[#800020] font-medium lg:absolute lg:left-0 lg:w-auto lg:max-w-[35%]"
-            className="flex w-full min-w-0 max-w-full items-center flex-nowrap gap-2 overflow-x-auto whitespace-nowrap text-sm sm:text-base text-[#800020] font-medium lg:absolute lg:left-0 lg:w-auto lg:max-w-[35%]"
+            className="hidden md:flex w-full min-w-0 max-w-full items-center flex-nowrap gap-2 overflow-x-auto whitespace-nowrap text-sm sm:text-base text-[#800020] font-medium lg:absolute lg:left-0 lg:w-auto lg:max-w-[35%]"
           >
             {breadcrumbTrail.map((crumb, idx) => (
               <React.Fragment key={crumb.label + idx}>
@@ -589,15 +589,15 @@ export const ProductsPage = () => {
           </nav>
 
           {/* Centered Large Title (matching Screenshot: e.g. "ACER") */}
-          <h1 className="text-2xl sm:text-3xl font-black text-[#800020] tracking-tight text-center">
+          <h1 className="min-w-0 flex-1 truncate text-lg sm:text-2xl lg:flex-none lg:text-3xl font-black text-[#800020] tracking-tight text-left lg:text-center">
             {pageTitle}
           </h1>
 
-          <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end lg:absolute lg:right-0">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 lg:absolute lg:right-0">
             <button
               type="button"
               onClick={() => setIsMobileFilterOpen(true)}
-              className="lg:hidden flex items-center gap-1.5 px-3 py-2.5 rounded-lg border border-gray-300 bg-white text-xs font-bold text-gray-700 hover:border-[#800020] transition-colors cursor-pointer"
+              className="order-2 lg:hidden flex items-center gap-1.5 px-2.5 sm:px-3 py-2.5 rounded-full sm:rounded-lg border border-gray-300 bg-white text-xs font-bold text-gray-700 hover:border-[#800020] transition-colors cursor-pointer"
             >
               <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
               <span>Filters</span>
@@ -607,10 +607,12 @@ export const ProductsPage = () => {
                 <button
                   type="button"
                   aria-label="Sort products"
-                  className="w-48 flex items-center justify-between gap-3 text-sm font-semibold text-gray-800 bg-white border border-[#800020] rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#800020]/20 cursor-pointer shadow-2xs"
+                  className="order-1 flex w-auto sm:w-48 items-center justify-between gap-1.5 sm:gap-3 text-xs sm:text-sm font-semibold text-gray-800 bg-white border border-[#800020] rounded-full sm:rounded-lg px-2.5 sm:px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#800020]/20 cursor-pointer shadow-2xs"
                 >
-                  <span>{SORT_OPTIONS.find((option) => option.value === sortOption)?.label || 'Default'}</span>
-                  <ChevronDown className="w-4 h-4 text-[#800020]" />
+                  <ArrowUpDown className="h-3.5 w-3.5 text-[#800020] sm:hidden" />
+                  <span className="sm:hidden">Sort</span>
+                  <span className="hidden sm:inline">{SORT_OPTIONS.find((option) => option.value === sortOption)?.label || 'Default'}</span>
+                  <ChevronDown className="hidden sm:block w-4 h-4 text-[#800020]" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 border-[#800020]/25">
@@ -645,7 +647,7 @@ export const ProductsPage = () => {
           <main className="relative lg:col-span-9 xl:col-span-9 2xl:col-span-10 space-y-4 min-h-80">
             {/* PRODUCT CARDS HIGH-DENSITY GRID (matching Screenshot: 4-5 cards per row on large displays) */}
             {isLoading && displayedProducts.length === 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-3 sm:gap-3.5">
+              <div className="storefront-product-grid gap-3 sm:gap-3.5">
                 {[...Array(12)].map((_, i) => (
                   <ProductCardSkeleton key={i} />
                 ))}
@@ -654,7 +656,7 @@ export const ProductsPage = () => {
               <ErrorState title="Catalog Error" description={error} onRetry={() => fetchProducts()} />
             ) : displayedProducts.length > 0 ? (
               <>
-                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-3 sm:gap-3.5">
+                <div className="storefront-product-grid gap-3 sm:gap-3.5">
                   {displayedProducts.map((product) => (
                     <ProductCard
                       key={product._id}
@@ -703,8 +705,10 @@ export const ProductsPage = () => {
         onClose={() => setIsMobileFilterOpen(false)}
         position="left"
         title="Filter Products"
+        className="!max-w-[min(90vw,380px)]"
+        contentClassName="!p-3"
       >
-        <div className="p-4 overflow-y-auto max-h-[85vh]">{renderSidebarFilters()}</div>
+        <div>{renderSidebarFilters()}</div>
       </Drawer>
     </div>
   );

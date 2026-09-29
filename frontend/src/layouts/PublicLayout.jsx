@@ -31,6 +31,7 @@ import {
   Menu,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
   ArrowRight,
   Laptop as LaptopIcon,
   Monitor,
@@ -778,12 +779,20 @@ const PublicLayout = () => {
         </div>
 
         {/* Main Header Row */}
-        <div className="w-full px-3 sm:px-5 lg:px-6 min-[1750px]:px-8 2xl:px-10 py-3 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-3 lg:gap-4 min-[1750px]:gap-5 border-b border-gray-200">
+        <div className="storefront-container bg-[#800020] md:bg-white px-3 sm:px-5 lg:px-6 2xl:px-8 py-2 md:py-3 sm:py-3.5 flex items-center justify-between gap-1.5 sm:gap-3 lg:gap-4 min-[1750px]:gap-5 border-b border-gray-200">
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="md:hidden flex h-9 w-8 shrink-0 items-center justify-center text-white"
+            aria-label="Open menu"
+          >
+            <Menu className="h-6 w-6" />
+          </button>
           
           {/* Logo & Brand Name */}
-          <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
-            <Logo className="w-10 h-10 sm:w-12 sm:h-12 object-contain group-hover:scale-105 transition-transform" />
-            <div className="flex flex-col text-left">
+          <Link to="/" className="flex items-center gap-2.5 shrink-0 group" aria-label="Vinexus home">
+            <Logo className="w-8 h-8 sm:w-12 sm:h-12 object-contain rounded bg-white p-0.5 md:bg-transparent md:p-0 group-hover:scale-105 transition-transform" />
+            <div className="hidden md:flex flex-col text-left">
               <div className="flex items-center" aria-label={websiteName}>
                 <span className="text-2xl sm:text-3xl font-black tracking-tight text-primary">{websiteName.slice(0, 2)}</span>
                 <span className="text-2xl sm:text-3xl font-black tracking-tight text-gray-900">{websiteName.slice(2)}</span>
@@ -798,7 +807,7 @@ const PublicLayout = () => {
           <form
             ref={desktopSearchRef}
             onSubmit={handleSearchSubmit}
-            className="flex-1 min-w-0 max-w-3xl xl:max-w-4xl min-[1750px]:max-w-3xl 2xl:max-w-4xl hidden md:flex items-center mx-1 lg:mx-2 min-[1750px]:mx-3 relative"
+            className="flex-1 min-w-0 max-w-4xl hidden md:flex items-center mx-1 lg:mx-2 min-[1750px]:mx-3 relative"
           >
             <div className="relative w-full flex items-center">
               <input
@@ -848,15 +857,15 @@ const PublicLayout = () => {
           </form>
 
           {/* Action Icons & Details Cluster */}
-          <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 min-[1750px]:gap-4 shrink-0">
+          <div className="ml-auto flex items-center gap-1 sm:gap-2 lg:gap-3 min-[1750px]:gap-4 shrink-0">
             
             {/* Contact details appear when browser zoom-out provides a wide viewport. */}
             <a
               href={`tel:${CONTACT_PHONE_LINK}`}
-              className="hidden md:flex items-center gap-2 text-gray-800 hover:text-primary transition-colors p-1 group"
+              className="flex items-center gap-2 text-white md:text-gray-800 hover:text-primary transition-colors p-1 group"
               title={`Call ${CONTACT_PHONE_DISPLAY}`}
             >
-              <Phone className="w-5 h-5 sm:w-6 sm:h-6 text-gray-800 group-hover:text-primary group-hover:scale-105 transition-all shrink-0" />
+              <Phone className="w-5 h-5 sm:w-6 sm:h-6 text-white md:text-gray-800 group-hover:text-primary group-hover:scale-105 transition-all shrink-0" />
               <div className="hidden min-[1750px]:flex flex-col text-left leading-tight">
                 <span className="text-xs font-black text-gray-900 whitespace-nowrap">{CONTACT_PHONE_DISPLAY}</span>
                 <span className="text-[10px] text-gray-500 font-medium whitespace-nowrap">Call Us</span>
@@ -868,7 +877,7 @@ const PublicLayout = () => {
               href={STORE_MAP_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden md:flex items-center gap-2 text-gray-800 hover:text-primary transition-colors p-1 group"
+              className="hidden sm:flex items-center gap-2 text-gray-800 hover:text-primary transition-colors p-1 group"
               title="Store Location - Directions to the Store"
             >
               <Store className="w-5 h-5 sm:w-6 sm:h-6 text-gray-800 group-hover:text-primary group-hover:scale-105 transition-all shrink-0" />
@@ -883,7 +892,7 @@ const PublicLayout = () => {
               href={`https://wa.me/${WHATSAPP_NUMBER}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden md:flex items-center gap-2 hover:opacity-85 transition-opacity p-1 group"
+              className="flex items-center gap-2 hover:opacity-85 transition-opacity p-1 group"
               title="Chat on WhatsApp"
             >
               <div className="w-5 h-5 sm:w-6 sm:h-6 text-[#25D366] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
@@ -901,18 +910,18 @@ const PublicLayout = () => {
             {isAuthenticated ? (
               <Link
                 to={getProfileLink() || '/account/profile'}
-                className="flex flex-col items-center text-gray-700 hover:text-primary transition-colors text-center px-1 group"
+                className="flex flex-col items-center text-white md:text-gray-700 hover:text-primary transition-colors text-center px-1 group"
               >
                 <User className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-105 transition-transform" />
-                <span className="text-[10px] sm:text-[11px] font-semibold mt-1">Account</span>
+                <span className="hidden md:block text-[10px] sm:text-[11px] font-semibold mt-1">Account</span>
               </Link>
             ) : (
               <Link
                 to="/login"
-                className="flex flex-col items-center text-gray-700 hover:text-primary transition-colors text-center px-1 group"
+                className="flex flex-col items-center text-white md:text-gray-700 hover:text-primary transition-colors text-center px-1 group"
               >
                 <LogIn className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-105 transition-transform" />
-                <span className="text-[10px] sm:text-[11px] font-semibold mt-1">Login</span>
+                <span className="hidden md:block text-[10px] sm:text-[11px] font-semibold mt-1">Login</span>
               </Link>
             )}
 
@@ -958,12 +967,12 @@ const PublicLayout = () => {
             >
               <Link
                 to="/cart"
-                className="relative flex items-center border-[1.5px] border-primary rounded-md hover:shadow-sm transition-all group shrink-0 h-10 sm:h-11 overflow-visible"
+                className="relative flex items-center border-[1.5px] border-transparent md:border-primary rounded-md hover:shadow-sm transition-all group shrink-0 h-9 md:h-11 overflow-visible"
               >
                 <span className="hidden sm:flex px-2.5 sm:px-3 text-xs sm:text-sm font-semibold text-gray-900 bg-white group-hover:bg-gray-50 transition-colors whitespace-nowrap rounded-l-[5px] h-full items-center">
                   {cartCount} item(s) - ₹{(Number(cartSubtotal) || 0).toLocaleString('en-IN')}
                 </span>
-                <div className="relative bg-primary text-white w-10 sm:w-11 h-full flex items-center justify-center rounded-r-[4px]">
+                <div className="relative bg-primary text-white w-9 sm:w-11 h-full flex items-center justify-center rounded-r-[4px]">
                   <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 {cartCount > 0 && (
@@ -976,7 +985,7 @@ const PublicLayout = () => {
               {/* Cart Dropdown on Hover (Matching Image 1) */}
               {isCartHovered && (
                 <div
-                  className="absolute right-0 top-full pt-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150"
+                  className="hidden md:block absolute right-0 top-full pt-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150"
                   onMouseEnter={() => {
                     if (cartCloseTimeoutRef.current) clearTimeout(cartCloseTimeoutRef.current);
                   }}
@@ -1086,21 +1095,14 @@ const PublicLayout = () => {
               )}
             </div>
 
-            {/* Mobile Menu Hamburger */}
-            <button
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="md:hidden p-1.5 text-gray-700 hover:text-primary rounded border border-gray-200"
-              aria-label="Toggle Mobile Menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
           </div>
         </div>
 
         {/* Mobile Search Bar Row (small screens) */}
-        <div className="md:hidden px-3 pb-2.5" ref={mobileSearchRef}>
-          <form onSubmit={handleSearchSubmit} className="flex w-full items-center relative">
-            <div className="relative w-full flex items-center">
+        <div className="md:hidden bg-[#800020] px-3 pb-3" ref={mobileSearchRef}>
+          <form onSubmit={handleSearchSubmit} className="flex w-full items-center relative rounded-full bg-white overflow-visible">
+            <button type="submit" className="pl-3 text-gray-600" aria-label="Search products"><Search className="h-4 w-4" /></button>
+            <div className="relative min-w-0 flex-1 flex items-center">
               <input
                 type="text"
                 placeholder="Search products..."
@@ -1112,22 +1114,18 @@ const PublicLayout = () => {
                   setHeaderSearch(e.target.value);
                   if (e.target.value.trim()) setIsSearchOpen(true);
                 }}
-                className="w-full h-9 px-3 bg-gray-50 text-gray-900 placeholder-gray-400 text-xs rounded-l border border-r-0 border-gray-300 focus:border-primary focus:outline-none"
+                className="w-full h-10 px-2 bg-transparent text-gray-900 placeholder-gray-400 text-xs border-0 focus:outline-none"
               />
               {renderSearchDropdown()}
             </div>
-            <button
-              type="submit"
-              className="h-9 px-3.5 bg-primary text-white text-xs font-bold rounded-r flex items-center justify-center shrink-0"
-            >
-              <Search className="w-3.5 h-3.5" />
-            </button>
+            <span className="px-1.5 text-gray-500" aria-hidden="true"><Mic className="h-4 w-4" /></span>
+            <span className="pl-1.5 pr-3 text-gray-500" aria-hidden="true"><Camera className="h-4 w-4" /></span>
           </form>
         </div>
 
         {/* 3. CATEGORY NAVIGATION BAR WITH MEGA MENU ON HOVER (Compact sleek scale matching Mega Jaipur) */}
         <nav className="hidden md:block w-full bg-[#800020] text-white shadow-xs relative z-40 select-none">
-          <div className="w-full px-2 sm:px-3 lg:px-4 2xl:px-6 flex items-center relative h-[38px] sm:h-[40px]">
+          <div className="storefront-container px-2 sm:px-3 lg:px-4 2xl:px-6 flex items-center relative h-[38px] sm:h-[40px]">
             
             {/* Scroll Left Button (if categories overflow on narrow screens) */}
             {canScrollLeft && (
@@ -1315,81 +1313,78 @@ const PublicLayout = () => {
       <Drawer
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
-        title="Menu"
         position="left"
-        size="sm"
+        showHeader={false}
+        className="!max-w-[min(88vw,380px)]"
+        contentClassName="!p-0 !space-y-0"
+        footer={<div className="grid w-full grid-cols-2 gap-2">
+          <a href={`tel:${CONTACT_PHONE_LINK}`} className="flex items-center justify-center gap-2 rounded-full border border-[#800020]/20 bg-[#800020]/5 px-3 py-2.5 text-xs font-semibold text-[#800020]"><Phone className="h-4 w-4" /> Call us</a>
+          <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-semibold text-emerald-800">WhatsApp</a>
+        </div>}
       >
-        <div className="space-y-4 pt-2 text-sm text-left">
-          <div className="flex flex-col gap-1 font-medium border-b border-gray-200 pb-3">
-            <Link to="/" className="px-3 py-2 rounded hover:bg-gray-100">Home</Link>
-            <Link to="/wishlist" className="px-3 py-2 rounded hover:bg-gray-100 flex items-center justify-between">
-              <span>Wishlist</span>
-              {wishlistCount > 0 && (
-                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-primary/10 text-primary">
-                  {wishlistCount}
-                </span>
-              )}
-            </Link>
-            <Link to="/brands" className="px-3 py-2 rounded hover:bg-gray-100 flex items-center justify-between">
-              <span>Shop By Brand</span>
-              <Store className="w-4 h-4 text-primary" />
-            </Link>
-            <Link to="/cart" className="px-3 py-2 rounded hover:bg-gray-100">
-              Shopping Cart ({cartCount})
-            </Link>
-            <Link to="/account/enquiries" className="px-3 py-2 rounded hover:bg-gray-100">Enquiries</Link>
+        <div className="text-left" onClick={(event) => { if (event.target.closest('a')) setIsMobileMenuOpen(false); }}>
+          <div className="space-y-4 bg-[#800020] px-4 py-5 text-white">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15"><User className="h-5 w-5" /></span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold">{isAuthenticated ? (user?.fullName || user?.name || 'My account') : 'Welcome to Vinexus'}</p>
+                <p className="text-xs text-white/80">{isAuthenticated ? 'Manage your account and enquiries' : 'Sign in to manage your enquiries'}</p>
+              </div>
+              <button type="button" onClick={() => setIsMobileMenuOpen(false)} aria-label="Close menu" className="rounded-full p-2 text-white hover:bg-white/15"><X className="h-5 w-5" /></button>
+            </div>
+            {isAuthenticated ? (
+              <div className="grid grid-cols-2 gap-2">
+                <Link to={getProfileLink() || '/account/profile'} className="rounded-md bg-white py-2.5 text-center text-xs font-bold text-[#800020]">My Account</Link>
+                <button type="button" onClick={handleLogout} className="rounded-md border border-white/50 py-2.5 text-xs font-bold text-white">Log out</button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <Link to="/login" className="rounded-md bg-white py-2.5 text-center text-xs font-bold text-[#800020]">Login</Link>
+                <Link to="/register" className="rounded-md border border-white/50 py-2.5 text-center text-xs font-bold text-white">Register</Link>
+              </div>
+            )}
           </div>
-
-          <div className="font-semibold text-xs text-gray-500 uppercase tracking-wider px-3">
-            Categories
-          </div>
-          <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
-            {categoriesLoading && <div role="status" aria-label="Loading categories" className="space-y-2 px-3 py-2">{[1, 2, 3, 4, 5].map((item) => <Skeleton key={item} className="h-8 w-full" />)}</div>}
-            {categoriesError && <button onClick={() => setCategoryRetry((value) => value + 1)}>{categoriesError}. Retry</button>}
-            {categoryTree.map((header) => (
-              <details key={header._id} className="px-3 py-2">
-                <summary className="font-semibold cursor-pointer">{header.name}</summary>
-                <Link className="block py-2 text-primary" to={buildCategoryPath(header, allCategories)}>View all {header.name}</Link>
-                {header.mainCategories.map((main) => (
-                  <div key={main._id} className="pl-3 py-1">
-                    <Link className="font-medium" to={buildCategoryPath(main, allCategories)}>{main.name}</Link>
-                    {main.subCategories.map((sub) => <Link key={sub._id} className="block pl-3 py-1 text-gray-600" to={buildCategoryPath(sub, allCategories)}>{sub.name}</Link>)}
-                  </div>
-                ))}
-              </details>
+          <div className="grid grid-cols-4 gap-1.5 border-b border-gray-200 p-3">
+            {[
+              { to: '/cart', label: 'Cart', icon: ShoppingCart },
+              { to: '/wishlist', label: 'Wishlist', icon: Heart },
+              { to: '/account/enquiries', label: 'Enquiries', icon: FileText },
+              { to: '/brands', label: 'Brands', icon: Store },
+            ].map(({ to, label, icon: Icon }) => (
+              <Link key={to} to={to} className="flex min-w-0 flex-col items-center gap-1.5 rounded-md border border-gray-200 bg-[#800020]/5 px-1 py-3 text-[10px] font-semibold text-[#800020]">
+                <Icon className="h-5 w-5" /><span className="truncate max-w-full">{label}</span>
+              </Link>
             ))}
           </div>
-
-          <div className="border-t border-gray-200 pt-3 space-y-2">
-            {isAuthenticated ? (
-              <>
-                <div className="px-3 text-xs text-gray-500">
-                  Logged in as <strong className="text-gray-800">{user?.fullName || user?.email}</strong>
+          <div className="px-4 pt-3 text-[11px] font-bold uppercase tracking-widest text-gray-500">Shop by category</div>
+          <div className="px-2 pb-5">
+            {categoriesLoading && <div role="status" aria-label="Loading categories" className="space-y-2 px-3 py-2">{[1, 2, 3, 4, 5].map((item) => <Skeleton key={item} className="h-10 w-full" />)}</div>}
+            {categoriesError && <button onClick={() => setCategoryRetry((value) => value + 1)} className="px-3 py-3 text-sm text-[#800020]">{categoriesError}. Retry</button>}
+            {categoryTree.map((header) => (
+              <details key={header._id} className="group border-b border-gray-100">
+                <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-3 text-sm font-medium text-gray-900 [&::-webkit-details-marker]:hidden">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[#800020]/10 text-[#800020]">{getHeaderCategoryIcon(header.name, header.slug)}</span>
+                  <span className="min-w-0 flex-1 truncate">{header.name}</span>
+                  <ChevronDown className="h-4 w-4 shrink-0 text-gray-500 transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="space-y-1 bg-[#800020]/[0.03] px-4 pb-3 pl-14 text-xs">
+                  {header.mainCategories.map((main) => (
+                    <div key={main._id} className="space-y-1">
+                      <Link className="block py-2 font-semibold text-gray-800" to={buildCategoryPath(main, allCategories)}>{main.name}</Link>
+                      {main.subCategories.map((sub) => <Link key={sub._id} className="block py-1.5 pl-3 text-gray-600" to={buildCategoryPath(sub, allCategories)}>{sub.name}</Link>)}
+                    </div>
+                  ))}
+                  <Link className="block pt-2 font-semibold text-[#800020]" to={buildCategoryPath(header, allCategories)}>View all {header.name} →</Link>
                 </div>
-                {getProfileLink() && (
-                  <Link to={getProfileLink()} className="block px-3 py-2 bg-gray-100 rounded text-center font-bold text-xs">
-                    My Account
-                  </Link>
-                )}
-                <button
-                  onClick={logout}
-                  className="w-full text-center px-3 py-2 text-xs font-bold text-red-600 bg-red-50 rounded hover:bg-red-100 cursor-pointer"
-                >
-                  Sign Out
-                </button>
-              </>
-            ) : (
-              <Link to="/login" className="block text-center px-3 py-2 bg-primary text-white font-bold rounded text-xs">
-                Sign In / Register
-              </Link>
-            )}
+              </details>
+            ))}
           </div>
         </div>
       </Drawer>
 
       {/* 4. ADDED TO CART FLOATING TOAST POPUP (Matching Image 2) */}
       {addedCartToast && (
-        <div className="fixed top-20 right-4 sm:right-8 z-50 max-w-sm sm:max-w-md w-full bg-white rounded-2xl shadow-2xl border border-gray-200 border-l-4 border-l-emerald-500 overflow-hidden animate-in slide-in-from-top-4 duration-200 text-left">
+        <div className="fixed top-20 left-4 right-4 sm:left-auto sm:right-8 z-50 sm:max-w-md w-auto sm:w-full bg-white rounded-2xl shadow-2xl border border-gray-200 border-l-4 border-l-emerald-500 overflow-hidden animate-in slide-in-from-top-4 duration-200 text-left">
           <div className="p-4 space-y-2.5">
             {/* Top Row: Green Check Circle + Title + Close Button */}
             <div className="flex items-center justify-between">
@@ -1441,7 +1436,7 @@ const PublicLayout = () => {
       </main>
 
       {footerData && <footer className="w-full bg-[#111111] text-white px-6 pt-10 text-left">
-        <div className="mx-auto max-w-[1500px] grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-16 pb-9">
+        <div className="storefront-container grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-16 pb-9">
           <div className="space-y-3">
             <h4 className="font-bold text-xl">{footerData.aboutHeading || 'About'}</h4>
             {footerData.companyDescription && <p className="text-[15px] text-white/90 leading-7">{footerData.companyDescription}</p>}
@@ -1466,7 +1461,7 @@ const PublicLayout = () => {
             {footerData.email && <a className="flex items-center gap-2 hover:text-white hover:underline" href={`mailto:${footerData.email}`}><Mail className="w-4 h-4 shrink-0" /> {footerData.email}</a>}
           </div>
         </div>
-        <p className="mx-auto max-w-[1500px] border-t border-white/15 py-5 text-center text-sm text-white/90">
+        <p className="storefront-container border-t border-white/15 py-5 text-center text-sm text-white/90">
           {(footerData.copyrightText || '© {year} {company}. All Rights Reserved.').replace(/\{year\}/g, String(new Date().getFullYear())).replace(/\{company\}/g, footerData.companyName || '')}
         </p>
       </footer>}

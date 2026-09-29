@@ -332,7 +332,7 @@ export const BrandsPage = () => {
       </div>
 
       {/* Brands Grid (Wide Multi-Column Grid matching Mega Jaipur layout) */}
-      <div className="w-full max-w-[1920px] mx-auto px-2 sm:px-4 lg:px-8">
+      <div className="storefront-container px-2 sm:px-4 lg:px-8">
         
         {filteredBrands.length === 0 ? (
           <div className="text-center py-16 px-4 bg-white rounded-xl border border-gray-200 max-w-lg mx-auto shadow-2xs space-y-4">
@@ -357,7 +357,7 @@ export const BrandsPage = () => {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-9 gap-2.5 sm:gap-3.5">
+            <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2.5 sm:gap-3.5">
               {filteredBrands.map((brand) => (
                 <Link
                   key={brand._id || brand.slug || brand.name}

@@ -13,15 +13,15 @@ import Skeleton, { BrandCarouselSkeleton, ProductCardSkeleton } from '../../comp
 
 const HomePageSkeleton = () => (
   <div className="w-full min-h-screen bg-gray-50 pb-16 space-y-6 sm:space-y-8" role="status" aria-label="Loading storefront">
-    <Skeleton className="w-full h-[200px] sm:h-[260px] md:h-[320px] lg:h-[380px] xl:h-[430px] 2xl:h-[460px] rounded-none" />
+    <Skeleton className="w-full aspect-[12/5] sm:aspect-[5/2] lg:aspect-[15/4] rounded-none" />
 
-    <div className="w-full px-3 sm:px-6 lg:px-8 2xl:px-12">
+    <div className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12">
       <BrandCarouselSkeleton count={8} className="px-0" />
     </div>
 
-    <div className="w-full px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-4">
+    <div className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-4">
       <Skeleton className="h-6 w-44" />
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+      <div className="storefront-product-grid gap-3 sm:gap-4">
         {Array.from({ length: 6 }).map((_, index) => (
           <ProductCardSkeleton key={index} />
         ))}
@@ -118,7 +118,7 @@ export const HomePage = () => {
       </section>
 
       {/* 4. UPDATED PRODUCTS SECTION (Full Width Grid - Exactly 6 per row) */}
-      <section className="w-full px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3">
+      <section className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3">
         <div className="flex items-center justify-between border-b border-gray-200 pb-2">
           <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight text-left">
             Updated Products
@@ -131,7 +131,7 @@ export const HomePage = () => {
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-3 sm:gap-4">
+        <div className="storefront-product-grid gap-3 sm:gap-4">
           {updatedProducts.map((product) => (
             <ProductCard key={product._id} product={product} />
           ))}
@@ -139,7 +139,7 @@ export const HomePage = () => {
       </section>
 
       {/* 5. NEW ARRIVALS SECTION (Full Width Grid - Exactly 6 per row) */}
-      <section className="w-full px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3 pt-2 sm:pt-4">
+      <section className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3 pt-2 sm:pt-4">
         <div className="flex items-center justify-between border-b border-gray-200 pb-2">
           <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight text-left">
             New Arrivals
@@ -152,7 +152,7 @@ export const HomePage = () => {
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-3 sm:gap-4">
+        <div className="storefront-product-grid gap-3 sm:gap-4">
           {newArrivals.map((product) => (
             <ProductCard key={product._id} product={product} />
           ))}
@@ -167,7 +167,7 @@ export const HomePage = () => {
       {headerCategorySections.map((section) => (
         <section
           key={section.category._id || section.category.slug}
-          className="w-full px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3 pt-2 sm:pt-4"
+          className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3 pt-2 sm:pt-4"
         >
           {/* Category Header: Name only (NO View All option, matching Mega Jaipur) */}
           <div className="border-b border-gray-200 pb-2">
@@ -177,7 +177,7 @@ export const HomePage = () => {
           </div>
 
           {/* Up to 8 Products in responsive grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-3 sm:gap-4">
+          <div className="storefront-product-grid gap-3 sm:gap-4">
             {section.products.slice(0, 8).map((product) => (
               <ProductCard key={product._id} product={product} />
             ))}

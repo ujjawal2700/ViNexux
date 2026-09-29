@@ -15,12 +15,18 @@ import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../constants/errorCodes.js';
 
 const HEADERS = [
+  'Model Number', 'Model', 'Product Name', 'Brand', 'Header Category',
+  'Main Category (Optional)', 'Sub Category (Optional)', 'Standard Price',
+  'Dealer Price', 'Stock Quantity', 'Product URL', 'Warranty', 'Variant', 'Specifications',
+];
+const PREVIOUS_HEADERS = [
   'SKU', 'Model Number', 'Model', 'Product Name', 'Brand', 'Header Category',
   'Main Category', 'Sub Category', 'Standard Price', 'Dealer Price',
-  'Stock Quantity', 'Description', 'Information Phone', 'Warranty',
+  'Stock Quantity', 'Description', 'Information Phone', 'Product URL', 'Warranty',
   'Country of Origin', 'HSN Code', 'Variant', 'Specifications JSON',
   'Featured', 'Publish', 'Image Files',
 ];
+const LEGACY_HEADERS = PREVIOUS_HEADERS.filter((header) => header !== 'Product URL');
 const MAX_ROWS = 200;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const MAX_TOTAL_IMAGES = 500;
@@ -54,6 +60,21 @@ const booleanValue = (value, label, errors, blankDefault = false) => {
   return false;
 };
 
+const plainSpecifications = (value, errors) => {
+  if (!clean(value)) return [];
+  const entries = clean(value).split(/\r?\n|;|\s{2,}(?=[^:\s][^:]{0,49}:)/).map(clean).filter(Boolean);
+  return entries.flatMap((entry) => {
+    const separator = entry.indexOf(':');
+    const key = clean(entry.slice(0, separator));
+    const specValue = clean(entry.slice(separator + 1));
+    if (separator < 1 || !key || !specValue || key.length > 50 || specValue.length > 255) {
+      errors.push(`Specification "${entry.slice(0, 60)}" needs a name and value, like RAM: 16GB.`);
+      return [];
+    }
+    return [{ key, value: specValue }];
+  });
+};
+
 export const createProductImportTemplate = async () => {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Products');
@@ -62,25 +83,46 @@ export const createProductImportTemplate = async () => {
   sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF800020' } };
   sheet.getRow(1).alignment = { vertical: 'middle', wrapText: true };
   sheet.getRow(1).height = 34;
-  sheet.columns.forEach((column, index) => { column.width = index === 11 || index === 17 ? 34 : 23; });
+  sheet.columns.forEach((column, index) => { column.width = index === 2 ? 38 : index === 13 ? 46 : 24; });
   sheet.views = [{ state: 'frozen', ySplit: 1 }];
-  sheet.autoFilter = { from: 'A1', to: 'U1' };
-  for (const column of ['A', 'B', 'C']) sheet.getColumn(column).numFmt = '@';
+  sheet.autoFilter = { from: 'A1', to: 'N1' };
+  sheet.getColumn('A').numFmt = '@';
+  const examples = workbook.addWorksheet('Examples');
+  examples.addRow(HEADERS);
+  examples.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  examples.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF800020' } };
+  examples.getRow(1).height = 34;
+  examples.getRow(1).alignment = { vertical: 'middle', wrapText: true };
+  examples.columns.forEach((column, index) => { column.width = index === 2 ? 38 : index === 13 ? 46 : 24; });
+  examples.getColumn('A').numFmt = '@';
+  [
+    ['LAP-001', 'IdeaPad Slim 3', 'Lenovo IdeaPad Slim 3 Laptop', 'Lenovo', 'Laptop', 'Branded Laptop', '', 45999, 42999, 8, 'https://www.lenovo.com/in/en/', '1 Year', 'Standard', 'RAM: 16GB\nStorage: 512GB SSD\nScreen: 15.6 inch'],
+    ['TAB-001', 'Galaxy Tab A9', 'Samsung Galaxy Tab A9 Tablet', 'Samsung', 'Tablets', 'Full Size Tablet', '', 18999, 16999, 3, '', '1 Year', '', 'Display: 8.7 inch\nStorage: 64GB'],
+    ['CAM-001', 'Indoor Camera', 'Indoor WiFi Security Camera', 'CP Plus', 'Security', '', '', 2499, 2199, 0, '', '1 Year', '', 'Resolution: 2MP; Connectivity: WiFi'],
+  ].forEach((values) => {
+    const row = examples.addRow(values);
+    row.height = 55;
+    row.alignment = { vertical: 'top', wrapText: true };
+    row.eachCell((cell) => { cell.border = { bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } } }; });
+  });
+  examples.views = [{ state: 'frozen', ySplit: 1 }];
   const instructions = workbook.addWorksheet('Instructions');
   [
-    ['Vinexus Bulk Product Import'],
-    ['One product per row on the Products sheet. Keep the header names unchanged. Maximum 200 rows per upload.'],
-    ['Required: Model Number, Model, Product Name, Brand, Header Category, Standard Price, Dealer Price and Stock Quantity.'],
-    ['Missing brands and category paths are created automatically when the entire import succeeds. Main and Sub Categories are optional.'],
-    ['Model Number must be unique. SKU is optional; a unique SKU is generated when empty or already in use. Format model numbers as Text to preserve leading zeroes.'],
-    ['Image Files are optional. For images now, list comma-separated filenames and upload a matching ZIP. Images and logos can also be added later.'],
-    ['Specifications JSON: optional JSON object, e.g. {"RAM":"16GB","Storage":"512GB SSD"}. Required category filters must be included.'],
-    ['Featured and Publish: Yes or No. Blank Featured means No; blank Publish means Yes. Products can be visible before images are added.'],
-    ['Example row values: VNX-LAP-001 | 15IRH8-01 | IdeaPad Slim 3 | Lenovo IdeaPad Slim 3 | Lenovo | Laptop | Branded Laptop | (blank) | 45999 | 42999 | 8 | ... | laptop-front.png'],
-    ['Use Preview before Import. It lists new brands/categories and row errors. Import saves everything together or nothing.'],
+    ['Vinexus Bulk Product Import - Kaise Bharein'],
+    ['1. Products sheet me har product ke liye ek nayi row bharein. Upar wale column names na badlein. Ek baar me 200 products tak upload kar sakte hain.'],
+    ['2. Examples sheet me 3 sample products hain. Unhe dekhkar Products sheet bharein. Examples sheet ki rows upload nahi hongi.'],
+    ['3. Model Number, Model, Product Name, Brand, Header Category, dono Price aur Stock Quantity zaroor bharein. Har Model Number alag hona chahiye.'],
+    ['4. Main Category (Optional) aur Sub Category (Optional) khaali chhod sakte hain. Sub Category bharni ho to Main Category bhi bharein.'],
+    ['5. Naya brand ya category likh sakte hain. Upload safal hone par woh apne aap ban jayenge. Naam ki spelling ek jaisi rakhein.'],
+    ['6. Standard Price customer ke liye aur Dealer Price dealer ke liye hai. Dono me sirf number likhein. Stock nahi hai to Stock Quantity me 0 likhein.'],
+    ['7. Specifications me har detail "Name: Value" likhein, jaise RAM: 16GB. Agli line ke liye Alt+Enter dabayein. Semicolon (;) ya do spaces se bhi details alag kar sakte hain.'],
+    ['8. Product URL, Warranty aur Variant chahein to bharein. Product URL me original brand website ke product ka poora link likhein.'],
+    ['9. Product photo aur brand/category logo upload ke baad admin panel se laga sakte hain.'],
+    ['10. Pehle Preview Products dabayein. Error ho to Excel me theek karke phir Preview karein. Import tabhi karein jab sab rows sahi hon; error par koi product add nahi hoga.'],
   ].forEach((row) => instructions.addRow(row));
-  instructions.getColumn(1).width = 135;
+  instructions.getColumn(1).width = 125;
   instructions.getRow(1).font = { bold: true, size: 16, color: { argb: 'FF800020' } };
+  instructions.eachRow((row) => { row.height = row.number === 1 ? 34 : 38; row.alignment = { vertical: 'middle', wrapText: true }; });
   return workbook.xlsx.writeBuffer();
 };
 
@@ -91,12 +133,18 @@ const parseWorkbook = async (buffer) => {
   const sheet = workbook.getWorksheet('Products');
   if (!sheet) throw invalid('The workbook must contain a Products sheet.');
   const headers = sheet.getRow(1).values.slice(1).map(clean);
-  if (HEADERS.some((header, index) => headers[index] !== header)) throw invalid('The Products sheet headers differ from the downloaded template.');
+  const expectedHeaders = [HEADERS, PREVIOUS_HEADERS, LEGACY_HEADERS]
+    .find((candidate) => headers.length === candidate.length && candidate.every((header, index) => headers[index] === header));
+  if (!expectedHeaders) throw invalid('The Products sheet headers differ from the downloaded template.');
   const rows = [];
   sheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return;
-    const values = HEADERS.map((header, index) => cellText(row.getCell(index + 1)));
-    if (values.some(Boolean)) rows.push({ rowNumber, fields: Object.fromEntries(HEADERS.map((header, index) => [header, values[index]])) });
+    const values = expectedHeaders.map((header, index) => cellText(row.getCell(index + 1)));
+    if (values.some(Boolean)) {
+      const fields = Object.fromEntries(expectedHeaders.map((header, index) => [header, values[index]]));
+      if (!('Product URL' in fields)) fields['Product URL'] = '';
+      rows.push({ rowNumber, fields });
+    }
   });
   if (!rows.length) throw invalid('Add at least one product row to the Products sheet.');
   if (rows.length > MAX_ROWS) throw invalid(`Only ${MAX_ROWS} product rows are allowed per upload.`);
@@ -205,9 +253,11 @@ export const prepareProductImport = async (workbookBuffer, archiveBuffer) => {
     seenSkus.add(normalized(sku));
 
     const header = findOrPlanCategory(fields['Header Category'], null, 'Header', errors);
-    const main = fields['Main Category'] && header ? findOrPlanCategory(fields['Main Category'], header, 'Main', errors) : null;
-    if (fields['Sub Category'] && !fields['Main Category']) errors.push('Main Category is required when Sub Category is filled.');
-    const sub = fields['Sub Category'] && main ? findOrPlanCategory(fields['Sub Category'], main, 'Sub', errors) : null;
+    const mainName = fields['Main Category (Optional)'] ?? fields['Main Category'];
+    const subName = fields['Sub Category (Optional)'] ?? fields['Sub Category'];
+    const main = mainName && header ? findOrPlanCategory(mainName, header, 'Main', errors) : null;
+    if (subName && !mainName) errors.push('Main Category is required when Sub Category is filled.');
+    const sub = subName && main ? findOrPlanCategory(subName, main, 'Sub', errors) : null;
     const category = sub || main || header;
     const brand = findOrPlanBrand(fields.Brand, errors);
     const imageNames = clean(fields['Image Files']).split(',').map(clean).filter(Boolean);
@@ -235,6 +285,7 @@ export const prepareProductImport = async (workbookBuffer, archiveBuffer) => {
     for (const [column, key] of [['Warranty', 'Warranty'], ['Country of Origin', 'Country of Origin'], ['HSN Code', 'HSN Code'], ['Variant', 'Variant']]) {
       if (fields[column]) specifications.push({ key, value: fields[column] });
     }
+    specifications.push(...plainSpecifications(fields.Specifications, errors));
     if (fields['Specifications JSON']) {
       try {
         const parsed = JSON.parse(fields['Specifications JSON']);
@@ -251,7 +302,8 @@ export const prepareProductImport = async (workbookBuffer, archiveBuffer) => {
       categoryId: String(category?._id || ''), brandId: String(brand?._id || ''),
       standardPrice: numeric(fields['Standard Price'], 'Standard Price', errors),
       dealerPrice: numeric(fields['Dealer Price'], 'Dealer Price', errors),
-      description: fields.Description, informationPhone: fields['Information Phone'],
+      description: fields.Description || '', informationPhone: fields['Information Phone'] || '',
+      productUrl: fields['Product URL'],
       specifications: [...specifications, ...(brand ? [{ key: 'Brand', value: brand.name }] : [])],
       images: [], isFeatured: booleanValue(fields.Featured, 'Featured', errors), isActive: false,
     };
@@ -286,7 +338,8 @@ export const previewProductImport = async (workbookBuffer, archiveBuffer) => {
     }
     return {
       rowNumber, sku: payload.sku, modelNumber: fields['Model Number'], name: fields['Product Name'],
-      category: [fields['Header Category'], fields['Main Category'], fields['Sub Category']].filter(Boolean).join(' / '),
+      category: [fields['Header Category'], fields['Main Category (Optional)'] ?? fields['Main Category'],
+        fields['Sub Category (Optional)'] ?? fields['Sub Category']].filter(Boolean).join(' / '),
       standardPrice: fields['Standard Price'], dealerPrice: fields['Dealer Price'], imageNames, imagePreview, publish, errors,
     };
   }));

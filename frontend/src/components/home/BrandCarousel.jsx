@@ -312,7 +312,7 @@ export const BrandCarousel = () => {
 
   return (
     <div
-      className="relative w-full px-3 sm:px-6 lg:px-8 2xl:px-12 my-3"
+      className="relative storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 my-3"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
@@ -329,14 +329,14 @@ export const BrandCarousel = () => {
       {/* Brands Track (Clean SQUARE shape cards) */}
       <div
         ref={scrollRef}
-        className="flex items-center gap-2.5 sm:gap-3.5 overflow-x-auto scrollbar-none py-4 px-8 sm:px-10"
+        className="flex items-center gap-2.5 sm:gap-3.5 overflow-x-auto scrollbar-none py-3 sm:py-4 px-2 sm:px-10"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {displayBrands.map((brand, index) => (
           <div key={index} className="relative group shrink-0">
             <Link
               to={buildBrandUrl(brand.name)}
-              className="flex flex-col items-center justify-center w-[84px] h-[84px] sm:w-[98px] sm:h-[98px] md:w-[110px] md:h-[110px] aspect-square p-2 bg-white border border-gray-200 rounded-lg transition-all duration-200 ease-out hover:border-[#800020] hover:shadow-md select-none relative group"
+              className="flex flex-col items-center justify-center w-[clamp(64px,20vw,76px)] h-[clamp(64px,20vw,76px)] sm:w-[98px] sm:h-[98px] md:w-[110px] md:h-[110px] aspect-square p-2 bg-white border border-gray-200 rounded-lg transition-all duration-200 ease-out hover:border-[#800020] hover:shadow-md select-none relative group"
             >
               {/* Brand Logo Display */}
               <div className="flex items-center justify-center w-full h-full p-1 transition-transform duration-200 group-hover:scale-105">

@@ -26,6 +26,7 @@ import {
   ListFilter,
   Minus,
   Plus,
+  ExternalLink,
 } from 'lucide-react';
 
 export const ProductDetailPage = () => {
@@ -318,6 +319,7 @@ export const ProductDetailPage = () => {
     list.push({ key: 'Brand', value: brandName });
     list.push({ key: 'Model Number', value: modelNumber });
     list.push({ key: 'Model', value: modelName });
+    if (product.productUrl) list.push({ key: 'Product URL', value: product.productUrl });
 
     // Add all existing specs from product.specifications if not already present
     if (product.specifications && Array.isArray(product.specifications)) {
@@ -351,17 +353,17 @@ export const ProductDetailPage = () => {
 
   if (isLoading) {
     return (
-      <div className="w-full px-3 sm:px-6 lg:px-8 2xl:px-12 py-8 space-y-6 bg-white min-h-screen">
+      <div className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 py-8 space-y-6 bg-white min-h-screen">
         <Skeleton className="h-5 w-48" />
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-12 gap-8">
+          <div className="xl:col-span-4">
             <Skeleton className="h-80 w-full rounded-xl" />
           </div>
-          <div className="lg:col-span-5 space-y-4">
+          <div className="xl:col-span-5 space-y-4">
             <Skeleton className="h-8 w-3/4" />
             <Skeleton className="h-32 w-full rounded-xl" />
           </div>
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-2 xl:col-span-3">
             <Skeleton className="h-64 w-full rounded-xl" />
           </div>
         </div>
@@ -374,7 +376,7 @@ export const ProductDetailPage = () => {
   }
 
   return (
-    <div className="w-full px-3 sm:px-6 lg:px-8 2xl:px-12 py-4 sm:py-6 space-y-10 bg-white min-h-screen text-gray-900 font-sans">
+    <div className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 py-4 sm:py-6 space-y-10 bg-white min-h-screen text-gray-900 font-sans">
       
       {/* 1. TOP BREADCRUMBS (Matching Given Image - No left gap) */}
       <div className="flex items-center justify-between gap-3 border-b border-gray-200 pb-3">
@@ -403,18 +405,18 @@ export const ProductDetailPage = () => {
       </div>
 
       {/* 2. TOP MAIN PRODUCT PRESENTATION: 3-COLUMN LAYOUT (Matching Given Image) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 xl:gap-10 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-12 gap-6 lg:gap-8 xl:gap-10 items-start">
         
         {/* =========================================
             COLUMN 1: PRODUCT IMAGE & THUMBNAILS (Left - No empty margin)
            ========================================= */}
-        <div className="lg:col-span-4 xl:col-span-4 space-y-3">
-          <div className="bg-white p-4 rounded-xl border border-gray-200 overflow-hidden relative shadow-2xs group flex items-center justify-center min-h-[360px] sm:min-h-[420px] lg:min-h-[460px]">
+        <div className="xl:col-span-4 space-y-3">
+          <div className="bg-white p-4 rounded-xl border border-gray-200 overflow-hidden relative shadow-2xs group flex items-center justify-center min-h-[360px] sm:min-h-[420px] xl:min-h-[clamp(460px,34vw,660px)]">
             <Image
               src={currentImage}
               alt={product.name}
               aspectRatio="aspect-square"
-              className="rounded-lg object-contain w-full max-h-[420px] transition-transform duration-300 group-hover:scale-102"
+              className="rounded-lg object-contain w-full max-h-[620px] transition-transform duration-300 group-hover:scale-102"
             />
 
             {/* Left and Right navigation arrows over main photo */}
@@ -470,7 +472,7 @@ export const ProductDetailPage = () => {
         {/* =========================================
             COLUMN 2: PRODUCT INFO, TITLE, WARRANTY & SPECS TABLE (Middle)
            ========================================= */}
-        <div className="lg:col-span-5 space-y-4">
+        <div className="xl:col-span-5 space-y-4">
           {/* Title Row + Action Icons + Brand Box */}
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2 flex-1">
@@ -548,6 +550,27 @@ export const ProductDetailPage = () => {
                   </td>
                 </tr>
 
+                <tr className="border-b border-gray-100 hover:bg-gray-50/50">
+                  <td className="px-4 py-2.5 font-medium text-gray-600 flex items-center gap-2">
+                    <ExternalLink className="w-3.5 h-3.5 text-[#800020]" />
+                    <span>Product URL</span>
+                  </td>
+                  <td className="px-4 py-2.5 font-medium">
+                    {product.productUrl ? (
+                      <a
+                        href={product.productUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-[#800020] underline underline-offset-2 hover:text-[#650019]"
+                      >
+                        View Product <ExternalLink className="w-3 h-3" />
+                      </a>
+                    ) : (
+                      <span className="text-gray-400">Not provided</span>
+                    )}
+                  </td>
+                </tr>
+
                 {/* 4. Warranty Period */}
                 <tr className="border-b border-gray-100 hover:bg-gray-50/50">
                   <td className="px-4 py-2.5 font-medium text-gray-600 flex items-center gap-2">
@@ -578,7 +601,7 @@ export const ProductDetailPage = () => {
         </div>
 
         {/* Purchase card: product quantity is adjusted later in the cart. */}
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-2 xl:col-span-3">
           <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-xs space-y-4">
             
             {/* Price & Discount Row */}
@@ -696,7 +719,11 @@ export const ProductDetailPage = () => {
                     {spec.key}
                   </td>
                   <td className="px-5 sm:px-6 py-3.5 font-semibold text-gray-900 font-mono text-xs sm:text-sm">
-                    {spec.value}
+                    {spec.key === 'Product URL' ? (
+                      <a href={spec.value} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[#800020] underline underline-offset-2 hover:text-[#650019]">
+                        View Product <ExternalLink className="w-3 h-3" />
+                      </a>
+                    ) : spec.value}
                   </td>
                 </tr>
               ))}
@@ -725,7 +752,7 @@ export const ProductDetailPage = () => {
 
           {/* 4 Columns Grid Matching Given Image */}
           {relatedProducts.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+            <div className="storefront-product-grid gap-4 sm:gap-5">
               {relatedProducts.map((relProd) => (
                 <ProductCard key={relProd._id} product={relProd} />
               ))}

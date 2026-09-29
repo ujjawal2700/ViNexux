@@ -86,7 +86,7 @@ export const LoginPage = ({ initialTab = 'login' }) => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-140px)] flex items-center justify-center p-4 sm:p-6 bg-[#f9fafb] text-gray-900">
+    <div className="min-h-[calc(100vh-140px)] flex items-start md:items-center justify-center p-3 pt-5 sm:p-6 bg-[#f9fafb] text-gray-900">
       {activeTab === 'signup' ? (
         <SignupWizard
           onSwitchToLogin={() => handleTabSwitch('login')}

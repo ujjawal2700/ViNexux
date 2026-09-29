@@ -50,7 +50,7 @@ export const productService = {
   /**
    * Create a new product.
    */
-  async createProduct({ sku, name, modelNumber, model, informationPhone, categoryId, brandId, description, images = [], specifications = [], standardPrice = 0, dealerPrice = 0, isFeatured = false, isActive = true }) {
+  async createProduct({ sku, name, modelNumber, model, informationPhone, productUrl, categoryId, brandId, description, images = [], specifications = [], standardPrice = 0, dealerPrice = 0, isFeatured = false, isActive = true }) {
     const uppercaseSku = sku.trim().toUpperCase();
 
     // Check duplicate SKU
@@ -100,6 +100,7 @@ export const productService = {
       modelNumber: modelNumber.trim(),
       model: model.trim(),
       informationPhone: informationPhone?.trim() || undefined,
+      productUrl: productUrl?.trim() || '',
       categoryId,
       brandId,
       description: description ? description.trim() : undefined,
@@ -328,6 +329,7 @@ export const productService = {
     }
     if (updateData.model !== undefined) product.model = updateData.model.trim();
     if (updateData.informationPhone !== undefined) product.informationPhone = updateData.informationPhone.trim();
+    if (updateData.productUrl !== undefined) product.productUrl = updateData.productUrl.trim();
     if (updateData.description !== undefined) product.description = updateData.description ? updateData.description.trim() : null;
     if (updateData.images !== undefined) product.images = updateData.images;
     if (updateData.specifications !== undefined) product.specifications = updateData.specifications;

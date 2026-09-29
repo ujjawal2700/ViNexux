@@ -67,9 +67,9 @@ const HeroBannerSlider = ({ slides = [], autoPlayInterval = 5000 }) => {
       role="region"
       aria-label="Homepage Banners Slider"
     >
-      {/* Slides Container: Clean Height with object-top to ensure top banner text is NEVER cut off */}
+      {/* Keep desktop artwork in its wide banner ratio, including TV and zoomed-out viewports. */}
       <div
-        className="flex w-full transition-transform duration-600 ease-out h-[200px] sm:h-[260px] md:h-[320px] lg:h-[380px] xl:h-[430px] 2xl:h-[460px]"
+        className="flex w-full aspect-[12/5] sm:aspect-[5/2] lg:aspect-[15/4] transition-transform duration-600 ease-out"
         style={{
           transform: `translateX(-${currentIndex * 100}%)`,
         }}
@@ -83,7 +83,7 @@ const HeroBannerSlider = ({ slides = [], autoPlayInterval = 5000 }) => {
               <img
                 src={slide.image}
                 alt={slide.title}
-                className="w-full h-full object-cover object-top transition-transform duration-700 ease-out"
+                className="w-full h-full object-cover object-center transition-transform duration-700 ease-out"
                 loading={idx === 0 ? 'eager' : 'lazy'}
                 draggable={false}
               />

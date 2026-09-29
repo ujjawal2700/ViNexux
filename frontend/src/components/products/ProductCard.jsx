@@ -163,7 +163,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
       )}
     >
       {/* ── IMAGE AREA (large, no restricting inner div, transparent bg for PNGs) ── */}
-      <div className="relative w-full bg-white overflow-hidden" style={{ minHeight: '220px', maxHeight: '260px', height: '240px' }}>
+      <div className="relative w-full aspect-square max-h-[320px] bg-white overflow-hidden">
         {/* Wishlist Button */}
         <button
           type="button"
@@ -198,7 +198,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
       </div>
 
       {/* ── CONTENT AREA ── */}
-      <div className="flex flex-1 flex-col p-3 text-left border-t border-gray-100">
+      <div className="flex flex-1 flex-col p-2 sm:p-3 text-left border-t border-gray-100">
 
         {/* Product Title */}
         <h3 className="min-h-[50px] line-clamp-3 text-[13px] font-semibold leading-[1.35] text-gray-900 transition-colors group-hover:text-[#800020] sm:text-[13.5px]">
@@ -220,7 +220,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
         {/* Price row with brand logo/name */}
         <div className="mt-2.5 flex min-h-8 items-center justify-between gap-2">
           <div className="flex min-w-0 items-baseline gap-1">
-            <span className="text-[17px] font-extrabold text-gray-900 sm:text-lg leading-none">
+            <span className="text-[15px] font-extrabold text-gray-900 sm:text-lg leading-none">
               ₹{(Number(displayPrice) || 0).toLocaleString('en-IN')}
             </span>
             {hasDealerDiscount && (
@@ -269,7 +269,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
           {!isOutOfStock && (
             <div
               onClick={(e) => e.stopPropagation()}
-              className="flex shrink-0 h-8 overflow-hidden rounded border border-gray-300 bg-white text-xs shadow-xs"
+              className="flex max-[360px]:hidden shrink-0 h-8 overflow-hidden rounded border border-gray-300 bg-white text-xs shadow-xs"
             >
               <button
                 type="button"

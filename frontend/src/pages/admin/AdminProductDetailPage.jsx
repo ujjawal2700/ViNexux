@@ -83,6 +83,7 @@ const AdminProductDetailPage = () => {
   const [modelNumber, setModelNumber] = useState('');
   const [model, setModel] = useState('');
   const [informationPhone, setInformationPhone] = useState('');
+  const [productUrl, setProductUrl] = useState('');
   const [warranty, setWarranty] = useState('1 Year Official Warranty');
   const [countryOfOrigin, setCountryOfOrigin] = useState('India');
   const [hsnCode, setHsnCode] = useState('');
@@ -217,6 +218,7 @@ const AdminProductDetailPage = () => {
       setModelNumber(prod.modelNumber || '');
       setModel(prod.model || '');
       setInformationPhone(prod.informationPhone || '');
+      setProductUrl(prod.productUrl || '');
       setSelectedBrandId(String(prod.brandId?._id || prod.brandId || ''));
       setStandardPrice(prod.standardPrice !== undefined ? String(prod.standardPrice) : '');
       setDealerPrice(prod.dealerPrice !== undefined ? String(prod.dealerPrice) : '');
@@ -511,6 +513,7 @@ const AdminProductDetailPage = () => {
         modelNumber: modelNumber.trim(),
         model: model.trim(),
         informationPhone: informationPhone.trim(),
+        productUrl: productUrl.trim(),
         sku: sku.trim().toUpperCase(),
         categoryId: effectiveCategoryId,
         brandId: selectedBrandId,
@@ -810,6 +813,15 @@ const AdminProductDetailPage = () => {
                     value={informationPhone}
                     onChange={(e) => setInformationPhone(e.target.value)}
                     placeholder="e.g. +91 70738 88300"
+                  />
+                </FormField>
+
+                <FormField label="PRODUCT URL" hint="Official brand product page shown to customers">
+                  <Input
+                    type="url"
+                    value={productUrl}
+                    onChange={(e) => setProductUrl(e.target.value)}
+                    placeholder="https://brand.com/products/model"
                   />
                 </FormField>
 

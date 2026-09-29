@@ -364,3 +364,27 @@ html {
 .animate-shrink-progress {
   animation: shrinkProgress 5s linear forwards;
 }
+
+/* Public storefront widths stay readable on TVs without leaving laptop layouts cramped. */
+.storefront-container {
+  width: 100%;
+  max-width: 2600px;
+  margin-inline: auto;
+}
+
+.storefront-product-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 640px) {
+  .storefront-product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  }
+}
+
+@media (min-width: 1600px) {
+  .storefront-product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+  }
+}

@@ -15,6 +15,10 @@ const productSpecificationSchema = z.object({
   value: z.string({ required_error: 'Specification value is required' }).trim().min(1).max(255),
 });
 
+const productUrlSchema = z.string().trim().max(500, 'Product URL cannot exceed 500 characters')
+  .refine((value) => !value || /^https?:\/\//i.test(value), 'Product URL must start with http:// or https://')
+  .optional();
+
 export const createProductSchema = {
   body: z.object({
     sku: z
@@ -30,6 +34,7 @@ export const createProductSchema = {
     modelNumber: z.string({ required_error: 'Model number is required' }).trim().min(1).max(100),
     model: z.string({ required_error: 'Model is required' }).trim().min(1).max(100),
     informationPhone: z.string().trim().max(20).regex(/^\+?[0-9 ]*$/, 'Information phone must contain only digits, spaces, or a leading +').optional(),
+    productUrl: productUrlSchema,
     categoryId: z
       .string({ required_error: 'Category ID is required' })
       .refine(isValidObjectId, { message: 'Invalid categoryId format. Must be a valid MongoDB ObjectId' }),
@@ -80,6 +85,7 @@ export const updateProductSchema = {
     modelNumber: z.string().trim().min(1).max(100).optional(),
     model: z.string().trim().min(1).max(100).optional(),
     informationPhone: z.string().trim().max(20).regex(/^\+?[0-9 ]*$/, 'Information phone must contain only digits, spaces, or a leading +').optional(),
+    productUrl: productUrlSchema,
     brandId: z.string().refine(isValidObjectId, { message: 'Invalid brandId format' }).optional(),
     description: z
       .string()

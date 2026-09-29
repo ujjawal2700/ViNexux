@@ -8,7 +8,6 @@ const formatPrice = (value) => value === '' ? '—' : `₹${Number(value || 0).t
 
 export default function AdminProductImportPage() {
   const [workbook, setWorkbook] = useState(null);
-  const [imagesZip, setImagesZip] = useState(null);
   const [preview, setPreview] = useState(null);
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState('');
@@ -34,7 +33,7 @@ export default function AdminProductImportPage() {
     if (!workbook) { setError('Choose an Excel workbook first.'); return; }
     setBusy('preview'); setError(''); setResult(null);
     try {
-      const response = await adminService.previewProductImport(workbook, imagesZip);
+      const response = await adminService.previewProductImport(workbook);
       setPreview(response.data);
     } catch (err) { setPreview(null); setError(err.response?.data?.message || 'Could not preview the import.'); }
     finally { setBusy(''); }
@@ -43,7 +42,7 @@ export default function AdminProductImportPage() {
     if (!preview || preview.invalid > 0 || busy) return;
     setBusy('import'); setError('');
     try {
-      const response = await adminService.commitProductImport(workbook, imagesZip);
+      const response = await adminService.commitProductImport(workbook);
       setResult(response.data);
       setPreview(null);
     } catch (err) { setError(err.response?.data?.message || 'Import failed. Preview the workbook again.'); }
@@ -60,23 +59,20 @@ export default function AdminProductImportPage() {
     <div className="grid gap-5 lg:grid-cols-2">
       <section className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm">
         <h2 className="flex items-center gap-2 text-base font-bold"><FileSpreadsheet className="h-5 w-5 text-[#800020]" /> 1. Download and fill the template</h2>
-        <p className="mt-2 text-sm text-slate-700">Enter one product per row. Each model number must be unique. SKU is optional; a unique one is generated when needed. New brands and category paths are created during a successful import. Main and Sub Categories are optional.</p>
+        <p className="mt-2 text-sm text-slate-700">Enter one product per row on the Products sheet. See three filled rows on the Examples sheet. Each model number must be unique. New brands and categories are created when the import succeeds.</p>
         <Button type="button" variant="outline" onClick={downloadTemplate} disabled={!!busy} className="mt-4"><Download className="mr-2 h-4 w-4" />{busy === 'template' ? 'Preparing...' : 'Download Excel Template'}</Button>
       </section>
       <section className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm">
         <h2 className="flex items-center gap-2 text-base font-bold"><Images className="h-5 w-5 text-[#800020]" /> 2. Images are optional</h2>
-        <p className="mt-2 text-sm text-slate-700">You can add product images and brand or category logos later from the admin panel. Products without images show a placeholder until then. To attach product images now, put PNG, JPG or WebP files in one ZIP and list matching names in each row’s “Image Files” cell.</p>
+        <p className="mt-2 text-sm text-slate-700">After import, add product images and brand or category logos from the admin panel. Products show a placeholder until their images are added.</p>
       </section>
     </div>
 
     <section className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm space-y-4">
       <h2 className="text-base font-bold">3. Upload and preview</h2>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4">
         <label className="block text-sm font-semibold">Excel workbook (.xlsx)
           <input type="file" accept=".xlsx" disabled={!!busy} onChange={(event) => { setWorkbook(event.target.files?.[0] || null); resetPreview(); }} className="mt-2 block w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-800 file:mr-3 file:rounded-md file:border-0 file:bg-[#800020]/10 file:px-3 file:py-2 file:font-semibold file:text-[#800020]" />
-        </label>
-        <label className="block text-sm font-semibold">Product images (.zip, optional)
-          <input type="file" accept=".zip" disabled={!!busy} onChange={(event) => { setImagesZip(event.target.files?.[0] || null); resetPreview(); }} className="mt-2 block w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-800 file:mr-3 file:rounded-md file:border-0 file:bg-[#800020]/10 file:px-3 file:py-2 file:font-semibold file:text-[#800020]" />
         </label>
       </div>
       <Button type="button" variant="primary" onClick={runPreview} disabled={!workbook || !!busy}><Upload className="mr-2 h-4 w-4" />{busy === 'preview' ? 'Checking rows...' : 'Preview Products'}</Button>
@@ -86,7 +82,7 @@ export default function AdminProductImportPage() {
 
     {preview && <section className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div><h2 className="text-base font-bold">Import Preview</h2><p className="text-sm text-slate-700">{preview.total} rows · {preview.valid} valid · {preview.invalid} invalid · {preview.imageCount} image files</p></div>
+        <div><h2 className="text-base font-bold">Import Preview</h2><p className="text-sm text-slate-700">{preview.total} rows · {preview.valid} valid · {preview.invalid} invalid</p></div>
         <Button type="button" variant="primary" onClick={runImport} disabled={preview.invalid > 0 || !!busy}>{busy === 'import' ? 'Importing...' : `Import ${preview.valid} Products`}</Button>
       </div>
       {preview.invalid > 0 && <p className="rounded-lg border border-amber-400 bg-amber-50 p-3 text-sm font-semibold text-amber-900">Correct all invalid rows and preview again before importing.</p>}
@@ -96,16 +92,15 @@ export default function AdminProductImportPage() {
       </div>}
       <div className="w-full overflow-x-auto rounded-lg border border-slate-300">
         <table className="w-full min-w-[1000px] border-collapse text-left text-sm">
-          <thead className="bg-slate-100 text-slate-900"><tr>{['Row', 'Image Files', 'SKU / Model No.', 'Product Name', 'Category', 'Standard', 'Dealer', 'Status / Errors'].map((heading) => <th key={heading} className="border-b border-r border-slate-300 px-3 py-2 font-bold last:border-r-0">{heading}</th>)}</tr></thead>
+          <thead className="bg-slate-100 text-slate-900"><tr>{['Row', 'Model Number', 'Product Name', 'Category', 'Standard', 'Dealer', 'Status / Errors'].map((heading) => <th key={heading} className="border-b border-r border-slate-300 px-3 py-2 font-bold last:border-r-0">{heading}</th>)}</tr></thead>
           <tbody>{preview.rows.map((row) => <tr key={row.rowNumber} className="align-top even:bg-slate-50">
             <td className="border-b border-r border-slate-200 px-3 py-2 font-semibold">{row.rowNumber}</td>
-            <td className="border-b border-r border-slate-200 px-3 py-2 text-slate-700"><div className="flex items-center gap-2">{row.imagePreview && <img src={row.imagePreview} alt={row.name || 'Product preview'} className="h-14 w-14 shrink-0 rounded border border-slate-300 bg-white object-contain" />}<span>{row.imageNames.join(', ') || '—'}</span></div></td>
-            <td className="border-b border-r border-slate-200 px-3 py-2"><strong>{row.sku}</strong><br /><span className="text-slate-700">{row.modelNumber}</span></td>
+            <td className="border-b border-r border-slate-200 px-3 py-2 font-semibold">{row.modelNumber}</td>
             <td className="border-b border-r border-slate-200 px-3 py-2 font-semibold">{row.name}</td>
             <td className="border-b border-r border-slate-200 px-3 py-2">{row.category}</td>
             <td className="border-b border-r border-slate-200 px-3 py-2">{formatPrice(row.standardPrice)}</td>
             <td className="border-b border-r border-slate-200 px-3 py-2">{formatPrice(row.dealerPrice)}</td>
-            <td className="border-b border-slate-200 px-3 py-2">{row.errors.length ? <ul className="space-y-1 text-red-700">{row.errors.map((message, index) => <li key={index}>{message}</li>)}</ul> : <span className="font-semibold text-emerald-700">Ready · {row.publish ? 'Publish' : 'Draft'}</span>}</td>
+            <td className="border-b border-slate-200 px-3 py-2">{row.errors.length ? <ul className="space-y-1 text-red-700">{row.errors.map((message, index) => <li key={index}>{message}</li>)}</ul> : <span className="font-semibold text-emerald-700">Ready</span>}</td>
           </tr>)}</tbody>
         </table>
       </div>

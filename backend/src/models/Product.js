@@ -86,6 +86,12 @@ const productSchema = new mongoose.Schema(
       trim: true,
       maxlength: [20, 'Information phone cannot exceed 20 characters'],
     },
+    productUrl: {
+      type: String,
+      trim: true,
+      default: '',
+      maxlength: [500, 'Product URL cannot exceed 500 characters'],
+    },
     brandId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Brand',

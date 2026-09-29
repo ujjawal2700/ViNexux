@@ -247,6 +247,7 @@ export const getPublicProducts = async (query = {}, user = null) => {
       ...product,
       modelNumber: product.modelNumber || `VNX-${String(product._id).slice(-8).toUpperCase()}`,
       model: product.model || product.specifications?.find((specification) => specification.key?.trim().toLowerCase() === 'model')?.value || 'Standard Model',
+      productUrl: product.productUrl || '',
       availableStock: product.stockQuantity,
       stockStatus: product.stockStatus || 'on-order',
       categoryPath: categoryPathFor(product.categoryId),

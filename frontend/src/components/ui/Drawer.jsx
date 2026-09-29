@@ -11,6 +11,8 @@ export const Drawer = ({
   children,
   footer,
   className = '',
+  contentClassName = '',
+  showHeader = true,
 }) => {
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -47,7 +49,7 @@ export const Drawer = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        {(title || onClose) && (
+        {showHeader && (title || onClose) && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-border">
             <div>
               {title && <h3 className="text-base font-bold text-foreground">{title}</h3>}
@@ -66,7 +68,7 @@ export const Drawer = ({
         )}
 
         {/* Content Body */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-4 text-sm text-foreground">
+        <div className={`p-6 overflow-y-auto flex-1 space-y-4 text-sm text-foreground ${contentClassName}`}>
           {children}
         </div>
 
