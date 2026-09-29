@@ -1,11 +1,12 @@
 import app from './app.js';
-import { config } from './config/env.js';
+import { config, validateProductionConfig } from './config/env.js';
 import { connectDB, disconnectDB } from './config/db.js';
 import { backfillProductModels } from './services/productModelBackfill.service.js';
 
 let server;
 
 const startServer = async () => {
+  validateProductionConfig();
   const PORT = process.env.PORT || config.port || 5000;
   const HOST = '0.0.0.0';
 

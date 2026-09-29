@@ -1,41 +1,59 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { SearchX } from 'lucide-react';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, Home, Search, SearchX } from 'lucide-react';
 
 const NotFoundPage = () => {
+  const [search, setSearch] = useState('');
+  const navigate = useNavigate();
+
+  const handleSearch = (event) => {
+    event.preventDefault();
+    const query = search.trim();
+    if (query) navigate(`/search?search=${encodeURIComponent(query)}`);
+  };
+
   return (
-    <div className="flex-1 flex flex-col items-center justify-center py-20 px-4 text-center bg-white min-h-[60vh]">
-      {/* Icon Badge */}
-      <div className="w-14 h-14 rounded-2xl bg-[#faf5fb] border border-[#f0e4f3] flex items-center justify-center mb-5 text-[#800020]">
-        <SearchX className="w-7 h-7 stroke-[1.8]" />
-      </div>
+    <main className="flex min-h-[58vh] flex-1 items-center justify-center bg-slate-50 px-4 py-12 sm:py-16">
+      <section className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center shadow-sm sm:px-10">
+        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-[#800020]/10 bg-[#800020]/5 text-[#800020]">
+          <SearchX className="h-8 w-8" aria-hidden="true" />
+        </div>
+        <p className="mb-2 text-sm font-bold tracking-[0.2em] text-[#800020]">404</p>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">We couldn’t find that page</h1>
+        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-600 sm:text-base">
+          The link may be outdated, or the page may have moved. Search our catalogue or choose a place to continue.
+        </p>
 
-      {/* Heading */}
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2.5 tracking-tight">
-        Page not found
-      </h1>
+        <form onSubmit={handleSearch} className="mx-auto mt-7 flex max-w-md gap-2">
+          <label htmlFor="not-found-search" className="sr-only">Search products</label>
+          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-slate-300 px-3 focus-within:border-[#800020] focus-within:ring-2 focus-within:ring-[#800020]/10">
+            <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+            <input
+              id="not-found-search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search products, brands..."
+              className="h-11 min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+            />
+          </div>
+          <button type="submit" className="rounded-lg bg-[#800020] px-4 text-sm font-semibold text-white transition hover:bg-[#660019] focus:outline-none focus:ring-2 focus:ring-[#800020] focus:ring-offset-2">
+            Search
+          </button>
+        </form>
 
-      {/* Description */}
-      <p className="text-sm sm:text-base text-gray-500 max-w-md mb-8 leading-relaxed">
-        The page you're looking for doesn't exist or has been moved. Try one of these instead.
-      </p>
-
-      {/* Action Buttons */}
-      <div className="flex flex-wrap items-center justify-center gap-3.5">
-        <Link
-          to="/"
-          className="px-7 py-2.5 rounded-full bg-[#800020] hover:bg-[#660019] text-white text-sm font-semibold transition-all shadow-xs active:scale-98"
-        >
-          Continue Shopping
-        </Link>
-        <Link
-          to="/brands"
-          className="px-6 py-2.5 rounded-full border border-gray-300 bg-white hover:bg-gray-50 text-gray-800 text-sm font-semibold transition-all active:scale-98"
-        >
-          All brands
-        </Link>
-      </div>
-    </div>
+        <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+          <Link to="/" className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#800020] px-4 text-sm font-semibold text-white transition hover:bg-[#660019]">
+            <Home className="h-4 w-4" aria-hidden="true" /> Home
+          </Link>
+          <Link to="/brands" className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-800 transition hover:bg-slate-50">
+            Browse brands <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+          <button type="button" onClick={() => navigate(-1)} className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-800 transition hover:bg-slate-50">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Go back
+          </button>
+        </div>
+      </section>
+    </main>
   );
 };
 

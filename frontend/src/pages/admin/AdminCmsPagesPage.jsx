@@ -16,7 +16,9 @@ import Skeleton from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 import ErrorState from '../../components/ui/ErrorState';
 import Toast from '../../components/ui/Toast';
-import { Plus, Edit2, Trash2, FileText, ExternalLink, ShieldCheck } from 'lucide-react';
+import { Plus, Edit2, Trash2, FileText, ExternalLink } from 'lucide-react';
+
+const legalPathForSlug = (slug) => slug === 'privacy-policy' ? '/privacy' : slug === 'terms-and-conditions' ? '/terms' : null;
 
 const AdminCmsPagesPage = () => {
   const [pages, setPages] = useState([]);
@@ -96,6 +98,10 @@ const AdminCmsPagesPage = () => {
       setFormError('Slug can only contain lowercase alphanumeric characters and hyphens');
       return;
     }
+    if (legalPathForSlug(formData.slug.trim().toLowerCase())) {
+      setFormError('Privacy Policy and Terms are maintained in the app and cannot be edited here.');
+      return;
+    }
 
     // Client-side XSS validation preview check
     const scriptRegex = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi;
@@ -155,7 +161,7 @@ const AdminCmsPagesPage = () => {
 
       <AdminPageHeader
         title="CMS — Static Pages Content Editor"
-        subtitle="Manage dynamic website pages, terms & conditions, privacy policies, and about us content"
+        subtitle="Manage dynamic website pages. The current Privacy Policy and Terms are maintained in the app at /privacy and /terms, not edited here."
         badge={`${pages.length} Pages`}
         action={
           <Button variant="primary" size="sm" onClick={handleOpenCreate}>
@@ -175,7 +181,7 @@ const AdminCmsPagesPage = () => {
         <EmptyState
           icon={FileText}
           title="No static pages created"
-          description="Create your first static content page (e.g. Terms of Service, Privacy Policy, About Us)."
+          description="Create your first static content page, such as About Us."
           action={
             <Button variant="primary" size="sm" onClick={handleOpenCreate}>
               <Plus className="w-4 h-4 mr-1.5" /> Create Page
@@ -197,25 +203,25 @@ const AdminCmsPagesPage = () => {
             {pages.map((p) => (
               <Table.Row key={p._id}>
                 <Table.Cell className="font-mono text-xs text-rose-400 font-bold">
-                  /content/pages/{p.slug}
+                  {legalPathForSlug(p.slug) || `/content/pages/${p.slug}`}
                 </Table.Cell>
                 <Table.Cell className="text-xs font-bold text-foreground">
                   {p.title}
                 </Table.Cell>
                 <Table.Cell>
-                  <StatusBadge status={p.isPublished ? 'active' : 'inactive'} />
+                  {legalPathForSlug(p.slug) ? <span className="text-xs text-gray-500">Managed in app</span> : <StatusBadge status={p.isPublished ? 'active' : 'inactive'} />}
                 </Table.Cell>
                 <Table.Cell className="text-xs text-muted-foreground">
                   {new Date(p.updatedAt || p.createdAt).toLocaleDateString('en-IN')}
                 </Table.Cell>
                 <Table.Cell className="text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <Link to={`/content/pages/${p.slug}`} target="_blank">
+                    <Link to={legalPathForSlug(p.slug) || `/content/pages/${p.slug}`} target="_blank">
                       <Button variant="secondary" size="sm" className="text-xs" title="Preview Public Page">
                         <ExternalLink className="w-3.5 h-3.5 mr-1" /> Preview
                       </Button>
                     </Link>
-                    <Button
+                    {!legalPathForSlug(p.slug) && <Button
                       variant="ghost"
                       size="sm"
                       iconOnly
@@ -224,8 +230,8 @@ const AdminCmsPagesPage = () => {
                       className="bg-muted/80 hover:bg-primary/20 text-foreground hover:text-primary border border-border hover:border-primary/40 transition-all shadow-xs"
                     >
                       <Edit2 className="w-4 h-4 shrink-0" />
-                    </Button>
-                    <Button
+                    </Button>}
+                    {!legalPathForSlug(p.slug) && <Button
                       variant="ghost"
                       size="sm"
                       iconOnly
@@ -234,7 +240,7 @@ const AdminCmsPagesPage = () => {
                       className="bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-600 dark:hover:bg-rose-600 text-rose-700 dark:text-rose-300 hover:text-white dark:hover:text-white border border-rose-200 dark:border-rose-800/60 transition-all shadow-xs"
                     >
                       <Trash2 className="w-4 h-4 shrink-0" />
-                    </Button>
+                    </Button>}
                   </div>
                 </Table.Cell>
               </Table.Row>

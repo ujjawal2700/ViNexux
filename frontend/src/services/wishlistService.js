@@ -1,6 +1,9 @@
+import { allowsPreferences } from '../utils/storageConsent.js';
+
 const WISHLIST_KEY = 'vinexus_wishlist';
 
 export const getWishlist = () => {
+  if (!allowsPreferences()) return [];
   try {
     const data = localStorage.getItem(WISHLIST_KEY);
     return data ? JSON.parse(data) : [];
@@ -18,6 +21,10 @@ export const isInWishlist = (productId) => {
 
 export const toggleWishlist = (product) => {
   if (!product) return false;
+  if (!allowsPreferences()) {
+    window.dispatchEvent(new Event('open-storage-choices'));
+    return null;
+  }
   const items = getWishlist();
   const id = product._id || product.id;
   const exists = items.some((p) => (p._id || p.id) === id);

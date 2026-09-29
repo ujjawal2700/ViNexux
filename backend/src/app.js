@@ -12,7 +12,9 @@ import { apiRateLimiter } from './middlewares/rateLimiter.js';
 const app = express();
 
 // 1. Security HTTP headers
-app.use(helmet());
+app.use(helmet({
+  hsts: { maxAge: 31_536_000, includeSubDomains: false, preload: false },
+}));
 
 // 2. Cross-Origin Resource Sharing
 app.use(
@@ -27,7 +29,7 @@ app.use(
       ) {
         return callback(null, true);
       }
-      return callback(null, true); // Fallback allow to avoid breaking production deployments
+      return callback(new Error("Origin " + origin + " not allowed by CORS"))
     },
     credentials: true,
   })

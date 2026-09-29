@@ -86,9 +86,9 @@ export const authService = {
   },
 
   // Logout Session
-  logout: async () => {
+  logout: async (portal) => {
     try {
-      const response = await apiClient.post('/auth/logout');
+      const response = await apiClient.post('/auth/logout', {}, { portal });
       return response.data;
     } catch (err) {
       // Even if backend call fails, proceed with frontend logout cleanup

@@ -76,6 +76,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
     e.preventDefault();
     e.stopPropagation();
     const added = wishlistService.toggleWishlist(product);
+    if (added === null) return;
     setIsWishlisted(added);
     if (added) {
       toast.success(`Saved "${product.name}" to wishlist!`);

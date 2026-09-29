@@ -217,7 +217,7 @@ export const AuthProvider = ({ children }) => {
   // Logout (supports portal: 'admin' vs customer default)
   const logout = async (portal) => {
     try {
-      await authService.logout();
+      await authService.logout(portal);
     } catch (err) {
       console.warn('Logout API error:', err);
     } finally {

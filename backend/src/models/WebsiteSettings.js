@@ -11,24 +11,24 @@ const imageAssetSchema = new mongoose.Schema(
 const websiteSettingsSchema = new mongoose.Schema(
   {
     singletonKey: { type: String, default: 'primary', unique: true, immutable: true },
-    websiteName: { type: String, trim: true, required: true, default: 'Vi Nexus', maxlength: 150 },
+    websiteName: { type: String, trim: true, required: true, default: 'Vinexus', maxlength: 150 },
     metaTitle: {
       type: String,
       trim: true,
       required: true,
-      default: 'Vi Nexus | B2B CCTV & Security Equipment Distributor',
+      default: 'Vinexus | IT, Laptop, CCTV & Networking Products',
       maxlength: 200,
     },
     metaDescription: {
       type: String,
       trim: true,
       required: true,
-      default: 'Vi Nexus is a leading B2B distributor of CCTV cameras, networking gear, and security accessories in India.',
+      default: 'Browse laptops, computers, CCTV, networking and IT products on Vinexus. Explore product details and send an enquiry to our team.',
       maxlength: 500,
     },
     favicon: { type: imageAssetSchema, default: () => ({ url: '/favicon.jpeg', publicId: '' }) },
     logo: { type: imageAssetSchema, default: () => ({ url: '/logo.png', publicId: '' }) },
-    ogImage: { type: imageAssetSchema, default: () => ({ url: '/favicon.jpeg', publicId: '' }) },
+    ogImage: { type: imageAssetSchema, default: () => ({ url: '/social-preview.png', publicId: '' }) },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true }

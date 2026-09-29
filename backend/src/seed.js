@@ -764,17 +764,16 @@ async function seed() {
   console.log('[Seed] Seeding Footer Content...');
   await FooterContent.deleteMany({});
   await FooterContent.create({
-    companyName: 'Vinexus Security Platforms',
-    companyDescription: 'Vinexus is India’s premier B2B distributor for 4K AI CCTV cameras, NVR surveillance systems, Gigabit PoE networking, and security hardware.',
-    email: 'support@vinexus.com',
-    phone: '+91 800 555 WINE (9463)',
-    address: 'Building 4B, Commercial Electronics Complex, MIDC Industrial Area, Mumbai, India - 400001',
+    companyName: 'Vinexus - Lead Generation & Product Catalog Platform',
+    companyDescription: 'Browse products, manage enquiries and connect with the Vinexus team.',
+    email: 'vinexus@gmail.com',
+    phone: '+91 82092 24481',
     quickLinks: [
       { label: 'Dealer Portal Login', url: '/login', sortOrder: 3 },
     ],
     legalLinks: [
-      { label: 'Privacy Policy', url: '/content/pages/privacy-policy', sortOrder: 1 },
-      { label: 'Terms & Conditions', url: '/content/pages/terms-and-conditions', sortOrder: 2 },
+      { label: 'Privacy Policy', url: '/privacy', sortOrder: 1 },
+      { label: 'Terms & Conditions', url: '/terms', sortOrder: 2 },
       { label: 'About Vinexus', url: '/content/pages/about-us', sortOrder: 3 },
     ],
     isActive: true,
@@ -786,14 +785,14 @@ async function seed() {
   const pagesData = [
     {
       slug: 'privacy-policy',
-      title: 'Privacy Policy & Data Security',
-      content: '<p>Vinexus Security Platforms respects your business privacy. We collect personal and company details solely to handle product enquiries, dealer KYC verification, and product shipment processing.</p><h3>Data Protection</h3><p>We do not share your company details, GSTIN, or order history with unauthorized third parties. All traffic is encrypted using SSL/TLS protocols.</p>',
+      title: 'Privacy Policy',
+      content: '<p>The current Privacy Policy is published at <a href="/privacy">/privacy</a>. That page explains what details Vinexus collects, why it uses them, browser storage choices and how users can make privacy requests. Contact vinexus@gmail.com for privacy questions.</p>',
       isPublished: true,
     },
     {
       slug: 'terms-and-conditions',
       title: 'Terms & Conditions of Service',
-      content: '<p>Welcome to Vinexus. By accessing our catalog or registering as a B2B dealer, you agree to our standard terms of distribution.</p><h3>Enquiries & B2B Pricing</h3><p>Prices shown in an enquiry are snapshots and may change until confirmed by our team. Dealer wholesale pricing is reserved exclusively for KYC-verified security installers and resellers.</p>',
+      content: '<p>The current Terms &amp; Conditions are published at <a href="/terms">/terms</a>. That page explains accounts, dealer applications, product information, enquiries, delivery, warranty and acceptable use. Contact vinexus@gmail.com for questions.</p>',
       isPublished: true,
     },
     {

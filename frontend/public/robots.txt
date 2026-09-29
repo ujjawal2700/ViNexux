@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /account/
+Disallow: /customer/
+Disallow: /dealer/
+Disallow: /api/
+
+Sitemap: https://vi-nexux.vercel.app/sitemap.xml

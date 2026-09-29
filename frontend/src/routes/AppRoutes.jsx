@@ -25,6 +25,7 @@ import ProductDetailPage from '../pages/public/ProductDetailPage';
 import WishlistPage from '../pages/public/WishlistPage';
 import BrandsPage from '../pages/public/BrandsPage';
 import CmsPage from '../pages/public/CmsPage';
+import LegalPage from '../pages/public/LegalPage';
 import UnauthorizedPage from '../pages/public/UnauthorizedPage';
 import NotFoundPage from '../pages/public/NotFoundPage';
 import UiPreviewPage from '../pages/public/UiPreviewPage';
@@ -91,6 +92,8 @@ const AppRoutes = () => {
         <Route path="/brands" element={<BrandsPage />} />
         <Route path="/shop-by-brand" element={<BrandsPage />} />
         <Route path="/content/pages/:slug" element={<CmsPage />} />
+        <Route path="/privacy" element={<LegalPage type="privacy" />} />
+        <Route path="/terms" element={<LegalPage type="terms" />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
         <Route path="/not-found" element={<NotFoundPage />} />
 

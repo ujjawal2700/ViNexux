@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Vinexus — IT and security product catalogue</title>
+  <desc id="desc">Browse laptops, computers, CCTV, networking and IT products with Vinexus.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#f7e9ed"/></linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#92002e"/><stop offset="1" stop-color="#52001e"/></linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#69d4e9"/><stop offset=".55" stop-color="#1d427d"/><stop offset="1" stop-color="#9b4bc2"/></linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1075" cy="75" r="260" fill="#800020" opacity=".055"/>
+  <circle cx="1030" cy="605" r="250" fill="#800020" opacity=".045"/>
+  <path d="M0 0h1200v18H0z" fill="#800020"/>
+  <g transform="translate(76 77)">
+    <path d="M8 18 55 0l47 18v13L55 13 8 31zM8 43l47 18 47-18v13L55 74 8 56zM8 68l47 18 47-18v13L55 99 8 81z" fill="#800020"/>
+    <text x="126" y="66" font-family="Arial,Helvetica,sans-serif" font-size="54" font-weight="800" letter-spacing="2" fill="#111827">VINEXUS</text>
+    <text x="129" y="94" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="700" letter-spacing="4" fill="#800020">COMPU WORLD</text>
+  </g>
+  <text x="78" y="286" font-family="Arial,Helvetica,sans-serif" font-size="45" font-weight="700" fill="#1d2433">Your complete</text>
+  <text x="78" y="346" font-family="Arial,Helvetica,sans-serif" font-size="53" font-weight="800" fill="#800020">IT product catalogue</text>
+  <text x="80" y="397" font-family="Arial,Helvetica,sans-serif" font-size="23" fill="#4b5563">Laptops · Computers · CCTV · Networking</text>
+  <rect x="80" y="447" width="238" height="58" rx="12" fill="#800020"/>
+  <text x="111" y="484" font-family="Arial,Helvetica,sans-serif" font-size="21" font-weight="700" fill="#fff">Explore products</text>
+  <g transform="translate(715 148)">
+    <rect x="75" y="5" width="315" height="205" rx="19" fill="#172033"/>
+    <rect x="91" y="21" width="283" height="174" rx="9" fill="url(#screen)"/>
+    <path d="M46 222h373l-38 27H84z" fill="#8e96a5"/>
+    <path d="M0 259h469l-35 20H34z" fill="#d4d8df"/>
+    <rect x="164" y="249" width="131" height="7" rx="3.5" fill="#aeb4bf"/>
+    <g transform="translate(274 310)">
+      <rect x="20" y="0" width="146" height="125" rx="26" fill="url(#panel)"/>
+      <circle cx="93" cy="43" r="27" fill="#fff" opacity=".95"/>
+      <circle cx="93" cy="43" r="16" fill="#252b3b"/>
+      <circle cx="93" cy="43" r="8" fill="#6bd2e6"/>
+      <path d="M52 93h82v10H52z" fill="#fff" opacity=".85"/>
+    </g>
+    <g fill="#800020" opacity=".9"><circle cx="11" cy="65" r="6"/><circle cx="456" cy="79" r="8"/><circle cx="38" cy="365" r="5"/><circle cx="432" cy="333" r="5"/></g>
+  </g>
+  <text x="80" y="580" font-family="Arial,Helvetica,sans-serif" font-size="18" font-weight="700" fill="#6b7280">VINEXUS · PRODUCT CATALOGUE &amp; ENQUIRIES</text>
+</svg>

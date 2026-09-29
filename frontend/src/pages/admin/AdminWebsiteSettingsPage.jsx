@@ -12,12 +12,12 @@ import useToast from '../../hooks/useToast';
 import useWebsiteSettings from '../../hooks/useWebsiteSettings';
 
 const emptyForm = {
-  websiteName: 'Vi Nexus',
-  metaTitle: 'Vi Nexus | B2B CCTV & Security Equipment Distributor',
-  metaDescription: 'Vi Nexus is a leading B2B distributor of CCTV cameras, networking gear, and security accessories in India.',
+  websiteName: 'Vinexus',
+  metaTitle: 'Vinexus | IT, Laptop, CCTV & Networking Products',
+  metaDescription: 'Browse laptops, computers, CCTV, networking and IT products on Vinexus. Explore product details and send an enquiry to our team.',
   favicon: { url: '/favicon.jpeg' },
   logo: { url: '/logo.png' },
-  ogImage: { url: '/favicon.jpeg' },
+  ogImage: { url: '/social-preview.png' },
 };
 
 const assetFields = [

@@ -6,7 +6,10 @@ import { loadingTracker } from '../utils/loadingTracker';
 // or with a trailing slash) still resolves correctly, instead of silently
 // hitting the wrong path (e.g. "/auth/send-otp" instead of "/api/auth/send-otp").
 const normalizeApiBaseUrl = (raw) => {
-  const trimmed = (raw || 'http://localhost:5000/api').replace(/\/+$/, '');
+  let trimmed = (raw || 'http://localhost:5000/api').replace(/\/+$/, '');
+  if (import.meta.env.PROD && /^http:\/\//i.test(trimmed) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(trimmed)) {
+    trimmed = trimmed.replace(/^http:\/\//i, 'https://');
+  }
   return /\/api$/.test(trimmed) ? trimmed : `${trimmed}/api`;
 };
 

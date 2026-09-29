@@ -1,14 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import contentService from '../services/contentService';
 import { WebsiteSettingsContext } from './websiteSettingsStore';
 
 const defaultSettings = {
-  websiteName: 'Vi Nexus',
-  metaTitle: 'Vi Nexus | B2B CCTV & Security Equipment Distributor',
-  metaDescription: 'Vi Nexus is a leading B2B distributor of CCTV cameras, networking gear, and security accessories in India.',
+  websiteName: 'Vinexus',
+  metaTitle: 'Vinexus | IT, Laptop, CCTV & Networking Products',
+  metaDescription: 'Browse laptops, computers, CCTV, networking and IT products on Vinexus. Explore product details and send an enquiry to our team.',
   favicon: { url: '/favicon.jpeg', publicId: '' },
   logo: { url: '/logo.png', publicId: '' },
-  ogImage: { url: '/favicon.jpeg', publicId: '' },
+  ogImage: { url: '/social-preview.png', publicId: '' },
 };
 
 const setMeta = (selector, attribute, value) => {
@@ -16,7 +17,7 @@ const setMeta = (selector, attribute, value) => {
   if (element && value) element.setAttribute(attribute, value);
 };
 
-const applyDocumentMetadata = (settings) => {
+const applyDocumentMetadata = (settings, pathname = '/') => {
   document.title = settings.metaTitle || settings.websiteName;
   setMeta('meta[name="title"]', 'content', settings.metaTitle);
   setMeta('meta[name="description"]', 'content', settings.metaDescription);
@@ -33,13 +34,21 @@ const applyDocumentMetadata = (settings) => {
     link.setAttribute('href', faviconUrl);
   });
 
-  const socialImage = settings.ogImage?.url || defaultSettings.ogImage.url;
+  const savedSocialImage = settings.ogImage?.url;
+  const socialImage = !savedSocialImage || savedSocialImage === '/favicon.jpeg'
+    ? defaultSettings.ogImage.url
+    : savedSocialImage;
   const absoluteSocialImage = new URL(socialImage, window.location.origin).href;
   setMeta('meta[property="og:image"]', 'content', absoluteSocialImage);
   setMeta('meta[name="twitter:image"]', 'content', absoluteSocialImage);
+  const currentUrl = new URL(pathname, window.location.origin).href;
+  setMeta('meta[property="og:url"]', 'content', currentUrl);
+  setMeta('meta[name="twitter:url"]', 'content', currentUrl);
+  setMeta('link[rel="canonical"]', 'href', currentUrl);
 };
 
 export const WebsiteSettingsProvider = ({ children }) => {
+  const location = useLocation();
   const [settings, setSettings] = useState(defaultSettings);
   const [loading, setLoading] = useState(true);
 
@@ -62,8 +71,8 @@ export const WebsiteSettingsProvider = ({ children }) => {
   }, [refreshSettings]);
 
   useEffect(() => {
-    applyDocumentMetadata(settings);
-  }, [settings]);
+    applyDocumentMetadata(settings, location.pathname);
+  }, [settings, location.pathname]);
 
   const value = useMemo(() => ({ settings, loading, refreshSettings }), [settings, loading, refreshSettings]);
   return <WebsiteSettingsContext.Provider value={value}>{children}</WebsiteSettingsContext.Provider>;

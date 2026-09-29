@@ -13,6 +13,7 @@ import { Image } from '../../components/ui/Image';
 import { Skeleton } from '../../components/ui/Skeleton';
 import NotFoundPage from './NotFoundPage';
 import { getAvailableStock } from '../../utils/inventory';
+import { allowsPreferences } from '../../utils/storageConsent';
 import {
   ShoppingCart,
   ShieldCheck,
@@ -54,6 +55,12 @@ export const ProductDetailPage = () => {
     setQuantity(1);
   }, [productId]);
 
+  useEffect(() => {
+    const syncWishlist = () => setIsWishlisted(wishlistService.isInWishlist(productId));
+    window.addEventListener('wishlist-updated', syncWishlist);
+    return () => window.removeEventListener('wishlist-updated', syncWishlist);
+  }, [productId]);
+
 
   // 1. Fetch categories tree for breadcrumbs & category linking
   useEffect(() => {
@@ -91,10 +98,12 @@ export const ProductDetailPage = () => {
 
       // Save to localStorage for Recently Viewed section
       try {
-        const stored = JSON.parse(localStorage.getItem('vinexus_recently_viewed') || '[]');
-        const filtered = stored.filter((p) => p && String(p._id) !== String(prod._id));
-        const updated = [prod, ...filtered].slice(0, 12);
-        localStorage.setItem('vinexus_recently_viewed', JSON.stringify(updated));
+        if (allowsPreferences()) {
+          const stored = JSON.parse(localStorage.getItem('vinexus_recently_viewed') || '[]');
+          const filtered = stored.filter((p) => p && String(p._id) !== String(prod._id));
+          const updated = [prod, ...filtered].slice(0, 12);
+          localStorage.setItem('vinexus_recently_viewed', JSON.stringify(updated));
+        }
       } catch (e) {
         // non-blocking
       }
@@ -267,6 +276,7 @@ export const ProductDetailPage = () => {
   const handleToggleWishlist = () => {
     if (!product) return;
     const added = wishlistService.toggleWishlist(product);
+    if (added === null) return;
     setIsWishlisted(added);
     if (added) {
       toast.success('Added to Wishlist!');

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, Navigate } from 'react-router-dom';
 import contentService from '../../services/contentService';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/ErrorState';
@@ -8,11 +8,13 @@ import { Calendar, FileText, ArrowLeft } from 'lucide-react';
 
 export const CmsPage = () => {
   const { slug } = useParams();
+  const legalDestination = slug === 'privacy-policy' ? '/privacy' : slug === 'terms-and-conditions' ? '/terms' : null;
   const [page, setPage] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (legalDestination) return;
     const fetchPage = async () => {
       setIsLoading(true);
       setError(null);
@@ -35,7 +37,9 @@ export const CmsPage = () => {
     if (slug) {
       fetchPage();
     }
-  }, [slug]);
+  }, [slug, legalDestination]);
+
+  if (legalDestination) return <Navigate to={legalDestination} replace />;
 
   if (isLoading) {
     return (

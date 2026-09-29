@@ -344,13 +344,15 @@ export const updateWebsiteSettings = async (payload, adminUserId) => {
 
 export const getPublicWebsiteSettings = async () => {
   const settings = await getWebsiteSettings();
+  const defaultMetaTitle = 'Vinexus | IT, Laptop, CCTV & Networking Products';
+  const defaultMetaDescription = 'Browse laptops, computers, CCTV, networking and IT products on Vinexus. Explore product details and send an enquiry to our team.';
   return {
-    websiteName: settings.websiteName,
-    metaTitle: settings.metaTitle,
-    metaDescription: settings.metaDescription,
+    websiteName: settings.websiteName === 'Vi Nexus' ? 'Vinexus' : settings.websiteName,
+    metaTitle: !settings.metaTitle || settings.metaTitle === 'Vi Nexus | B2B CCTV & Security Equipment Distributor' ? defaultMetaTitle : settings.metaTitle,
+    metaDescription: !settings.metaDescription || settings.metaDescription.startsWith('Vi Nexus is a leading B2B distributor') ? defaultMetaDescription : settings.metaDescription,
     favicon: { url: settings.favicon?.url || '/favicon.jpeg' },
     logo: { url: settings.logo?.url || '/logo.png' },
-    ogImage: { url: settings.ogImage?.url || '/favicon.jpeg' },
+    ogImage: { url: !settings.ogImage?.url || settings.ogImage.url === '/favicon.jpeg' ? '/social-preview.png' : settings.ogImage.url },
   };
 };
 

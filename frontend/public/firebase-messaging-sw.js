@@ -1,11 +1,8 @@
 // Firebase Cloud Messaging background service worker.
 //
-// IMPORTANT: this file is served as a static asset at /firebase-messaging-sw.js
-// and therefore CANNOT read Vite env vars (import.meta.env) - it runs outside
-// the app bundle. Firebase's client config values below are not secret (they're
-// public identifiers, not credentials - the real security boundary is Firebase
-// Security Rules), so fill them in directly here, matching the same
-// VITE_FIREBASE_* values you set in your .env file.
+// This worker is a static asset and cannot read Vite environment variables.
+// The values below are Firebase's public browser configuration, not credentials.
+// Keep service-account keys and provider secrets out of this file and all VITE_* variables.
 importScripts('https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.13.1/firebase-messaging-compat.js');
 

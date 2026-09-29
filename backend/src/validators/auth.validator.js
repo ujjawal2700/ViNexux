@@ -45,6 +45,8 @@ export const signupSchema = {
       city: z.string().trim().optional(),
       state: z.string().trim().optional(),
       pincode: z.string().trim().optional(),
+      acceptPrivacyPolicy: z.literal(true, { errorMap: () => ({ message: 'Please accept the Privacy Policy' }) }),
+      acceptTerms: z.literal(true, { errorMap: () => ({ message: 'Please accept the Terms & Conditions' }) }),
     })
     .superRefine((data, ctx) => {
       if (data.role !== 'dealer') return;
@@ -79,6 +81,8 @@ export const googleAuthSchema = {
     name: z.string().optional(),
     googleId: z.string().optional(),
     picture: z.string().optional(),
+    acceptPrivacyPolicy: z.boolean().optional(),
+    acceptTerms: z.boolean().optional(),
   }),
 };
 

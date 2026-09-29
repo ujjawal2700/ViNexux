@@ -9,6 +9,7 @@ import useToast from '../../hooks/useToast';
 import ProductCard from '../../components/products/ProductCard';
 import { buildProductPath } from '../../utils/categoryUrls';
 import { getAvailableStock } from '../../utils/inventory';
+import { allowsPreferences } from '../../utils/storageConsent';
 import { Skeleton } from '../../components/ui/Skeleton';
 import {
   ShoppingCart,
@@ -84,11 +85,16 @@ export const CartPage = () => {
 
   // 2. Fetch Recently Viewed / Popular Products for bottom section
   useEffect(() => {
+    let active = true;
     const loadRecentlyViewed = async () => {
+      if (!allowsPreferences()) {
+        setRecentlyViewed([]);
+        return;
+      }
       try {
         const stored = JSON.parse(localStorage.getItem('vinexus_recently_viewed') || '[]');
         if (stored.length >= 6) {
-          setRecentlyViewed(stored.slice(0, 6));
+          if (active) setRecentlyViewed(stored.slice(0, 6));
           return;
         }
 
@@ -103,13 +109,18 @@ export const CartPage = () => {
             merged.push(p);
           }
         });
-        setRecentlyViewed(merged.slice(0, 6));
+        if (active) setRecentlyViewed(merged.slice(0, 6));
       } catch (err) {
         console.warn('Could not load recently viewed products:', err);
       }
     };
 
     loadRecentlyViewed();
+    window.addEventListener('storage-choices-updated', loadRecentlyViewed);
+    return () => {
+      active = false;
+      window.removeEventListener('storage-choices-updated', loadRecentlyViewed);
+    };
   }, []);
 
   // 3. Fetch CMS Footer WhatsApp settings

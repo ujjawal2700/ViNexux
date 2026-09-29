@@ -18,7 +18,6 @@ import {
   Upload,
   FileCheck,
   CheckCircle2,
-  Check,
 } from 'lucide-react';
 
 const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
@@ -33,6 +32,19 @@ const inputClass =
   'w-full bg-white border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary rounded pl-10 pr-4 py-2.5 text-xs sm:text-sm text-gray-900 placeholder-gray-400 outline-none transition-all font-medium';
 const plainInputClass =
   'w-full bg-white border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary rounded px-3.5 py-2.5 text-xs sm:text-sm text-gray-900 placeholder-gray-400 outline-none transition-all font-medium';
+
+const LegalAcceptances = ({ prefix, agreedTerms, setAgreedTerms, agreedPrivacy, setAgreedPrivacy }) => (
+  <div className="space-y-2 pt-1 text-left text-xs text-gray-700">
+    <div className="flex items-start gap-2">
+      <input id={`${prefix}-privacy`} type="checkbox" checked={agreedPrivacy} onChange={(e) => setAgreedPrivacy(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[#800020]" />
+      <div><label htmlFor={`${prefix}-privacy`} className="cursor-pointer">I agree to the use of my details as described in the </label><Link to="/privacy" target="_blank" rel="noopener noreferrer" className="font-bold text-primary underline">Privacy Policy</Link>.</div>
+    </div>
+    <div className="flex items-start gap-2">
+      <input id={`${prefix}-terms`} type="checkbox" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[#800020]" />
+      <div><label htmlFor={`${prefix}-terms`} className="cursor-pointer">I have read and agree to the </label><Link to="/terms" target="_blank" rel="noopener noreferrer" className="font-bold text-primary underline">Terms &amp; Conditions</Link>.</div>
+    </div>
+  </div>
+);
 
 const FileDropField = ({ label, required, file, onChange, disabled }) => (
   <label className="block text-left">
@@ -72,6 +84,7 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
   const [agreedTerms, setAgreedTerms] = useState(false);
+  const [agreedPrivacy, setAgreedPrivacy] = useState(false);
 
   // Customer fields
   const [custName, setCustName] = useState('');
@@ -114,7 +127,7 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
   };
 
   const validateStep2 = () => {
-    if (!agreedTerms) {
+    if (!agreedTerms || !agreedPrivacy) {
       return 'Please agree to the Terms & Conditions and Privacy Policy to continue.';
     }
 
@@ -237,6 +250,8 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
           phone: dealerPhone.trim(),
           password: `VNX@${dealerPhone.trim()}`,
           role: 'dealer',
+          acceptPrivacyPolicy: agreedPrivacy,
+          acceptTerms: agreedTerms,
           companyName,
           gstin: gstin.toUpperCase(),
           aadhaarNumber,
@@ -251,6 +266,8 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
           phone: custPhone.trim(),
           password: `VNX@${custPhone.trim()}`,
           role: 'customer',
+          acceptPrivacyPolicy: agreedPrivacy,
+          acceptTerms: agreedTerms,
         };
 
     const response = await signup(payload);
@@ -463,37 +480,7 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
             </div>
           </div>
 
-          {/* Terms & Conditions Checkbox */}
-          <div className="flex items-center text-xs pt-1 text-left">
-            <label className="flex items-center gap-2.5 text-gray-600 hover:text-gray-900 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={agreedTerms}
-                onChange={(e) => setAgreedTerms(e.target.checked)}
-                className="sr-only"
-              />
-              <div
-                className={cn(
-                  "w-4 h-4 rounded border flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-2xs",
-                  agreedTerms
-                    ? "bg-primary border-primary text-white"
-                    : "bg-white border-gray-300 hover:border-gray-400"
-                )}
-              >
-                {agreedTerms && <Check className="w-3 h-3 stroke-[3]" />}
-              </div>
-              <span>
-                I have read and agree to the{' '}
-                <Link to="/terms" target="_blank" className="font-bold text-primary hover:underline">
-                  Terms & Conditions
-                </Link>{' '}
-                &{' '}
-                <Link to="/privacy" target="_blank" className="font-bold text-primary hover:underline">
-                  Privacy Policy
-                </Link>
-              </span>
-            </label>
-          </div>
+          <LegalAcceptances prefix="customer" agreedTerms={agreedTerms} setAgreedTerms={setAgreedTerms} agreedPrivacy={agreedPrivacy} setAgreedPrivacy={setAgreedPrivacy} />
 
           {/* Submit Button */}
           <button
@@ -717,37 +704,7 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
             </div>
           </div>
 
-          {/* Terms & Conditions Checkbox */}
-          <div className="flex items-center text-xs pt-1 text-left">
-            <label className="flex items-center gap-2.5 text-gray-600 hover:text-gray-900 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={agreedTerms}
-                onChange={(e) => setAgreedTerms(e.target.checked)}
-                className="sr-only"
-              />
-              <div
-                className={cn(
-                  "w-4 h-4 rounded border flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-2xs",
-                  agreedTerms
-                    ? "bg-primary border-primary text-white"
-                    : "bg-white border-gray-300 hover:border-gray-400"
-                )}
-              >
-                {agreedTerms && <Check className="w-3 h-3 stroke-[3]" />}
-              </div>
-              <span>
-                I have read and agree to the{' '}
-                <Link to="/terms" target="_blank" className="font-bold text-primary hover:underline">
-                  Terms & Conditions
-                </Link>{' '}
-                &{' '}
-                <Link to="/privacy" target="_blank" className="font-bold text-primary hover:underline">
-                  Privacy Policy
-                </Link>
-              </span>
-            </label>
-          </div>
+          <LegalAcceptances prefix="dealer" agreedTerms={agreedTerms} setAgreedTerms={setAgreedTerms} agreedPrivacy={agreedPrivacy} setAgreedPrivacy={setAgreedPrivacy} />
 
           {/* Submit Dealer Registration */}
           <button

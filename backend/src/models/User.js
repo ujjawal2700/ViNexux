@@ -124,6 +124,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    legalConsent: {
+      privacyPolicyVersion: { type: String, trim: true },
+      termsVersion: { type: String, trim: true },
+      acceptedAt: { type: Date },
+    },
     // Firebase Cloud Messaging device/browser registration tokens for push
     // notifications. A user can have several (multiple browsers/devices).
     fcmTokens: {

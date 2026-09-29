@@ -4,6 +4,7 @@ import { ToastProvider } from './context/ToastContext';
 import { ThemeProvider } from './context/ThemeContext';
 import AppRoutes from './routes/AppRoutes';
 import { WebsiteSettingsProvider } from './context/WebsiteSettingsProvider';
+import StorageConsentBanner from './components/ui/StorageConsentBanner';
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
         <AuthProvider>
           <ToastProvider>
             <AppRoutes />
+            <StorageConsentBanner />
           </ToastProvider>
         </AuthProvider>
       </WebsiteSettingsProvider>

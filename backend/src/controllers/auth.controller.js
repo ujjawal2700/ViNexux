@@ -19,6 +19,8 @@ export const signup = asyncHandler(async (req, res) => {
     city,
     state,
     pincode,
+    acceptPrivacyPolicy,
+    acceptTerms,
   } = req.body;
 
   const reqInfo = {
@@ -45,6 +47,8 @@ export const signup = asyncHandler(async (req, res) => {
     city,
     state,
     pincode,
+    acceptPrivacyPolicy,
+    acceptTerms,
     reqInfo,
   });
 
@@ -57,7 +61,7 @@ export const signup = asyncHandler(async (req, res) => {
 });
 
 export const googleLogin = asyncHandler(async (req, res) => {
-  const { credential, email, name, googleId } = req.body;
+  const { credential, email, name, googleId, acceptPrivacyPolicy, acceptTerms } = req.body;
   const reqInfo = {
     deviceInfo: {
       userAgent: req.headers['user-agent'] || 'Unknown',
@@ -72,6 +76,8 @@ export const googleLogin = asyncHandler(async (req, res) => {
     email,
     name,
     googleId,
+    acceptPrivacyPolicy,
+    acceptTerms,
     reqInfo,
   });
 

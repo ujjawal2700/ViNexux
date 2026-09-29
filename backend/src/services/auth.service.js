@@ -21,6 +21,7 @@ import {
 
 import { normalizePhoneNumber } from '../utils/phone.util.js';
 import { emailService } from './email/email.service.js';
+import { LEGAL_DOCUMENT_VERSION } from '../constants/legal.js';
 
 const normalizeIdentifier = (identifier) => {
   if (!identifier) return '';
@@ -63,8 +64,18 @@ export const authService = {
     city,
     state,
     pincode,
+    acceptPrivacyPolicy,
+    acceptTerms,
     reqInfo,
   }) {
+    if (acceptPrivacyPolicy !== true || acceptTerms !== true) {
+      throw new AppError('Accept the Privacy Policy and Terms & Conditions to register.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+    }
+    const legalConsent = {
+      privacyPolicyVersion: LEGAL_DOCUMENT_VERSION,
+      termsVersion: LEGAL_DOCUMENT_VERSION,
+      acceptedAt: new Date(),
+    };
     if (role === 'admin') {
       throw new AppError('This is Not Admin Portal', HTTP_STATUS.FORBIDDEN, ERROR_CODES.FORBIDDEN);
     }
@@ -121,6 +132,7 @@ export const authService = {
         user.isPhoneVerified = true;
         if (dob) user.dob = new Date(dob);
         user.passwordHash = passwordHash;
+        user.legalConsent = legalConsent;
 
         const dealerProfile = await DealerProfile.create({
           userId: user._id,
@@ -178,6 +190,7 @@ export const authService = {
       isEmailVerified: false,
       accountStatus: 'active',
       status: 'active',
+      legalConsent,
     });
 
     let dealerProfile = null;
@@ -217,7 +230,7 @@ export const authService = {
   /**
    * Log in or Register user using Google Auth credentials.
    */
-  async googleLogin({ credential, email, name, googleId, reqInfo }) {
+  async googleLogin({ credential, email, name, googleId, acceptPrivacyPolicy, acceptTerms, reqInfo }) {
     let userEmail = email;
     let userName = name;
     let userGoogleId = googleId;
@@ -247,6 +260,9 @@ export const authService = {
     let user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
+      if (acceptPrivacyPolicy !== true || acceptTerms !== true) {
+        throw new AppError('Accept the Privacy Policy and Terms & Conditions to create an account.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+      }
       // Register new customer account automatically
       const displayName = (userName && userName.trim()) || normalizedEmail.split('@')[0];
       user = await User.create({
@@ -259,6 +275,11 @@ export const authService = {
         isPhoneVerified: true,
         accountStatus: 'active',
         status: 'active',
+        legalConsent: {
+          privacyPolicyVersion: LEGAL_DOCUMENT_VERSION,
+          termsVersion: LEGAL_DOCUMENT_VERSION,
+          acceptedAt: new Date(),
+        },
       });
     } else {
       if (user.role === 'admin') {

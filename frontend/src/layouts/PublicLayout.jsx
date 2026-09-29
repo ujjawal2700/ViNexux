@@ -14,6 +14,7 @@ import useWebsiteSettings from '../hooks/useWebsiteSettings';
 import { Drawer } from '../components/ui/Drawer';
 import { Skeleton } from '../components/ui/Skeleton';
 import { slugify, buildCategoryPath, buildProductPath } from '../utils/categoryUrls';
+import { openStorageChoices } from '../utils/storageConsent';
 import {
   Search,
   Mic,
@@ -1449,10 +1450,13 @@ const PublicLayout = () => {
           <div className="space-y-2 text-[15px]">
             <h4 className="font-bold text-xl text-white mb-4">{footerData.quickLinksHeading || 'Information'}</h4>
             {[...(footerData.quickLinks || []), ...(footerData.legalLinks || [])]
-              .filter((link) => !['all products', 'category directory', 'component library'].includes((link.label || '').trim().toLowerCase()))
+              .filter((link) => !['all products', 'category directory', 'component library', 'privacy policy', 'terms & conditions'].includes((link.label || '').trim().toLowerCase()))
               .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)).map((link, index) => (
               <a key={`${link.label}-${index}`} className="block text-white/90 hover:text-white hover:underline" href={link.url}>{link.label}</a>
             ))}
+            <Link className="block text-white/90 hover:text-white hover:underline" to="/privacy">Privacy Policy</Link>
+            <Link className="block text-white/90 hover:text-white hover:underline" to="/terms">Terms &amp; Conditions</Link>
+            <button type="button" onClick={openStorageChoices} className="block text-left text-white/90 hover:text-white hover:underline">Storage choices</button>
           </div>
           <div className="space-y-3 text-[15px] text-white/90">
             <h4 className="font-bold text-xl text-white mb-4">{footerData.contactHeading || 'Contact Details'}</h4>
@@ -1464,6 +1468,14 @@ const PublicLayout = () => {
         <p className="storefront-container border-t border-white/15 py-5 text-center text-sm text-white/90">
           {(footerData.copyrightText || '© {year} {company}. All Rights Reserved.').replace(/\{year\}/g, String(new Date().getFullYear())).replace(/\{company\}/g, footerData.companyName || '')}
         </p>
+      </footer>}
+      {!footerData && <footer className="w-full bg-[#111111] px-6 py-6 text-white">
+        <div className="storefront-container flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
+          <Link to="/privacy" className="hover:underline">Privacy Policy</Link>
+          <Link to="/terms" className="hover:underline">Terms &amp; Conditions</Link>
+          <button type="button" onClick={openStorageChoices} className="hover:underline">Storage choices</button>
+          <a href="mailto:vinexus@gmail.com" className="hover:underline">vinexus@gmail.com</a>
+        </div>
       </footer>}
     </div>
   );

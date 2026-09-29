@@ -124,7 +124,7 @@ export const HomePage = () => {
             Updated Products
           </h2>
           <Link
-            to="/"
+            to="/search"
             className="text-xs font-semibold text-primary hover:underline"
           >
             View All
@@ -145,7 +145,7 @@ export const HomePage = () => {
             New Arrivals
           </h2>
           <Link
-            to="/"
+            to="/search"
             className="text-xs font-semibold text-primary hover:underline"
           >
             View All

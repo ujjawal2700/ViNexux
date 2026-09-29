@@ -13,12 +13,12 @@ export const config = {
   otpExpiryMinutes: Number(process.env.OTP_EXPIRY_MINUTES) || 5,
   otpMaxAttempts: Number(process.env.OTP_MAX_ATTEMPTS) || 3,
   devOtp: process.env.DEV_OTP || '123456',
-  // Demo mode: always issue the fixed devOtp instead of a random code, in
-  // every environment (including production) - so a public demo/portfolio
-  // deployment stays trivially loggable-into without wiring up real
-  // email/SMS delivery. Defaults ON; set DEMO_MODE=false to require a real
-  // OTP provider once this stops being a demo.
-  demoMode: process.env.DEMO_MODE !== 'false',
+  // Demo mode: issues the fixed devOtp instead of a random code.
+  // In development, defaults to true. In production, defaults to false unless explicitly enabled with DEMO_MODE=true.
+  demoMode:
+    process.env.DEMO_MODE !== undefined
+      ? process.env.DEMO_MODE === 'true'
+      : (process.env.NODE_ENV !== 'production'),
   jwtSecret: process.env.JWT_SECRET || 'vinexus_jwt_secret_key_development_mode_12345',
   jwtAccessExpiry: process.env.JWT_ACCESS_EXPIRY || '15m',
   jwtRefreshExpiryDays: Number(process.env.JWT_REFRESH_EXPIRY_DAYS) || 30,
@@ -71,3 +71,18 @@ export const config = {
   firebasePrivateKey: process.env.FIREBASE_PRIVATE_KEY || '',
 };
 
+export const validateProductionConfig = () => {
+  if (config.nodeEnv === 'production') {
+    const defaultSecret = 'vinexus_jwt_secret_key_development_mode_12345';
+    if (!process.env.JWT_SECRET || config.jwtSecret === defaultSecret) {
+      throw new Error(
+        'FATAL: JWT_SECRET environment variable must be explicitly configured with a secure key in production mode.'
+      );
+    }
+    if (config.demoMode) {
+      console.warn(
+        '[SECURITY WARNING] Running in PRODUCTION with DEMO_MODE=true. Demo OTP bypass is active!'
+      );
+    }
+  }
+};
