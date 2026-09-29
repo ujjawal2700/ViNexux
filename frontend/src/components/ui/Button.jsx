@@ -1,6 +1,5 @@
 import React from 'react';
 import { cva } from 'class-variance-authority';
-import { Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export const buttonVariants = cva(
@@ -66,11 +65,12 @@ export const Button = React.forwardRef(({
       ref={ref}
       type={type}
       disabled={disabled}
+      aria-busy={isLoading}
       className={cn(buttonVariants({ variant, size, iconOnly, fullWidth }), className)}
       {...props}
     >
       {isLoading ? (
-        <Loader2 className="w-4 h-4 animate-spin shrink-0 text-current" />
+        <span>{children || 'Processing'}...</span>
       ) : (
         <>
           {leftIcon && <span className="shrink-0">{leftIcon}</span>}

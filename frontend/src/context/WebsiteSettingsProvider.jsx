@@ -45,7 +45,7 @@ export const WebsiteSettingsProvider = ({ children }) => {
 
   const refreshSettings = useCallback(async () => {
     try {
-      const response = await contentService.getWebsiteSettings({ skipGlobalLoader: true });
+      const response = await contentService.getWebsiteSettings();
       const saved = response?.data?.settings || response?.settings || response?.data || response;
       if (saved) setSettings((current) => ({ ...current, ...saved }));
       return saved;

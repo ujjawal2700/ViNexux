@@ -14,6 +14,7 @@ import Skeleton from '../../components/ui/Skeleton';
 import ErrorState from '../../components/ui/ErrorState';
 import Toast from '../../components/ui/Toast';
 import Image from '../../components/ui/Image';
+import { groupEnquiryItems } from '../../lib/enquiryItems';
 import { buildEnquiryWhatsAppLink } from '../../lib/whatsapp';
 import {
   ArrowLeft,
@@ -45,6 +46,7 @@ const AdminEnquiryDetailPage = () => {
   // Status & Note Submission State
   const [selectedStatus, setSelectedStatus] = useState('');
   const [newNoteText, setNewNoteText] = useState('');
+  const [customerReplyText, setCustomerReplyText] = useState('');
   const [noteSubmitting, setNoteSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
@@ -105,6 +107,23 @@ const AdminEnquiryDetailPage = () => {
     }
   };
 
+  const handleSendCustomerReply = async (e) => {
+    e.preventDefault();
+    if (!customerReplyText.trim()) return;
+    setNoteSubmitting(true);
+    setFormError('');
+    try {
+      await adminService.updateEnquiryStatus(id, { customerReply: customerReplyText.trim() });
+      setToast({ message: 'Reply sent to the customer/dealer.', type: 'success' });
+      setCustomerReplyText('');
+      fetchEnquiryDetails();
+    } catch (err) {
+      setFormError(err.response?.data?.message || 'Failed to send customer reply');
+    } finally {
+      setNoteSubmitting(false);
+    }
+  };
+
   const handleSyncGoogleSheet = async () => {
     setSyncing(true);
     try {
@@ -141,10 +160,13 @@ const AdminEnquiryDetailPage = () => {
     );
   }
 
-  const items = enquiry.items || [];
+  const items = groupEnquiryItems(enquiry.items || []);
+  const enquiryTotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
+  const profile = enquiry.userId && typeof enquiry.userId === 'object' ? enquiry.userId : null;
   const address = enquiry.deliveryAddress || {};
   const addressStr = [address.line1, address.line2, address.city, address.state, address.pincode].filter(Boolean).join(', ');
   const notes = enquiry.notes || [];
+  const customerReplies = enquiry.customerReplies || [];
   // Always return to the scoped B2C/B2B list matching this enquiry's own
   // userType - correct regardless of which list the admin navigated from.
   const backToListPath = enquiry.userType === 'dealer' ? '/admin/enquiries/dealers' : '/admin/enquiries/customers';
@@ -210,15 +232,15 @@ const AdminEnquiryDetailPage = () => {
               <div className="space-y-2">
                 <div className="flex justify-between py-1 border-b border-border">
                   <span className="text-muted-foreground">Contact Name:</span>
-                  <span className="font-bold text-foreground">{enquiry.contactName}</span>
+                  <span className="font-bold text-foreground">{profile?.fullName || profile?.name || enquiry.contactName}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-border">
                   <span className="text-muted-foreground">Email Address:</span>
-                  <span className="font-mono text-foreground">{enquiry.contactEmail || 'N/A'}</span>
+                  <span className="font-mono text-foreground">{profile?.email || enquiry.contactEmail || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-border">
                   <span className="text-muted-foreground">Phone Number:</span>
-                  <span className="font-mono text-foreground">{enquiry.contactPhone || 'N/A'}</span>
+                  <span className="font-mono text-foreground">{profile?.phone || enquiry.contactPhone || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between py-1">
                   <span className="text-muted-foreground flex items-center gap-1"><MessageCircle className="w-3 h-3 text-green-600" /> WhatsApp Number:</span>
@@ -290,7 +312,10 @@ const AdminEnquiryDetailPage = () => {
                   return (
                     <Table.Row key={idx}>
                       <Table.Cell className="font-bold text-foreground text-xs">
-                        {productName}
+                        <div className="flex items-center gap-2 min-w-[180px]">
+                          <Image src={item.imageUrl} alt={productName} aspectRatio="aspect-square" objectFit="object-contain" className="w-12 h-12 shrink-0 rounded-lg border border-border bg-white" />
+                          <span>{productName}</span>
+                        </div>
                       </Table.Cell>
                       <Table.Cell className="font-mono text-[11px] text-muted-foreground">
                         {prod.sku || 'N/A'}
@@ -302,7 +327,7 @@ const AdminEnquiryDetailPage = () => {
                         ₹{Number(price).toLocaleString('en-IN')}
                       </Table.Cell>
                       <Table.Cell className="text-right font-mono text-xs font-extrabold text-emerald-700">
-                        ₹{Number(price * qty).toLocaleString('en-IN')}
+                        ₹{Number(item.lineTotal).toLocaleString('en-IN')}
                       </Table.Cell>
                     </Table.Row>
                   );
@@ -314,7 +339,7 @@ const AdminEnquiryDetailPage = () => {
               <div className="text-right">
                 <span className="text-xs text-muted-foreground">Grand Total Amount:</span>
                 <h4 className="text-xl font-extrabold text-emerald-700 mt-0.5">
-                  ₹{Number(enquiry.totalAmount || 0).toLocaleString('en-IN')}
+                  ₹{Number(enquiryTotal).toLocaleString('en-IN')}
                 </h4>
               </div>
             </div>
@@ -377,6 +402,30 @@ const AdminEnquiryDetailPage = () => {
               </FormField>
               <Button variant="primary" size="sm" type="submit" isLoading={noteSubmitting} disabled={!newNoteText.trim()} className="w-full text-xs">
                 Add Note
+              </Button>
+            </form>
+          </Card>
+
+          <Card className="space-y-4">
+            <h3 className="text-xs font-extrabold text-foreground uppercase tracking-wider pb-2 border-b border-border">
+              Customer / Dealer Replies ({customerReplies.length})
+            </h3>
+            {customerReplies.length > 0 && <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+              {customerReplies.map((reply, idx) => <div key={idx} className="p-3 rounded-lg bg-background border border-border space-y-1">
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                  <span className="font-bold">{reply.adminId?.fullName || 'Vinexus Support'}</span>
+                  <span>{new Date(reply.createdAt).toLocaleString('en-IN')}</span>
+                </div>
+                <p className="text-xs text-foreground whitespace-pre-wrap">{reply.message}</p>
+              </div>)}
+            </div>}
+            <form onSubmit={handleSendCustomerReply} className="space-y-3 pt-2 border-t border-border">
+              <FormError message={formError} />
+              <FormField label="Send a reply visible to the customer/dealer">
+                <Textarea value={customerReplyText} onChange={(e) => setCustomerReplyText(e.target.value)} placeholder="Write an update or response for the enquiry owner..." rows={3} />
+              </FormField>
+              <Button variant="primary" size="sm" type="submit" isLoading={noteSubmitting} disabled={!customerReplyText.trim()} className="w-full text-xs">
+                Send Reply
               </Button>
             </form>
           </Card>

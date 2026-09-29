@@ -1,10 +1,10 @@
 import React from 'react';
-import { LoadingPill } from './GlobalRequestLoader';
+import { SkeletonCard } from './Skeleton';
 
-export const LoadingState = ({ message = 'Loading content...', className = '' }) => {
+export const LoadingState = ({ message = 'Loading content', className = '' }) => {
   return (
-    <div className={`flex items-center justify-center p-12 text-center ${className}`}>
-      <LoadingPill message={message} />
+    <div role="status" aria-label={message} className={className}>
+      <SkeletonCard />
     </div>
   );
 };

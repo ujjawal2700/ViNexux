@@ -38,7 +38,6 @@ import {
 // dealer portal; see pages/account/)
 import CartPage from '../pages/account/CartPage';
 import CheckoutEnquiryPage from '../pages/account/CheckoutEnquiryPage';
-import EnquiriesPage from '../pages/account/EnquiriesPage';
 import EnquiryDetailPage from '../pages/account/EnquiryDetailPage';
 import ProfilePage from '../pages/account/ProfilePage';
 import ProfileUpdatePage from '../pages/account/ProfileUpdatePage';
@@ -113,7 +112,7 @@ const AppRoutes = () => {
         <Route element={<ProtectedRoute loginPath="/login" portal="customer" />}>
           <Route element={<RoleRoute allowedRoles={[ROLES.CUSTOMER, ROLES.DEALER]} portal="customer" />}>
             <Route path="/account/checkout-enquiry" element={<CheckoutEnquiryPage />} />
-            <Route path="/account/enquiries" element={<EnquiriesPage />} />
+            <Route path="/account/enquiries" element={<ProfilePage />} />
             <Route path="/account/enquiries/:id" element={<EnquiryDetailPage />} />
             <Route path="/account/profile" element={<ProfilePage />} />
             <Route path="/account/profile/update" element={<ProfileUpdatePage />} />

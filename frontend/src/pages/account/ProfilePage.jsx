@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+﻿import React, { useState, useEffect, useCallback } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
 import dealerService from '../../services/dealerService';
-import enquiryService from '../../services/enquiryService';
-import { StatusBadge } from '../../components/ui/Badge';
+import EnquiriesPage from './EnquiriesPage';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { AddressBookSection } from '../../components/address/AddressBookSection';
@@ -21,12 +20,8 @@ import {
   Clock,
   AlertTriangle,
   ArrowRight,
-  Search,
-  Plus,
   Trash2,
   LogOut,
-  Receipt,
-  X,
   FileSpreadsheet,
 } from 'lucide-react';
 
@@ -36,51 +31,28 @@ const KYC_DOC_TYPES = [
   { type: 'msme', required: false },
 ];
 
-const ENQUIRY_STATUS_FILTERS = ['All', 'New', 'Contacted', 'In Progress', 'Closed'];
-
 /**
  * Account Dashboard for ViNexus (Mega Jaipur 2-column layout).
  * Left Sidebar: ACCOUNT (My Profile, My Enquiries, Delete Account, Log Out)
  * Right Pane: Dynamic content depending on active tab.
  * Brand theme: ViNexus signature Maroon (#800020).
  */
-export const ProfilePage = ({ initialTab = 'profile' }) => {
+export const ProfilePage = () => {
   const { user, logout } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  // Active tab state (synced with ?tab= query parameter)
-  const tabFromUrl = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(tabFromUrl || initialTab || 'profile');
+  const location = useLocation();
+  const activeTab = location.pathname === '/account/enquiries' ? 'enquiries' : 'profile';
 
   // Modals state
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // Enquiries state
-  const [enquirySearch, setEnquirySearch] = useState('');
-  const [enquiryFilter, setEnquiryFilter] = useState('All');
-  const [enquiries, setEnquiries] = useState([]);
-  const [enquiriesLoading, setEnquiriesLoading] = useState(false);
 
   // Dealer profile state
   const isDealer = user?.role === 'dealer';
   const [dealerProfile, setDealerProfile] = useState(null);
   const [dealerLoading, setDealerLoading] = useState(isDealer);
   const [dealerError, setDealerError] = useState(null);
-
-  // Sync tab with URL
-  useEffect(() => {
-    if (tabFromUrl && tabFromUrl !== activeTab) {
-      setActiveTab(tabFromUrl);
-    }
-  }, [tabFromUrl]);
-
-  const handleTabChange = (tabId) => {
-    setActiveTab(tabId);
-    setSearchParams({ tab: tabId }, { replace: true });
-  };
 
   // Fetch Dealer KYC Profile
   const fetchDealerProfile = useCallback(async () => {
@@ -102,30 +74,9 @@ export const ProfilePage = ({ initialTab = 'profile' }) => {
     }
   }, [isDealer]);
 
-  // Fetch enquiries
-  const fetchEnquiries = useCallback(async () => {
-    setEnquiriesLoading(true);
-    try {
-      const res = await enquiryService.getMyEnquiries({ page: 1, limit: 20 });
-      const list = res.data?.enquiries || res.enquiries || [];
-      setEnquiries(list);
-    } catch (err) {
-      console.warn('Could not load user enquiries:', err);
-      setEnquiries([]);
-    } finally {
-      setEnquiriesLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     fetchDealerProfile();
   }, [fetchDealerProfile]);
-
-  useEffect(() => {
-    if (activeTab === 'enquiries') {
-      fetchEnquiries();
-    }
-  }, [activeTab, fetchEnquiries]);
 
   // Direct Logout Action
   const handleDirectLogout = async () => {
@@ -157,24 +108,6 @@ export const ProfilePage = ({ initialTab = 'profile' }) => {
     }
   };
 
-  // Filter enquiries by search and status
-  const filteredEnquiries = enquiries.filter((q) => {
-    const matchesSearch =
-      !enquirySearch.trim() ||
-      (q.enquiryNumber && q.enquiryNumber.toLowerCase().includes(enquirySearch.toLowerCase())) ||
-      (q._id && q._id.toLowerCase().includes(enquirySearch.toLowerCase())) ||
-      (q.notes && q.notes.toLowerCase().includes(enquirySearch.toLowerCase()));
-
-    if (!matchesSearch) return false;
-
-    if (enquiryFilter === 'All') return true;
-    if (enquiryFilter === 'New') return q.status === 'new';
-    if (enquiryFilter === 'Contacted') return q.status === 'contacted';
-    if (enquiryFilter === 'In Progress') return q.status === 'in-progress';
-    if (enquiryFilter === 'Closed') return q.status === 'closed';
-    return true;
-  });
-
   return (
     <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 bg-gray-50 min-h-[calc(100vh-220px)]">
       
@@ -196,9 +129,8 @@ export const ProfilePage = ({ initialTab = 'profile' }) => {
             <nav className="space-y-1" aria-label="Account sidebar">
               
               {/* 1. My Profile (Replaces "My Orders" per user specification) */}
-              <button
-                type="button"
-                onClick={() => handleTabChange('profile')}
+              <Link
+                to="/account/profile"
                 className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-semibold transition-all text-left cursor-pointer border-l-4 ${
                   activeTab === 'profile'
                     ? 'border-[#800020] bg-[#800020]/5 text-[#800020] font-bold shadow-2xs'
@@ -211,12 +143,11 @@ export const ProfilePage = ({ initialTab = 'profile' }) => {
                   }`}
                 />
                 <span>My Profile</span>
-              </button>
+              </Link>
 
               {/* 2. My Enquiries */}
-              <button
-                type="button"
-                onClick={() => handleTabChange('enquiries')}
+              <Link
+                to="/account/enquiries"
                 className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-semibold transition-all text-left cursor-pointer border-l-4 ${
                   activeTab === 'enquiries'
                     ? 'border-[#800020] bg-[#800020]/5 text-[#800020] font-bold shadow-2xs'
@@ -229,7 +160,7 @@ export const ProfilePage = ({ initialTab = 'profile' }) => {
                   }`}
                 />
                 <span>My Enquiries</span>
-              </button>
+              </Link>
 
               {/* 3. Delete Account (Opens warning confirmation dialog) */}
               <button
@@ -256,7 +187,7 @@ export const ProfilePage = ({ initialTab = 'profile' }) => {
         </aside>
 
         {/* RIGHT COLUMN: DYNAMIC CONTENT PANE */}
-        <main className="flex-1 w-full space-y-6">
+        <main className="min-w-0 flex-1 w-full space-y-6">
           
           {/* ========================================================= */}
           {/* TAB 1: MY PROFILE */}
@@ -488,163 +419,7 @@ export const ProfilePage = ({ initialTab = 'profile' }) => {
           {/* ========================================================= */}
           {/* TAB 2: MY ENQUIRIES */}
           {/* ========================================================= */}
-          {activeTab === 'enquiries' && (
-            <div className="space-y-5 text-left animate-in fade-in-50 duration-200">
-              
-              {/* Header Row */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
-                    My Enquiries
-                  </h1>
-                  <p className="text-xs sm:text-sm text-gray-500 mt-1">
-                    Track the product enquiries you have sent to our team
-                  </p>
-                </div>
-
-              </div>
-
-              {/* Search Bar */}
-              <div className="relative w-full">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                  <Search className="w-4 h-4" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search by enquiry number..."
-                  value={enquirySearch}
-                  onChange={(e) => setEnquirySearch(e.target.value)}
-                  className="w-full h-11 pl-10 pr-10 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#800020] focus:ring-1 focus:ring-[#800020] transition-all shadow-2xs"
-                />
-                {enquirySearch && (
-                  <button
-                    type="button"
-                    onClick={() => setEnquirySearch('')}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-
-              {/* Filter Tabs & "+ New Enquiry" Action Row */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1">
-                
-                {/* Enquiry status filters */}
-                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                  {ENQUIRY_STATUS_FILTERS.map((filter) => {
-                    const isActive = enquiryFilter === filter;
-                    return (
-                      <button
-                        key={filter}
-                        type="button"
-                        onClick={() => setEnquiryFilter(filter)}
-                        className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                          isActive
-                            ? 'bg-[#800020] text-white shadow-2xs'
-                            : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
-                        }`}
-                      >
-                        {filter}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* + New Enquiry Button */}
-                <Link
-                  to="/"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-[#800020] hover:bg-[#9a1b32] text-white text-xs sm:text-sm font-bold shadow-2xs transition-colors cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>New Enquiry</span>
-                </Link>
-              </div>
-
-              {/* Main Content Box (Exact Mega Jaipur Empty State / List View) */}
-              <div className="bg-white rounded-xl border border-gray-200 p-8 sm:p-14 min-h-[380px] flex flex-col items-center justify-center text-center shadow-2xs">
-                
-                {enquiriesLoading ? (
-                  <div className="space-y-4 w-full max-w-md mx-auto">
-                    <Skeleton className="h-8 w-48 mx-auto rounded" />
-                    <Skeleton className="h-20 w-full rounded-xl" />
-                    <Skeleton className="h-10 w-36 mx-auto rounded" />
-                  </div>
-                ) : filteredEnquiries.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center space-y-4">
-                    
-                    {/* Centered Soft Square with Note Icon */}
-                    <div className="w-14 h-14 rounded-xl bg-[#800020]/10 text-[#800020] flex items-center justify-center shadow-2xs">
-                      <Receipt className="w-7 h-7" />
-                    </div>
-
-                    {/* "No enquiries yet" heading */}
-                    <h3 className="text-base sm:text-lg font-extrabold text-gray-900">
-                      {enquirySearch ? 'No matching enquiries found' : 'No enquiries yet'}
-                    </h3>
-
-                    {/* "+ New Enquiry" action button */}
-                    <Link
-                      to="/"
-                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[#800020] hover:bg-[#9a1b32] text-white text-xs sm:text-sm font-bold shadow-2xs transition-colors cursor-pointer"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>New Enquiry</span>
-                    </Link>
-                  </div>
-                ) : (
-                  <div className="w-full space-y-3 text-left">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {filteredEnquiries.map((enquiry) => (
-                        <div
-                          key={enquiry._id || enquiry.id}
-                          className="p-4 rounded-xl border border-gray-200 hover:border-[#800020]/50 transition-colors bg-white shadow-2xs space-y-3"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-mono font-bold text-sm text-[#800020]">
-                              {enquiry.enquiryNumber || 'EST-' + String(enquiry._id).slice(-6).toUpperCase()}
-                            </span>
-                            <StatusBadge status={enquiry.status || 'new'} />
-                          </div>
-
-                          <div className="text-xs text-gray-500 space-y-1">
-                            <div className="flex justify-between">
-                              <span>Created on:</span>
-                              <span className="font-medium text-gray-700">
-                                {new Date(enquiry.createdAt || 0).toLocaleDateString('en-IN', {
-                                  day: '2-digit',
-                                  month: 'short',
-                                  year: 'numeric',
-                                })}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Items:</span>
-                              <span className="font-bold text-gray-800">
-                                {enquiry.items?.length || 1} item(s)
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="pt-2 border-t border-gray-100 flex items-center justify-end">
-                            <Link
-                              to={`/account/enquiries/${enquiry._id || enquiry.id}`}
-                              className="text-xs font-bold text-[#800020] hover:underline inline-flex items-center gap-1"
-                            >
-                              <span>View Details</span>
-                              <ArrowRight className="w-3.5 h-3.5" />
-                            </Link>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-              </div>
-
-            </div>
-          )}
+          {activeTab === 'enquiries' && <EnquiriesPage embedded />}
 
         </main>
       </div>

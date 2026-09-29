@@ -1,8 +1,8 @@
 import apiClient from '../api/axios';
 
 export const categoryService = {
-  async getCategoryTree() {
-    const response = await apiClient.get('/categories/tree');
+  async getCategoryTree(options = {}) {
+    const response = await apiClient.get('/categories/tree', options);
     return response.data;
   },
   /**

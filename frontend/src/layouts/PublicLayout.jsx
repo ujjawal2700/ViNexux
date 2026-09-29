@@ -652,9 +652,10 @@ const PublicLayout = () => {
     return (
       <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-b-lg shadow-2xl border border-gray-200 z-50 overflow-hidden text-left animate-in fade-in-50 duration-150">
         {isSearching && searchSuggestions.length === 0 ? (
-          <div className="py-7 px-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
-            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <span>Searching products...</span>
+          <div role="status" aria-label="Searching products" className="space-y-3 px-4 py-4">
+            <Skeleton className="h-4 w-4/5" />
+            <Skeleton className="h-4 w-3/5" />
+            <Skeleton className="h-4 w-2/3" />
           </div>
         ) : searchSuggestions.length === 0 ? (
           <div>

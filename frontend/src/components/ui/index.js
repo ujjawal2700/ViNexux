@@ -17,7 +17,6 @@ export { default as Drawer } from './Drawer';
 export { default as Table } from './Table';
 export { default as Pagination } from './Pagination';
 export { default as ToastContainer } from './Toast';
-export { default as Spinner } from './Spinner';
 export { default as LoadingState } from './LoadingState';
 export { default as Skeleton, SkeletonCard, SkeletonTable } from './Skeleton';
 export { default as EmptyState } from './EmptyState';

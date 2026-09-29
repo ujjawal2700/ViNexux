@@ -14,8 +14,8 @@ export const enquiryService = {
    * Fetch authenticated user's submitted enquiries.
    * @param {Object} params - { page, limit, status, sortBy, sortOrder }
    */
-  async getMyEnquiries(params = {}) {
-    const response = await apiClient.get('/enquiries', { params });
+  async getMyEnquiries(params = {}, options = {}) {
+    const response = await apiClient.get('/enquiries', { ...options, params });
     return response.data;
   },
 
@@ -23,8 +23,8 @@ export const enquiryService = {
    * Fetch single enquiry detail owned by authenticated user.
    * @param {string} id
    */
-  async getMyEnquiryById(id) {
-    const response = await apiClient.get(`/enquiries/${id}`);
+  async getMyEnquiryById(id, options = {}) {
+    const response = await apiClient.get(`/enquiries/${id}`, options);
     return response.data;
   },
 };

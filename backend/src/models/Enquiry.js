@@ -12,6 +12,7 @@ const enquiryItemSchema = new mongoose.Schema(
       required: [true, 'Product name snapshot is required'],
       trim: true,
     },
+    productImageUrl: { type: String, trim: true, default: '' },
     quantity: {
       type: Number,
       required: [true, 'Quantity is required'],
@@ -48,6 +49,15 @@ const enquiryNoteSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+  },
+  { _id: false }
+);
+
+const enquiryReplySchema = new mongoose.Schema(
+  {
+    adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    message: { type: String, required: true, trim: true, maxlength: [1000, 'Reply cannot exceed 1000 characters'] },
+    createdAt: { type: Date, default: Date.now },
   },
   { _id: false }
 );
@@ -133,6 +143,7 @@ const enquirySchema = new mongoose.Schema(
       type: [enquiryNoteSchema],
       default: [],
     },
+    customerReplies: { type: [enquiryReplySchema], default: [] },
     assignedTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

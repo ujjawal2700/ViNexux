@@ -75,6 +75,12 @@ export const adminUpdateEnquiryStatusSchema = {
       .min(1, { message: 'Admin note text cannot be empty' })
       .max(1000, { message: 'Admin note text cannot exceed 1000 characters' })
       .optional(),
+    customerReply: z
+      .string()
+      .trim()
+      .min(1, { message: 'Customer reply cannot be empty' })
+      .max(1000, { message: 'Customer reply cannot exceed 1000 characters' })
+      .optional(),
     assignedTo: z
       .string()
       .refine(isValidObjectId, { message: 'Invalid assignedTo admin ID format' })

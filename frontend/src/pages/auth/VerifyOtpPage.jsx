@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
-import { ArrowLeft, Check, ShieldAlert, Loader2 } from 'lucide-react';
+import { ArrowLeft, Check, ShieldAlert } from 'lucide-react';
 
 export const VerifyOtpPage = () => {
   const location = useLocation();
@@ -298,7 +298,6 @@ export const VerifyOtpPage = () => {
             >
               {loading ? (
                 <span className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
                   Verifying...
                 </span>
               ) : (

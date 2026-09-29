@@ -43,6 +43,16 @@ export const HomePage = () => {
   const [newArrivals, setNewArrivals] = useState([]);
   const [headerCategorySections, setHeaderCategorySections] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showLoadingSkeleton, setShowLoadingSkeleton] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setShowLoadingSkeleton(false);
+      return undefined;
+    }
+    const timer = window.setTimeout(() => setShowLoadingSkeleton(true), 300);
+    return () => window.clearTimeout(timer);
+  }, [isLoading]);
 
   // Load all homepage data
   const loadData = useCallback(async () => {
@@ -50,7 +60,8 @@ export const HomePage = () => {
     setError(null);
     try {
       const [bannerResponse, catRes, featured, newest] = await Promise.all([
-        contentService.getBanners(), categoryService.getCategoryTree(),
+        contentService.getBanners(),
+        categoryService.getCategoryTree(),
         productService.getProducts({ sortBy: 'updatedAt', sortOrder: 'desc', limit: 6 }),
         productService.getProducts({ sortBy: 'createdAt', sortOrder: 'desc', limit: 6 }),
       ]);
@@ -65,8 +76,7 @@ export const HomePage = () => {
       // storefront is visible so they do not block the hero banner.
       const sectionResults = await Promise.allSettled(rootCats.map(async (category) => {
         const response = await productService.getProducts(
-          { categoryId: category._id, limit: 8 },
-          { skipGlobalLoader: true }
+          { categoryId: category._id, limit: 8 }
         );
         return { category, products: response.data?.products || [] };
       }));
@@ -86,7 +96,7 @@ export const HomePage = () => {
   }, [loadData]);
 
   if (error) return <ErrorState title="Storefront unavailable" description={error} onRetry={loadData} />;
-  if (isLoading) return <HomePageSkeleton />;
+  if (isLoading && showLoadingSkeleton) return <HomePageSkeleton />;
 
   return (
     <div className="w-full bg-gray-50 pb-16 space-y-6 sm:space-y-8">

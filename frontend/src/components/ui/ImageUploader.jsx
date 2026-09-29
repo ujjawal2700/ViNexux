@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { UploadCloud, Image as ImageIcon, X, Loader2, CheckCircle2, Cloud } from 'lucide-react';
+import { UploadCloud, Image as ImageIcon, X, CheckCircle2, Cloud } from 'lucide-react';
+import Skeleton from './Skeleton';
 import uploadService from '../../services/uploadService';
 
 /**
@@ -153,7 +154,7 @@ export const ImageUploader = ({
           <div className="flex flex-col items-center justify-center space-y-2">
             {uploading ? (
               <div className="flex flex-col items-center gap-2">
-                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                <Skeleton className="h-8 w-28" />
                 <span className="text-xs font-bold text-foreground">Uploading image to Cloudinary...</span>
               </div>
             ) : (

@@ -80,7 +80,16 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
   }
 
   const selectedIds = new Set(payload.selectedProductIds || []);
-  const selectedItems = cart.items.filter((item) => selectedIds.size === 0 || selectedIds.has(String(item.productId)));
+  const matchingItems = cart.items.filter((item) => selectedIds.size === 0 || selectedIds.has(String(item.productId)));
+  // Older carts may contain repeated lines for the same product. Keep a single
+  // enquiry line with the combined quantity so the saved record matches the UI.
+  const selectedItems = [...matchingItems.reduce((byProduct, item) => {
+    const key = String(item.productId);
+    const existing = byProduct.get(key);
+    if (existing) existing.quantity += item.quantity;
+    else byProduct.set(key, { productId: item.productId, quantity: item.quantity });
+    return byProduct;
+  }, new Map()).values()];
   if (!selectedItems.length) {
     throw new AppError('No selected cart products were found', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
   }
@@ -134,6 +143,7 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
     enquiryItems.push({
       productId: item.productId,
       productName,
+      productImageUrl: product?.images?.[0]?.url || '',
       quantity: item.quantity,
       priceShown,
     });
@@ -199,6 +209,7 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
     { path: 'userId', select: 'fullName email phone role accountStatus' },
     { path: 'assignedTo', select: 'fullName email phone role' },
     { path: 'notes.adminId', select: 'fullName email phone role' },
+    { path: 'customerReplies.adminId', select: 'fullName email role' },
     {
       path: 'items.productId',
       select: 'sku name categoryId description images specifications isFeatured isActive standardPrice',
@@ -211,7 +222,7 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
  * Get paginated list of enquiries for authenticated customer/dealer
  */
 export const getMyEnquiries = async (userId, query = {}) => {
-  const { page = 1, limit = 20, status, userType, sortBy = 'createdAt', sortOrder = 'desc' } = query;
+  const { page = 1, limit = 20, status, userType, search, sortBy = 'createdAt', sortOrder = 'desc' } = query;
 
   const filter = { userId };
   if (status) {
@@ -220,15 +231,19 @@ export const getMyEnquiries = async (userId, query = {}) => {
   if (userType) {
     filter.userType = userType;
   }
+  if (search) {
+    filter.enquiryNumber = new RegExp(escapeRegex(search), 'i');
+  }
 
   const skip = (page - 1) * limit;
 
   const totalItems = await Enquiry.countDocuments(filter);
   const enquiries = await Enquiry.find(filter)
+    .select('-notes')
     .populate([
       { path: 'userId', select: 'fullName email phone role accountStatus' },
       { path: 'assignedTo', select: 'fullName email phone role' },
-      { path: 'notes.adminId', select: 'fullName email phone role' },
+      { path: 'customerReplies.adminId', select: 'fullName email role' },
       {
         path: 'items.productId',
         select: 'sku name categoryId description images specifications isFeatured isActive standardPrice',
@@ -255,10 +270,10 @@ export const getMyEnquiries = async (userId, query = {}) => {
  * Get single enquiry owned by authenticated user
  */
 export const getMyEnquiryById = async (userId, enquiryId) => {
-  const enquiry = await Enquiry.findById(enquiryId).populate([
+  const enquiry = await Enquiry.findById(enquiryId).select('-notes').populate([
     { path: 'userId', select: 'fullName email phone role accountStatus' },
     { path: 'assignedTo', select: 'fullName email phone role' },
-    { path: 'notes.adminId', select: 'fullName email phone role' },
+    { path: 'customerReplies.adminId', select: 'fullName email role' },
     {
       path: 'items.productId',
       select: 'sku name categoryId description images specifications isFeatured isActive standardPrice',
@@ -313,6 +328,7 @@ export const listAllEnquiries = async (query = {}) => {
       { path: 'userId', select: 'fullName email phone role accountStatus' },
       { path: 'assignedTo', select: 'fullName email phone role' },
       { path: 'notes.adminId', select: 'fullName email phone role' },
+      { path: 'customerReplies.adminId', select: 'fullName email role' },
       {
         path: 'items.productId',
         select: 'sku name categoryId description images specifications isFeatured isActive standardPrice',
@@ -343,6 +359,7 @@ export const getEnquiryById = async (enquiryId) => {
     { path: 'userId', select: 'fullName email phone role accountStatus' },
     { path: 'assignedTo', select: 'fullName email phone role' },
     { path: 'notes.adminId', select: 'fullName email phone role' },
+    { path: 'customerReplies.adminId', select: 'fullName email role' },
     {
       path: 'items.productId',
       select: 'sku name categoryId description images specifications isFeatured isActive standardPrice',
@@ -366,7 +383,7 @@ export const updateEnquiryStatus = async (enquiryId, updateData = {}, adminUserI
     throw new AppError('Enquiry not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
   }
 
-  const { status, note, adminNote, assignedTo } = updateData;
+  const { status, note, adminNote, customerReply, assignedTo } = updateData;
   const oldStatus = enquiry.status;
 
   // 1. Validate status transition if status is being updated
@@ -394,6 +411,10 @@ export const updateEnquiryStatus = async (enquiryId, updateData = {}, adminUserI
       note: noteText.trim(),
       createdAt: new Date(),
     });
+  }
+
+  if (customerReply && customerReply.trim()) {
+    enquiry.customerReplies.push({ adminId: adminUserId, message: customerReply.trim(), createdAt: new Date() });
   }
 
   // 3. Update assignedTo admin reference if provided
@@ -424,6 +445,7 @@ export const updateEnquiryStatus = async (enquiryId, updateData = {}, adminUserI
     { path: 'userId', select: 'fullName email phone role accountStatus' },
     { path: 'assignedTo', select: 'fullName email phone role' },
     { path: 'notes.adminId', select: 'fullName email phone role' },
+    { path: 'customerReplies.adminId', select: 'fullName email role' },
     {
       path: 'items.productId',
       select: 'sku name categoryId description images specifications isFeatured isActive standardPrice',

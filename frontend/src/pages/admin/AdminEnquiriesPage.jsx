@@ -14,6 +14,7 @@ import ErrorState from '../../components/ui/ErrorState';
 import Toast from '../../components/ui/Toast';
 import { Inbox, Eye, FileSpreadsheet, MessageCircle } from 'lucide-react';
 import { buildEnquiryWhatsAppLink } from '../../lib/whatsapp';
+import { groupEnquiryItems } from '../../lib/enquiryItems';
 
 const ALLOWED_STATUS_TRANSITIONS = {
   new: ['contacted', 'in-progress', 'closed', 'spam'],
@@ -222,6 +223,8 @@ const AdminEnquiriesPage = ({ forcedUserType }) => {
                 ];
 
                 const totalItemsCount = enq.items ? enq.items.reduce((acc, item) => acc + (item.quantity || 1), 0) : 0;
+                const uniqueProductCount = groupEnquiryItems(enq.items).length;
+                const enquiryTotal = (enq.items || []).reduce((sum, item) => sum + (item.priceShown || 0) * (item.quantity || 1), 0);
 
                 return (
                   <Table.Row key={enq._id}>
@@ -236,8 +239,8 @@ const AdminEnquiriesPage = ({ forcedUserType }) => {
                       </div>
                     </Table.Cell>
                     <Table.Cell>
-                      <div className="text-xs font-bold text-foreground">{enq.contactName}</div>
-                      <div className="text-[10px] text-muted-foreground">{enq.contactEmail || enq.contactPhone}</div>
+                      <div className="text-xs font-bold text-foreground">{enq.userId?.fullName || enq.userId?.name || enq.contactName}</div>
+                      <div className="text-[10px] text-muted-foreground">{enq.userId?.email || enq.userId?.phone || enq.contactEmail || enq.contactPhone}</div>
                     </Table.Cell>
                     <Table.Cell>
                       <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
@@ -249,9 +252,9 @@ const AdminEnquiriesPage = ({ forcedUserType }) => {
                       </span>
                     </Table.Cell>
                     <Table.Cell>
-                      <div className="text-xs font-semibold text-foreground">{totalItemsCount} Item(s)</div>
+                      <div className="text-xs font-semibold text-foreground">{uniqueProductCount} product(s) · Qty {totalItemsCount}</div>
                       <div className="text-[11px] font-extrabold text-emerald-700">
-                        ₹{Number(enq.totalAmount || 0).toLocaleString('en-IN')}
+                        ₹{Number(enquiryTotal).toLocaleString('en-IN')}
                       </div>
                     </Table.Cell>
                     <Table.Cell className="min-w-[140px]">

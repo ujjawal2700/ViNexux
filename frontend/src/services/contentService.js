@@ -4,8 +4,8 @@ export const contentService = {
   /**
    * Fetch active hero carousel banners for homepage.
    */
-  async getBanners() {
-    const response = await apiClient.get('/content/banners');
+  async getBanners(options = {}) {
+    const response = await apiClient.get('/content/banners', options);
     return response.data;
   },
 
@@ -28,8 +28,8 @@ export const contentService = {
   /**
    * Fetch public footer contact info & quick links.
    */
-  async getFooterContent() {
-    const response = await apiClient.get('/content/footer-content');
+  async getFooterContent(options = {}) {
+    const response = await apiClient.get('/content/footer-content', options);
     return response.data;
   },
 

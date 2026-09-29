@@ -53,6 +53,18 @@ export const CheckoutEnquiryPage = () => {
   );
   const [whatsappError, setWhatsappError] = useState(null);
 
+  // The authenticated profile can arrive after the first render on a reload.
+  // Fill still-empty fields without replacing edits made in this form.
+  useEffect(() => {
+    if (!user) return;
+    setContact((current) => ({
+      fullName: current.fullName || user.fullName || user.name || '',
+      email: current.email || user.email || '',
+      phone: current.phone || user.phone || '',
+    }));
+    setWhatsappNumber((current) => current || (/^[6-9]\d{9}$/.test(user.phone || '') ? user.phone : ''));
+  }, [user?.fullName, user?.name, user?.email, user?.phone]);
+
   const [message, setMessage] = useState('');
 
   const fetchCartAndVerify = useCallback(async () => {

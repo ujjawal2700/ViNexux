@@ -77,6 +77,7 @@ export const ProductDetailPage = () => {
     }
     setIsLoading(true);
     setError(null);
+    setRelatedProducts([]);
     try {
       const res = await productService.getProductById(productId);
       const prod = res.data?.product || res.product || res.data;
@@ -97,13 +98,13 @@ export const ProductDetailPage = () => {
         // non-blocking
       }
 
-      // Fetch related products from same category
+      // Match the product's exact category, excluding neighboring categories.
       const catId = typeof prod.categoryId === 'object' ? prod.categoryId._id : prod.categoryId;
       if (catId) {
         try {
-          const relRes = await productService.getProducts({ categoryId: catId, limit: 8, isActive: true });
+          const relRes = await productService.getProducts({ categoryId: catId, exactCategory: 'true', limit: 5, isActive: true });
           const relList = relRes.data?.products || relRes.products || [];
-          setRelatedProducts(relList.filter((p) => String(p._id) !== String(prod._id)).slice(0, 4));
+          setRelatedProducts(relList.filter((p) => String(p._id) !== String(prod._id) && String(p.categoryId?._id || p.categoryId) === String(catId)).slice(0, 4));
         } catch (relErr) {
           console.warn('Failed to fetch related products:', relErr);
         }
@@ -707,7 +708,7 @@ export const ProductDetailPage = () => {
       {/* =========================================================================
           4. RELATED PRODUCTS SECTION (On Scroll Down - Exactly Matching Given Image 3 & 4)
          ========================================================================= */}
-      {relatedProducts.length > 0 && (
+      {product?.categoryId && (
         <section className="space-y-4 pt-8 border-t border-gray-200">
           <div className="flex items-center justify-between border-b border-gray-200 pb-3">
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">
@@ -717,17 +718,21 @@ export const ProductDetailPage = () => {
               to={categoryPath}
               className="text-xs sm:text-sm font-semibold text-[#800020] hover:underline flex items-center gap-1"
             >
-              <span>See all in {categoryName}</span>
+              <span>Show all in {categoryName}</span>
               <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
 
           {/* 4 Columns Grid Matching Given Image */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-            {relatedProducts.map((relProd) => (
-              <ProductCard key={relProd._id} product={relProd} />
-            ))}
-          </div>
+          {relatedProducts.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+              {relatedProducts.map((relProd) => (
+                <ProductCard key={relProd._id} product={relProd} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-600">No other products in this category yet.</p>
+          )}
         </section>
       )}
 

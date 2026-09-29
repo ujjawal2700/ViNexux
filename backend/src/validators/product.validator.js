@@ -130,6 +130,7 @@ export const getProductsQuerySchema = {
       catch { return false; }
     }, { message: 'Specifications must be a JSON object of string arrays' }).optional(),
     categoryId: z.string().optional(),
+    exactCategory: z.enum(['true', 'false']).optional(),
     category: z.string().optional(),
     categorySlug: z.string().optional(),
     brand: z.string().optional(),

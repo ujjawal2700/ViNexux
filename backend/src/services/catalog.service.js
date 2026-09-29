@@ -141,7 +141,9 @@ export const getPublicProducts = async (query = {}, user = null) => {
     const category = categories.find((item) => String(item._id) === requestedCategory || item.slug === requestedCategory.toLowerCase());
     requestedCategoryRecord = category || null;
     // Never turn an unknown category into an unfiltered all-products response.
-    allowedIds = category ? descendantIds(categories, [category._id]) : [];
+    allowedIds = category
+      ? (query.exactCategory === 'true' ? [category._id] : descendantIds(categories, [category._id]))
+      : [];
   }
   const match = { isActive: true, categoryId: { $in: allowedIds } };
   if (query.id) match._id = new mongoose.Types.ObjectId(query.id);
