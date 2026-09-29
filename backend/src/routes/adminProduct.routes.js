@@ -8,12 +8,9 @@ import {
   uploadImage,
   deleteImage,
   seedTestStockQuantities,
-<<<<<<< HEAD
   downloadProductImportTemplate,
   previewProductImportUpload,
   commitProductImportUpload,
-=======
->>>>>>> 934d1a4eab67a41edc8a69992a0070b627ee5747
 } from '../controllers/adminProduct.controller.js';
 import { validate } from '../middlewares/validate.js';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';

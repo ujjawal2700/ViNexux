@@ -60,10 +60,7 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => {
-<<<<<<< HEAD
-=======
     if (error.config?._globalLoaderTracked) loadingTracker.finish();
->>>>>>> 934d1a4eab67a41edc8a69992a0070b627ee5747
     return Promise.reject(error);
   }
 );

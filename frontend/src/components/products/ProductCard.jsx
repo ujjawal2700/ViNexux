@@ -318,11 +318,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
               )}
             >
               {isAdding ? (
-<<<<<<< HEAD
                 <span>ADDING...</span>
-=======
-                <span className="animate-spin text-xs">●</span>
->>>>>>> 934d1a4eab67a41edc8a69992a0070b627ee5747
               ) : isAdded ? (
                 <>
                   <Check className="h-3 w-3 stroke-[3]" />

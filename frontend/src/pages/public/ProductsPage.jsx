@@ -6,10 +6,6 @@ import ProductCard from '../../components/products/ProductCard';
 import { Drawer } from '../../components/ui/Drawer';
 import { Pagination } from '../../components/ui/Pagination';
 import { FilterSidebarSkeleton, ProductCardSkeleton } from '../../components/ui/Skeleton';
-<<<<<<< HEAD
-=======
-import { ContentLoadingOverlay } from '../../components/ui/GlobalRequestLoader';
->>>>>>> 934d1a4eab67a41edc8a69992a0070b627ee5747
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
 import {
@@ -216,11 +212,6 @@ export const ProductsPage = () => {
   const availableBrands = facets.brands;
   const dynamicSpecs = facets.specs;
   const availabilityFacets = facets.availability || [];
-<<<<<<< HEAD
-=======
-  const hasDefaultAvailability = selectedAvailability.length === DEFAULT_AVAILABILITY.length
-    && DEFAULT_AVAILABILITY.every((status) => selectedAvailability.includes(status));
->>>>>>> 934d1a4eab67a41edc8a69992a0070b627ee5747
   // Filtering and pagination are performed together by MongoDB.
   const displayedProducts = products;
 
@@ -320,11 +311,8 @@ export const ProductsPage = () => {
     if (searchTerm) {
       return `Search: "${searchTerm}"`;
     }
-<<<<<<< HEAD
     return 'All Products';
-=======
-    return 'Product Catalog';
->>>>>>> 934d1a4eab67a41edc8a69992a0070b627ee5747
+    return 'All Products';
   }, [activeCategory, brandSlug, routeBrand, searchTerm]);
 
   // Sidebar Filter Content (used in both desktop sidebar & mobile drawer)
@@ -580,11 +568,8 @@ export const ProductsPage = () => {
           {/* Breadcrumb row */}
           <nav
             aria-label="Breadcrumb"
-<<<<<<< HEAD
             className="flex w-full min-w-0 max-w-full items-center flex-nowrap gap-2 overflow-x-auto whitespace-nowrap text-sm sm:text-base text-[#800020] font-medium lg:absolute lg:left-0 lg:w-auto lg:max-w-[35%]"
-=======
-            className="flex w-full items-center flex-wrap gap-1.5 text-xs text-gray-500 font-medium lg:absolute lg:left-0 lg:w-auto lg:max-w-[35%]"
->>>>>>> 934d1a4eab67a41edc8a69992a0070b627ee5747
+            className="flex w-full min-w-0 max-w-full items-center flex-nowrap gap-2 overflow-x-auto whitespace-nowrap text-sm sm:text-base text-[#800020] font-medium lg:absolute lg:left-0 lg:w-auto lg:max-w-[35%]"
           >
             {breadcrumbTrail.map((crumb, idx) => (
               <React.Fragment key={crumb.label + idx}>
@@ -658,58 +643,6 @@ export const ProductsPage = () => {
 
           {/* MAIN PRODUCT CATALOG CONTENT */}
           <main className="relative lg:col-span-9 xl:col-span-9 2xl:col-span-10 space-y-4 min-h-80">
-<<<<<<< HEAD
-=======
-            {isLoading && displayedProducts.length > 0 && <ContentLoadingOverlay message="Updating results..." className="rounded-xl" />}
-            {/* Active Filter Chips */}
-            {(selectedBrands.length > 0 || !hasDefaultAvailability || Object.keys(selectedSpecs).some(k => selectedSpecs[k]?.length > 0)) && (
-              <div className="flex items-center flex-wrap gap-2 pt-1">
-                {selectedBrands.map((b) => (
-                  <span
-                    key={b}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20"
-                  >
-                    <span>Brand: {b}</span>
-                    <button
-                      onClick={() => handleToggleBrand(b)}
-                      className="hover:text-red-600 font-bold ml-0.5 cursor-pointer"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-                {Object.entries(selectedSpecs).flatMap(([key, vals]) =>
-                  (vals || []).map((val) => (
-                    <span
-                      key={key + val}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200"
-                    >
-                      <span>{key}: {val}</span>
-                      <button
-                        onClick={() => handleToggleSpec(key, val)}
-                        className="hover:text-blue-900 font-bold ml-0.5 cursor-pointer"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))
-                )}
-                {!hasDefaultAvailability && selectedAvailability.map((status) => (
-                  <span key={status} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    <span>{status.split('-').map((part) => part[0].toUpperCase() + part.slice(1)).join(' ')}</span>
-                    <button onClick={() => handleToggleAvailability(status)} className="hover:text-emerald-900 font-bold ml-0.5 cursor-pointer">×</button>
-                  </span>
-                ))}
-                <button
-                  onClick={handleResetFilters}
-                  className="text-xs text-gray-500 hover:text-primary hover:underline ml-1 cursor-pointer"
-                >
-                  Reset filters
-                </button>
-              </div>
-            )}
-
->>>>>>> 934d1a4eab67a41edc8a69992a0070b627ee5747
             {/* PRODUCT CARDS HIGH-DENSITY GRID (matching Screenshot: 4-5 cards per row on large displays) */}
             {isLoading && displayedProducts.length === 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-3 sm:gap-3.5">

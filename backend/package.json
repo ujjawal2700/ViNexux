@@ -9,10 +9,7 @@
     "dev": "nodemon src/server.js",
     "test": "node tests/health.test.js",
     "test:catalog-integration": "node tests/catalogIntegration.test.js",
-<<<<<<< HEAD
     "test:product-import": "node tests/productImport.test.js",
-=======
->>>>>>> 934d1a4eab67a41edc8a69992a0070b627ee5747
     "backfill:product-models": "node scripts/backfill_product_models.js"
   },
   "keywords": [

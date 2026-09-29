@@ -4,7 +4,6 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { Product } from '../models/Product.js';
 import { Category } from '../models/Category.js';
-<<<<<<< HEAD
 import { createProductImportTemplate, previewProductImport, commitProductImport } from '../services/productImport.service.js';
 
 export const downloadProductImportTemplate = asyncHandler(async (req, res) => {
@@ -23,8 +22,6 @@ export const commitProductImportUpload = asyncHandler(async (req, res) => {
   const result = await commitProductImport(req.files.workbook[0].buffer, req.files.imagesZip?.[0]?.buffer);
   return ApiResponse.success(res, 'Bulk import finished', result, HTTP_STATUS.OK);
 });
-=======
->>>>>>> 934d1a4eab67a41edc8a69992a0070b627ee5747
 
 /**
  * Admin Create Product
