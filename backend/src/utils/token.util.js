@@ -30,7 +30,14 @@ export const generateAccessToken = ({ userId, sessionId, role }) => {
  * @returns {Object} Decoded payload
  */
 export const verifyAccessToken = (token) => {
-  return jwt.verify(token, config.jwtSecret);
+  try {
+    return jwt.verify(token, config.jwtSecret);
+  } catch (err) {
+    if (config.jwtSecretFallback && err.name === 'JsonWebTokenError') {
+      return jwt.verify(token, config.jwtSecretFallback);
+    }
+    throw err;
+  }
 };
 
 /**
@@ -67,7 +74,7 @@ export const generateConflictTicket = ({ userId, existingSessionId }) => {
     },
     config.jwtSecret,
     {
-      expiresIn: '5m',
+      expiresIn: config.jwtConflictExpiry || '5m',
     }
   );
 };
@@ -78,7 +85,16 @@ export const generateConflictTicket = ({ userId, existingSessionId }) => {
  * @returns {Object} Decoded payload
  */
 export const verifyConflictTicket = (ticket) => {
-  const decoded = jwt.verify(ticket, config.jwtSecret);
+  let decoded;
+  try {
+    decoded = jwt.verify(ticket, config.jwtSecret);
+  } catch (err) {
+    if (config.jwtSecretFallback && err.name === 'JsonWebTokenError') {
+      decoded = jwt.verify(ticket, config.jwtSecretFallback);
+    } else {
+      throw err;
+    }
+  }
   if (decoded.type !== 'session-conflict') {
     throw new Error('Invalid ticket type');
   }
@@ -104,7 +120,7 @@ export const generatePasswordResetTicket = ({ userId, identifier }) => {
     },
     config.jwtSecret,
     {
-      expiresIn: '10m',
+      expiresIn: config.jwtResetExpiry || '10m',
     }
   );
 };
@@ -115,7 +131,16 @@ export const generatePasswordResetTicket = ({ userId, identifier }) => {
  * @returns {Object} Decoded payload
  */
 export const verifyPasswordResetTicket = (ticket) => {
-  const decoded = jwt.verify(ticket, config.jwtSecret);
+  let decoded;
+  try {
+    decoded = jwt.verify(ticket, config.jwtSecret);
+  } catch (err) {
+    if (config.jwtSecretFallback && err.name === 'JsonWebTokenError') {
+      decoded = jwt.verify(ticket, config.jwtSecretFallback);
+    } else {
+      throw err;
+    }
+  }
   if (decoded.type !== 'password-reset') {
     throw new Error('Invalid ticket type');
   }

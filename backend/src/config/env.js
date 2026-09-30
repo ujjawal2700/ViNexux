@@ -20,8 +20,12 @@ export const config = {
       ? process.env.DEMO_MODE === 'true'
       : (process.env.NODE_ENV !== 'production'),
   jwtSecret: process.env.JWT_SECRET || 'vinexus_jwt_secret_key_development_mode_12345',
+  jwtSecretFallback: process.env.NODE_ENV !== 'production' ? 'vinexus_jwt_secret_key_development_mode_12345' : null,
   jwtAccessExpiry: process.env.JWT_ACCESS_EXPIRY || '15m',
   jwtRefreshExpiryDays: Number(process.env.JWT_REFRESH_EXPIRY_DAYS) || 30,
+  jwtConflictExpiry: process.env.JWT_CONFLICT_EXPIRY || '5m',
+  jwtResetExpiry: process.env.JWT_RESET_EXPIRY || '10m',
+  adminDefaultPassword: process.env.ADMIN_DEFAULT_PASSWORD || 'Admin@12345',
   // Auto-selects 'smsindiahub' once SMS_API_KEY is set, so adding the key
   // alone is enough - no separate SMS_PROVIDER flip needed.
   smsProvider: process.env.SMS_PROVIDER || (process.env.SMS_API_KEY ? 'smsindiahub' : 'development'),
@@ -74,9 +78,14 @@ export const config = {
 export const validateProductionConfig = () => {
   if (config.nodeEnv === 'production') {
     const defaultSecret = 'vinexus_jwt_secret_key_development_mode_12345';
-    if (!process.env.JWT_SECRET || config.jwtSecret === defaultSecret) {
+    if (!process.env.JWT_SECRET || config.jwtSecret === defaultSecret || config.jwtSecret.length < 32) {
       throw new Error(
-        'FATAL: JWT_SECRET environment variable must be explicitly configured with a secure key in production mode.'
+        'FATAL: JWT_SECRET environment variable must be explicitly configured with a secure key (at least 32 characters) in production mode.'
+      );
+    }
+    if (!process.env.MONGODB_URI) {
+      throw new Error(
+        'FATAL: MONGODB_URI environment variable must be explicitly configured in production mode.'
       );
     }
     if (config.demoMode) {
