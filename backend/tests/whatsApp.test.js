@@ -14,7 +14,6 @@ import { Cart } from '../src/models/Cart.js';
 import { Enquiry } from '../src/models/Enquiry.js';
 import { WhatsAppProvider } from '../src/integrations/whatsapp/WhatsAppProvider.js';
 import { DevWhatsAppProvider } from '../src/integrations/whatsapp/DevWhatsAppProvider.js';
-import { WhatsAppCloudApiProvider } from '../src/integrations/whatsapp/WhatsAppCloudApiProvider.js';
 import { createWhatsAppProvider, getWhatsAppProvider, setWhatsAppProvider } from '../src/integrations/whatsapp/index.js';
 import { whatsAppService, WhatsAppService } from '../src/services/whatsapp/whatsapp.service.js';
 import { authService } from '../src/services/auth.service.js';
@@ -197,29 +196,12 @@ describe('Phase 8.5 — WhatsApp Integration Test Suite', () => {
       assert.strictEqual(history[0].event, 'TEST_EVENT');
     });
 
-    test('3. WhatsAppCloudApiProvider instantiation & credentials missing check', async () => {
-      const cloudProvider = new WhatsAppCloudApiProvider({
-        apiUrl: 'https://graph.facebook.com/v18.0',
-        accessToken: '',
-        phoneNumberId: '',
-      });
-
-      const res = await cloudProvider.sendMessage({
-        phone: '919876543210',
-        event: 'ENQUIRY_CREATED',
-      });
-
-      assert.strictEqual(res.success, false);
-      assert.strictEqual(res.provider, 'whatsapp_cloud_api');
-      assert.ok(res.error.includes('credentials missing'));
-    });
-
-    test('4. createWhatsAppProvider factory creates correct provider instance', () => {
+    test('3. WhatsApp provider factory always uses the development provider', () => {
       const devInst = createWhatsAppProvider('dev');
       assert.ok(devInst instanceof DevWhatsAppProvider);
 
       const cloudInst = createWhatsAppProvider('cloud_api');
-      assert.ok(cloudInst instanceof WhatsAppCloudApiProvider);
+      assert.ok(cloudInst instanceof DevWhatsAppProvider);
 
       const defaultInst = createWhatsAppProvider('unknown');
       assert.ok(defaultInst instanceof DevWhatsAppProvider);

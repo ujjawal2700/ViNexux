@@ -144,6 +144,7 @@ export const verifyResetOtpSchema = {
       .string({ required_error: 'OTP is required' })
       .trim()
       .regex(/^\d{6}$/, { message: 'OTP must be exactly 6 numeric digits' }),
+    portal: z.enum(['admin', 'customer']).optional(),
   }),
 };
 

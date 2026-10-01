@@ -1,30 +1,13 @@
 import { DevWhatsAppProvider } from './DevWhatsAppProvider.js';
-import { WhatsAppCloudApiProvider } from './WhatsAppCloudApiProvider.js';
-import { config } from '../../config/env.js';
 
 /**
- * Factory function to instantiate a WhatsApp provider based on provider key.
- * 
- * @param {string} [providerName] - Provider key ('development', 'dev', 'cloud_api', 'meta', 'production')
+ * WhatsApp Business API is not configured for this application. Keep local
+ * notification flows on the development provider without making network calls.
  * @returns {import('./WhatsAppProvider.js').WhatsAppProvider}
  */
-export const createWhatsAppProvider = (providerName = config.whatsappProvider) => {
-  const normalized = (providerName || '').toLowerCase().trim();
+export const createWhatsAppProvider = () => new DevWhatsAppProvider();
 
-  switch (normalized) {
-    case 'cloud_api':
-    case 'meta':
-    case 'whatsapp_cloud_api':
-    case 'production':
-      return new WhatsAppCloudApiProvider();
-    case 'development':
-    case 'dev':
-    default:
-      return new DevWhatsAppProvider();
-  }
-};
-
-let activeWhatsAppProvider = createWhatsAppProvider(config.whatsappProvider);
+let activeWhatsAppProvider = createWhatsAppProvider();
 
 /**
  * Returns the currently active WhatsApp provider.

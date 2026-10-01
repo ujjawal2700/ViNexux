@@ -3,8 +3,7 @@ import { config } from '../../config/env.js';
 
 /**
  * Development OTP Provider implementation.
- * Logs the generated OTP to stdout and returns devOtp in development mode
- * so testing can proceed before paid SMS providers are configured.
+ * Development-only provider retained for provider-level tests.
  */
 export class DevOtpProvider extends OtpProvider {
   async sendOtp({ identifier, otp, purpose }) {
@@ -18,8 +17,7 @@ export class DevOtpProvider extends OtpProvider {
       success: true,
       provider: 'development',
       messageId: `dev-msg-${Date.now()}`,
-      // Return devOtp in demo mode or outside production
-      devOtp: config.demoMode || config.nodeEnv !== 'production' ? otp : undefined,
+      mockOtp: config.mockOtpEnabled ? otp : undefined,
     };
   }
 }

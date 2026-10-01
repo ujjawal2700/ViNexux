@@ -1,6 +1,6 @@
 /**
  * Abstract interface for WhatsApp message providers.
- * Concrete providers (DevWhatsAppProvider, WhatsAppCloudApiProvider) must extend this class.
+ * Local notification providers must extend this class.
  */
 export class WhatsAppProvider {
   /**

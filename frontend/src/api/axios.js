@@ -43,15 +43,44 @@ const apiClient = axios.create({
   withCredentials: true,
 });
 
+// Prevent identical requests from reaching the server more than once while
+// the first request is still pending. The entry is released on both success
+// and failure, so a later click can try again normally.
+const inFlightRequests = new Set();
+
+const stableSerialize = (value) => {
+  if (value === undefined) return '';
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (typeof FormData !== 'undefined' && value instanceof FormData) {
+    return JSON.stringify(Array.from(value.entries()).map(([key, entry]) => [
+      key,
+      typeof entry === 'string' ? entry : `${entry.name}:${entry.size}:${entry.type}:${entry.lastModified}`,
+    ]));
+  }
+  if (Array.isArray(value)) return `[${value.map(stableSerialize).join(',')}]`;
+  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableSerialize(value[key])}`).join(',')}}`;
+};
+
+const requestKey = (requestConfig) => [
+  (requestConfig.method || 'get').toLowerCase(),
+  requestConfig.baseURL || API_BASE_URL,
+  requestConfig.url || '',
+  requestConfig.portal || 'customer',
+  requestConfig.headers?.Authorization || '',
+  stableSerialize(requestConfig.params),
+  stableSerialize(requestConfig.data),
+].join('|');
+
+const releaseRequest = (requestConfig) => {
+  if (requestConfig?._inFlightRequestKey) {
+    inFlightRequests.delete(requestConfig._inFlightRequestKey);
+    delete requestConfig._inFlightRequestKey;
+  }
+};
+
 // Request Interceptor: Attach Access Token if present
 apiClient.interceptors.request.use(
   (config) => {
-    if (!config.skipGlobalLoader) {
-      config._globalLoaderTracked = true;
-      const method = (config.method || 'get').toLowerCase();
-      const message = config.loadingMessage || (method === 'get' ? 'Loading content...' : 'Processing request...');
-      loadingTracker.start(message);
-    }
     const isAdminEndpoint = config.portal === 'admin' || config.url?.startsWith('/admin') || config.url?.includes('/admin/');
     const token = isAdminEndpoint
       ? (inMemoryAdminAccessToken || inMemoryAccessToken)
@@ -60,9 +89,31 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    if (config.dedupe !== false) {
+      const key = requestKey(config);
+      if (inFlightRequests.has(key)) {
+        const duplicateError = new axios.CanceledError('An identical request is already in progress.');
+        duplicateError.code = 'DUPLICATE_REQUEST';
+        duplicateError.config = config;
+        duplicateError.response = {
+          data: { message: 'Please wait for the current request to finish.' },
+        };
+        return Promise.reject(duplicateError);
+      }
+      inFlightRequests.add(key);
+      config._inFlightRequestKey = key;
+    }
+    if (!config.skipGlobalLoader) {
+      config._globalLoaderTracked = true;
+      const method = (config.method || 'get').toLowerCase();
+      const message = config.loadingMessage || (method === 'get' ? 'Loading content...' : 'Processing request...');
+      loadingTracker.start(message);
+    }
     return config;
   },
   (error) => {
+    releaseRequest(error.config);
     if (error.config?._globalLoaderTracked) loadingTracker.finish();
     return Promise.reject(error);
   }
@@ -85,6 +136,7 @@ const processQueue = (error, token = null) => {
 
 apiClient.interceptors.response.use(
   (response) => {
+    releaseRequest(response.config);
     if (response.config?._globalLoaderTracked) {
       response.config._globalLoaderTracked = false;
       loadingTracker.finish();
@@ -93,6 +145,7 @@ apiClient.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
+    releaseRequest(originalRequest);
     if (originalRequest?._globalLoaderTracked) {
       originalRequest._globalLoaderTracked = false;
       loadingTracker.finish();

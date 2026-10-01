@@ -38,8 +38,8 @@ const hashOtp = (otp) => {
 };
 
 const generateOtp = () => {
-  if (config.demoMode && config.devOtp) {
-    return config.devOtp;
+  if (config.mockOtpEnabled) {
+    return config.mockOtpCode;
   }
   return crypto.randomInt(100000, 999999).toString();
 };
@@ -333,8 +333,25 @@ export const authService = {
         );
       }
 
-      // Admin-portal-specific role gating only applies to the login flow -
-      // password-reset is available to any account regardless of surface.
+      if (purpose === 'password-reset') {
+        if (portal === 'admin' && user.role !== 'admin') {
+          throw new AppError(
+            'This password reset page is reserved for administrator accounts.',
+            HTTP_STATUS.FORBIDDEN,
+            ERROR_CODES.FORBIDDEN
+          );
+        }
+        if (portal !== 'admin' && user.role === 'admin') {
+          throw new AppError(
+            'Please use the administrator password reset page.',
+            HTTP_STATUS.FORBIDDEN,
+            ERROR_CODES.FORBIDDEN
+          );
+        }
+      }
+
+      // Admin login additionally requires the current password before an OTP
+      // is issued. Password-reset portal separation is enforced above.
       if (purpose === 'login') {
         // Dedicated admin login surface (/admin/login): reject non-admin accounts
         if (portal === 'admin') {
@@ -371,6 +388,22 @@ export const authService = {
       }
     }
 
+    const existingOtp = await OtpVerification.findOne({ identifier: normalized, purpose });
+    if (!config.mockOtpEnabled && existingOtp?.updatedAt) {
+      const elapsedMs = Date.now() - existingOtp.updatedAt.getTime();
+      const cooldownMs = config.otpResendCooldownSeconds * 1000;
+      if (elapsedMs < cooldownMs) {
+        const retryAfterSeconds = Math.ceil((cooldownMs - elapsedMs) / 1000);
+        const error = new AppError(
+          `Please wait ${retryAfterSeconds} seconds before requesting another OTP.`,
+          HTTP_STATUS.TOO_MANY_REQUESTS,
+          ERROR_CODES.TOO_MANY_REQUESTS
+        );
+        error.retryAfterSeconds = retryAfterSeconds;
+        throw error;
+      }
+    }
+
     const otp = generateOtp();
     const otpHash = hashOtp(otp);
     const expiresAt = new Date(Date.now() + config.otpExpiryMinutes * 60 * 1000);
@@ -389,37 +422,27 @@ export const authService = {
     );
 
     try {
-      if (normalized.includes('@')) {
+      if (config.mockOtpEnabled) {
+        // Fixed mock code is returned below for local/test UI use. No message
+        // provider is contacted while mock mode is enabled.
+      } else if (normalized.includes('@')) {
         await emailService.sendOtpEmail({ email: normalized, otp, purpose });
       } else {
         const provider = getOtpProvider();
         await provider.sendOtp({ identifier: normalized, otp, purpose });
       }
     } catch (dispatchErr) {
-      // In demo mode, real delivery is a nice-to-have, not a requirement -
-      // the OTP is always the fixed devOtp anyway (see generateOtp above),
-      // so an unconfigured or misbehaving SMS/email provider must never
-      // block signup/login. Outside demo mode this is a real failure.
-      if (!config.demoMode) {
-        throw dispatchErr;
-      }
-      console.warn(
-        `[AuthService] OTP dispatch to '${normalized}' failed, continuing in demo mode:`,
-        dispatchErr.message
-      );
+      throw dispatchErr;
     }
 
-    // Expose the OTP whenever it's the fixed demo code (or outside
-    // production) regardless of what the active provider's response
-    // happened to look like - the real, always-true fact is "the OTP is
-    // 123456 right now", not whatever a provider's success payload says.
-    const devOtp = config.demoMode || config.nodeEnv !== 'production' ? otp : undefined;
-
+    // Expose the fixed code only when mock mode is explicitly enabled.
     return {
       identifier: normalized,
       purpose,
       expiresAt,
-      devOtp,
+      mockOtpEnabled: config.mockOtpEnabled,
+      resendAvailableInSeconds: config.mockOtpEnabled ? null : config.otpResendCooldownSeconds,
+      ...(config.mockOtpEnabled ? { mockOtp: otp } : {}),
     };
   },
 
@@ -596,7 +619,7 @@ export const authService = {
    * (not the OTP again) is what authorizes the actual password change in
    * resetPassword() below - this keeps the OTP itself single-use.
    */
-  async verifyResetOtp({ identifier, otp }) {
+  async verifyResetOtp({ identifier, otp, portal }) {
     const normalized = normalizeIdentifier(identifier);
     if (!normalized || !otp) {
       throw new AppError('Identifier and OTP are required', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
@@ -630,14 +653,29 @@ export const authService = {
       throw new AppError('Invalid OTP. Please check and try again.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_CREDENTIALS);
     }
 
-    otpRecord.isVerified = true;
-    await otpRecord.save();
-
     const isEmail = normalized.includes('@');
     const user = await User.findOne(isEmail ? { email: normalized } : { phone: normalized });
     if (!user) {
       throw new AppError('No registered user account found with this email or phone number.', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
     }
+
+    if (portal === 'admin' && user.role !== 'admin') {
+      throw new AppError(
+        'This password reset page is reserved for administrator accounts.',
+        HTTP_STATUS.FORBIDDEN,
+        ERROR_CODES.FORBIDDEN
+      );
+    }
+    if (portal !== 'admin' && user.role === 'admin') {
+      throw new AppError(
+        'Please use the administrator password reset page.',
+        HTTP_STATUS.FORBIDDEN,
+        ERROR_CODES.FORBIDDEN
+      );
+    }
+
+    otpRecord.isVerified = true;
+    await otpRecord.save();
 
     const resetToken = generatePasswordResetTicket({ userId: user._id, identifier: normalized });
 

@@ -12,7 +12,8 @@ import { startResetFlow } from '../../utils/resetFlowGuard';
  * to it. On success, hands off to ResetPasswordPage for OTP entry + the
  * actual password change.
  */
-export const ForgotPasswordPage = () => {
+export const ForgotPasswordPage = ({ portal = 'customer' }) => {
+  const isAdmin = portal === 'admin';
   const [identifier, setIdentifier] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -32,11 +33,20 @@ export const ForgotPasswordPage = () => {
     setError(null);
 
     try {
-      const response = await sendOtp(identifier.trim(), undefined, 'password-reset');
+      const response = await sendOtp(identifier.trim(), isAdmin ? 'admin' : undefined, 'password-reset');
       if (response.success) {
-        startResetFlow(identifier.trim());
+        startResetFlow(identifier.trim(), portal);
         toast.success('Verification code sent!');
-        navigate('/reset-password', { state: { identifier: identifier.trim() }, replace: true });
+        navigate(isAdmin ? '/admin/reset-password' : '/reset-password', {
+          state: {
+            identifier: identifier.trim(),
+            portal,
+            mockOtpEnabled: response.data?.mockOtpEnabled,
+            mockOtp: response.data?.mockOtp,
+            resendAvailableInSeconds: response.data?.resendAvailableInSeconds,
+          },
+          replace: true,
+        });
       } else {
         setError(response.message || 'Failed to send verification code.');
       }
@@ -58,10 +68,12 @@ export const ForgotPasswordPage = () => {
           <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
             <KeyRound className="w-5 h-5 text-primary" />
           </div>
-          <h1 className="text-lg font-bold text-foreground">Forgot your password?</h1>
+          <h1 className="text-lg font-bold text-foreground">
+            {isAdmin ? 'Reset administrator password' : 'Forgot your password?'}
+          </h1>
           <p className="text-xs text-muted-foreground font-medium mt-1.5 leading-relaxed">
-            Enter the email or phone number linked to your account and we'll send you a
-            verification code to reset your password.
+            Enter the email or phone number linked to your {isAdmin ? 'administrator ' : ''}account and we&apos;ll
+            send you a verification code to reset your password.
           </p>
         </div>
 
@@ -99,11 +111,11 @@ export const ForgotPasswordPage = () => {
 
         <div className="mt-6 pt-5 border-t border-border text-center text-xs">
           <Link
-            to="/login"
+            to={isAdmin ? '/admin/login' : '/login'}
             className="inline-flex items-center gap-1.5 font-bold text-primary hover:underline transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            Back to login
+            Back to {isAdmin ? 'admin ' : ''}login
           </Link>
         </div>
       </div>

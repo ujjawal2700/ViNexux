@@ -52,5 +52,10 @@ export const errorHandler = (err, req, res, next) => {
     },
   };
 
+  if (Number.isFinite(err.retryAfterSeconds)) {
+    res.setHeader('Retry-After', err.retryAfterSeconds);
+    response.error.retryAfterSeconds = err.retryAfterSeconds;
+  }
+
   return res.status(statusCode).json(response);
 };

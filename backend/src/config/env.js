@@ -12,13 +12,14 @@ export const config = {
     : ['http://localhost:3000', 'http://localhost:5173', 'https://vi-nexux.vercel.app'],
   otpExpiryMinutes: Number(process.env.OTP_EXPIRY_MINUTES) || 5,
   otpMaxAttempts: Number(process.env.OTP_MAX_ATTEMPTS) || 3,
-  devOtp: process.env.DEV_OTP || '123456',
-  // Demo mode: issues the fixed devOtp instead of a random code.
-  // In development, defaults to true. In production, defaults to false unless explicitly enabled with DEMO_MODE=true.
-  demoMode:
-    process.env.DEMO_MODE !== undefined
-      ? process.env.DEMO_MODE === 'true'
-      : (process.env.NODE_ENV !== 'production'),
+  mockOtpCode: process.env.MOCK_OTP_CODE || process.env.DEV_OTP || '123456',
+  // MOCK_OTP is deliberately explicit: true never contacts the SMS gateway,
+  // false always uses the configured live provider for mobile OTP delivery.
+  mockOtpEnabled:
+    process.env.MOCK_OTP !== undefined
+      ? process.env.MOCK_OTP === 'true'
+      : process.env.DEMO_MODE === 'true',
+  otpResendCooldownSeconds: Number(process.env.OTP_RESEND_COOLDOWN_SECONDS) || 60,
   jwtSecret: process.env.JWT_SECRET || 'vinexus_jwt_secret_key_development_mode_12345',
   jwtSecretFallback: process.env.NODE_ENV !== 'production' ? 'vinexus_jwt_secret_key_development_mode_12345' : null,
   jwtAccessExpiry: process.env.JWT_ACCESS_EXPIRY || '15m',
@@ -26,17 +27,13 @@ export const config = {
   jwtConflictExpiry: process.env.JWT_CONFLICT_EXPIRY || '5m',
   jwtResetExpiry: process.env.JWT_RESET_EXPIRY || '10m',
   adminDefaultPassword: process.env.ADMIN_DEFAULT_PASSWORD || 'Admin@12345',
-  // Auto-selects 'smsindiahub' once SMS_API_KEY is set, so adding the key
-  // alone is enough - no separate SMS_PROVIDER flip needed.
-  smsProvider: process.env.SMS_PROVIDER || (process.env.SMS_API_KEY ? 'smsindiahub' : 'development'),
+  smsProvider: process.env.SMS_PROVIDER || 'smsindiahub',
   smsApiKey: process.env.SMS_API_KEY || '',
   smsApiSecret: process.env.SMS_API_SECRET || '',
   smsSenderId: process.env.SMS_SENDER_ID || '',
   smsTemplateId: process.env.SMS_TEMPLATE_ID || '',
   smsBaseUrl: process.env.SMS_BASE_URL || '',
-  // Auto-selects 'resend' once RESEND_API_KEY is set, so adding the key alone
-  // is enough - no separate EMAIL_PROVIDER flip needed. Still overridable.
-  emailProvider: process.env.EMAIL_PROVIDER || (process.env.RESEND_API_KEY ? 'resend' : 'development'),
+  emailProvider: process.env.EMAIL_PROVIDER || 'smtp',
   emailHost: process.env.EMAIL_HOST || '',
   emailPort: Number(process.env.EMAIL_PORT) || 587,
   emailSecure: process.env.EMAIL_SECURE === 'true',
@@ -44,7 +41,6 @@ export const config = {
   emailPassword: process.env.EMAIL_PASSWORD || '',
   emailFrom: process.env.EMAIL_FROM || 'noreply@vinexus.com',
   emailFromName: process.env.EMAIL_FROM_NAME || 'Vinexus',
-  resendApiKey: process.env.RESEND_API_KEY || '',
   googleSheetsEnabled: process.env.GOOGLE_SHEETS_ENABLED === 'true',
   googleSheetsProvider: process.env.GOOGLE_SHEETS_PROVIDER || 'development',
   googleSheetsSpreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID || '',
@@ -62,11 +58,6 @@ export const config = {
   cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
   cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || '',
   cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || '',
-  whatsappProvider: process.env.WHATSAPP_PROVIDER || 'development',
-  whatsappApiUrl: process.env.WHATSAPP_API_URL || 'https://graph.facebook.com/v18.0',
-  whatsappAccessToken: process.env.WHATSAPP_ACCESS_TOKEN || '',
-  whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || '',
-  whatsappBusinessAccountId: process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || '',
   // Auto-selects 'firebase' once FIREBASE_PROJECT_ID is set, so adding the
   // service account credentials alone is enough to enable real push.
   pushProvider: process.env.PUSH_PROVIDER || (process.env.FIREBASE_PROJECT_ID ? 'firebase' : 'development'),
@@ -88,9 +79,9 @@ export const validateProductionConfig = () => {
         'FATAL: MONGODB_URI environment variable must be explicitly configured in production mode.'
       );
     }
-    if (config.demoMode) {
+    if (config.mockOtpEnabled) {
       console.warn(
-        '[SECURITY WARNING] Running in PRODUCTION with DEMO_MODE=true. Demo OTP bypass is active!'
+        '[SECURITY WARNING] Running in PRODUCTION with MOCK_OTP=true. Fixed mock OTP is active!'
       );
     }
   }

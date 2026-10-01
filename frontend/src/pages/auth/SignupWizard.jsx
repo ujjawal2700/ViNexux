@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import dealerService from '../../services/dealerService';
@@ -109,6 +109,15 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
   const [otp, setOtp] = useState('');
   const [otpIdentifier, setOtpIdentifier] = useState('');
   const [resendLoading, setResendLoading] = useState(false);
+  const [mockOtpEnabled, setMockOtpEnabled] = useState(false);
+  const [mockOtp, setMockOtp] = useState(null);
+  const [resendSeconds, setResendSeconds] = useState(0);
+
+  useEffect(() => {
+    if (resendSeconds <= 0) return undefined;
+    const timerId = window.setTimeout(() => setResendSeconds((seconds) => seconds - 1), 1000);
+    return () => window.clearTimeout(timerId);
+  }, [resendSeconds]);
 
   const isDealer = role === 'dealer';
 
@@ -214,6 +223,9 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
       if (response.success) {
         setOtpIdentifier(identifier);
         setOtp('');
+        setMockOtpEnabled(response.data?.mockOtpEnabled === true);
+        setMockOtp(response.data?.mockOtp || null);
+        setResendSeconds(response.data?.resendAvailableInSeconds ?? 0);
         setStep(3);
       } else {
         setError(response.message || 'Failed to send verification code.');
@@ -232,6 +244,7 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
       const response = await sendOtp(otpIdentifier, undefined, 'signup');
       if (response.success) {
         toast.success('A new verification code has been sent!');
+        setResendSeconds(response.data?.resendAvailableInSeconds ?? 60);
       } else {
         setError(response.message || 'Failed to resend code.');
       }
@@ -729,7 +742,11 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
               Verify your phone number
             </h3>
             <p className="text-xs text-gray-500">
-              Enter the 6-digit code sent to <span className="font-bold text-gray-800">{otpIdentifier}</span>
+              {mockOtpEnabled ? (
+                <>Mock mode is enabled. Use <span className="font-bold text-gray-800">{mockOtp || '123456'}</span></>
+              ) : (
+                <>Enter the 6-digit code sent to <span className="font-bold text-gray-800">{otpIdentifier}</span></>
+              )}
             </p>
           </div>
 
@@ -744,17 +761,21 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
             />
           </div>
 
-          <div className="text-center text-xs text-gray-500">
+          {!mockOtpEnabled && <div className="text-center text-xs text-gray-500">
             Didn't get the code?{' '}
-            <button
-              type="button"
-              onClick={handleResendOtp}
-              disabled={resendLoading || loading}
-              className="font-bold text-primary hover:underline disabled:opacity-50 cursor-pointer"
-            >
-              {resendLoading ? 'Resending...' : 'Resend'}
-            </button>
-          </div>
+            {resendSeconds > 0 ? (
+              <span className="text-gray-400">Resend in {resendSeconds}s</span>
+            ) : (
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={resendLoading || loading}
+                className="font-bold text-primary hover:underline disabled:opacity-50 cursor-pointer"
+              >
+                {resendLoading ? 'Resending...' : 'Resend'}
+              </button>
+            )}
+          </div>}
 
           <div className="flex gap-2.5 pt-2">
             <button

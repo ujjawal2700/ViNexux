@@ -14,6 +14,7 @@ import { OtpProvider } from '../src/integrations/otp/OtpProvider.js';
 import { DevOtpProvider } from '../src/integrations/otp/DevOtpProvider.js';
 import { Msg91OtpProvider } from '../src/integrations/otp/Msg91OtpProvider.js';
 import { Fast2SmsOtpProvider } from '../src/integrations/otp/Fast2SmsOtpProvider.js';
+import { SmsIndiaHubOtpProvider } from '../src/integrations/otp/SmsIndiaHubOtpProvider.js';
 import { setOtpProvider, createOtpProvider } from '../src/integrations/otp/index.js';
 import { authService } from '../src/services/auth.service.js';
 import { smsService } from '../src/services/sms/sms.service.js';
@@ -258,8 +259,9 @@ describe('Phase 8.1 — SMS / OTP Provider Integration Test Suite', () => {
       const fast2sms = createOtpProvider('fast2sms');
       assert.ok(fast2sms instanceof Fast2SmsOtpProvider);
 
-      const defaultDev = createOtpProvider('unknown_provider');
-      assert.ok(defaultDev instanceof DevOtpProvider);
+      const defaultProvider = createOtpProvider('unknown_provider');
+      assert.ok(defaultProvider instanceof SmsIndiaHubOtpProvider);
+      assert.ok(createOtpProvider() instanceof SmsIndiaHubOtpProvider);
     });
   });
 

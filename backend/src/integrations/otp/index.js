@@ -22,12 +22,15 @@ export const createOtpProvider = (providerName = config.smsProvider) => {
       return new SmsIndiaHubOtpProvider();
     case 'development':
     case 'dev':
-    default:
       return new DevOtpProvider();
+    default:
+      return new SmsIndiaHubOtpProvider();
   }
 };
 
-let activeOtpProvider = createOtpProvider(config.smsProvider);
+// The mock flag is the single switch for OTP delivery. When it is off,
+// mobile OTPs must use SMSIndiaHub regardless of a stale SMS_PROVIDER value.
+let activeOtpProvider = createOtpProvider(config.mockOtpEnabled ? 'development' : 'smsindiahub');
 
 /**
  * Returns the currently active OTP provider.

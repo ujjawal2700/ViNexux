@@ -136,8 +136,8 @@ export const verifyOtp = asyncHandler(async (req, res) => {
 });
 
 export const verifyResetOtp = asyncHandler(async (req, res) => {
-  const { identifier, otp } = req.body;
-  const result = await authService.verifyResetOtp({ identifier, otp });
+  const { identifier, otp, portal } = req.body;
+  const result = await authService.verifyResetOtp({ identifier, otp, portal });
 
   return ApiResponse.success(res, 'OTP verified successfully', result, HTTP_STATUS.OK);
 });

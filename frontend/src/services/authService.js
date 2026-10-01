@@ -48,8 +48,12 @@ export const authService = {
 
   // Verifies the OTP sent for a "forgot password" request. On success the
   // backend returns a short-lived resetToken that authorizes resetPassword.
-  verifyResetOtp: async (identifier, otpCode) => {
-    const response = await apiClient.post('/auth/verify-reset-otp', { identifier, otp: otpCode });
+  verifyResetOtp: async (identifier, otpCode, portal) => {
+    const response = await apiClient.post('/auth/verify-reset-otp', {
+      identifier,
+      otp: otpCode,
+      ...(portal ? { portal } : {}),
+    });
     return response.data;
   },
 

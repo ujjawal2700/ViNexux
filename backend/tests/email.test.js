@@ -71,6 +71,7 @@ describe('Phase 8.2 — Email / SMTP Integration Test Suite', () => {
     if (mongoose.connection.readyState === 0) {
       await mongoose.connect(config.mongodbUri);
     }
+    setEmailProvider(new DevEmailProvider());
 
     server = app.listen(PORT);
 
@@ -129,9 +130,9 @@ describe('Phase 8.2 — Email / SMTP Integration Test Suite', () => {
       assert.ok(provider instanceof SmtpEmailProvider);
     });
 
-    test('3. Default provider fallback returns DevEmailProvider', () => {
-      const provider = createEmailProvider('unknown_provider');
-      assert.ok(provider instanceof DevEmailProvider);
+    test('3. SMTP is the default provider and unknown providers fall back to SMTP', () => {
+      assert.ok(createEmailProvider() instanceof SmtpEmailProvider);
+      assert.ok(createEmailProvider('unknown_provider') instanceof SmtpEmailProvider);
     });
   });
 
@@ -315,6 +316,8 @@ describe('Phase 8.2 — Email / SMTP Integration Test Suite', () => {
       assert.ok(content.includes('EMAIL_HOST='));
       assert.ok(content.includes('EMAIL_USER='));
       assert.ok(content.includes('EMAIL_PASSWORD='));
+      assert.match(content, /EMAIL_PROVIDER=smtp/);
+      assert.doesNotMatch(content, /RESEND_API_KEY|resend/i);
       assert.doesNotMatch(content, /EMAIL_PASSWORD=\s*[A-Za-z0-9]{15,}/); // No real secrets
     });
   });

@@ -165,6 +165,8 @@ const AppRoutes = () => {
       <Route element={<PublicRoute restricted={true} portal="admin" />}>
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/admin/verify-otp" element={<VerifyOtpPage />} />
+        <Route path="/admin/forgot-password" element={<ForgotPasswordPage portal="admin" />} />
+        <Route path="/admin/reset-password" element={<ResetPasswordPage portal="admin" />} />
       </Route>
 
       {/* ADMIN PROTECTED ROUTES (WITH ADMIN LAYOUT) */}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import { ArrowRight, ShieldCheck, ShieldAlert, Lock } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
@@ -48,7 +48,16 @@ const AdminLoginPage = () => {
     try {
       const response = await sendOtp(normalizedIdentifier, 'admin', undefined, password);
       if (response.success) {
-        navigate('/admin/verify-otp', { state: { identifier: normalizedIdentifier, portal: 'admin' } });
+        navigate('/admin/verify-otp', {
+          state: {
+            identifier: normalizedIdentifier,
+            portal: 'admin',
+            password,
+            mockOtpEnabled: response.data?.mockOtpEnabled,
+            mockOtp: response.data?.mockOtp,
+            resendAvailableInSeconds: response.data?.resendAvailableInSeconds,
+          },
+        });
       } else {
         setError(response.message || 'Failed to send OTP code');
       }
@@ -118,6 +127,14 @@ const AdminLoginPage = () => {
               />
               <span>Show password</span>
             </label>
+            <div className="mt-2 text-right">
+              <Link
+                to="/admin/forgot-password"
+                className="text-[11px] font-bold text-primary hover:underline"
+              >
+                Forgot administrator password?
+              </Link>
+            </div>
           </div>
 
           <Button

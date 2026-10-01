@@ -27,21 +27,26 @@ const formatTime = (totalSeconds) => {
  *  - Only reachable after ForgotPasswordPage actually sent an OTP (guarded
  *    via the in-memory resetFlowGuard, not just location.state - see that
  *    module for why).
- *  - A page refresh always kicks the user back to /login: the guard is a
+ *  - A page refresh always kicks the user back to the applicable login: the guard is a
  *    plain JS variable that resets to null on reload.
  *  - Pressing browser back/forward while on this page also kicks the user
- *    back to /login (popstate listener below).
+ *    back to the applicable login (popstate listener below).
  *  - A visible countdown enforces the same timeout server-side: OTP entry
  *    expires with the OTP itself, password entry expires with the reset
  *    ticket. Either running out redirects to /login.
  */
-export const ResetPasswordPage = () => {
+export const ResetPasswordPage = ({ portal = 'customer' }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
   const { verifyResetOtp, resetPassword, sendOtp } = useAuth();
 
   const identifier = location.state?.identifier || '';
+  const activePortal = location.state?.portal || portal;
+  const isAdmin = activePortal === 'admin';
+  const loginPath = isAdmin ? '/admin/login' : '/login';
+  const mockOtpEnabled = location.state?.mockOtpEnabled === true;
+  const mockOtp = location.state?.mockOtp;
 
   const [step, setStep] = useState('otp'); // 'otp' | 'password'
   const [otp, setOtp] = useState('');
@@ -54,6 +59,9 @@ export const ResetPasswordPage = () => {
 
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
+  const [resendSeconds, setResendSeconds] = useState(
+    mockOtpEnabled ? 0 : (location.state?.resendAvailableInSeconds ?? 60)
+  );
   const [error, setError] = useState(null);
 
   const timedOutRef = useRef(false);
@@ -64,9 +72,9 @@ export const ResetPasswordPage = () => {
       timedOutRef.current = true;
       clearResetFlow();
       toast.error(message || 'Your session has expired for security. Please verify your email or phone again.');
-      navigate('/login', { replace: true });
+      navigate(loginPath, { replace: true });
     },
-    [navigate, toast]
+    [loginPath, navigate, toast]
   );
 
   // Guard entry: this page is only valid right after ForgotPasswordPage
@@ -74,10 +82,10 @@ export const ResetPasswordPage = () => {
   // in-memory flow guard, so this check fails and the user is bounced.
   useEffect(() => {
     const flow = getResetFlow();
-    if (!identifier || !flow || flow.identifier !== identifier) {
+    if (!identifier || !flow || flow.identifier !== identifier || flow.portal !== activePortal) {
       timedOutRef.current = true;
       toast.error('Your session has timed out. Please enter your email or phone number again.');
-      navigate('/login', { replace: true });
+      navigate(loginPath, { replace: true });
     }
     // Only ever needs to run once, on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -108,6 +116,12 @@ export const ResetPasswordPage = () => {
     return () => clearTimeout(id);
   }, [secondsLeft, step, forceExpire]);
 
+  useEffect(() => {
+    if (resendSeconds <= 0) return undefined;
+    const timerId = window.setTimeout(() => setResendSeconds((seconds) => seconds - 1), 1000);
+    return () => window.clearTimeout(timerId);
+  }, [resendSeconds]);
+
   const handleVerifyOtp = async (e) => {
     if (e) e.preventDefault();
     if (!otp || otp.length < 6) {
@@ -118,7 +132,7 @@ export const ResetPasswordPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await verifyResetOtp(identifier, otp);
+      const res = await verifyResetOtp(identifier, otp, activePortal);
       if (res.success && res.data?.resetToken) {
         setResetToken(res.data.resetToken);
         setStep('password');
@@ -139,11 +153,12 @@ export const ResetPasswordPage = () => {
     setResendLoading(true);
     setError(null);
     try {
-      const res = await sendOtp(identifier, undefined, 'password-reset');
+      const res = await sendOtp(identifier, isAdmin ? 'admin' : undefined, 'password-reset');
       if (res.success) {
-        startResetFlow(identifier);
+        startResetFlow(identifier, activePortal);
         setOtp('');
         setSecondsLeft(OTP_STEP_SECONDS);
+        setResendSeconds(res.data?.resendAvailableInSeconds ?? 60);
         toast.success('A new verification code has been sent!');
       } else {
         setError(res.message || 'Failed to resend the verification code');
@@ -157,8 +172,8 @@ export const ResetPasswordPage = () => {
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
-    if (!newPassword || newPassword.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (!newPassword || newPassword.length < 8) {
+      setError('Password must be at least 8 characters');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -174,7 +189,7 @@ export const ResetPasswordPage = () => {
         timedOutRef.current = true; // stop the countdown/popstate guard from firing after we navigate away
         clearResetFlow();
         toast.success('Password reset successfully! Please log in with your new password.');
-        navigate('/login', { replace: true });
+        navigate(loginPath, { replace: true });
       } else {
         setError(res.message || 'Failed to reset password');
       }
@@ -205,7 +220,7 @@ export const ResetPasswordPage = () => {
                 We sent a verification code to <span className="text-foreground font-semibold">{identifier}</span>
               </>
             ) : (
-              'Choose a new password for your account'
+              `Choose a new password for your ${isAdmin ? 'administrator ' : ''}account`
             )}
           </p>
         </div>
@@ -238,17 +253,27 @@ export const ResetPasswordPage = () => {
               <OTPInput length={6} value={otp} onChange={setOtp} onComplete={setOtp} label="" isDisabled={loading} />
             </div>
 
-            <div className="text-xs text-center text-muted-foreground font-normal">
+            {mockOtpEnabled && (
+              <div className="text-xs text-center text-muted-foreground font-medium">
+                Mock mode is enabled. Use code <span className="font-bold text-primary">{mockOtp || '123456'}</span>.
+              </div>
+            )}
+
+            {!mockOtpEnabled && <div className="text-xs text-center text-muted-foreground font-normal">
               Didn&apos;t get the code?{' '}
-              <button
-                type="button"
-                onClick={handleResend}
-                disabled={resendLoading || loading}
-                className="font-bold text-primary hover:underline focus:outline-none transition-colors disabled:opacity-50"
-              >
-                {resendLoading ? 'Resending...' : 'Resend'}
-              </button>
-            </div>
+              {resendSeconds > 0 ? (
+                <span className="text-muted-foreground">Resend in {resendSeconds}s</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resendLoading || loading}
+                  className="font-bold text-primary hover:underline focus:outline-none transition-colors disabled:opacity-50"
+                >
+                  {resendLoading ? 'Resending...' : 'Resend'}
+                </button>
+              )}
+            </div>}
 
             <button
               type="submit"
@@ -317,8 +342,8 @@ export const ResetPasswordPage = () => {
 
         <div className="mt-6 pt-5 border-t border-border text-center text-xs text-muted-foreground font-medium">
           Remembered your password?{' '}
-          <Link to="/login" className="font-bold text-primary hover:underline transition-colors">
-            Back to login
+          <Link to={loginPath} className="font-bold text-primary hover:underline transition-colors">
+            Back to {isAdmin ? 'admin ' : ''}login
           </Link>
         </div>
       </div>

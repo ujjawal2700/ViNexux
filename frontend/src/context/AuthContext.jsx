@@ -201,8 +201,8 @@ export const AuthProvider = ({ children }) => {
     return await authService.verifySignupOtp(identifier, otpCode);
   };
 
-  const verifyResetOtp = async (identifier, otpCode) => {
-    return await authService.verifyResetOtp(identifier, otpCode);
+  const verifyResetOtp = async (identifier, otpCode, portal) => {
+    return await authService.verifyResetOtp(identifier, otpCode, portal);
   };
 
   const resetPassword = async (resetToken, newPassword) => {

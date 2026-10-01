@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
 import { ArrowLeft, Check, ShieldAlert } from 'lucide-react';
@@ -11,6 +11,8 @@ export const VerifyOtpPage = () => {
 
   const identifier = location.state?.identifier || '';
   const portal = location.state?.portal || (location.pathname.startsWith('/admin') ? 'admin' : 'customer');
+  const mockOtpEnabled = location.state?.mockOtpEnabled === true;
+  const mockOtp = location.state?.mockOtp;
 
   // Format phone number nicely (e.g. +91 8209224481)
   const formatPhoneNumber = (val) => {
@@ -35,8 +37,10 @@ export const VerifyOtpPage = () => {
   const [resendLoading, setResendLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Countdown timer for Resend (starting at 30s)
-  const [timer, setTimer] = useState(30);
+  // Live SMS resends unlock after the server-enforced 60-second cooldown.
+  const [timer, setTimer] = useState(
+    mockOtpEnabled ? 0 : (location.state?.resendAvailableInSeconds ?? 60)
+  );
 
   const { verifyOtp, sendOtp, forceLogin, sessionConflict, conflictTicket } = useAuth();
 
@@ -149,10 +153,10 @@ export const VerifyOtpPage = () => {
     setResendLoading(true);
     setError(null);
     try {
-      const res = await sendOtp(identifier || '8209224481', portal);
+      const res = await sendOtp(identifier || '8209224481', portal, undefined, location.state?.password);
       if (res.success) {
         toast.success('A new verification code has been sent!');
-        setTimer(30);
+        setTimer(res.data?.resendAvailableInSeconds ?? 60);
       } else {
         setError(res.message || 'Failed to resend OTP');
       }
@@ -241,7 +245,7 @@ export const VerifyOtpPage = () => {
           <div className="w-5 h-5 rounded bg-[#800020] flex items-center justify-center text-white shrink-0">
             <span className="text-[9px] leading-none font-black tracking-tighter">•••</span>
           </div>
-          <span>Check your SMS for the 6-digit code</span>
+          <span>{mockOtpEnabled ? `Mock mode is enabled. Use code ${mockOtp || '123456'}.` : 'Check your SMS for the 6-digit code'}</span>
         </div>
 
         {/* Error Alert Notice */}
@@ -312,10 +316,10 @@ export const VerifyOtpPage = () => {
           </form>
         )}
 
-        {/* Bottom Actions Row: Resend in 30s / Change Number */}
+        {/* Bottom Actions Row: live resend cooldown / Change Number */}
         <div className="flex items-center justify-between text-xs pt-1 text-gray-500 font-medium">
           <div>
-            {timer > 0 ? (
+            {!mockOtpEnabled && (timer > 0 ? (
               <span className="text-gray-400">Resend in {timer}s</span>
             ) : (
               <button
@@ -326,7 +330,7 @@ export const VerifyOtpPage = () => {
               >
                 {resendLoading ? 'Resending...' : 'Resend OTP'}
               </button>
-            )}
+            ))}
           </div>
 
           <div>

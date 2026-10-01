@@ -74,7 +74,15 @@ export const LoginPage = ({ initialTab = 'login' }) => {
     try {
       const response = await sendOtp(normalizedIdentifier);
       if (response.success) {
-        navigate('/verify-otp', { state: { identifier: normalizedIdentifier, from: location.state?.from?.pathname } });
+        navigate('/verify-otp', {
+          state: {
+            identifier: normalizedIdentifier,
+            from: location.state?.from?.pathname,
+            mockOtpEnabled: response.data?.mockOtpEnabled,
+            mockOtp: response.data?.mockOtp,
+            resendAvailableInSeconds: response.data?.resendAvailableInSeconds,
+          },
+        });
       } else {
         setError(response.message || 'Failed to send verification code.');
       }
@@ -239,4 +247,3 @@ export const LoginPage = ({ initialTab = 'login' }) => {
 };
 
 export default LoginPage;
-

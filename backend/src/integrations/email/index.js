@@ -1,12 +1,11 @@
 import { DevEmailProvider } from './DevEmailProvider.js';
 import { SmtpEmailProvider } from './SmtpEmailProvider.js';
-import { ResendEmailProvider } from './ResendEmailProvider.js';
 import { config } from '../../config/env.js';
 
 /**
  * Factory function to instantiate an email provider based on provider key.
  *
- * @param {string} providerName - Provider key ('development', 'smtp', 'resend')
+ * @param {string} providerName - Provider key ('development', 'smtp')
  * @returns {import('./EmailProvider.js').EmailProvider}
  */
 export const createEmailProvider = (providerName = config.emailProvider) => {
@@ -15,12 +14,11 @@ export const createEmailProvider = (providerName = config.emailProvider) => {
   switch (normalized) {
     case 'smtp':
       return new SmtpEmailProvider();
-    case 'resend':
-      return new ResendEmailProvider();
     case 'development':
     case 'dev':
-    default:
       return new DevEmailProvider();
+    default:
+      return new SmtpEmailProvider();
   }
 };
 

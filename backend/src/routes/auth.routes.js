@@ -15,7 +15,7 @@ import {
 } from '../controllers/auth.controller.js';
 import { validate } from '../middlewares/validate.js';
 import { authenticate } from '../middlewares/auth.middleware.js';
-import { otpRateLimiter } from '../middlewares/rateLimiter.js';
+import { authRateLimiter, otpRateLimiter, otpRequestRateLimiter } from '../middlewares/rateLimiter.js';
 import {
   signupSchema,
   googleAuthSchema,
@@ -32,15 +32,15 @@ import {
 const router = Router();
 
 // Public Authentication Endpoints
-router.post('/signup', validate(signupSchema), signup);
-router.post('/google', validate(googleAuthSchema), googleLogin);
-router.post('/send-otp', otpRateLimiter, validate(sendOtpSchema), sendOtp);
+router.post('/signup', authRateLimiter, validate(signupSchema), signup);
+router.post('/google', authRateLimiter, validate(googleAuthSchema), googleLogin);
+router.post('/send-otp', authRateLimiter, validate(sendOtpSchema), otpRequestRateLimiter, sendOtp);
 router.post('/verify-otp', otpRateLimiter, validate(verifyOtpSchema), verifyOtp);
 router.post('/verify-signup-otp', otpRateLimiter, validate(verifySignupOtpSchema), verifySignupOtp);
 router.post('/verify-reset-otp', otpRateLimiter, validate(verifyResetOtpSchema), verifyResetOtp);
-router.post('/reset-password', validate(resetPasswordSchema), resetPassword);
-router.post('/force-login', validate(forceLoginSchema), forceLogin);
-router.post('/refresh-token', validate(refreshTokenSchema), refreshToken);
+router.post('/reset-password', authRateLimiter, validate(resetPasswordSchema), resetPassword);
+router.post('/force-login', authRateLimiter, validate(forceLoginSchema), forceLogin);
+router.post('/refresh-token', authRateLimiter, validate(refreshTokenSchema), refreshToken);
 
 // Protected Authentication Endpoints
 router.post('/logout', authenticate, logout);

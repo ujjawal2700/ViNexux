@@ -21,15 +21,16 @@ let activeFlow = null;
  * Starts (or restarts) a reset flow for the given identifier.
  * Call this right after the "send OTP" step succeeds.
  */
-export const startResetFlow = (identifier) => {
+export const startResetFlow = (identifier, portal = 'customer') => {
   activeFlow = {
     identifier,
+    portal,
     token: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
   };
   return activeFlow.token;
 };
 
-/** Returns the active flow ({identifier, token}) or null if none/expired. */
+/** Returns the active flow ({identifier, portal, token}) or null if none/expired. */
 export const getResetFlow = () => activeFlow;
 
 /** Clears the active flow - call on success, timeout, or abandonment. */
