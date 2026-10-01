@@ -365,7 +365,7 @@ const AdminProductDetailPage = () => {
 
     // 2. Validate Category Hierarchy
     const effectiveCategoryId = selectedEffectiveCategoryId;
-    if (!effectiveCategoryId) {
+    if (isCreateMode && !effectiveCategoryId) {
       setFormError('Please select a Header Category in the Groups card.');
       setActiveTab('groups');
       return;
@@ -393,7 +393,7 @@ const AdminProductDetailPage = () => {
       setActiveTab('variants');
       return;
     }
-    if (imagesList.length + stagedImages.length === 0) {
+    if (isCreateMode && imagesList.length + stagedImages.length === 0) {
       setFormError('Please upload at least one product image in Pricing & Media.');
       setActiveTab('variants');
       return;
@@ -413,7 +413,7 @@ const AdminProductDetailPage = () => {
         informationPhone: informationPhone.trim(),
         productUrl: productUrl.trim(),
         sku: sku.trim().toUpperCase(),
-        categoryId: effectiveCategoryId,
+        ...(effectiveCategoryId ? { categoryId: effectiveCategoryId } : {}),
         brandId: selectedBrandId || undefined,
         description: description.trim() || undefined,
         standardPrice: sPrice,
@@ -905,7 +905,7 @@ const AdminProductDetailPage = () => {
                   Category Hierarchy & Groups
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Select a Header Category. Main and Sub Categories are optional.
+                  {isCreateMode ? 'Select a Header Category. Main and Sub Categories are optional.' : 'Category assignment is optional. You can assign or change it here at any time.'}
                 </p>
               </div>
 
@@ -914,9 +914,9 @@ const AdminProductDetailPage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {/* MAIN GROUP (Header Category) */}
                   <FormField
-                    label="HEADER CATEGORY *"
-                    required
-                    hint="Top-level parent category (e.g. Laptop, Desktop, Storage)"
+                    label={isCreateMode ? 'HEADER CATEGORY *' : 'HEADER CATEGORY (OPTIONAL)'}
+                    required={isCreateMode}
+                    hint={isCreateMode ? 'Top-level parent category (e.g. Laptop, Desktop, Storage)' : 'Leave unassigned until this product is ready for catalog placement.'}
                   >
                     <Select
                       value={selectedHeaderId}
@@ -930,7 +930,7 @@ const AdminProductDetailPage = () => {
                         value: h._id,
                         label: `${h.name} (Header)`,
                       }))}
-                      required
+                      required={isCreateMode}
                       className="font-semibold text-xs"
                     />
                   </FormField>
@@ -1006,7 +1006,7 @@ const AdminProductDetailPage = () => {
                     </div>
                   ) : (
                     <span className="text-gray-500 text-xs italic">
-                      Please select a Header Category to establish catalog placement.
+                      {isCreateMode ? 'Please select a Header Category to establish catalog placement.' : 'No category assigned. You can add one later.'}
                     </span>
                   )}
                 </div>

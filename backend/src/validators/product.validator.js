@@ -37,7 +37,8 @@ export const createProductSchema = {
     productUrl: productUrlSchema,
     categoryId: z
       .string({ required_error: 'Category ID is required' })
-      .refine(isValidObjectId, { message: 'Invalid categoryId format. Must be a valid MongoDB ObjectId' }),
+      .refine(isValidObjectId, { message: 'Invalid categoryId format. Must be a valid MongoDB ObjectId' })
+      .optional(),
     brandId: z.string({ required_error: 'Brand is required' }).refine(isValidObjectId, { message: 'Invalid brandId format' }),
     description: z
       .string()

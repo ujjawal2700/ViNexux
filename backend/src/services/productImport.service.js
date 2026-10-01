@@ -15,10 +15,17 @@ import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../constants/errorCodes.js';
 
 const HEADERS = [
-  'Model Number', 'Model', 'Product Name', 'Brand', 'Header Category',
+  'Model Number', 'Product Name / Model', 'Brand', 'Header Category (Optional)',
+  'Main Category (Optional)', 'Sub Category (Optional)', 'Standard Price',
+  'Dealer Price', 'Stock Quantity', 'Product URL (Optional)', 'Warranty (Optional)',
+  'Variant (Optional)', 'Specifications (Optional)', 'Image Files (Optional)',
+];
+const PREVIOUS_CURRENT_HEADERS = [
+  'Model Number', 'Model', 'Product Name', 'Brand', 'Header Category (Optional)',
   'Main Category (Optional)', 'Sub Category (Optional)', 'Standard Price',
   'Dealer Price', 'Stock Quantity', 'Product URL', 'Warranty', 'Variant', 'Specifications',
 ];
+const OLDER_CURRENT_HEADERS = PREVIOUS_CURRENT_HEADERS.map((header) => header === 'Header Category (Optional)' ? 'Header Category' : header);
 const PREVIOUS_HEADERS = [
   'SKU', 'Model Number', 'Model', 'Product Name', 'Brand', 'Header Category',
   'Main Category', 'Sub Category', 'Standard Price', 'Dealer Price',
@@ -83,7 +90,7 @@ export const createProductImportTemplate = async () => {
   sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF800020' } };
   sheet.getRow(1).alignment = { vertical: 'middle', wrapText: true };
   sheet.getRow(1).height = 34;
-  sheet.columns.forEach((column, index) => { column.width = index === 2 ? 38 : index === 13 ? 46 : 24; });
+  sheet.columns.forEach((column, index) => { column.width = index === 1 ? 38 : index === 12 ? 46 : index === 13 ? 32 : 24; });
   sheet.views = [{ state: 'frozen', ySplit: 1 }];
   sheet.autoFilter = { from: 'A1', to: 'N1' };
   sheet.getColumn('A').numFmt = '@';
@@ -93,12 +100,12 @@ export const createProductImportTemplate = async () => {
   examples.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF800020' } };
   examples.getRow(1).height = 34;
   examples.getRow(1).alignment = { vertical: 'middle', wrapText: true };
-  examples.columns.forEach((column, index) => { column.width = index === 2 ? 38 : index === 13 ? 46 : 24; });
+  examples.columns.forEach((column, index) => { column.width = index === 1 ? 38 : index === 12 ? 46 : index === 13 ? 32 : 24; });
   examples.getColumn('A').numFmt = '@';
   [
-    ['LAP-001', 'IdeaPad Slim 3', 'Lenovo IdeaPad Slim 3 Laptop', 'Lenovo', 'Laptop', 'Branded Laptop', '', 45999, 42999, 8, 'https://www.lenovo.com/in/en/', '1 Year', 'Standard', 'RAM: 16GB\nStorage: 512GB SSD\nScreen: 15.6 inch'],
-    ['TAB-001', 'Galaxy Tab A9', 'Samsung Galaxy Tab A9 Tablet', 'Samsung', 'Tablets', 'Full Size Tablet', '', 18999, 16999, 3, '', '1 Year', '', 'Display: 8.7 inch\nStorage: 64GB'],
-    ['CAM-001', 'Indoor Camera', 'Indoor WiFi Security Camera', 'CP Plus', 'Security', '', '', 2499, 2199, 0, '', '1 Year', '', 'Resolution: 2MP; Connectivity: WiFi'],
+    ['LAP-001', 'Lenovo IdeaPad Slim 3 Laptop', 'Lenovo', 'Laptop', 'Branded Laptop', '', 45999, 42999, 8, 'https://www.lenovo.com/in/en/', '1 Year', 'Standard', 'RAM: 16GB\nStorage: 512GB SSD\nScreen: 15.6 inch', ''],
+    ['TAB-001', 'Samsung Galaxy Tab A9 Tablet', 'Samsung', 'Tablets', 'Full Size Tablet', '', 18999, 16999, 3, '', '1 Year', '', 'Display: 8.7 inch\nStorage: 64GB', ''],
+    ['CAM-001', 'Indoor WiFi Security Camera', 'CP Plus', 'Security', '', '', 2499, 2199, 0, '', '1 Year', '', 'Resolution: 2MP; Connectivity: WiFi', ''],
   ].forEach((values) => {
     const row = examples.addRow(values);
     row.height = 55;
@@ -111,13 +118,12 @@ export const createProductImportTemplate = async () => {
     ['Vinexus Bulk Product Import - Kaise Bharein'],
     ['1. Products sheet me har product ke liye ek nayi row bharein. Upar wale column names na badlein. Ek baar me 200 products tak upload kar sakte hain.'],
     ['2. Examples sheet me 3 sample products hain. Unhe dekhkar Products sheet bharein. Examples sheet ki rows upload nahi hongi.'],
-    ['3. Model Number, Model, Product Name, Brand, Header Category, dono Price aur Stock Quantity zaroor bharein. Har Model Number alag hona chahiye.'],
-    ['4. Main Category (Optional) aur Sub Category (Optional) khaali chhod sakte hain. Sub Category bharni ho to Main Category bhi bharein.'],
+    ['3. Model Number, Product Name / Model, Brand, dono Price aur Stock Quantity zaroor bharein. Har Model Number alag hona chahiye.'],
+    ['4. Header, Main aur Sub Category khaali chhod sakte hain; baad me product edit karke assign karein. Main bharne par Header aur Sub bharne par Main Category bhi bharein.'],
     ['5. Naya brand ya category likh sakte hain. Upload safal hone par woh apne aap ban jayenge. Naam ki spelling ek jaisi rakhein.'],
     ['6. Standard Price customer ke liye aur Dealer Price dealer ke liye hai. Dono me sirf number likhein. Stock nahi hai to Stock Quantity me 0 likhein.'],
-    ['7. Specifications me har detail "Name: Value" likhein, jaise RAM: 16GB. Agli line ke liye Alt+Enter dabayein. Semicolon (;) ya do spaces se bhi details alag kar sakte hain.'],
-    ['8. Product URL, Warranty aur Variant chahein to bharein. Product URL me original brand website ke product ka poora link likhein.'],
-    ['9. Product photo aur brand/category logo upload ke baad admin panel se laga sakte hain.'],
+    ['7. Specifications (Optional) me har detail "Name: Value" likhein, jaise RAM: 16GB. Agli line ke liye Alt+Enter dabayein. Semicolon (;) ya do spaces se bhi details alag kar sakte hain.'],
+    ['8. Product URL, Warranty, Variant aur Image Files sab optional hain. Product photo aur brand/category logo upload ke baad admin panel se bhi laga sakte hain.'],
     ['10. Pehle Preview Products dabayein. Error ho to Excel me theek karke phir Preview karein. Import tabhi karein jab sab rows sahi hon; error par koi product add nahi hoga.'],
   ].forEach((row) => instructions.addRow(row));
   instructions.getColumn(1).width = 125;
@@ -133,7 +139,7 @@ const parseWorkbook = async (buffer) => {
   const sheet = workbook.getWorksheet('Products');
   if (!sheet) throw invalid('The workbook must contain a Products sheet.');
   const headers = sheet.getRow(1).values.slice(1).map(clean);
-  const expectedHeaders = [HEADERS, PREVIOUS_HEADERS, LEGACY_HEADERS]
+  const expectedHeaders = [HEADERS, PREVIOUS_CURRENT_HEADERS, OLDER_CURRENT_HEADERS, PREVIOUS_HEADERS, LEGACY_HEADERS]
     .find((candidate) => headers.length === candidate.length && candidate.every((header, index) => headers[index] === header));
   if (!expectedHeaders) throw invalid('The Products sheet headers differ from the downloaded template.');
   const rows = [];
@@ -252,15 +258,17 @@ export const prepareProductImport = async (workbookBuffer, archiveBuffer) => {
     while (existingSkus.has(normalized(sku)) || seenSkus.has(normalized(sku))) sku = `${baseSku.slice(0, 45)}-${suffix++}`;
     seenSkus.add(normalized(sku));
 
-    const header = findOrPlanCategory(fields['Header Category'], null, 'Header', errors);
+    const headerName = fields['Header Category (Optional)'] ?? fields['Header Category'];
     const mainName = fields['Main Category (Optional)'] ?? fields['Main Category'];
     const subName = fields['Sub Category (Optional)'] ?? fields['Sub Category'];
+    const header = clean(headerName) ? findOrPlanCategory(headerName, null, 'Header', errors) : null;
+    if (clean(mainName) && !clean(headerName)) errors.push('Header Category is required when Main Category is filled.');
     const main = mainName && header ? findOrPlanCategory(mainName, header, 'Main', errors) : null;
-    if (subName && !mainName) errors.push('Main Category is required when Sub Category is filled.');
+    if (clean(subName) && !clean(mainName)) errors.push('Main Category is required when Sub Category is filled.');
     const sub = subName && main ? findOrPlanCategory(subName, main, 'Sub', errors) : null;
     const category = sub || main || header;
     const brand = findOrPlanBrand(fields.Brand, errors);
-    const imageNames = clean(fields['Image Files']).split(',').map(clean).filter(Boolean);
+    const imageNames = clean(fields['Image Files (Optional)'] ?? fields['Image Files']).split(',').map(clean).filter(Boolean);
     if (imageNames.length > 5) errors.push('Maximum 5 images per product.');
     for (const name of imageNames) {
       const key = normalized(name);
@@ -282,10 +290,11 @@ export const prepareProductImport = async (workbookBuffer, archiveBuffer) => {
       }
     }
     const specifications = [];
-    for (const [column, key] of [['Warranty', 'Warranty'], ['Country of Origin', 'Country of Origin'], ['HSN Code', 'HSN Code'], ['Variant', 'Variant']]) {
-      if (fields[column]) specifications.push({ key, value: fields[column] });
+    for (const [columns, key] of [[['Warranty (Optional)', 'Warranty'], 'Warranty'], [['Country of Origin'], 'Country of Origin'], [['HSN Code'], 'HSN Code'], [['Variant (Optional)', 'Variant'], 'Variant']]) {
+      const value = columns.map((column) => fields[column]).find((entry) => entry !== undefined);
+      if (value) specifications.push({ key, value });
     }
-    specifications.push(...plainSpecifications(fields.Specifications, errors));
+    specifications.push(...plainSpecifications(fields['Specifications (Optional)'] ?? fields.Specifications, errors));
     if (fields['Specifications JSON']) {
       try {
         const parsed = JSON.parse(fields['Specifications JSON']);
@@ -298,12 +307,14 @@ export const prepareProductImport = async (workbookBuffer, archiveBuffer) => {
     }
     specifications.push({ key: 'Stock', value: String(numeric(fields['Stock Quantity'], 'Stock Quantity', errors, true)) });
     const payload = {
-      sku, modelNumber, model: fields.Model, name: fields['Product Name'],
-      categoryId: String(category?._id || ''), brandId: String(brand?._id || ''),
+      sku, modelNumber,
+      model: fields['Product Name / Model'] ?? fields.Model,
+      name: fields['Product Name / Model'] ?? fields['Product Name'],
+      categoryId: category ? String(category._id) : undefined, brandId: String(brand?._id || ''),
       standardPrice: numeric(fields['Standard Price'], 'Standard Price', errors),
       dealerPrice: numeric(fields['Dealer Price'], 'Dealer Price', errors),
       description: fields.Description || '', informationPhone: fields['Information Phone'] || '',
-      productUrl: fields['Product URL'],
+      productUrl: fields['Product URL (Optional)'] ?? fields['Product URL'],
       specifications: [...specifications, ...(brand ? [{ key: 'Brand', value: brand.name }] : [])],
       images: [], isFeatured: booleanValue(fields.Featured, 'Featured', errors), isActive: false,
     };
@@ -313,7 +324,6 @@ export const prepareProductImport = async (workbookBuffer, archiveBuffer) => {
       const definitions = effectiveFilterDefinitions([...activeCategories, ...newCategories], category._id);
       for (const definition of definitions) {
         const values = specifications.filter((spec) => normalized(spec.key) === normalized(definition.key)).map((spec) => spec.value);
-        if (definition.isRequired && !values.length) errors.push(`${definition.label} is required for this category.`);
         if (values.length && ['select', 'multi-select'].includes(definition.inputType)
           && values.some((value) => !definition.options.some((option) => normalized(option) === normalized(value)))) errors.push(`${definition.label} has an invalid option.`);
         if (definition.inputType === 'number' && values.some((value) => !Number.isFinite(Number(value)))) errors.push(`${definition.label} must be numeric.`);
@@ -337,9 +347,9 @@ export const previewProductImport = async (workbookBuffer, archiveBuffer) => {
       } catch { /* The row-level image validation already reports broken images. */ }
     }
     return {
-      rowNumber, sku: payload.sku, modelNumber: fields['Model Number'], name: fields['Product Name'],
-      category: [fields['Header Category'], fields['Main Category (Optional)'] ?? fields['Main Category'],
-        fields['Sub Category (Optional)'] ?? fields['Sub Category']].filter(Boolean).join(' / '),
+      rowNumber, sku: payload.sku, modelNumber: fields['Model Number'], name: payload.name,
+      category: [fields['Header Category (Optional)'] ?? fields['Header Category'], fields['Main Category (Optional)'] ?? fields['Main Category'],
+        fields['Sub Category (Optional)'] ?? fields['Sub Category']].filter(Boolean).join(' / ') || 'Unassigned',
       standardPrice: fields['Standard Price'], dealerPrice: fields['Dealer Price'], imageNames, imagePreview, publish, errors,
     };
   }));

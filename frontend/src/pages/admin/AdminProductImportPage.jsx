@@ -8,6 +8,7 @@ const formatPrice = (value) => value === '' ? '—' : `₹${Number(value || 0).t
 
 export default function AdminProductImportPage() {
   const [workbook, setWorkbook] = useState(null);
+  const [imagesZip, setImagesZip] = useState(null);
   const [preview, setPreview] = useState(null);
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState('');
@@ -33,7 +34,7 @@ export default function AdminProductImportPage() {
     if (!workbook) { setError('Choose an Excel workbook first.'); return; }
     setBusy('preview'); setError(''); setResult(null);
     try {
-      const response = await adminService.previewProductImport(workbook);
+      const response = await adminService.previewProductImport(workbook, imagesZip);
       setPreview(response.data);
     } catch (err) { setPreview(null); setError(err.response?.data?.message || 'Could not preview the import.'); }
     finally { setBusy(''); }
@@ -42,7 +43,7 @@ export default function AdminProductImportPage() {
     if (!preview || preview.invalid > 0 || busy) return;
     setBusy('import'); setError('');
     try {
-      const response = await adminService.commitProductImport(workbook);
+      const response = await adminService.commitProductImport(workbook, imagesZip);
       setResult(response.data);
       setPreview(null);
     } catch (err) { setError(err.response?.data?.message || 'Import failed. Preview the workbook again.'); }
@@ -59,12 +60,12 @@ export default function AdminProductImportPage() {
     <div className="grid gap-5 lg:grid-cols-2">
       <section className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm">
         <h2 className="flex items-center gap-2 text-base font-bold"><FileSpreadsheet className="h-5 w-5 text-[#800020]" /> 1. Download and fill the template</h2>
-        <p className="mt-2 text-sm text-slate-700">Enter one product per row on the Products sheet. See three filled rows on the Examples sheet. Each model number must be unique. New brands and categories are created when the import succeeds.</p>
+        <p className="mt-2 text-sm text-slate-700">Enter one product per row on the Products sheet. Name and model share one column. Specifications, variant, images, and all category levels are optional; add them now or later by editing the product.</p>
         <Button type="button" variant="outline" onClick={downloadTemplate} disabled={!!busy} className="mt-4"><Download className="mr-2 h-4 w-4" />{busy === 'template' ? 'Preparing...' : 'Download Excel Template'}</Button>
       </section>
       <section className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm">
         <h2 className="flex items-center gap-2 text-base font-bold"><Images className="h-5 w-5 text-[#800020]" /> 2. Images are optional</h2>
-        <p className="mt-2 text-sm text-slate-700">After import, add product images and brand or category logos from the admin panel. Products show a placeholder until their images are added.</p>
+        <p className="mt-2 text-sm text-slate-700">Upload an optional ZIP containing filenames listed in the Image Files column. You can also add product images and brand or category logos from the admin panel later.</p>
       </section>
     </div>
 
@@ -73,6 +74,9 @@ export default function AdminProductImportPage() {
       <div className="grid gap-4">
         <label className="block text-sm font-semibold">Excel workbook (.xlsx)
           <input type="file" accept=".xlsx" disabled={!!busy} onChange={(event) => { setWorkbook(event.target.files?.[0] || null); resetPreview(); }} className="mt-2 block w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-800 file:mr-3 file:rounded-md file:border-0 file:bg-[#800020]/10 file:px-3 file:py-2 file:font-semibold file:text-[#800020]" />
+        </label>
+        <label className="block text-sm font-semibold">Product images ZIP (optional)
+          <input type="file" accept=".zip,application/zip" disabled={!!busy} onChange={(event) => { setImagesZip(event.target.files?.[0] || null); resetPreview(); }} className="mt-2 block w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-800 file:mr-3 file:rounded-md file:border-0 file:bg-[#800020]/10 file:px-3 file:py-2 file:font-semibold file:text-[#800020]" />
         </label>
       </div>
       <Button type="button" variant="primary" onClick={runPreview} disabled={!workbook || !!busy}><Upload className="mr-2 h-4 w-4" />{busy === 'preview' ? 'Checking rows...' : 'Preview Products'}</Button>
