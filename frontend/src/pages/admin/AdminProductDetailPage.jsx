@@ -1,22 +1,28 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import adminService from '../../services/adminService';
-import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
-import Select from '../../components/ui/Select';
-import Textarea from '../../components/ui/Textarea';
-import FormField from '../../components/ui/FormField';
-import FormError from '../../components/ui/FormError';
-import Toast from '../../components/ui/Toast';
-import ConfirmDialog from '../../components/ui/ConfirmDialog';
-import { SkeletonCard } from '../../components/ui/Skeleton';
-import ErrorState from '../../components/ui/ErrorState';
-import { getEffectiveFilterDefinitions } from '../../utils/categoryFilters';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import adminService from "../../services/adminService";
+import Button from "../../components/ui/Button";
+import Input from "../../components/ui/Input";
+import Select from "../../components/ui/Select";
+import Textarea from "../../components/ui/Textarea";
+import FormField from "../../components/ui/FormField";
+import FormError from "../../components/ui/FormError";
+import Toast from "../../components/ui/Toast";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import { SkeletonCard } from "../../components/ui/Skeleton";
+import ErrorState from "../../components/ui/ErrorState";
+import { getEffectiveFilterDefinitions } from "../../utils/categoryFilters";
 import {
   ArrowLeft,
   Save,
   Plus,
-ImagePlus,
+  ImagePlus,
   Trash2,
   Tag,
   Layers,
@@ -24,37 +30,57 @@ ImagePlus,
   FileText,
   ChevronRight,
   UploadCloud,
-} from 'lucide-react';
+} from "lucide-react";
 
 const TABS = [
-  { id: 'general', label: 'General Info', subtitle: 'Title, brand, SKU & overview', icon: Tag },
-  { id: 'variants', label: 'Pricing & Media', subtitle: 'Standard & dealer prices, gallery photos', icon: Layers },
-  { id: 'groups', label: 'Groups', subtitle: 'Main & sub category hierarchy', icon: FolderTree },
-  { id: 'specifications', label: 'Specifications', subtitle: 'Technical specifications & details', icon: FileText },
+  {
+    id: "general",
+    label: "General Info",
+    subtitle: "Title, brand, SKU & overview",
+    icon: Tag,
+  },
+  {
+    id: "variants",
+    label: "Pricing & Media",
+    subtitle: "Standard & dealer prices, gallery photos",
+    icon: Layers,
+  },
+  {
+    id: "groups",
+    label: "Groups",
+    subtitle: "Main & sub category hierarchy",
+    icon: FolderTree,
+  },
+  {
+    id: "specifications",
+    label: "Specifications",
+    subtitle: "Technical specifications & details",
+    icon: FileText,
+  },
 ];
 
 const QUICK_SPEC_KEYS = [
-  'Processor',
-  'RAM',
-  'Storage',
-  'Graphics',
-  'Display',
-  'Resolution',
-  'Ports',
-  'Weight',
-  'Operating System',
-  'Battery',
-  'Dimensions',
-  'Warranty',
-  'Connectivity',
+  "Processor",
+  "RAM",
+  "Storage",
+  "Graphics",
+  "Display",
+  "Resolution",
+  "Ports",
+  "Weight",
+  "Operating System",
+  "Battery",
+  "Dimensions",
+  "Warranty",
+  "Connectivity",
 ];
 
 const AdminProductDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const isCreateMode = !id || id === 'new';
+  const isCreateMode = !id || id === "new";
 
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState("general");
   const [product, setProduct] = useState(null);
   const [categoriesList, setCategoriesList] = useState([]);
   const [brandsList, setBrandsList] = useState([]);
@@ -63,31 +89,31 @@ const AdminProductDetailPage = () => {
 
   // --- Form State (Only fields that exist in MongoDB Product model) ---
   // General Info
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [selectedBrandId, setSelectedBrandId] = useState('');
-  const [sku, setSku] = useState('');
-  const [modelNumber, setModelNumber] = useState('');
-  const [model, setModel] = useState('');
-  const [informationPhone, setInformationPhone] = useState('');
-  const [productUrl, setProductUrl] = useState('');
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [selectedBrandId, setSelectedBrandId] = useState("");
+  const [sku, setSku] = useState("");
+  const [modelNumber, setModelNumber] = useState("");
+  const [model, setModel] = useState("");
+  const [informationPhone, setInformationPhone] = useState("");
+  const [productUrl, setProductUrl] = useState("");
 
   // Pricing
-  const [standardPrice, setStandardPrice] = useState('');
-  const [dealerPrice, setDealerPrice] = useState('');
+  const [standardPrice, setStandardPrice] = useState("");
+  const [dealerPrice, setDealerPrice] = useState("");
 
   // Groups (Category Hierarchy)
-  const [selectedHeaderId, setSelectedHeaderId] = useState('');
-  const [selectedMainId, setSelectedMainId] = useState('');
-  const [selectedSubId, setSelectedSubId] = useState('');
+  const [selectedHeaderId, setSelectedHeaderId] = useState("");
+  const [selectedMainId, setSelectedMainId] = useState("");
+  const [selectedSubId, setSelectedSubId] = useState("");
 
   // Status & Visibility
-  const [status, setStatus] = useState('published'); // 'published' | 'draft'
+  const [status, setStatus] = useState("published"); // 'published' | 'draft'
 
   // Specifications
   const [specifications, setSpecifications] = useState([]);
-  const [specKey, setSpecKey] = useState('');
-  const [specVal, setSpecVal] = useState('');
+  const [specKey, setSpecKey] = useState("");
+  const [specVal, setSpecVal] = useState("");
 
   // Media / Images
   const [imagesList, setImagesList] = useState([]);
@@ -99,7 +125,7 @@ const AdminProductDetailPage = () => {
 
   // Submission & Feedback
   const [formSubmitting, setFormSubmitting] = useState(false);
-  const [formError, setFormError] = useState('');
+  const [formError, setFormError] = useState("");
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
@@ -108,7 +134,9 @@ const AdminProductDetailPage = () => {
 
   useEffect(() => {
     return () => {
-      stagedImagesRef.current.forEach((img) => img.previewUrl && URL.revokeObjectURL(img.previewUrl));
+      stagedImagesRef.current.forEach(
+        (img) => img.previewUrl && URL.revokeObjectURL(img.previewUrl),
+      );
     };
   }, []);
 
@@ -133,28 +161,48 @@ const AdminProductDetailPage = () => {
     });
   }, [categoriesList, selectedMainId]);
 
-  const selectedEffectiveCategoryId = selectedSubId || selectedMainId || selectedHeaderId;
+  const selectedEffectiveCategoryId =
+    selectedSubId || selectedMainId || selectedHeaderId;
   const categoryFilterDefinitions = useMemo(
-    () => getEffectiveFilterDefinitions(categoriesList, selectedEffectiveCategoryId),
-    [categoriesList, selectedEffectiveCategoryId]
+    () =>
+      getEffectiveFilterDefinitions(
+        categoriesList,
+        selectedEffectiveCategoryId,
+      ),
+    [categoriesList, selectedEffectiveCategoryId],
   );
   const configuredFilterKeys = useMemo(
-    () => new Set(categoryFilterDefinitions.map((definition) => definition.key.toLowerCase())),
-    [categoryFilterDefinitions]
+    () =>
+      new Set(
+        categoryFilterDefinitions.map((definition) =>
+          definition.key.toLowerCase(),
+        ),
+      ),
+    [categoryFilterDefinitions],
   );
   const manualSpecifications = useMemo(
-    () => specifications.map((spec, index) => ({ spec, index })).filter(({ spec }) => !configuredFilterKeys.has(spec.key.toLowerCase())),
-    [specifications, configuredFilterKeys]
+    () =>
+      specifications
+        .map((spec, index) => ({ spec, index }))
+        .filter(
+          ({ spec }) => !configuredFilterKeys.has(spec.key.toLowerCase()),
+        ),
+    [specifications, configuredFilterKeys],
   );
 
-  const getCategorySpecValues = (key) => specifications
-    .filter((spec) => spec.key.toLowerCase() === key.toLowerCase())
-    .map((spec) => spec.value);
+  const getCategorySpecValues = (key) =>
+    specifications
+      .filter((spec) => spec.key.toLowerCase() === key.toLowerCase())
+      .map((spec) => spec.value);
 
   const setCategorySpecValues = (definition, values) => {
-    const cleanValues = values.map((value) => String(value).trim()).filter(Boolean);
+    const cleanValues = values
+      .map((value) => String(value).trim())
+      .filter(Boolean);
     setSpecifications((previous) => [
-      ...previous.filter((spec) => spec.key.toLowerCase() !== definition.key.toLowerCase()),
+      ...previous.filter(
+        (spec) => spec.key.toLowerCase() !== definition.key.toLowerCase(),
+      ),
       ...cleanValues.map((value) => ({ key: definition.key, value })),
     ]);
   };
@@ -163,13 +211,19 @@ const AdminProductDetailPage = () => {
   const loadCategories = useCallback(async () => {
     try {
       const [catRes, brandRes] = await Promise.all([
-        adminService.getCategories({ limit: 500, sortBy: 'sortOrder', sortOrder: 'asc' }),
+        adminService.getCategories({
+          limit: 500,
+          sortBy: "sortOrder",
+          sortOrder: "asc",
+        }),
         adminService.getBrandsAdmin(),
       ]);
       setCategoriesList(catRes.data?.categories || []);
-      setBrandsList((brandRes.data?.brands || []).filter((brand) => brand.isActive));
+      setBrandsList(
+        (brandRes.data?.brands || []).filter((brand) => brand.isActive),
+      );
     } catch (err) {
-      console.error('Failed to load categories or brands:', err);
+      console.error("Failed to load categories or brands:", err);
     }
   }, []);
 
@@ -183,30 +237,40 @@ const AdminProductDetailPage = () => {
       const prod = res.data;
       setProduct(prod);
 
-      setName(prod.name || '');
-      setSku(prod.sku || '');
-      setDescription(prod.description || '');
-      setModelNumber(prod.modelNumber || '');
-      setModel(prod.model || '');
-      setInformationPhone(prod.informationPhone || '');
-      setProductUrl(prod.productUrl || '');
-      setSelectedBrandId(String(prod.brandId?._id || prod.brandId || ''));
-      setStandardPrice(prod.standardPrice !== undefined ? String(prod.standardPrice) : '');
-      setDealerPrice(prod.dealerPrice !== undefined ? String(prod.dealerPrice) : '');
-      setStatus(prod.isActive ? 'published' : 'draft');
+      setName(prod.name || "");
+      setSku(prod.sku || "");
+      setDescription(prod.description || "");
+      setModelNumber(prod.modelNumber || "");
+      setModel(prod.model || "");
+      setInformationPhone(prod.informationPhone || "");
+      setProductUrl(prod.productUrl || "");
+      setSelectedBrandId(String(prod.brandId?._id || prod.brandId || ""));
+      setStandardPrice(
+        prod.standardPrice !== undefined ? String(prod.standardPrice) : "",
+      );
+      setDealerPrice(
+        prod.dealerPrice !== undefined ? String(prod.dealerPrice) : "",
+      );
+      setStatus(prod.isActive ? "published" : "draft");
       setImagesList(prod.images || []);
 
       // Extract legitimate specifications only (ignoring legacy dummy fields)
       if (prod.specifications && Array.isArray(prod.specifications)) {
         const legitimateSpecs = prod.specifications.filter((sp) => {
-          const keyLower = String(sp.key || '').toLowerCase().trim();
-          return !/^(highlight|hsn|variant|stock|inventory|country of origin|warranty)/i.test(keyLower);
+          const keyLower = String(sp.key || "")
+            .toLowerCase()
+            .trim();
+          return !/^(highlight|hsn|variant|stock|inventory|country of origin|warranty)/i.test(
+            keyLower,
+          );
         });
         setSpecifications(legitimateSpecs);
       }
     } catch (err) {
-      console.error('Failed to load product:', err);
-      setLoadError(err.response?.data?.message || 'Failed to load product details');
+      console.error("Failed to load product:", err);
+      setLoadError(
+        err.response?.data?.message || "Failed to load product details",
+      );
     } finally {
       setLoading(false);
     }
@@ -224,26 +288,32 @@ const AdminProductDetailPage = () => {
   useEffect(() => {
     if (!product || categoriesList.length === 0) return;
 
-    const currentCatId = String(product.categoryId?._id || product.categoryId || '');
+    const currentCatId = String(
+      product.categoryId?._id || product.categoryId || "",
+    );
     if (!currentCatId) return;
 
-    const currentCat = categoriesList.find((c) => String(c._id) === currentCatId);
+    const currentCat = categoriesList.find(
+      (c) => String(c._id) === currentCatId,
+    );
     if (!currentCat) return;
 
     const pId = currentCat.parentId?._id || currentCat.parentId;
     if (!pId) {
       setSelectedHeaderId(String(currentCat._id));
-      setSelectedMainId('');
-      setSelectedSubId('');
+      setSelectedMainId("");
+      setSelectedSubId("");
     } else {
-      const parentCat = categoriesList.find((c) => String(c._id) === String(pId));
+      const parentCat = categoriesList.find(
+        (c) => String(c._id) === String(pId),
+      );
       const grandParentId = parentCat?.parentId?._id || parentCat?.parentId;
       if (grandParentId) {
         setSelectedSubId(String(currentCat._id));
         setSelectedMainId(String(parentCat._id));
         setSelectedHeaderId(String(grandParentId));
       } else {
-        setSelectedSubId('');
+        setSelectedSubId("");
         setSelectedMainId(String(currentCat._id));
         setSelectedHeaderId(String(parentCat._id));
       }
@@ -252,8 +322,13 @@ const AdminProductDetailPage = () => {
 
   // Auto-generate SKU helper
   const handleAutoGenerateSku = () => {
-    const selectedBrand = brandsList.find((b) => String(b._id) === String(selectedBrandId));
-    const brandPrefix = (selectedBrand?.name || 'VNX').replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase();
+    const selectedBrand = brandsList.find(
+      (b) => String(b._id) === String(selectedBrandId),
+    );
+    const brandPrefix = (selectedBrand?.name || "VNX")
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .slice(0, 3)
+      .toUpperCase();
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const newSku = `${brandPrefix}-${randomSuffix}`;
     setSku(newSku);
@@ -262,9 +337,12 @@ const AdminProductDetailPage = () => {
   // Add custom specification
   const handleAddSpec = () => {
     if (!specKey.trim() || !specVal.trim()) return;
-    setSpecifications((prev) => [...prev, { key: specKey.trim(), value: specVal.trim() }]);
-    setSpecKey('');
-    setSpecVal('');
+    setSpecifications((prev) => [
+      ...prev,
+      { key: specKey.trim(), value: specVal.trim() },
+    ]);
+    setSpecKey("");
+    setSpecVal("");
   };
 
   const handleRemoveSpec = (index) => {
@@ -274,22 +352,35 @@ const AdminProductDetailPage = () => {
   // Quick preset spec chip clicked
   const handleQuickSpecKey = (keyName) => {
     setSpecKey(keyName);
-    document.getElementById('specKeyInput')?.focus();
+    document.getElementById("specKeyInput")?.focus();
   };
 
   // Staging / Adding Images
   const handleStageFile = (file) => {
     if (!file) return;
-    if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
-      setToast({ message: 'Only JPEG, PNG and WebP product images are allowed.', type: 'error' });
+    if (
+      !["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(
+        file.type,
+      )
+    ) {
+      setToast({
+        message: "Only JPEG, PNG and WebP product images are allowed.",
+        type: "error",
+      });
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setToast({ message: 'Product image size must be under 5MB.', type: 'error' });
+      setToast({
+        message: "Product image size must be under 5MB.",
+        type: "error",
+      });
       return;
     }
     const previewUrl = URL.createObjectURL(file);
-    setStagedImages((prev) => [...prev, { file, previewUrl, altText: name.trim() || 'Product image' }]);
+    setStagedImages((prev) => [
+      ...prev,
+      { file, previewUrl, altText: name.trim() || "Product image" },
+    ]);
   };
 
   const handleRemoveStagedImage = (index) => {
@@ -305,12 +396,19 @@ const AdminProductDetailPage = () => {
     if (!file || !id) return;
     setImageUploading(true);
     try {
-      const res = await adminService.uploadProductImage(id, file, name.trim() || 'Product image');
+      const res = await adminService.uploadProductImage(
+        id,
+        file,
+        name.trim() || "Product image",
+      );
       setImagesList(res.data?.images || []);
-      setToast({ message: 'Image uploaded successfully!', type: 'success' });
+      setToast({ message: "Image uploaded successfully!", type: "success" });
     } catch (err) {
-      console.error('Failed to upload image:', err);
-      setToast({ message: err.response?.data?.message || 'Failed to upload image', type: 'error' });
+      console.error("Failed to upload image:", err);
+      setToast({
+        message: err.response?.data?.message || "Failed to upload image",
+        type: "error",
+      });
     } finally {
       setImageUploading(false);
     }
@@ -321,13 +419,19 @@ const AdminProductDetailPage = () => {
     if (!imageDeleteTarget || !id) return;
     setImageDeleteLoading(true);
     try {
-      const res = await adminService.deleteProductImage(id, imageDeleteTarget.publicId);
+      const res = await adminService.deleteProductImage(
+        id,
+        imageDeleteTarget.publicId,
+      );
       setImagesList(res.data?.images || []);
-      setToast({ message: 'Image removed successfully', type: 'success' });
+      setToast({ message: "Image removed successfully", type: "success" });
       setImageDeleteTarget(null);
     } catch (err) {
-      console.error('Failed to delete image:', err);
-      setToast({ message: err.response?.data?.message || 'Failed to delete image', type: 'error' });
+      console.error("Failed to delete image:", err);
+      setToast({
+        message: err.response?.data?.message || "Failed to delete image",
+        type: "error",
+      });
     } finally {
       setImageDeleteLoading(false);
     }
@@ -339,44 +443,48 @@ const AdminProductDetailPage = () => {
 
   // --- SAVE & PUBLISH HANDLER ---
   const handleSaveAndPublish = async () => {
-    setFormError('');
+    setFormError("");
 
     // 1. Validate General Info
     if (!name.trim()) {
-      setFormError('Product Title is required.');
-      setActiveTab('general');
+      setFormError("Product Title is required.");
+      setActiveTab("general");
       return;
     }
     if (!sku.trim()) {
-      setFormError('Product SKU code is required.');
-      setActiveTab('general');
+      setFormError("Product SKU code is required.");
+      setActiveTab("general");
       return;
     }
     if (!modelNumber.trim()) {
-      setFormError('Model Number is required.');
-      setActiveTab('general');
+      setFormError("Model Number is required.");
+      setActiveTab("general");
       return;
     }
     if (!model.trim()) {
-      setFormError('Model is required.');
-      setActiveTab('general');
+      setFormError("Model is required.");
+      setActiveTab("general");
       return;
     }
 
     // 2. Validate Category Hierarchy
     const effectiveCategoryId = selectedEffectiveCategoryId;
     if (isCreateMode && !effectiveCategoryId) {
-      setFormError('Please select a Header Category in the Groups card.');
-      setActiveTab('groups');
+      setFormError("Please select a Header Category in the Groups card.");
+      setActiveTab("groups");
       return;
     }
 
     const missingFilter = categoryFilterDefinitions.find(
-      (definition) => definition.isRequired && getCategorySpecValues(definition.key).length === 0
+      (definition) =>
+        definition.isRequired &&
+        getCategorySpecValues(definition.key).length === 0,
     );
     if (missingFilter) {
-      setFormError(`Please enter ${missingFilter.label || missingFilter.key} in the Specifications card.`);
-      setActiveTab('specifications');
+      setFormError(
+        `Please enter ${missingFilter.label || missingFilter.key} in the Specifications card.`,
+      );
+      setActiveTab("specifications");
       return;
     }
 
@@ -384,18 +492,24 @@ const AdminProductDetailPage = () => {
     const sPrice = Number(standardPrice);
     const dPrice = Number(dealerPrice);
     if (isNaN(sPrice) || sPrice < 0) {
-      setFormError('Please enter a valid Standard Retail Price in Pricing & Media.');
-      setActiveTab('variants');
+      setFormError(
+        "Please enter a valid Standard Retail Price in Pricing & Media.",
+      );
+      setActiveTab("variants");
       return;
     }
     if (isNaN(dPrice) || dPrice < 0) {
-      setFormError('Please enter a valid Dealer Sale Price in Pricing & Media.');
-      setActiveTab('variants');
+      setFormError(
+        "Please enter a valid Dealer Sale Price in Pricing & Media.",
+      );
+      setActiveTab("variants");
       return;
     }
     if (isCreateMode && imagesList.length + stagedImages.length === 0) {
-      setFormError('Please upload at least one product image in Pricing & Media.');
-      setActiveTab('variants');
+      setFormError(
+        "Please upload at least one product image in Pricing & Media.",
+      );
+      setActiveTab("variants");
       return;
     }
 
@@ -403,7 +517,10 @@ const AdminProductDetailPage = () => {
     try {
       // Assemble only legitimate specifications from state
       const allSpecs = specifications
-        .map((s) => ({ key: String(s.key || '').trim(), value: String(s.value || '').trim() }))
+        .map((s) => ({
+          key: String(s.key || "").trim(),
+          value: String(s.value || "").trim(),
+        }))
         .filter((s) => s.key && s.value);
 
       const payload = {
@@ -418,7 +535,7 @@ const AdminProductDetailPage = () => {
         description: description.trim() || undefined,
         standardPrice: sPrice,
         dealerPrice: dPrice,
-        isActive: isCreateMode ? false : status === 'published',
+        isActive: isCreateMode ? false : status === "published",
         specifications: allSpecs,
         images: imagesList.map((img, i) => ({
           url: img.url,
@@ -435,30 +552,42 @@ const AdminProductDetailPage = () => {
         // Upload any staged files
         if (newId && stagedImages.length > 0) {
           for (const staged of stagedImages) {
-            await adminService.uploadProductImage(newId, staged.file, staged.altText || name);
+            await adminService.uploadProductImage(
+              newId,
+              staged.file,
+              staged.altText || name,
+            );
           }
         }
 
-        if (!newId) throw new Error('Product was created without an ID.');
-        await adminService.updateProduct(newId, { isActive: status === 'published' });
+        if (!newId) throw new Error("Product was created without an ID.");
+        await adminService.updateProduct(newId, {
+          isActive: status === "published",
+        });
 
-        setToast({ message: 'Product created and published successfully!', type: 'success' });
+        setToast({
+          message: "Product created and published successfully!",
+          type: "success",
+        });
         setTimeout(() => {
-          navigate('/admin/products');
+          navigate("/admin/products");
         }, 1200);
       } else {
         await adminService.updateProduct(id, payload);
-        setToast({ message: 'Product updated and published successfully!', type: 'success' });
+        setToast({
+          message: "Product updated and published successfully!",
+          type: "success",
+        });
         loadProduct();
       }
     } catch (err) {
-      console.error('Failed to save product:', err);
+      console.error("Failed to save product:", err);
       const errMsg =
         err.response?.data?.message ||
         err.response?.data?.errors?.[0]?.message ||
-        'Failed to save product. Please verify all fields and try again.';
+        "Failed to save product. Please verify all fields and try again.";
       setFormError(errMsg);
-      setToast({ message: errMsg, type: 'error' });
+      setToast({ message: errMsg, type: "error" });
     } finally {
       setFormSubmitting(false);
     }
@@ -485,36 +614,54 @@ const AdminProductDetailPage = () => {
   if (loadError) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navigate('/admin/products')} leftIcon={<ArrowLeft className="w-4 h-4" />}>
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/admin/products")}
+          leftIcon={<ArrowLeft className="w-4 h-4" />}>
           Back to Products
         </Button>
-        <ErrorState title="Failed to Load Product" description={loadError} onRetry={loadProduct} />
+        <ErrorState
+          title="Failed to Load Product"
+          description={loadError}
+          onRetry={loadProduct}
+        />
       </div>
     );
   }
 
   return (
     <div className="space-y-6 pb-12">
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
 
       {/* Top Bar with Navigation & Actions */}
       <div className="bg-white border border-[#f0e6e8] rounded-2xl p-4 md:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate('/admin/products')}
-            className="inline-flex items-center gap-2 text-xs font-bold text-gray-600 hover:text-[#800020] transition-colors bg-gray-50 hover:bg-[#fdf2f4] px-3 py-2 rounded-xl border border-gray-200"
-          >
+            onClick={() => navigate("/admin/products")}
+            className="inline-flex items-center gap-2 text-xs font-bold text-gray-600 hover:text-[#800020] transition-colors bg-gray-50 hover:bg-[#fdf2f4] px-3 py-2 rounded-xl border border-gray-200">
             <ArrowLeft className="w-4 h-4 text-[#800020]" />
             <span>Back to Products</span>
           </button>
           <div className="h-5 w-px bg-gray-200 hidden sm:block" />
           <div>
             <h1 className="text-base sm:text-lg font-black text-gray-900 tracking-tight flex items-center gap-2">
-              <span>{isCreateMode ? 'Add New Product' : 'Edit Product'}</span>
-              {sku && <span className="text-xs font-bold text-[#800020] bg-[#fdf2f4] px-2 py-0.5 rounded-md">({sku})</span>}
+              <span>{isCreateMode ? "Add New Product" : "Edit Product"}</span>
+              {sku && (
+                <span className="text-xs font-bold text-[#800020] bg-[#fdf2f4] px-2 py-0.5 rounded-md">
+                  ({sku})
+                </span>
+              )}
             </h1>
-            <p className="text-[11px] text-gray-500 font-medium">Configure product information card-by-card, then Save & Publish</p>
+            <p className="text-[11px] text-gray-500 font-medium">
+              Configure product information card-by-card, then Save & Publish
+            </p>
           </div>
         </div>
 
@@ -522,10 +669,9 @@ const AdminProductDetailPage = () => {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate('/admin/products')}
+            onClick={() => navigate("/admin/products")}
             disabled={formSubmitting}
-            className="border-gray-300 text-gray-700 hover:bg-gray-100 font-semibold px-4 text-xs h-10"
-          >
+            className="border-gray-300 text-gray-700 hover:bg-gray-100 font-semibold px-4 text-xs h-10">
             Cancel
           </Button>
           <Button
@@ -534,8 +680,7 @@ const AdminProductDetailPage = () => {
             onClick={handleSaveAndPublish}
             isLoading={formSubmitting}
             leftIcon={<Save className="w-4 h-4" />}
-            className="bg-[#800020] hover:bg-[#68001a] text-white font-bold px-6 text-xs h-10 shadow-sm"
-          >
+            className="bg-[#800020] hover:bg-[#68001a] text-white font-bold px-6 text-xs h-10 shadow-sm">
             Save & Publish
           </Button>
         </div>
@@ -559,22 +704,26 @@ const AdminProductDetailPage = () => {
                   onClick={() => setActiveTab(tab.id)}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all text-xs font-bold ${
                     isActive
-                      ? 'bg-[#fdf2f4] text-[#800020] border border-[#f5d6dc] shadow-xs'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border border-transparent'
-                  }`}
-                >
+                      ? "bg-[#fdf2f4] text-[#800020] border border-[#f5d6dc] shadow-xs"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 border border-transparent"
+                  }`}>
                   <div
                     className={`p-1.5 rounded-lg shrink-0 ${
-                      isActive ? 'bg-[#800020] text-white' : 'bg-gray-100 text-gray-500'
-                    }`}
-                  >
+                      isActive
+                        ? "bg-[#800020] text-white"
+                        : "bg-gray-100 text-gray-500"
+                    }`}>
                     <Icon className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="truncate text-xs">{tab.label}</div>
-                    <div className="text-[10px] text-gray-400 font-normal truncate">{tab.subtitle}</div>
+                    <div className="text-[10px] text-gray-400 font-normal truncate">
+                      {tab.subtitle}
+                    </div>
                   </div>
-                  {isActive && <ChevronRight className="w-4 h-4 text-[#800020] shrink-0" />}
+                  {isActive && (
+                    <ChevronRight className="w-4 h-4 text-[#800020] shrink-0" />
+                  )}
                 </button>
               );
             })}
@@ -590,14 +739,15 @@ const AdminProductDetailPage = () => {
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
-                  className="w-full appearance-none bg-white border border-[#f0e6e8] rounded-xl px-4 py-2.5 text-xs font-bold text-[#800020] focus:outline-none focus:ring-2 focus:ring-[#800020]/20"
-                >
+                  className="w-full appearance-none bg-white border border-[#f0e6e8] rounded-xl px-4 py-2.5 text-xs font-bold text-[#800020] focus:outline-none focus:ring-2 focus:ring-[#800020]/20">
                   <option value="published">PUBLISHED</option>
                   <option value="draft">DRAFT / INACTIVE</option>
                 </select>
               </div>
               <p className="text-[10px] text-gray-500 mt-1.5">
-                {status === 'published' ? 'Active in catalog and visible for order inquiries' : 'Hidden from public storefront'}
+                {status === "published"
+                  ? "Active in catalog and visible for order inquiries"
+                  : "Hidden from public storefront"}
               </p>
             </div>
           </div>
@@ -606,18 +756,23 @@ const AdminProductDetailPage = () => {
         {/* Right Column: Active Card Content (9 cols) */}
         <div className="lg:col-span-9">
           {/* TAB 1: GENERAL INFO */}
-          {activeTab === 'general' && (
+          {activeTab === "general" && (
             <div className="bg-white border border-[#f0e6e8] rounded-2xl p-6 shadow-xs space-y-6">
               <div>
                 <h3 className="text-sm font-black uppercase tracking-wider text-gray-900 flex items-center gap-2">
                   <Tag className="w-4 h-4 text-[#800020]" />
                   General Information
                 </h3>
-                <p className="text-xs text-gray-500 mt-0.5">Basic title, brand identity, and catalog identifiers</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Basic title, brand identity, and catalog identifiers
+                </p>
               </div>
 
               {/* Product Title */}
-              <FormField label="PRODUCT TITLE" required hint="Full official name of the product">
+              <FormField
+                label="PRODUCT TITLE"
+                required
+                hint="Full official name of the product">
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -628,7 +783,9 @@ const AdminProductDetailPage = () => {
               </FormField>
 
               {/* Description */}
-              <FormField label="ABOUT THIS ITEM" hint="Provide detailed tech overview, capabilities and features">
+              <FormField
+                label="ABOUT THIS ITEM"
+                hint="Provide detailed tech overview, capabilities and features">
                 <Textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -641,19 +798,28 @@ const AdminProductDetailPage = () => {
               {/* Brand & SKU Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <FormField label="BRAND" required hint="Managed in Admin → Brand Management">
+                  <FormField
+                    label="BRAND"
+                    required
+                    hint="Managed in Admin → Brand Management">
                     <Select
                       value={selectedBrandId}
                       onChange={(e) => setSelectedBrandId(e.target.value)}
                       placeholder="Select a brand"
-                      options={brandsList.map((brand) => ({ value: brand._id, label: brand.name }))}
+                      options={brandsList.map((brand) => ({
+                        value: brand._id,
+                        label: brand.name,
+                      }))}
                       required
                     />
                   </FormField>
                 </div>
 
                 <div>
-                  <FormField label="PRODUCT CODE (SKU)" required hint="Unique inventory code">
+                  <FormField
+                    label="PRODUCT CODE (SKU)"
+                    required
+                    hint="Unique inventory code">
                     <div className="flex gap-2">
                       <Input
                         value={sku}
@@ -667,8 +833,7 @@ const AdminProductDetailPage = () => {
                         variant="outline"
                         onClick={handleAutoGenerateSku}
                         className="text-[11px] font-bold shrink-0 border-gray-300"
-                        title="Auto-generate SKU"
-                      >
+                        title="Auto-generate SKU">
                         Auto-Code
                       </Button>
                     </div>
@@ -678,7 +843,10 @@ const AdminProductDetailPage = () => {
 
               {/* Hardware Spec Attributes Grid (Only DB fields) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-2 border-t border-gray-100">
-                <FormField label="MODEL NUMBER" required hint="Unique model identifier">
+                <FormField
+                  label="MODEL NUMBER"
+                  required
+                  hint="Unique model identifier">
                   <Input
                     value={modelNumber}
                     onChange={(e) => setModelNumber(e.target.value)}
@@ -719,9 +887,8 @@ const AdminProductDetailPage = () => {
                 <Button
                   type="button"
                   variant="primary"
-                  onClick={() => setActiveTab('variants')}
-                  className="bg-[#800020] hover:bg-[#68001a] text-white text-xs font-bold px-6"
-                >
+                  onClick={() => setActiveTab("variants")}
+                  className="bg-[#800020] hover:bg-[#68001a] text-white text-xs font-bold px-6">
                   Next: Pricing & Media →
                 </Button>
               </div>
@@ -729,7 +896,7 @@ const AdminProductDetailPage = () => {
           )}
 
           {/* TAB 2: PRICING & MEDIA */}
-          {activeTab === 'variants' && (
+          {activeTab === "variants" && (
             <div className="bg-white border border-[#f0e6e8] rounded-2xl p-6 shadow-xs space-y-6">
               <div>
                 <h3 className="text-sm font-black uppercase tracking-wider text-gray-900 flex items-center gap-2">
@@ -737,7 +904,8 @@ const AdminProductDetailPage = () => {
                   Product Pricing & Media
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Set standard retail and wholesale dealer pricing, and manage product gallery photos.
+                  Set standard retail and wholesale dealer pricing, and manage
+                  product gallery photos.
                 </p>
               </div>
 
@@ -757,7 +925,9 @@ const AdminProductDetailPage = () => {
                       required
                       className="text-sm font-bold"
                     />
-                    <p className="text-[11px] text-gray-400 mt-1">Default public retail price</p>
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      Default public retail price
+                    </p>
                   </div>
 
                   <div>
@@ -773,7 +943,9 @@ const AdminProductDetailPage = () => {
                       required
                       className="text-sm font-extrabold text-emerald-700 bg-emerald-50/40 border-emerald-200"
                     />
-                    <p className="text-[11px] text-emerald-600 mt-1">Special price for verified B2B dealers</p>
+                    <p className="text-[11px] text-emerald-600 mt-1">
+                      Special price for verified B2B dealers
+                    </p>
                   </div>
                 </div>
               </div>
@@ -783,10 +955,12 @@ const AdminProductDetailPage = () => {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <h4 className="text-xs font-black uppercase tracking-wider text-gray-800">
-                      Product Gallery Images ({imagesList.length + stagedImages.length})
+                      Product Gallery Images (
+                      {imagesList.length + stagedImages.length})
                     </h4>
                     <p className="text-[11px] text-gray-500">
-                      Click an empty slot or browse files to upload high quality photos for this product.
+                      Click an empty slot or browse files to upload high quality
+                      photos for this product.
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -809,11 +983,12 @@ const AdminProductDetailPage = () => {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => document.getElementById('variant-file-input')?.click()}
+                      onClick={() =>
+                        document.getElementById("variant-file-input")?.click()
+                      }
                       isLoading={imageUploading}
                       leftIcon={<UploadCloud className="w-3.5 h-3.5" />}
-                      className="text-xs border-gray-300 font-bold"
-                    >
+                      className="text-xs border-gray-300 font-bold">
                       Browse Files
                     </Button>
                   </div>
@@ -827,9 +1002,12 @@ const AdminProductDetailPage = () => {
                     return (
                       <div
                         key={idx}
-                        className="group relative rounded-xl border border-gray-200 bg-gray-50 overflow-hidden aspect-square flex items-center justify-center shadow-xs"
-                      >
-                        <img src={src} alt={img.altText || 'Product'} className="w-full h-full object-cover" />
+                        className="group relative rounded-xl border border-gray-200 bg-gray-50 overflow-hidden aspect-square flex items-center justify-center shadow-xs">
+                        <img
+                          src={src}
+                          alt={img.altText || "Product"}
+                          className="w-full h-full object-cover"
+                        />
                         {idx === 0 && (
                           <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded-md bg-[#800020] text-white text-[9px] font-bold uppercase tracking-wider shadow-sm">
                             Primary
@@ -839,18 +1017,21 @@ const AdminProductDetailPage = () => {
                           type="button"
                           onClick={() => {
                             if (isStaged) {
-                              const stagedIndex = stagedImages.findIndex((s) => s.previewUrl === img.previewUrl);
+                              const stagedIndex = stagedImages.findIndex(
+                                (s) => s.previewUrl === img.previewUrl,
+                              );
                               handleRemoveStagedImage(stagedIndex);
                             } else if (img.publicId) {
                               setImageDeleteTarget(img);
                             } else {
-                              const urlIndex = imagesList.findIndex((u) => u.url === img.url);
+                              const urlIndex = imagesList.findIndex(
+                                (u) => u.url === img.url,
+                              );
                               handleRemoveUrlImage(urlIndex);
                             }
                           }}
                           className="absolute top-2 right-2 p-1.5 bg-rose-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                          title="Remove Image"
-                        >
+                          title="Remove Image">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -858,13 +1039,19 @@ const AdminProductDetailPage = () => {
                   })}
 
                   {/* Empty Slot Placeholder Tiles (up to 5) */}
-                  {Array.from({ length: Math.max(0, 5 - (imagesList.length + stagedImages.length)) }).map((_, slotIdx) => (
+                  {Array.from({
+                    length: Math.max(
+                      0,
+                      5 - (imagesList.length + stagedImages.length),
+                    ),
+                  }).map((_, slotIdx) => (
                     <button
                       key={slotIdx}
                       type="button"
-                      onClick={() => document.getElementById('variant-file-input')?.click()}
-                      className="rounded-xl border-2 border-dashed border-gray-300 hover:border-[#800020] hover:bg-[#fdf2f4]/30 transition-all aspect-square flex flex-col items-center justify-center p-3 text-center gap-1.5 group cursor-pointer"
-                    >
+                      onClick={() =>
+                        document.getElementById("variant-file-input")?.click()
+                      }
+                      className="rounded-xl border-2 border-dashed border-gray-300 hover:border-[#800020] hover:bg-[#fdf2f4]/30 transition-all aspect-square flex flex-col items-center justify-center p-3 text-center gap-1.5 group cursor-pointer">
                       <ImagePlus className="w-6 h-6 text-gray-400 group-hover:text-[#800020] transition-colors" />
                       <span className="text-[10px] font-bold text-gray-400 group-hover:text-[#800020]">
                         Add Image
@@ -879,17 +1066,15 @@ const AdminProductDetailPage = () => {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setActiveTab('general')}
-                  className="text-xs font-semibold"
-                >
+                  onClick={() => setActiveTab("general")}
+                  className="text-xs font-semibold">
                   ← Back: General Info
                 </Button>
                 <Button
                   type="button"
                   variant="primary"
-                  onClick={() => setActiveTab('groups')}
-                  className="bg-[#800020] hover:bg-[#68001a] text-white text-xs font-bold px-6"
-                >
+                  onClick={() => setActiveTab("groups")}
+                  className="bg-[#800020] hover:bg-[#68001a] text-white text-xs font-bold px-6">
                   Next: Groups →
                 </Button>
               </div>
@@ -897,7 +1082,7 @@ const AdminProductDetailPage = () => {
           )}
 
           {/* TAB 3: GROUPS (Category Hierarchy) */}
-          {activeTab === 'groups' && (
+          {activeTab === "groups" && (
             <div className="bg-white border border-[#f0e6e8] rounded-2xl p-6 shadow-xs space-y-6">
               <div>
                 <h3 className="text-sm font-black uppercase tracking-wider text-gray-900 flex items-center gap-2">
@@ -905,7 +1090,9 @@ const AdminProductDetailPage = () => {
                   Category Hierarchy & Groups
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  {isCreateMode ? 'Select a Header Category. Main and Sub Categories are optional.' : 'Category assignment is optional. You can assign or change it here at any time.'}
+                  {isCreateMode
+                    ? "Select a Header Category. Main and Sub Categories are optional."
+                    : "Category assignment is optional. You can assign or change it here at any time."}
                 </p>
               </div>
 
@@ -914,16 +1101,23 @@ const AdminProductDetailPage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {/* MAIN GROUP (Header Category) */}
                   <FormField
-                    label={isCreateMode ? 'HEADER CATEGORY *' : 'HEADER CATEGORY (OPTIONAL)'}
+                    label={
+                      isCreateMode
+                        ? "HEADER CATEGORY *"
+                        : "HEADER CATEGORY (OPTIONAL)"
+                    }
                     required={isCreateMode}
-                    hint={isCreateMode ? 'Top-level parent category (e.g. Laptop, Desktop, Storage)' : 'Leave unassigned until this product is ready for catalog placement.'}
-                  >
+                    hint={
+                      isCreateMode
+                        ? "Top-level parent category (e.g. Laptop, Desktop, Storage)"
+                        : "Leave unassigned until this product is ready for catalog placement."
+                    }>
                     <Select
                       value={selectedHeaderId}
                       onChange={(e) => {
                         setSelectedHeaderId(e.target.value);
-                        setSelectedMainId('');
-                        setSelectedSubId('');
+                        setSelectedMainId("");
+                        setSelectedSubId("");
                       }}
                       placeholder="Select Header Category"
                       options={headerCategories.map((h) => ({
@@ -938,19 +1132,30 @@ const AdminProductDetailPage = () => {
                   {/* SPECIFIC CATEGORY (Main Category) */}
                   <FormField
                     label="MAIN CATEGORY (OPTIONAL)"
-                    hint="Leave empty to assign the product directly to the Header Category."
-                  >
+                    hint="Leave empty to assign the product directly to the Header Category.">
                     <Select
                       value={selectedMainId}
                       onChange={(e) => {
                         setSelectedMainId(e.target.value);
-                        setSelectedSubId('');
+                        setSelectedSubId("");
                       }}
-                      placeholder={selectedHeaderId ? 'Use Header Category directly' : 'Select Header Category First'}
-                      isDisabled={!selectedHeaderId || mainCategories.length === 0}
+                      placeholder={
+                        selectedHeaderId
+                          ? "Use Header Category directly"
+                          : "Select Header Category First"
+                      }
+                      isDisabled={
+                        !selectedHeaderId || mainCategories.length === 0
+                      }
                       options={[
-                        { value: '', label: 'Assign directly to Header Category' },
-                        ...mainCategories.map((m) => ({ value: m._id, label: m.name })),
+                        {
+                          value: "",
+                          label: "Assign directly to Header Category",
+                        },
+                        ...mainCategories.map((m) => ({
+                          value: m._id,
+                          label: m.name,
+                        })),
                       ]}
                       className="font-semibold text-xs"
                     />
@@ -961,22 +1166,27 @@ const AdminProductDetailPage = () => {
                 <div className="pt-2">
                   <FormField
                     label="SUB-CATEGORY (OPTIONAL)"
-                    hint="Optional sub-series. Leave unselected to assign directly to Main Category."
-                  >
+                    hint="Optional sub-series. Leave unselected to assign directly to Main Category.">
                     <Select
                       value={selectedSubId}
                       onChange={(e) => setSelectedSubId(e.target.value)}
                       placeholder={
                         !selectedMainId
-                          ? 'Select Specific Category First'
+                          ? "Select Specific Category First"
                           : subCategories.length === 0
-                          ? 'No sub-categories available (Product will belong directly to Main Category)'
-                          : 'Select Sub-Category (Optional)'
+                            ? "No sub-categories available (Product will belong directly to Main Category)"
+                            : "Select Sub-Category (Optional)"
                       }
                       isDisabled={!selectedMainId || subCategories.length === 0}
                       options={[
-                        { value: '', label: 'Assign directly to Main Category' },
-                        ...subCategories.map((s) => ({ value: s._id, label: s.name })),
+                        {
+                          value: "",
+                          label: "Assign directly to Main Category",
+                        },
+                        ...subCategories.map((s) => ({
+                          value: s._id,
+                          label: s.name,
+                        })),
                       ]}
                       className="font-semibold text-xs"
                     />
@@ -985,28 +1195,42 @@ const AdminProductDetailPage = () => {
 
                 {/* Visual Placement Feedback */}
                 <div className="mt-4 p-3.5 bg-gray-50 rounded-xl border border-gray-200 text-xs">
-                  <span className="font-bold text-gray-700 block mb-1">Catalog Placement Preview:</span>
+                  <span className="font-bold text-gray-700 block mb-1">
+                    Catalog Placement Preview:
+                  </span>
                   {selectedEffectiveCategoryId ? (
                     <div className="flex items-center gap-1.5 font-semibold text-[#800020]">
-                      <span>{headerCategories.find((h) => String(h._id) === String(selectedHeaderId))?.name || 'Header'}</span>
+                      <span>
+                        {headerCategories.find(
+                          (h) => String(h._id) === String(selectedHeaderId),
+                        )?.name || "Header"}
+                      </span>
                       {selectedMainId && (
                         <>
                           <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
-                          <span>{mainCategories.find((m) => String(m._id) === String(selectedMainId))?.name || 'Main'}</span>
+                          <span>
+                            {mainCategories.find(
+                              (m) => String(m._id) === String(selectedMainId),
+                            )?.name || "Main"}
+                          </span>
                         </>
                       )}
                       {selectedSubId && (
                         <>
                           <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
                           <span className="bg-[#fdf2f4] px-1.5 py-0.5 rounded border border-[#f5d6dc]">
-                            {subCategories.find((s) => String(s._id) === String(selectedSubId))?.name || 'Sub'}
+                            {subCategories.find(
+                              (s) => String(s._id) === String(selectedSubId),
+                            )?.name || "Sub"}
                           </span>
                         </>
                       )}
                     </div>
                   ) : (
                     <span className="text-gray-500 text-xs italic">
-                      {isCreateMode ? 'Please select a Header Category to establish catalog placement.' : 'No category assigned. You can add one later.'}
+                      {isCreateMode
+                        ? "Please select a Header Category to establish catalog placement."
+                        : "No category assigned. You can add one later."}
                     </span>
                   )}
                 </div>
@@ -1017,17 +1241,15 @@ const AdminProductDetailPage = () => {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setActiveTab('variants')}
-                  className="text-xs font-semibold"
-                >
+                  onClick={() => setActiveTab("variants")}
+                  className="text-xs font-semibold">
                   ← Back: Pricing & Media
                 </Button>
                 <Button
                   type="button"
                   variant="primary"
-                  onClick={() => setActiveTab('specifications')}
-                  className="bg-[#800020] hover:bg-[#68001a] text-white text-xs font-bold px-6"
-                >
+                  onClick={() => setActiveTab("specifications")}
+                  className="bg-[#800020] hover:bg-[#68001a] text-white text-xs font-bold px-6">
                   Next: Specifications →
                 </Button>
               </div>
@@ -1035,7 +1257,7 @@ const AdminProductDetailPage = () => {
           )}
 
           {/* TAB 4: SPECIFICATIONS */}
-          {activeTab === 'specifications' && (
+          {activeTab === "specifications" && (
             <div className="bg-white border border-[#f0e6e8] rounded-2xl p-6 shadow-xs space-y-6">
               <div>
                 <h3 className="text-sm font-black uppercase tracking-wider text-gray-900 flex items-center gap-2">
@@ -1043,7 +1265,8 @@ const AdminProductDetailPage = () => {
                   Product Specifications
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Configure technical hardware specifications and category-specific attributes.
+                  Configure technical hardware specifications and
+                  category-specific attributes.
                 </p>
               </div>
 
@@ -1051,31 +1274,86 @@ const AdminProductDetailPage = () => {
               {categoryFilterDefinitions.length > 0 && (
                 <div className="space-y-3 rounded-xl border border-[#e7d5da] bg-[#fdfbfb] p-4">
                   <div>
-                    <h4 className="text-xs font-black uppercase tracking-wider text-gray-900">Category-Specific Specifications</h4>
-                    <p className="text-[11px] text-gray-500">These attributes are defined for the selected category and power storefront filters.</p>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-gray-900">
+                      Category-Specific Specifications
+                    </h4>
+                    <p className="text-[11px] text-gray-500">
+                      These attributes are defined for the selected category and
+                      power storefront filters.
+                    </p>
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {categoryFilterDefinitions.map((definition) => {
                       const values = getCategorySpecValues(definition.key);
-                      const label = `${definition.label || definition.key}${definition.unit ? ` (${definition.unit})` : ''}`;
+                      const label = `${definition.label || definition.key}${definition.unit ? ` (${definition.unit})` : ""}`;
                       return (
                         <div key={definition.key} className="space-y-1.5">
-                          <label className="text-[11px] font-bold text-gray-700">{label}{definition.isRequired ? ' *' : ''}</label>
-                          {definition.inputType === 'multi-select' ? (
+                          <label className="text-[11px] font-bold text-gray-700">
+                            {label}
+                            {definition.isRequired ? " *" : ""}
+                          </label>
+                          {definition.inputType === "multi-select" ? (
                             <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 bg-white p-2">
                               {(definition.options || []).map((option) => (
-                                <label key={option} className="flex items-center gap-1.5 text-xs">
-                                  <input type="checkbox" checked={values.includes(option)} onChange={(event) => setCategorySpecValues(definition, event.target.checked ? [...values, option] : values.filter((value) => value !== option))} /> {option}
+                                <label
+                                  key={option}
+                                  className="flex items-center gap-1.5 text-xs">
+                                  <input
+                                    type="checkbox"
+                                    checked={values.includes(option)}
+                                    onChange={(event) =>
+                                      setCategorySpecValues(
+                                        definition,
+                                        event.target.checked
+                                          ? [...values, option]
+                                          : values.filter(
+                                              (value) => value !== option,
+                                            ),
+                                      )
+                                    }
+                                  />{" "}
+                                  {option}
                                 </label>
                               ))}
                             </div>
-                          ) : definition.inputType === 'select' || definition.inputType === 'boolean' ? (
-                            <select className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs" value={values[0] || ''} onChange={(event) => setCategorySpecValues(definition, [event.target.value])}>
-                              <option value="">Select {definition.label || definition.key}</option>
-                              {(definition.inputType === 'boolean' ? ['Yes', 'No'] : definition.options || []).map((option) => <option key={option} value={option}>{option}</option>)}
+                          ) : definition.inputType === "select" ||
+                            definition.inputType === "boolean" ? (
+                            <select
+                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs"
+                              value={values[0] || ""}
+                              onChange={(event) =>
+                                setCategorySpecValues(definition, [
+                                  event.target.value,
+                                ])
+                              }>
+                              <option value="">
+                                Select {definition.label || definition.key}
+                              </option>
+                              {(definition.inputType === "boolean"
+                                ? ["Yes", "No"]
+                                : definition.options || []
+                              ).map((option) => (
+                                <option key={option} value={option}>
+                                  {option}
+                                </option>
+                              ))}
                             </select>
                           ) : (
-                            <Input type={definition.inputType === 'number' ? 'number' : 'text'} value={values[0] || ''} onChange={(event) => setCategorySpecValues(definition, [event.target.value])} placeholder={`Enter ${definition.label || definition.key}`} className="text-xs" />
+                            <Input
+                              type={
+                                definition.inputType === "number"
+                                  ? "number"
+                                  : "text"
+                              }
+                              value={values[0] || ""}
+                              onChange={(event) =>
+                                setCategorySpecValues(definition, [
+                                  event.target.value,
+                                ])
+                              }
+                              placeholder={`Enter ${definition.label || definition.key}`}
+                              className="text-xs"
+                            />
                           )}
                         </div>
                       );
@@ -1091,20 +1369,22 @@ const AdminProductDetailPage = () => {
                     Technical Specifications ({manualSpecifications.length})
                   </h4>
                   <p className="text-[11px] text-gray-500">
-                    Add custom technical specifications (Processor, RAM, Storage, Resolution, Ports, Power, etc.)
+                    Add custom technical specifications (Processor, RAM,
+                    Storage, Resolution, Ports, Power, etc.)
                   </p>
                 </div>
 
                 {/* Quick Spec Presets */}
                 <div className="flex flex-wrap gap-1.5 items-center bg-gray-50/70 p-2.5 rounded-xl border border-gray-100">
-                  <span className="text-[10px] font-bold text-gray-500 uppercase">Quick Add:</span>
+                  <span className="text-[10px] font-bold text-gray-500 uppercase">
+                    Quick Add:
+                  </span>
                   {QUICK_SPEC_KEYS.map((k) => (
                     <button
                       key={k}
                       type="button"
                       onClick={() => handleQuickSpecKey(k)}
-                      className="text-[10px] font-semibold px-2.5 py-1 bg-white hover:bg-[#800020] hover:text-white text-gray-700 rounded-lg border border-gray-200 transition-colors shadow-2xs cursor-pointer"
-                    >
+                      className="text-[10px] font-semibold px-2.5 py-1 bg-white hover:bg-[#800020] hover:text-white text-gray-700 rounded-lg border border-gray-200 transition-colors shadow-2xs cursor-pointer">
                       + {k}
                     </button>
                   ))}
@@ -1123,7 +1403,7 @@ const AdminProductDetailPage = () => {
                       placeholder="e.g. Processor, RAM, Battery"
                       className="text-xs"
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+                        if (e.key === "Enter") {
                           e.preventDefault();
                           handleAddSpec();
                         }
@@ -1140,7 +1420,7 @@ const AdminProductDetailPage = () => {
                       placeholder="e.g. Intel Core i7 13th Gen, 16GB DDR5"
                       className="text-xs"
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+                        if (e.key === "Enter") {
                           e.preventDefault();
                           handleAddSpec();
                         }
@@ -1153,8 +1433,7 @@ const AdminProductDetailPage = () => {
                       variant="primary"
                       onClick={handleAddSpec}
                       className="w-full bg-[#800020] hover:bg-[#68001a] text-white text-xs font-bold py-2"
-                      leftIcon={<Plus className="w-3.5 h-3.5" />}
-                    >
+                      leftIcon={<Plus className="w-3.5 h-3.5" />}>
                       Add Spec
                     </Button>
                   </div>
@@ -1164,16 +1443,19 @@ const AdminProductDetailPage = () => {
                 {manualSpecifications.length > 0 ? (
                   <div className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-2xs">
                     <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 grid grid-cols-12 text-[10px] font-black uppercase tracking-wider text-gray-600">
-                      <div className="col-span-4 sm:col-span-3">Specification Key</div>
-                      <div className="col-span-7 sm:col-span-8">Specification Value</div>
+                      <div className="col-span-4 sm:col-span-3">
+                        Specification Key
+                      </div>
+                      <div className="col-span-7 sm:col-span-8">
+                        Specification Value
+                      </div>
                       <div className="col-span-1 text-right">Action</div>
                     </div>
                     <div className="divide-y divide-gray-100">
                       {manualSpecifications.map(({ spec: sp, index: idx }) => (
                         <div
                           key={idx}
-                          className="px-4 py-2.5 grid grid-cols-12 items-center hover:bg-gray-50/50 transition-colors text-xs"
-                        >
+                          className="px-4 py-2.5 grid grid-cols-12 items-center hover:bg-gray-50/50 transition-colors text-xs">
                           <div className="col-span-4 sm:col-span-3 font-bold text-gray-800 pr-2 truncate">
                             {sp.key}
                           </div>
@@ -1185,8 +1467,7 @@ const AdminProductDetailPage = () => {
                               type="button"
                               onClick={() => handleRemoveSpec(idx)}
                               className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1 rounded-md transition-colors"
-                              title="Delete Specification"
-                            >
+                              title="Delete Specification">
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -1197,8 +1478,13 @@ const AdminProductDetailPage = () => {
                 ) : (
                   <div className="text-center py-8 px-4 rounded-xl border border-dashed border-gray-200 bg-gray-50/40">
                     <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                    <p className="text-xs font-semibold text-gray-600">No custom specifications added yet</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">Use the inputs above or click quick tags to add specifications</p>
+                    <p className="text-xs font-semibold text-gray-600">
+                      No custom specifications added yet
+                    </p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      Use the inputs above or click quick tags to add
+                      specifications
+                    </p>
                   </div>
                 )}
               </div>
@@ -1208,9 +1494,8 @@ const AdminProductDetailPage = () => {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setActiveTab('groups')}
-                  className="text-xs font-semibold"
-                >
+                  onClick={() => setActiveTab("groups")}
+                  className="text-xs font-semibold">
                   ← Back: Groups
                 </Button>
                 <Button
@@ -1219,8 +1504,7 @@ const AdminProductDetailPage = () => {
                   onClick={handleSaveAndPublish}
                   isLoading={formSubmitting}
                   leftIcon={<Save className="w-4 h-4" />}
-                  className="bg-[#800020] hover:bg-[#68001a] text-white text-xs font-bold px-8 shadow-sm"
-                >
+                  className="bg-[#800020] hover:bg-[#68001a] text-white text-xs font-bold px-8 shadow-sm">
                   Save & Publish Product
                 </Button>
               </div>
