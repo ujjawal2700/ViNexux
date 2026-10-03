@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
+import Logo from '../../components/ui/Logo';
 import { Mail, Lock, ShieldCheck, User, MessageSquare, Check } from 'lucide-react';
 import SignupWizard from './SignupWizard';
 import { cn } from '../../lib/utils';
@@ -102,6 +103,13 @@ export const LoginPage = ({ initialTab = 'login' }) => {
         />
       ) : (
         <div className="w-full max-w-md bg-white border border-gray-200/90 rounded-xl p-6 sm:p-8 shadow-sm transition-all duration-200">
+          {/* Brand Logo Header */}
+          <div className="flex justify-center mb-6">
+            <Link to="/" className="inline-block transition-transform hover:scale-105" aria-label="Go to home">
+              <Logo className="h-11 sm:h-12 w-auto max-w-[220px] object-contain" />
+            </Link>
+          </div>
+
           {/* Top Segmented Tabs: Login | Register (Mega Jaipur Style with ViNexus Maroon) */}
           <div className="grid grid-cols-2 gap-2 mb-6">
             <button

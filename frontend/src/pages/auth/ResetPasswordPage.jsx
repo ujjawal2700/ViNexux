@@ -210,7 +210,7 @@ export const ResetPasswordPage = ({ portal = 'customer' }) => {
 
       <div className="w-full max-w-md bg-card border border-border rounded-3xl p-6 sm:p-8 shadow-2xl relative z-10 transition-all duration-300">
         <div className="flex flex-col items-center text-center mb-6">
-          <Logo className="h-10 sm:h-12 w-auto object-contain mb-3 drop-shadow-sm" />
+          <Logo className="h-11 sm:h-12 w-auto max-w-[220px] object-contain mb-3 drop-shadow-xs" />
           <h1 className="text-lg font-bold text-foreground">
             {step === 'otp' ? 'Verify it’s you' : 'Set a new password'}
           </h1>

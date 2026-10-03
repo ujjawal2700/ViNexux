@@ -76,21 +76,26 @@ const brandExpression = {
 };
 
 const stockNumberExpression = {
-  $convert: {
-    input: {
-      $trim: {
+  $ifNull: [
+    '$stockQuantity',
+    {
+      $convert: {
         input: {
-          $ifNull: [{ $arrayElemAt: [{ $map: {
-            input: { $filter: { input: '$specifications', as: 'spec', cond: { $in: [{ $toLower: '$$spec.key' }, ['stock', 'inventory']] } } },
-            as: 'spec', in: '$$spec.value',
-          } }, 0] }, ''],
+          $trim: {
+            input: {
+              $ifNull: [{ $arrayElemAt: [{ $map: {
+                input: { $filter: { input: '$specifications', as: 'spec', cond: { $in: [{ $toLower: '$$spec.key' }, ['stock', 'inventory']] } } },
+                as: 'spec', in: '$$spec.value',
+              } }, 0] }, ''],
+            },
+          },
         },
+        to: 'double',
+        onError: null,
+        onNull: null,
       },
     },
-    to: 'double',
-    onError: null,
-    onNull: null,
-  },
+  ],
 };
 
 const stockStatusExpression = {
@@ -139,12 +144,17 @@ export const getPublicProducts = async (query = {}, user = null) => {
   let requestedCategoryRecord = null;
   const requestedCategory = query.categoryId || query.category || query.categorySlug;
   if (requestedCategory) {
-    const category = categories.find((item) => String(item._id) === requestedCategory || item.slug === requestedCategory.toLowerCase());
-    requestedCategoryRecord = category || null;
-    // Never turn an unknown category into an unfiltered all-products response.
-    allowedIds = category
-      ? (query.exactCategory === 'true' ? [category._id] : descendantIds(categories, [category._id]))
-      : [];
+    const requestedItems = String(requestedCategory).split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+    const matchedCategories = categories.filter((item) =>
+      requestedItems.includes(String(item._id).toLowerCase()) || requestedItems.includes(item.slug.toLowerCase())
+    );
+    requestedCategoryRecord = matchedCategories.length === 1 ? matchedCategories[0] : null;
+    if (matchedCategories.length > 0) {
+      const allMatchedIds = matchedCategories.map((c) => c._id);
+      allowedIds = query.exactCategory === 'true' ? allMatchedIds : descendantIds(categories, allMatchedIds);
+    } else {
+      allowedIds = [];
+    }
   }
   const match = { isActive: true, categoryId: { $in: allowedIds } };
   if (query.id) match._id = new mongoose.Types.ObjectId(query.id);
@@ -221,9 +231,40 @@ export const getPublicProducts = async (query = {}, user = null) => {
     total: [...filtered, { $count: 'count' }],
     specs: [{ $unwind: '$specifications' }, { $group: { _id: { key: '$specifications.key', value: '$specifications.value' }, count: { $sum: 1 } } }, { $sort: { '_id.key': 1, '_id.value': 1 } }],
   } }]);
-  const [categoryBrands, availabilityCounts] = await Promise.all([
+  const allCategoryIds = categories.map((category) => category._id);
+  const categoryFacetMatch = { ...match, categoryId: { $in: allCategoryIds } };
+  if (match.$or && query.search?.trim()) {
+    const regex = new RegExp(escapeRegex(query.search.trim()), 'i');
+    const matchingCategories = categories.filter((category) => regex.test(category.name) || regex.test(category.slug));
+    categoryFacetMatch.$or = [
+      { name: regex }, { sku: regex },
+      { specifications: { $elemMatch: { key: /^(brand|manufacturer)$/i, value: regex } } },
+      { categoryId: { $in: descendantIds(categories, matchingCategories.map((category) => category._id)) } },
+    ];
+  }
+  const categoryFacetPipeline = [
+    { $match: categoryFacetMatch },
+    { $set: { brand: { $toUpper: brandExpression } } },
+    ...(brand ? [{ $match: managedBrandId ? {
+      $or: [
+        { brandId: new mongoose.Types.ObjectId(managedBrandId) },
+        { brand: new RegExp(`^${escapeRegex(brand.trim())}$`, 'i') },
+      ],
+    } : {
+      brand: {
+        $in: String(brand).split(',').map((name) => new RegExp(`^${escapeRegex(name.trim())}$`, 'i')),
+      },
+    } }] : []),
+    { $match: { categoryId: { $ne: null } } },
+    { $group: { _id: '$categoryId', count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+  ];
+
+  const [categoryBrands, availabilityCounts, categoryGroupCounts] = await Promise.all([
+    // Group brands from basePipeline (category-scoped, unaffected by selected brand) so all available brands in this category are shown
     Product.aggregate([...basePipeline, { $match: { brand: { $ne: '' } } }, { $group: { _id: '$brand', count: { $sum: 1 } } }, { $sort: { _id: 1 } }]),
-    Product.aggregate([...basePipeline, { $group: { _id: '$stockStatus', count: { $sum: 1 } } }]),
+    Product.aggregate([...pipeline, ...filtered, { $group: { _id: '$stockStatus', count: { $sum: 1 } } }]),
+    Product.aggregate(categoryFacetPipeline),
   ]);
   const byId = new Map(categories.map((category) => [String(category._id), category]));
   const productBrandIds = result.products.map((product) => product.brandId).filter(Boolean);
@@ -248,42 +289,103 @@ export const getPublicProducts = async (query = {}, user = null) => {
       modelNumber: product.modelNumber || `VNX-${String(product._id).slice(-8).toUpperCase()}`,
       model: product.model || product.specifications?.find((specification) => specification.key?.trim().toLowerCase() === 'model')?.value || 'Standard Model',
       productUrl: product.productUrl || '',
+      variant: product.variant || '',
+      warranty: product.warranty || '1 Year ON-SITE / Direct Replacement Warranty',
       availableStock: product.stockQuantity,
+      stockQuantity: product.stockQuantity,
       stockStatus: product.stockStatus || 'on-order',
       categoryPath: categoryPathFor(product.categoryId),
       brandId: brandById.get(String(product.brandId)) || product.brandId,
       categoryId: byId.get(String(product.categoryId)),
     };
   });
-  const configuredDefinitions = requestedCategoryRecord
-    ? effectiveFilterDefinitions(categories, requestedCategoryRecord._id).filter((definition) => definition.isFilterable)
-    : [];
+  let configuredDefinitions = [];
+  if (requestedCategoryRecord) {
+    configuredDefinitions = effectiveFilterDefinitions(categories, requestedCategoryRecord._id).filter((definition) => definition.isFilterable);
+  } else {
+    // On brand or search pages, collect filter definitions from all categories present in the results
+    const seenKeys = new Set();
+    for (const item of categoryGroupCounts) {
+      if (!item._id) continue;
+      const defs = effectiveFilterDefinitions(categories, item._id).filter((definition) => definition.isFilterable);
+      for (const d of defs) {
+        const lowerKey = d.key.toLowerCase();
+        if (!seenKeys.has(lowerKey)) {
+          seenKeys.add(lowerKey);
+          configuredDefinitions.push(d);
+        }
+      }
+    }
+  }
   const configuredByKey = new Map(configuredDefinitions.map((definition) => [definition.key.toLowerCase(), definition]));
-  const useLegacyDiscovery = configuredDefinitions.length === 0;
   const specMap = new Map();
   for (const spec of result.specs) {
-    if (/^(brand|manufacturer|model|model number|warranty|country of origin|hsn|hsn code|stock|inventory|variant|highlight \d+)$/i.test(spec._id.key)) continue;
-    const definition = configuredByKey.get(spec._id.key.toLowerCase()) || (useLegacyDiscovery ? {
-      key: spec._id.key, label: spec._id.key, inputType: 'multi-select', unit: '', options: [],
-    } : null);
-    if (!definition) continue;
-    if (!specMap.has(definition.key)) specMap.set(definition.key, { definition, values: [] });
-    specMap.get(definition.key).values.push({ val: spec._id.value, count: spec.count });
+    const rawKey = spec._id.key?.trim() || '';
+    if (!rawKey) continue;
+    if (/^(brand|manufacturer|model|model number|sku|warranty|country of origin|hsn|hsn code|stock|inventory|variant|highlight \d+|product url|information phone|dealer price|price|standard price)$/i.test(rawKey)) continue;
+
+    const lowerKey = rawKey.toLowerCase();
+    const isConfigured = configuredByKey.has(lowerKey);
+    const definition = configuredByKey.get(lowerKey) || {
+      key: rawKey,
+      label: rawKey.charAt(0).toUpperCase() + rawKey.slice(1),
+      inputType: 'multi-select',
+      unit: '',
+      options: [],
+      isConfigured: false,
+    };
+
+    if (!specMap.has(definition.key)) {
+      specMap.set(definition.key, {
+        definition: { ...definition, isConfigured: Boolean(isConfigured) },
+        values: [],
+        totalCount: 0,
+      });
+    }
+    const entry = specMap.get(definition.key);
+    entry.values.push({ val: spec._id.value, count: spec.count });
+    entry.totalCount += spec.count;
   }
+  const sortedSpecs = [...specMap.values()]
+    .filter(({ values }) => values.length > 0)
+    .sort((a, b) => {
+      // 1. Configured category definitions come first
+      if (a.definition.isConfigured && !b.definition.isConfigured) return -1;
+      if (!a.definition.isConfigured && b.definition.isConfigured) return 1;
+      if (a.definition.sortOrder !== undefined && b.definition.sortOrder !== undefined) {
+        if (a.definition.sortOrder !== b.definition.sortOrder) return a.definition.sortOrder - b.definition.sortOrder;
+      }
+      // 2. Prefer specs with more than 1 distinct value
+      const aMultiple = a.values.length > 1 ? 1 : 0;
+      const bMultiple = b.values.length > 1 ? 1 : 0;
+      if (bMultiple !== aMultiple) return bMultiple - aMultiple;
+      // 3. Prefer specs covering more distinct values or products
+      if (b.values.length !== a.values.length) return b.values.length - a.values.length;
+      return b.totalCount - a.totalCount;
+    })
+    .slice(0, 8)
+    .map(({ definition, values }) => ({
+      key: definition.key,
+      label: definition.label,
+      inputType: definition.inputType,
+      unit: definition.unit,
+      values: definition.options?.length
+        ? [...values].sort((a, b) => definition.options.indexOf(a.val) - definition.options.indexOf(b.val))
+        : values.sort((a, b) => b.count - a.count),
+    }));
   return {
     products, pagination: { page, limit, total: result.total[0]?.count || 0, totalPages: Math.ceil((result.total[0]?.count || 0) / limit) },
     facets: {
+      categories: categoryGroupCounts.map((item) => {
+        const cat = byId.get(String(item._id));
+        return cat ? { _id: String(cat._id), name: cat.name, slug: cat.slug, count: item.count } : null;
+      }).filter(Boolean),
       brands: categoryBrands.map((item) => ({ name: item._id, count: item.count })),
       availability: ['in-stock', 'low-stock', 'on-order', 'out-of-stock'].map((status) => ({
         status,
         count: availabilityCounts.find((item) => item._id === status)?.count || 0,
       })),
-      specs: [...specMap.values()].filter(({ values }) => values.length > 1).slice(0, 5).map(({ definition, values }) => ({
-        key: definition.key, label: definition.label, inputType: definition.inputType, unit: definition.unit,
-        values: definition.options?.length
-          ? [...values].sort((a, b) => definition.options.indexOf(a.val) - definition.options.indexOf(b.val))
-          : values,
-      })),
+      specs: sortedSpecs,
     },
   };
 };

@@ -64,7 +64,7 @@ export const ForgotPasswordPage = ({ portal = 'customer' }) => {
       <div className="w-full max-w-md bg-card border border-border rounded-3xl p-6 sm:p-8 shadow-2xl relative z-10 transition-all duration-300">
         {/* Brand Logo Header */}
         <div className="flex flex-col items-center text-center mb-6">
-          <Logo className="h-10 sm:h-12 w-auto object-contain mb-3 drop-shadow-sm" />
+          <Logo className="h-11 sm:h-12 w-auto max-w-[220px] object-contain mb-3 drop-shadow-xs" />
           <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
             <KeyRound className="w-5 h-5 text-primary" />
           </div>

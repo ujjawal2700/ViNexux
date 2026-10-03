@@ -361,6 +361,8 @@ export const getPublicWebsiteSettings = async () => {
     favicon: { url: settings.favicon?.url || '/favicon.jpeg' },
     logo: { url: settings.logo?.url || '/logo.png' },
     ogImage: { url: !settings.ogImage?.url || settings.ogImage.url === '/favicon.jpeg' ? '/social-preview.png' : settings.ogImage.url },
+    promoPopupIntervalMinutes: settings.promoPopupIntervalMinutes ?? 15,
+    promoPopupEnabled: settings.promoPopupEnabled ?? true,
   };
 };
 

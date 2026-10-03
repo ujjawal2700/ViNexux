@@ -64,7 +64,7 @@ import AdminReportsPage from '../pages/admin/AdminReportsPage';
 import AdminCmsBannersPage from '../pages/admin/AdminCmsBannersPage';
 import AdminCmsPromoPage from '../pages/admin/AdminCmsPromoPage';
 import AdminCmsPagesPage from '../pages/admin/AdminCmsPagesPage';
-import AdminCmsBadgesPage from '../pages/admin/AdminCmsBadgesPage';
+
 import AdminCmsFooterPage from '../pages/admin/AdminCmsFooterPage';
 import AdminWebsiteSettingsPage from '../pages/admin/AdminWebsiteSettingsPage';
 import AdminProfilePage from '../pages/admin/AdminProfilePage';
@@ -83,8 +83,8 @@ const AppRoutes = () => {
       {/* PUBLIC ROUTES (WITH PUBLIC LAYOUT) */}
       <Route element={<PublicLayout />}>
         <Route path="/" element={<HomePage />} />
-        <Route path="/products" element={<Navigate to="/" replace />} />
-        <Route path="/products/:id" element={<Navigate to="/" replace />} />
+        <Route path="/products" element={<ProductsPage />} />
+        <Route path="/products/:id" element={<ProductDetailPage />} />
         <Route path="/search" element={<ProductsPage />} />
         <Route path="/wishlist" element={<WishlistPage />} />
         <Route path="/cart" element={<CartPage />} />
@@ -202,7 +202,7 @@ const AppRoutes = () => {
             <Route path="/admin/cms/banners" element={<AdminCmsBannersPage />} />
             <Route path="/admin/cms/promotional-banners" element={<AdminCmsPromoPage />} />
             <Route path="/admin/cms/pages" element={<AdminCmsPagesPage />} />
-            <Route path="/admin/cms/trust-badges" element={<AdminCmsBadgesPage />} />
+
             <Route path="/admin/cms/footer-content" element={<AdminCmsFooterPage />} />
             <Route path="/admin/cms/website-settings" element={<AdminWebsiteSettingsPage />} />
             <Route path="/admin/profile" element={<AdminProfilePage />} />

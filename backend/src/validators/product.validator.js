@@ -32,7 +32,10 @@ export const createProductSchema = {
       .min(2, { message: 'Product name must be at least 2 characters' })
       .max(150, { message: 'Product name cannot exceed 150 characters' }),
     modelNumber: z.string({ required_error: 'Model number is required' }).trim().min(1).max(100),
-    model: z.string({ required_error: 'Model is required' }).trim().min(1).max(100),
+    model: z.string().trim().max(100).optional().default('Standard Model'),
+    stockQuantity: z.coerce.number().min(0, { message: 'Stock quantity cannot be negative' }).default(0).optional(),
+    variant: z.string().trim().max(100).optional().default(''),
+    warranty: z.string().trim().max(200).optional().default('1 Year ON-SITE / Direct Replacement Warranty'),
     informationPhone: z.string().trim().max(20).regex(/^\+?[0-9 ]*$/, 'Information phone must contain only digits, spaces, or a leading +').optional(),
     productUrl: productUrlSchema,
     categoryId: z
@@ -84,7 +87,10 @@ export const updateProductSchema = {
       .refine(isValidObjectId, { message: 'Invalid categoryId format. Must be a valid MongoDB ObjectId' })
       .optional(),
     modelNumber: z.string().trim().min(1).max(100).optional(),
-    model: z.string().trim().min(1).max(100).optional(),
+    model: z.string().trim().max(100).optional(),
+    stockQuantity: z.coerce.number().min(0, { message: 'Stock quantity cannot be negative' }).optional(),
+    variant: z.string().trim().max(100).optional(),
+    warranty: z.string().trim().max(200).optional(),
     informationPhone: z.string().trim().max(20).regex(/^\+?[0-9 ]*$/, 'Information phone must contain only digits, spaces, or a leading +').optional(),
     productUrl: productUrlSchema,
     brandId: z.string().refine(isValidObjectId, { message: 'Invalid brandId format' }).optional(),

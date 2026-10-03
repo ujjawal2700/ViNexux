@@ -16,7 +16,6 @@ import {
   Image, 
   Sparkles, 
   FileText, 
-  Award, 
   LayoutList,
   LogOut,
   Menu,
@@ -35,7 +34,7 @@ const AdminLayout = () => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pendingKycCount, setPendingKycCount] = useState(0);
-  const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(true);
+  const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,7 +75,6 @@ const AdminLayout = () => {
     { label: 'Hero Banners', path: '/admin/cms/banners', icon: Image },
     { label: 'Promotional Cards', path: '/admin/cms/promotional-banners', icon: Sparkles },
     { label: 'CMS Static Pages', path: '/admin/cms/pages', icon: FileText },
-    { label: 'Trust Badges', path: '/admin/cms/trust-badges', icon: Award },
     { label: 'Footer Content', path: '/admin/cms/footer-content', icon: LayoutList },
   ];
 
@@ -96,17 +94,14 @@ const AdminLayout = () => {
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <Logo />
-            <div>
-              <h2 className="font-extrabold text-sm text-foreground tracking-wider">ADMIN PANEL</h2>
-              <span className="text-[10px] text-primary font-bold uppercase tracking-widest">Control Center</span>
-            </div>
-          </div>
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-border/60">
+          <Link to="/admin/dashboard" className="flex-1 flex items-center justify-center py-1 group" aria-label="Admin Dashboard">
+            <Logo className="h-10 sm:h-11 w-auto max-w-[200px] object-contain mx-auto transition-transform group-hover:scale-105" />
+          </Link>
           <button
             onClick={() => setMobileOpen(false)}
-            className="md:hidden text-muted-foreground hover:text-foreground p-1"
+            className="md:hidden text-muted-foreground hover:text-foreground p-1 cursor-pointer shrink-0 ml-2"
+            aria-label="Close sidebar"
           >
             <X className="w-5 h-5" />
           </button>
@@ -133,13 +128,13 @@ const AdminLayout = () => {
                             ? 'bg-muted text-primary border border-border font-bold shadow-xs'
                             : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                         }`}
-                        onClick={() => setIsCategoryMenuOpen(!isCategoryMenuOpen)}
+                        onClick={() => setIsCategoryMenuOpen((prev) => !prev)}
                       >
                         <Link
                           to="/admin/categories"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setIsCategoryMenuOpen(true);
+                            setIsCategoryMenuOpen((prev) => !prev);
                             setMobileOpen(false);
                           }}
                           className="flex items-center gap-3 flex-1"
@@ -151,7 +146,7 @@ const AdminLayout = () => {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setIsCategoryMenuOpen(!isCategoryMenuOpen);
+                            setIsCategoryMenuOpen((prev) => !prev);
                           }}
                           className="p-0.5 hover:text-primary transition-colors cursor-pointer"
                           aria-label="Toggle category hierarchy sub-menu"
@@ -288,14 +283,18 @@ const AdminLayout = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0 h-screen">
         <header className="h-16 border-b border-border bg-card px-4 sm:px-8 flex items-center justify-between shadow-xs">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={() => setMobileOpen(true)}
-              className="md:hidden text-muted-foreground hover:text-foreground p-1"
+              className="md:hidden text-muted-foreground hover:text-foreground p-1 cursor-pointer"
+              aria-label="Open sidebar"
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-2">
+            <div className="md:hidden flex items-center">
+              <Logo className="h-8 w-auto max-w-[140px] object-contain" />
+            </div>
+            <div className="hidden sm:flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
               <span className="text-xs font-semibold text-muted-foreground">System Status: Operational</span>
             </div>

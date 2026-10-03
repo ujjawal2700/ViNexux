@@ -2,6 +2,7 @@ import React from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
+import Select from '../ui/Select';
 
 const TYPES = [
   ['select', 'Single choice'],
@@ -36,9 +37,12 @@ const CategoryFilterBuilder = ({ value = [], onChange }) => {
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <Input value={definition.label || ''} onChange={(e) => update(index, 'label', e.target.value)} placeholder="Label: CPU Socket" required />
             <Input value={definition.key || ''} onChange={(e) => update(index, 'key', e.target.value)} placeholder="Key: CPU Socket" required />
-            <select className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" value={definition.inputType || 'select'} onChange={(e) => update(index, 'inputType', e.target.value)}>
-              {TYPES.map(([type, label]) => <option key={type} value={type}>{label}</option>)}
-            </select>
+            <Select
+              className="text-xs"
+              value={definition.inputType || 'select'}
+              onChange={(e) => update(index, 'inputType', e.target.value)}
+              options={TYPES.map(([type, label]) => ({ value: type, label }))}
+            />
           </div>
           {(definition.inputType === 'select' || definition.inputType === 'multi-select') && (
             <Input value={(definition.options || []).join(', ')} onChange={(e) => update(index, 'options', e.target.value.split(',').map((option) => option.trim()).filter(Boolean))} placeholder="Options, comma separated: LGA 1700, AM4, AM5" required />

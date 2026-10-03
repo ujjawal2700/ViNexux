@@ -3,16 +3,28 @@ import useTheme from '../../hooks/useTheme';
 import useWebsiteSettings from '../../hooks/useWebsiteSettings';
 
 /**
- * Vi Nexus logo - swaps between the black-ink (light bg) and white-ink
- * (dark bg) variants based on the active theme, so it never disappears
- * against the surface it's sitting on.
+ * Dynamic Website Logo - Displays CMS uploaded logo with proper aspect ratio,
+ * or falls back to themed bundle assets.
  */
-const Logo = ({ className = 'w-9 h-auto', alt, forceDark = false }) => {
+const Logo = ({ className = 'h-10 w-auto max-w-[220px] object-contain', alt, forceDark = false }) => {
   const { isDark } = useTheme();
   const { settings } = useWebsiteSettings();
   const cmsLogo = settings.logo?.url;
-  const src = cmsLogo || (forceDark || isDark ? '/logo-dark.png' : '/logo.png');
-  return <img src={src} alt={alt || settings.websiteName || 'Website logo'} className={className} />;
+  const fallbackSrc = forceDark || isDark ? '/logo-dark.png' : '/logo.png';
+  const src = cmsLogo || fallbackSrc;
+
+  return (
+    <img
+      src={src}
+      alt={alt || settings.websiteName || 'Website logo'}
+      className={className}
+      onError={(e) => {
+        if (e.currentTarget.src !== fallbackSrc) {
+          e.currentTarget.src = fallbackSrc;
+        }
+      }}
+    />
+  );
 };
 
 export default Logo;

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
-import { ArrowRight, ShieldCheck, ShieldAlert, Lock } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Lock } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import Logo from '../../components/ui/Logo';
 
@@ -73,15 +73,10 @@ const AdminLoginPage = () => {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
 
       <div className="w-full max-w-md p-8 sm:p-10 rounded-3xl border border-border shadow-2xl relative z-10 bg-card">
-        <div className="flex flex-col items-center text-center mb-8">
-          <div className="relative mb-3 flex items-center justify-center">
-            <Logo className="w-16 h-auto drop-shadow-[0_0_15px_rgba(194,24,91,0.3)]" />
+        <div className="flex flex-col items-center text-center mb-6">
+          <div className="relative flex items-center justify-center">
+            <Logo className="h-12 sm:h-14 w-auto max-w-[240px] object-contain drop-shadow-[0_0_15px_rgba(194,24,91,0.2)]" />
           </div>
-          <div className="flex items-center gap-1.5 text-foreground">
-            <ShieldAlert className="w-4 h-4 text-primary" />
-            <h1 className="text-lg font-black tracking-wider uppercase">Admin Control Center</h1>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">Restricted administrator sign-in</p>
         </div>
 
         {error && (

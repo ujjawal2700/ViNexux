@@ -5,6 +5,8 @@ import { ThemeProvider } from './context/ThemeContext';
 import AppRoutes from './routes/AppRoutes';
 import { WebsiteSettingsProvider } from './context/WebsiteSettingsProvider';
 import StorageConsentBanner from './components/ui/StorageConsentBanner';
+import ScrollToTop from './components/ui/ScrollToTop';
+import PromotionalOfferModal from './components/ui/PromotionalOfferModal';
 
 function App() {
   return (
@@ -12,8 +14,10 @@ function App() {
       <WebsiteSettingsProvider>
         <AuthProvider>
           <ToastProvider>
+            <ScrollToTop />
             <AppRoutes />
             <StorageConsentBanner />
+            <PromotionalOfferModal />
           </ToastProvider>
         </AuthProvider>
       </WebsiteSettingsProvider>

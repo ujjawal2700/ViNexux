@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 const updated = '29 September 2026';
@@ -12,6 +12,12 @@ const Section = ({ title, children }) => (
 
 const LegalPage = ({ type }) => {
   const privacy = type === 'privacy';
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [type]);
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
       <nav className="mb-6 text-sm text-[#800020]" aria-label="Breadcrumb">

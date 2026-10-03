@@ -14,7 +14,8 @@ import Skeleton from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 import ErrorState from '../../components/ui/ErrorState';
 import Toast from '../../components/ui/Toast';
-import { Plus, Edit2, Trash2, Sparkles, Upload, ExternalLink, Calendar } from 'lucide-react';
+import { Plus, Edit2, Trash2, Sparkles, Upload, ExternalLink, Calendar, Clock } from 'lucide-react';
+import useWebsiteSettings from '../../hooks/useWebsiteSettings';
 
 const AdminCmsPromoPage = () => {
   const [promos, setPromos] = useState([]);
@@ -47,6 +48,42 @@ const AdminCmsPromoPage = () => {
 
   // Toast State
   const [toast, setToast] = useState(null);
+
+  // Popup Interval Settings State
+  const { settings, refreshSettings } = useWebsiteSettings();
+  const [popupInterval, setPopupInterval] = useState(15);
+  const [popupEnabled, setPopupEnabled] = useState(true);
+  const [savingPopupSettings, setSavingPopupSettings] = useState(false);
+
+  useEffect(() => {
+    if (settings) {
+      if (settings.promoPopupIntervalMinutes !== undefined) {
+        setPopupInterval(Number(settings.promoPopupIntervalMinutes) || 15);
+      }
+      if (settings.promoPopupEnabled !== undefined) {
+        setPopupEnabled(settings.promoPopupEnabled !== false);
+      }
+    }
+  }, [settings]);
+
+  const handleSavePopupSettings = async () => {
+    setSavingPopupSettings(true);
+    try {
+      const intervalVal = Math.max(1, Math.min(1440, Number(popupInterval) || 15));
+      await adminService.updateWebsiteSettingsAdmin({
+        promoPopupIntervalMinutes: intervalVal,
+        promoPopupEnabled: popupEnabled,
+      });
+      await refreshSettings();
+      setPopupInterval(intervalVal);
+      setToast({ message: `Popup timing saved! Offer banners will show every ${intervalVal} minutes.`, type: 'success' });
+    } catch (err) {
+      console.error('Save popup settings error:', err);
+      setToast({ message: err.response?.data?.message || 'Failed to save popup settings', type: 'error' });
+    } finally {
+      setSavingPopupSettings(false);
+    }
+  };
 
   const fetchPromos = async () => {
     setLoading(true);
@@ -211,6 +248,67 @@ const AdminCmsPromoPage = () => {
           </Button>
         }
       />
+
+      {/* Homepage Offer Popup Interval Settings Card */}
+      <div className="bg-card border border-border rounded-2xl p-5 sm:p-6 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="space-y-1.5 max-w-xl">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-primary" />
+              <h3 className="text-sm sm:text-base font-bold text-foreground">
+                Homepage Offer Banner Popup
+              </h3>
+              <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                popupEnabled ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'bg-muted text-muted-foreground'
+              }`}>
+                {popupEnabled ? 'Active' : 'Disabled'}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              When visitors open the homepage, active promotional offer cards popup directly in the center with a blurred background. Configure how frequently the popup recurs for each visitor.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer select-none bg-muted/40 hover:bg-muted/70 px-3 py-2 rounded-xl border border-border transition-colors">
+              <input
+                type="checkbox"
+                checked={popupEnabled}
+                onChange={(e) => setPopupEnabled(e.target.checked)}
+                className="w-4 h-4 rounded text-primary focus:ring-primary accent-[#800020] cursor-pointer"
+              />
+              <span>Enable Popup</span>
+            </label>
+
+            <div className="flex items-center gap-2 bg-muted/40 border border-border rounded-xl px-3.5 py-1.5">
+              <label htmlFor="popupIntervalInput" className="text-xs font-semibold text-foreground whitespace-nowrap">
+                Repeat Every:
+              </label>
+              <input
+                id="popupIntervalInput"
+                type="number"
+                min="1"
+                max="1440"
+                value={popupInterval}
+                disabled={!popupEnabled}
+                onChange={(e) => setPopupInterval(e.target.value)}
+                className="w-16 h-8 text-center text-xs font-bold bg-background border border-border rounded-lg focus:border-primary focus:outline-none disabled:opacity-50"
+              />
+              <span className="text-xs text-muted-foreground font-medium">Minutes</span>
+            </div>
+
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={savingPopupSettings}
+              onClick={handleSavePopupSettings}
+              className="shrink-0"
+            >
+              {savingPopupSettings ? 'Saving...' : 'Save Timing'}
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {loading ? (
         <div className="space-y-3">

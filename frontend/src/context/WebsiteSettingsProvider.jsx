@@ -10,6 +10,8 @@ const defaultSettings = {
   favicon: { url: '/favicon.jpeg', publicId: '' },
   logo: { url: '/logo.png', publicId: '' },
   ogImage: { url: '/social-preview.png', publicId: '' },
+  promoPopupIntervalMinutes: 15,
+  promoPopupEnabled: true,
 };
 
 const setMeta = (selector, attribute, value) => {

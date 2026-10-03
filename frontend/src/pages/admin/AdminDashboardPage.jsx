@@ -85,7 +85,7 @@ const AdminDashboardPage = () => {
   return (
     <div className="space-y-8">
       <AdminPageHeader
-        title="Admin Control Center"
+        title="Admin Dashboard"
         subtitle="Real-time system health, lead analytics & verification queue"
         badge="Live System"
       />

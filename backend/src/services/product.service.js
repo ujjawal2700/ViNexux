@@ -50,7 +50,25 @@ export const productService = {
   /**
    * Create a new product.
    */
-  async createProduct({ sku, name, modelNumber, model, informationPhone, productUrl, categoryId, brandId, description, images = [], specifications = [], standardPrice = 0, dealerPrice = 0, isActive = true }) {
+  async createProduct({
+    sku,
+    name,
+    modelNumber,
+    model,
+    stockQuantity = 0,
+    variant = '',
+    warranty = '1 Year ON-SITE / Direct Replacement Warranty',
+    informationPhone,
+    productUrl,
+    categoryId,
+    brandId,
+    description,
+    images = [],
+    specifications = [],
+    standardPrice = 0,
+    dealerPrice = 0,
+    isActive = true,
+  }) {
     const uppercaseSku = sku.trim().toUpperCase();
 
     // Check duplicate SKU
@@ -83,7 +101,7 @@ export const productService = {
     const brand = brandId && await Brand.findOne({ _id: brandId, isActive: true });
     if (!brand) throw new AppError('Please select an active managed brand.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
     if (!modelNumber?.trim()) throw new AppError('Model number is required.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
-    if (!model?.trim()) throw new AppError('Model is required.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+    const resolvedModel = model?.trim() || 'Standard Model';
     const existingModelNumber = await Product.findOne({ modelNumber: modelNumber.trim() });
     if (existingModelNumber) throw new AppError('Model number must be unique.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
     const normalizedSpecifications = [
@@ -98,7 +116,10 @@ export const productService = {
       sku: uppercaseSku,
       name: name.trim(),
       modelNumber: modelNumber.trim(),
-      model: model.trim(),
+      model: resolvedModel,
+      stockQuantity: Number(stockQuantity) >= 0 ? Number(stockQuantity) : 0,
+      variant: variant?.trim() || '',
+      warranty: warranty?.trim() || '1 Year ON-SITE / Direct Replacement Warranty',
       informationPhone: informationPhone?.trim() || undefined,
       productUrl: productUrl?.trim() || '',
       categoryId,
@@ -321,6 +342,12 @@ isActive,
       product.modelNumber = updateData.modelNumber.trim();
     }
     if (updateData.model !== undefined) product.model = updateData.model.trim();
+    if (updateData.stockQuantity !== undefined) {
+      const parsedStock = Number(updateData.stockQuantity);
+      product.stockQuantity = !isNaN(parsedStock) && parsedStock >= 0 ? parsedStock : 0;
+    }
+    if (updateData.variant !== undefined) product.variant = updateData.variant.trim();
+    if (updateData.warranty !== undefined) product.warranty = updateData.warranty.trim();
     if (updateData.informationPhone !== undefined) product.informationPhone = updateData.informationPhone.trim();
     if (updateData.productUrl !== undefined) product.productUrl = updateData.productUrl.trim();
     if (updateData.description !== undefined) product.description = updateData.description ? updateData.description.trim() : null;

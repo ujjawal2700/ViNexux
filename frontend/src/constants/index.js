@@ -28,4 +28,6 @@ export const ENQUIRY_STATUS = {
 export const STORAGE_KEYS = {
   REFRESH_TOKEN: 'vinexus_refresh_token',
   ADMIN_REFRESH_TOKEN: 'vinexus_admin_refresh_token',
+  USER: 'vinexus_user',
+  ADMIN_USER: 'vinexus_admin_user',
 };

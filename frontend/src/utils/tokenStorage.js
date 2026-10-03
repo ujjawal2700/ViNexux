@@ -37,6 +37,44 @@ export const clearRefreshToken = (portal) => {
   }
 };
 
+export const getStoredUser = (portal) => {
+  try {
+    const key = portal === 'admin' ? STORAGE_KEYS.ADMIN_USER : STORAGE_KEYS.USER;
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+export const setStoredUser = (user, portal) => {
+  try {
+    const key = portal === 'admin' ? STORAGE_KEYS.ADMIN_USER : STORAGE_KEYS.USER;
+    if (user) {
+      localStorage.setItem(key, JSON.stringify(user));
+    } else {
+      localStorage.removeItem(key);
+    }
+  } catch (err) {
+    console.error('Error saving user profile to storage:', err);
+  }
+};
+
+export const clearStoredUser = (portal) => {
+  try {
+    if (portal === 'admin') {
+      localStorage.removeItem(STORAGE_KEYS.ADMIN_USER);
+    } else if (portal === 'customer') {
+      localStorage.removeItem(STORAGE_KEYS.USER);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.USER);
+      localStorage.removeItem(STORAGE_KEYS.ADMIN_USER);
+    }
+  } catch (err) {
+    console.error('Error clearing user profile from storage:', err);
+  }
+};
+
 // Aliases for compatibility
 export const getStoredRefreshToken = getRefreshToken;
 export const setStoredRefreshToken = setRefreshToken;
