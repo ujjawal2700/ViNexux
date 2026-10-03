@@ -29,6 +29,8 @@ const websiteSettingsSchema = new mongoose.Schema(
     favicon: { type: imageAssetSchema, default: () => ({ url: '/favicon.jpeg', publicId: '' }) },
     logo: { type: imageAssetSchema, default: () => ({ url: '/logo.png', publicId: '' }) },
     ogImage: { type: imageAssetSchema, default: () => ({ url: '/social-preview.png', publicId: '' }) },
+    promoPopupIntervalMinutes: { type: Number, default: 15, min: 1, max: 1440 },
+    promoPopupEnabled: { type: Boolean, default: true },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true }

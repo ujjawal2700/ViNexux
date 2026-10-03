@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
@@ -7,6 +7,7 @@ import EnquiriesPage from './EnquiriesPage';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { AddressBookSection } from '../../components/address/AddressBookSection';
+import { StatusBadge } from '../../components/ui/Badge';
 import {
   User,
   Mail,

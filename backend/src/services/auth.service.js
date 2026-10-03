@@ -884,6 +884,19 @@ export const authService = {
     return {
       accessToken,
       refreshToken: newRefreshToken,
+      user: {
+        id: user._id,
+        _id: user._id,
+        fullName: user.fullName || user.name,
+        name: user.name || user.fullName,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        accountStatus: user.accountStatus,
+        status: user.status,
+        dealerStatus: user.dealerStatus,
+        dealerProfileId: user.dealerProfileId,
+      },
     };
   },
 

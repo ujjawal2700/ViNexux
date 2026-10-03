@@ -6,6 +6,7 @@ import contentService from '../services/contentService';
 import cartService from '../services/cartService';
 import guestCartService from '../services/guestCartService';
 import wishlistService from '../services/wishlistService';
+import axios from 'axios';
 import categoryService from '../services/categoryService';
 import productService from '../services/productService';
 import { ROLES } from '../constants';
@@ -13,7 +14,8 @@ import Logo from '../components/ui/Logo';
 import useWebsiteSettings from '../hooks/useWebsiteSettings';
 import { Drawer } from '../components/ui/Drawer';
 import { Skeleton } from '../components/ui/Skeleton';
-import { slugify, buildCategoryPath, buildProductPath } from '../utils/categoryUrls';
+import { slugify, buildCategoryPath, buildProductPath, buildBrandUrl } from '../utils/categoryUrls';
+import useCatalogBrands from '../hooks/useCatalogBrands';
 import { openStorageChoices } from '../utils/storageConsent';
 import {
   Search,
@@ -23,6 +25,7 @@ import {
   Store,
   Heart,
   FileText,
+  BadgePercent,
   ShoppingCart,
   Trash2,
   Check,
@@ -77,11 +80,17 @@ const getHeaderCategoryIcon = (name = '', slug = '') => {
 };
 
 const PublicLayout = () => {
-  const { user, isAuthenticated, adminUser, isAdminAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, adminUser, isAdminAuthenticated, logout, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { settings: websiteSettings } = useWebsiteSettings();
   const websiteName = (websiteSettings.websiteName || 'Vi Nexus').toUpperCase();
+  const hasCustomLogo = Boolean(
+    websiteSettings?.logo?.url &&
+    websiteSettings.logo.url !== '/logo.png' &&
+    websiteSettings.logo.url !== '/logo-dark.png'
+  );
+  const { brands: catalogBrands } = useCatalogBrands();
 
   // Search state
   const [headerSearch, setHeaderSearch] = useState('');
@@ -144,7 +153,8 @@ const PublicLayout = () => {
         if (!active) return;
         setAllCategories(res.data?.categories || []);
         setCategoriesError(null);
-      } catch {
+      } catch (err) {
+        if (axios.isCancel(err)) return;
         if (!active) return;
         setAllCategories([]);
         setCategoriesError('Categories unavailable');
@@ -304,6 +314,7 @@ const PublicLayout = () => {
 
   // Fetch Cart Item Count, Subtotal, and Cart Items
   const fetchCartData = useCallback(async () => {
+    if (isLoading) return;
     if (user?.role === 'admin') {
       setCartCount(0);
       setCartSubtotal(0);
@@ -339,7 +350,7 @@ const PublicLayout = () => {
       setCartSubtotal(0);
       setCartItems([]);
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, isLoading]);
 
   // Fetch on mount or auth change, and listen for live cart-updated events
   useEffect(() => {
@@ -752,9 +763,9 @@ const PublicLayout = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gray-50 text-gray-900 flex flex-col font-sans">
+    <div className="min-h-screen w-full max-w-full bg-gray-50 text-gray-900 flex flex-col font-sans overflow-x-hidden">
       {/* 1. STICKY HEADER CONTAINER (Locks top announcement + main header + category nav at top when scrolling) */}
-      <header className="sticky top-0 z-50 w-full bg-white shadow-xs">
+      <header className="sticky top-0 z-50 w-full max-w-full bg-white shadow-xs">
         
         {/* Top Announcement Bar */}
         <div className="w-full bg-white border-b border-gray-200 py-1 sm:py-1.5 px-4 text-center text-xs text-gray-600 font-medium tracking-wide">
@@ -779,214 +790,346 @@ const PublicLayout = () => {
           )}
         </div>
 
-        {/* Main Header Row */}
-        <div className="storefront-container bg-[#800020] md:bg-white px-3 sm:px-5 lg:px-6 2xl:px-8 py-2 md:py-3 sm:py-3.5 flex items-center justify-between gap-1.5 sm:gap-3 lg:gap-4 min-[1750px]:gap-5 border-b border-gray-200">
-          <button
-            type="button"
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="md:hidden flex h-9 w-8 shrink-0 items-center justify-center text-white"
-            aria-label="Open menu"
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-          
-          {/* Logo & Brand Name */}
-          <Link to="/" className="flex items-center gap-2.5 shrink-0 group" aria-label="Vinexus home">
-            <Logo className="w-8 h-8 sm:w-12 sm:h-12 object-contain rounded bg-white p-0.5 md:bg-transparent md:p-0 group-hover:scale-105 transition-transform" />
-            <div className="hidden md:flex flex-col text-left">
-              <div className="flex items-center" aria-label={websiteName}>
-                <span className="text-2xl sm:text-3xl font-black tracking-tight text-primary">{websiteName.slice(0, 2)}</span>
-                <span className="text-2xl sm:text-3xl font-black tracking-tight text-gray-900">{websiteName.slice(2)}</span>
-              </div>
-              <span className="text-[9px] sm:text-[10px] font-black tracking-widest text-primary uppercase -mt-1">
-                COMPU WORLD
-              </span>
-            </div>
-          </Link>
-
-          {/* Search Bar with Mic & Camera & Search Button (Expands across middle to eliminate margin) */}
-          <form
-            ref={desktopSearchRef}
-            onSubmit={handleSearchSubmit}
-            className="flex-1 min-w-0 max-w-4xl hidden md:flex items-center mx-1 lg:mx-2 min-[1750px]:mx-3 relative"
-          >
-            <div className="relative w-full flex items-center">
-              <input
-                type="text"
-                placeholder="Search laptops, printers, RAM, SSD, cameras, CCTV..."
-                value={headerSearch}
-                onFocus={() => {
-                  if (headerSearch.trim()) setIsSearchOpen(true);
-                }}
-                onChange={(e) => {
-                  setHeaderSearch(e.target.value);
-                  if (e.target.value.trim()) setIsSearchOpen(true);
-                }}
-                className="w-full h-11 lg:h-12 pl-4 pr-20 bg-gray-50 hover:bg-white focus:bg-white text-gray-900 placeholder-gray-400 text-sm rounded-l-md border border-r-0 border-gray-300 focus:border-primary focus:outline-none transition-all shadow-inner"
-              />
-
-              {/* Mic & Camera quick buttons */}
-              <div className="absolute right-3 flex items-center gap-2 text-gray-400">
-                <button
-                  type="button"
-                  title="Voice Search"
-                  className="hover:text-primary transition-colors p-1"
-                >
-                  <Mic className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
-                <button
-                  type="button"
-                  title="Search by Image"
-                  className="hover:text-primary transition-colors p-1"
-                >
-                  <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
-              </div>
-
-              {/* Live Search Autocomplete Dropdown */}
-              {renderSearchDropdown()}
-            </div>
-
-            {/* Search Button in Maroon */}
-            <button
-              type="submit"
-              className="h-11 lg:h-12 px-5 sm:px-7 bg-primary hover:bg-primary/90 text-white text-sm font-bold rounded-r-md flex items-center gap-2 transition-colors shrink-0 shadow-xs cursor-pointer active:scale-98"
-            >
-              <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
-              <span>Search</span>
-            </button>
-          </form>
-
-          {/* Action Icons & Details Cluster */}
-          <div className="ml-auto flex items-center gap-1 sm:gap-2 lg:gap-3 min-[1750px]:gap-4 shrink-0">
-            
-            {/* Contact details appear when browser zoom-out provides a wide viewport. */}
-            <a
-              href={`tel:${CONTACT_PHONE_LINK}`}
-              className="flex items-center gap-2 text-white md:text-gray-800 hover:text-primary transition-colors p-1 group"
-              title={`Call ${CONTACT_PHONE_DISPLAY}`}
-            >
-              <Phone className="w-5 h-5 sm:w-6 sm:h-6 text-white md:text-gray-800 group-hover:text-primary group-hover:scale-105 transition-all shrink-0" />
-              <div className="hidden min-[1750px]:flex flex-col text-left leading-tight">
-                <span className="text-xs font-black text-gray-900 whitespace-nowrap">{CONTACT_PHONE_DISPLAY}</span>
-                <span className="text-[10px] text-gray-500 font-medium whitespace-nowrap">Call Us</span>
-              </div>
-            </a>
-
-            {/* Store Location: Bare Store Icon (Text reveals at 75% zoom / min-[1650px]) */}
-            <a
-              href={STORE_MAP_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-2 text-gray-800 hover:text-primary transition-colors p-1 group"
-              title="Store Location - Directions to the Store"
-            >
-              <Store className="w-5 h-5 sm:w-6 sm:h-6 text-gray-800 group-hover:text-primary group-hover:scale-105 transition-all shrink-0" />
-              <div className="hidden min-[1750px]:flex flex-col text-left leading-tight">
-                <span className="text-xs font-black text-gray-900 whitespace-nowrap">Store Location</span>
-                <span className="text-[10px] text-gray-500 font-medium whitespace-nowrap">Directions to the Store</span>
-              </div>
-            </a>
-
-            {/* WhatsApp chat */}
-            <a
-              href={`https://wa.me/${WHATSAPP_NUMBER}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 hover:opacity-85 transition-opacity p-1 group"
-              title="Chat on WhatsApp"
-            >
-              <div className="w-5 h-5 sm:w-6 sm:h-6 text-[#25D366] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <svg className="w-full h-full fill-current" viewBox="0 0 24 24">
-                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
-                </svg>
-              </div>
-              <div className="hidden min-[1750px]:flex flex-col text-left leading-tight">
-                <span className="text-xs font-black text-gray-900 whitespace-nowrap">Chat With Us</span>
-                <span className="text-[10px] text-gray-500 font-medium whitespace-nowrap">Available 24/7</span>
-              </div>
-            </a>
-
-            {/* Login / Profile */}
-            {isAuthenticated ? (
-              <Link
-                to={getProfileLink() || '/account/profile'}
-                className="flex flex-col items-center text-white md:text-gray-700 hover:text-primary transition-colors text-center px-1 group"
+        {/* MOBILE & COMPACT HEADER (< 1024px: covers mobile + 175% zoom + 250% zoom, matching Mega Jaipur) */}
+        <div className="lg:hidden bg-[#800020] text-white px-3 sm:px-4 pt-2.5 pb-2.5 space-y-2 border-b border-[#6b001a]">
+          {/* Row 1: Hamburger Menu | White Brand Logo | Phone | WhatsApp | Account | Cart Badge */}
+          <div className="flex items-center justify-between gap-2">
+            {/* Left: Menu + Logo */}
+            <div className="flex items-center gap-2 min-w-0">
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center text-white hover:bg-white/10 rounded-md transition-colors cursor-pointer"
+                aria-label="Open menu"
               >
-                <User className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-105 transition-transform" />
-                <span className="hidden md:block text-[10px] sm:text-[11px] font-semibold mt-1">Account</span>
-              </Link>
-            ) : (
-              <Link
-                to="/login"
-                className="flex flex-col items-center text-white md:text-gray-700 hover:text-primary transition-colors text-center px-1 group"
-              >
-                <LogIn className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-105 transition-transform" />
-                <span className="hidden md:block text-[10px] sm:text-[11px] font-semibold mt-1">Login</span>
-              </Link>
-            )}
+                <Menu className="h-6 w-6 stroke-[2.2]" />
+              </button>
 
-            {/* Wishlist */}
-            <Link
-              to="/wishlist"
-              title="Wishlist"
-              className="hidden sm:flex flex-col items-center text-gray-700 hover:text-primary transition-colors text-center px-1 group relative"
-            >
-              <div className="relative">
-                <Heart className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-105 transition-transform" />
-                {wishlistCount > 0 && (
-                  <span className="absolute -top-1.5 -right-2 min-w-[15px] h-3.5 px-1 rounded-full bg-primary text-white text-[8px] font-bold flex items-center justify-center shadow-xs">
-                    {wishlistCount > 99 ? '99+' : wishlistCount}
+              {hasCustomLogo ? (
+                <Link to="/" className="flex items-center shrink-0 group bg-white/95 rounded px-2 py-0.5 shadow-xs" aria-label="Vinexus home">
+                  <img
+                    src={websiteSettings.logo.url}
+                    alt={websiteName || 'Vinexus'}
+                    className="h-7 sm:h-8 w-auto max-w-[140px] sm:max-w-[170px] object-contain"
+                  />
+                </Link>
+              ) : (
+                <Link to="/" className="flex items-center gap-2 min-w-0 group" aria-label="Vinexus home">
+                  <Logo className="w-8 h-8 object-contain rounded bg-white p-0.5 shrink-0" />
+                  <span className="text-lg sm:text-xl font-bold tracking-tight text-white truncate">
+                    {websiteName}
                   </span>
-                )}
-              </div>
-              <span className="text-[10px] sm:text-[11px] font-semibold mt-1">Wishlist</span>
-            </Link>
+                </Link>
+              )}
+            </div>
 
-            {/* Enquiries */}
-            <Link
-              to="/account/enquiries"
-              title="Enquiries"
-              className="hidden sm:flex flex-col items-center text-gray-700 hover:text-primary transition-colors text-center px-1 group"
-            >
-              <FileText className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-105 transition-transform" />
-              <span className="text-[10px] sm:text-[11px] font-semibold mt-1">Enquiries</span>
-            </Link>
+            {/* Right: Phone | WhatsApp | Account | Cart with badge */}
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+              <a
+                href={`tel:${CONTACT_PHONE_LINK}`}
+                className="flex items-center justify-center p-1.5 text-white hover:text-white/80 transition-colors"
+                title={`Call ${CONTACT_PHONE_DISPLAY}`}
+                aria-label="Call store"
+              >
+                <Phone className="w-5 h-5 stroke-[2.2]" />
+              </a>
 
-            {/* Cart Box: [X item(s) - ₹Y] + Maroon Cart Badge with Hover Dropdown (Matching Image 1) */}
-            <div
-              className="relative"
-              onMouseEnter={() => {
-                if (cartCloseTimeoutRef.current) clearTimeout(cartCloseTimeoutRef.current);
-                setIsCartHovered(true);
-              }}
-              onMouseLeave={() => {
-                cartCloseTimeoutRef.current = setTimeout(() => {
-                  setIsCartHovered(false);
-                }, 200);
-              }}
-            >
+              <a
+                href={`https://wa.me/${WHATSAPP_NUMBER}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center p-1.5 text-white hover:text-white/80 transition-colors"
+                title="Chat on WhatsApp"
+                aria-label="Chat on WhatsApp"
+              >
+                <div className="w-5 h-5 flex items-center justify-center">
+                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
+                  </svg>
+                </div>
+              </a>
+
+              {isAuthenticated ? (
+                <Link
+                  to={getProfileLink() || '/account/profile'}
+                  className="flex items-center justify-center p-1.5 text-white hover:text-white/80 transition-colors"
+                  title="My Account"
+                  aria-label="Account"
+                >
+                  <User className="w-5 h-5 stroke-[2.2]" />
+                </Link>
+              ) : (
+                <Link
+                  to="/login"
+                  className="flex items-center justify-center p-1.5 text-white hover:text-white/80 transition-colors"
+                  title="Login"
+                  aria-label="Login"
+                >
+                  <LogIn className="w-5 h-5 stroke-[2.2]" />
+                </Link>
+              )}
+
               <Link
                 to="/cart"
-                className="relative flex items-center border-[1.5px] border-transparent md:border-primary rounded-md hover:shadow-sm transition-all group shrink-0 h-9 md:h-11 overflow-visible"
+                className="relative flex items-center justify-center p-1.5 text-white hover:text-white/80 transition-colors"
+                title="Shopping Cart"
+                aria-label="Cart"
               >
-                <span className="hidden sm:flex px-2.5 sm:px-3 text-xs sm:text-sm font-semibold text-gray-900 bg-white group-hover:bg-gray-50 transition-colors whitespace-nowrap rounded-l-[5px] h-full items-center">
-                  {cartCount} item(s) - ₹{(Number(cartSubtotal) || 0).toLocaleString('en-IN')}
-                </span>
-                <div className="relative bg-primary text-white w-9 sm:w-11 h-full flex items-center justify-center rounded-r-[4px]">
-                  <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
-                </div>
+                <ShoppingCart className="w-5 h-5 stroke-[2.2]" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-2.5 -right-2.5 min-w-[22px] h-[22px] px-1 aspect-square rounded-full bg-[#f03a3a] text-white text-xs font-bold flex items-center justify-center shadow-sm z-30 pointer-events-none select-none leading-none">
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#f03a3a] text-white text-[10px] font-bold flex items-center justify-center shadow-xs select-none">
                     {cartCount > 99 ? '99+' : cartCount}
                   </span>
                 )}
               </Link>
+            </div>
+          </div>
 
-              {/* Cart Dropdown on Hover (Matching Image 1) */}
+          {/* Row 2: Full-width Pill Search Bar with Mic, Camera & Autocomplete */}
+          <div ref={mobileSearchRef} className="relative w-full">
+            <form onSubmit={handleSearchSubmit} className="flex w-full items-center relative rounded-full bg-[#fdfbf7] shadow-inner border border-transparent overflow-visible">
+              <button type="submit" className="pl-3.5 pr-1.5 text-gray-500 hover:text-primary transition-colors cursor-pointer" aria-label="Search products">
+                <Search className="h-4 w-4" />
+              </button>
+              <div className="relative min-w-0 flex-1 flex items-center">
+                <input
+                  type="text"
+                  placeholder="Search laptops, printers, RAM, SSD..."
+                  value={headerSearch}
+                  onFocus={() => {
+                    if (headerSearch.trim()) setIsSearchOpen(true);
+                  }}
+                  onChange={(e) => {
+                    setHeaderSearch(e.target.value);
+                    if (e.target.value.trim()) setIsSearchOpen(true);
+                  }}
+                  className="w-full h-10 px-2 bg-transparent text-gray-900 placeholder-gray-500 text-xs sm:text-sm border-0 focus:outline-none"
+                />
+                {renderSearchDropdown()}
+              </div>
+              <button type="button" title="Voice Search" className="px-2 text-gray-500 hover:text-primary transition-colors">
+                <Mic className="h-4 w-4" />
+              </button>
+              <button type="button" title="Image Search" className="pl-1 pr-3 text-gray-500 hover:text-primary transition-colors">
+                <Camera className="h-4 w-4" />
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {/* DESKTOP HEADER (≥ 1024px: covers 150% zoom, 125%, 100%, 80% with clear separation and zero clipping) */}
+        <div className="hidden lg:block w-full bg-white border-b border-gray-200">
+          <div className="storefront-container px-3 lg:px-4 2xl:px-8 py-3 flex items-center justify-between gap-2 lg:gap-2.5 xl:gap-3.5 2xl:gap-4 min-w-0">
+            {/* Logo & Brand Name */}
+            {hasCustomLogo ? (
+              <Link to="/" className="flex items-center shrink-0 group py-0.5" aria-label="Vinexus home">
+                <img
+                  src={websiteSettings.logo.url}
+                  alt={websiteName || 'Vinexus'}
+                  className="h-10 lg:h-12 w-auto max-w-[240px] xl:max-w-[280px] object-contain group-hover:scale-105 transition-transform"
+                />
+              </Link>
+            ) : (
+              <Link to="/" className="flex items-center gap-2.5 shrink-0 group" aria-label="Vinexus home">
+                <Logo className="w-10 h-10 lg:w-11 lg:h-11 object-contain rounded group-hover:scale-105 transition-transform" />
+                <div className="flex flex-col text-left">
+                  <div className="flex items-center leading-none" aria-label={websiteName}>
+                    <span className="text-2xl font-black tracking-tight text-primary">{websiteName.slice(0, 2)}</span>
+                    <span className="text-2xl font-black tracking-tight text-gray-900">{websiteName.slice(2)}</span>
+                  </div>
+                  <span className="text-[10px] font-black tracking-widest text-primary uppercase mt-0.5">
+                    COMPU WORLD
+                  </span>
+                </div>
+              </Link>
+            )}
+
+            {/* Search Bar with Mic, Camera & Maroon Search Button (Expands cleanly to eliminate gap) */}
+            <form
+              ref={desktopSearchRef}
+              onSubmit={handleSearchSubmit}
+              className="flex-1 min-w-0 max-w-2xl flex items-center mx-1 lg:mx-2 xl:mx-3 relative"
+            >
+              <div className="relative w-full flex items-center">
+                <input
+                  type="text"
+                  placeholder="Search laptops, printers, RAM, SSD..."
+                  value={headerSearch}
+                  onFocus={() => {
+                    if (headerSearch.trim()) setIsSearchOpen(true);
+                  }}
+                  onChange={(e) => {
+                    setHeaderSearch(e.target.value);
+                    if (e.target.value.trim()) setIsSearchOpen(true);
+                  }}
+                  className="w-full h-11 pl-4 pr-16 bg-gray-50 hover:bg-white focus:bg-white text-gray-900 placeholder-gray-400 text-sm rounded-l-md border border-r-0 border-gray-300 focus:border-primary focus:outline-none transition-all shadow-inner"
+                />
+
+                {/* Mic & Camera quick buttons */}
+                <div className="absolute right-2.5 flex items-center gap-1.5 text-gray-400">
+                  <button
+                    type="button"
+                    title="Voice Search"
+                    className="hover:text-primary transition-colors p-1"
+                  >
+                    <Mic className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    title="Search by Image"
+                    className="hover:text-primary transition-colors p-1"
+                  >
+                    <Camera className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {renderSearchDropdown()}
+              </div>
+
+              {/* Search Button in Maroon */}
+              <button
+                type="submit"
+                className="h-11 px-3.5 lg:px-4 xl:px-6 bg-primary hover:bg-primary/90 text-white text-sm font-bold rounded-r-md flex items-center gap-1.5 transition-colors shrink-0 shadow-xs cursor-pointer active:scale-98"
+              >
+                <Search className="w-4 h-4" />
+                <span>Search</span>
+              </button>
+            </form>
+
+            {/* Action Icons Cluster: prominent icons at 100% zoom (no store/wtsp text), 2-line details reveal at 90% zoom (>= 1600px) */}
+            <div className="flex items-center gap-1.5 lg:gap-2 xl:gap-3 2xl:gap-4 shrink-0">
+              {/* 1. Phone / Call (Icon only at 100% zoom; 2-line text reveals at 90% zoom / >= 1600px) */}
+              <a
+                href={`tel:${CONTACT_PHONE_LINK}`}
+                className="flex items-center gap-1.5 text-gray-700 hover:text-primary transition-colors p-1.5 lg:p-2 rounded-lg hover:bg-gray-50 group shrink-0"
+                title={`Call ${CONTACT_PHONE_DISPLAY}`}
+              >
+                <Phone className="w-6 h-6 min-[1600px]:w-5 min-[1600px]:h-5 text-[#800020] group-hover:scale-105 transition-all shrink-0" />
+                <div className="hidden min-[1600px]:flex flex-col text-left leading-tight">
+                  <span className="text-xs font-bold text-gray-900 whitespace-nowrap">{CONTACT_PHONE_DISPLAY}</span>
+                  <span className="text-[10px] text-gray-500 whitespace-nowrap">Call us</span>
+                </div>
+              </a>
+
+              {/* 2. Store Location / Address (Icon only at 100% zoom; 2-line text reveals at 90% zoom / >= 1600px) */}
+              <a
+                href={STORE_MAP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-gray-700 hover:text-primary transition-colors p-1.5 lg:p-2 rounded-lg hover:bg-gray-50 group shrink-0"
+                title="Store Location - Directions to the Store"
+              >
+                <Store className="w-6 h-6 min-[1600px]:w-5 min-[1600px]:h-5 text-[#800020] group-hover:scale-105 transition-all shrink-0" />
+                <div className="hidden min-[1600px]:flex flex-col text-left leading-tight">
+                  <span className="text-xs font-bold text-gray-900 whitespace-nowrap">Store Location</span>
+                  <span className="text-[10px] text-gray-500 whitespace-nowrap">Directions to the Store</span>
+                </div>
+              </a>
+
+              {/* 3. WhatsApp / Chat With Us (Icon only at 100% zoom; 2-line text reveals at 90% zoom / >= 1600px) */}
+              <a
+                href={`https://wa.me/${WHATSAPP_NUMBER}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-gray-700 hover:text-primary transition-colors p-1.5 lg:p-2 rounded-lg hover:bg-gray-50 group shrink-0"
+                title="Chat on WhatsApp - Available 24/7"
+              >
+                <div className="w-6 h-6 min-[1600px]:w-5 min-[1600px]:h-5 text-[#800020] flex items-center justify-center shrink-0 group-hover:scale-105 transition-all">
+                  <svg className="w-full h-full fill-current" viewBox="0 0 24 24">
+                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
+                  </svg>
+                </div>
+                <div className="hidden min-[1600px]:flex flex-col text-left leading-tight">
+                  <span className="text-xs font-bold text-gray-900 whitespace-nowrap">Chat With Us</span>
+                  <span className="text-[10px] text-gray-500 whitespace-nowrap">Available 24/7</span>
+                </div>
+              </a>
+
+              {/* 4. Login / Profile */}
+              {isAuthenticated ? (
+                <Link
+                  to={getProfileLink() || '/account/profile'}
+                  className="flex flex-col items-center text-gray-700 hover:text-primary transition-colors text-center p-1.5 lg:p-2 rounded-lg hover:bg-gray-50 group shrink-0"
+                >
+                  <User className="w-6 h-6 min-[1600px]:w-5 min-[1600px]:h-5 group-hover:scale-105 transition-transform" />
+                  <span className="text-xs min-[1600px]:text-[11px] font-semibold mt-0.5 whitespace-nowrap">Account</span>
+                </Link>
+              ) : (
+                <Link
+                  to="/login"
+                  className="flex flex-col items-center text-gray-700 hover:text-primary transition-colors text-center p-1.5 lg:p-2 rounded-lg hover:bg-gray-50 group shrink-0"
+                >
+                  <LogIn className="w-6 h-6 min-[1600px]:w-5 min-[1600px]:h-5 group-hover:scale-105 transition-transform" />
+                  <span className="text-xs min-[1600px]:text-[11px] font-semibold mt-0.5 whitespace-nowrap">Login</span>
+                </Link>
+              )}
+
+              {/* 5. Wishlist */}
+              <Link
+                to="/wishlist"
+                title="Wishlist"
+                className="flex flex-col items-center text-gray-700 hover:text-primary transition-colors text-center p-1.5 lg:p-2 rounded-lg hover:bg-gray-50 group relative shrink-0"
+              >
+                <div className="relative">
+                  <Heart className="w-6 h-6 min-[1600px]:w-5 min-[1600px]:h-5 group-hover:scale-105 transition-transform" />
+                  {wishlistCount > 0 && (
+                    <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-primary text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
+                      {wishlistCount > 99 ? '99+' : wishlistCount}
+                    </span>
+                  )}
+                </div>
+                <span className="text-xs min-[1600px]:text-[11px] font-semibold mt-0.5 whitespace-nowrap">Wishlist</span>
+              </Link>
+
+              {/* 6. Offers */}
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('open-promotional-offers'))}
+                title="View Promotional Offers & Deals"
+                className="flex flex-col items-center text-gray-700 hover:text-primary transition-colors text-center p-1.5 lg:p-2 rounded-lg hover:bg-gray-50 group shrink-0 cursor-pointer"
+              >
+                <div className="relative">
+                  <BadgePercent className="w-6 h-6 min-[1600px]:w-5 min-[1600px]:h-5 group-hover:scale-110 transition-transform text-primary" />
+                </div>
+                <span className="text-xs min-[1600px]:text-[11px] font-semibold mt-0.5 whitespace-nowrap">Offers</span>
+              </button>
+
+              {/* 7. Cart Box */}
+              <div
+                className="relative shrink-0"
+                onMouseEnter={() => {
+                  if (cartCloseTimeoutRef.current) clearTimeout(cartCloseTimeoutRef.current);
+                  setIsCartHovered(true);
+                }}
+                onMouseLeave={() => {
+                  cartCloseTimeoutRef.current = setTimeout(() => {
+                    setIsCartHovered(false);
+                  }, 200);
+                }}
+              >
+                <Link
+                  to="/cart"
+                  className="relative flex items-center border-[1.5px] border-primary rounded-md hover:shadow-md transition-all group shrink-0 h-11 min-[1600px]:h-10 overflow-visible"
+                >
+                  <span className="flex px-2 xl:px-2.5 text-xs xl:text-sm font-bold text-gray-900 bg-white group-hover:bg-gray-50 transition-colors whitespace-nowrap rounded-l-[5px] h-full items-center">
+                    <span className="hidden xl:inline">{cartCount} item(s) - </span>
+                    <span className="xl:hidden">{cartCount} · </span>
+                    ₹{(Number(cartSubtotal) || 0).toLocaleString('en-IN')}
+                  </span>
+                  <div className="relative bg-primary text-white w-10 min-[1600px]:w-9 h-full flex items-center justify-center rounded-r-[4px]">
+                    <ShoppingCart className="w-5 h-5 min-[1600px]:w-4 min-[1600px]:h-4" />
+                  </div>
+                  {cartCount > 0 && (
+                    <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] min-[1600px]:min-w-[20px] min-[1600px]:h-[20px] px-1 aspect-square rounded-full bg-[#f03a3a] text-white text-xs min-[1600px]:text-[11px] font-bold flex items-center justify-center shadow-sm z-30 pointer-events-none select-none leading-none">
+                      {cartCount > 99 ? '99+' : cartCount}
+                    </span>
+                  )}
+                </Link>
+
+              {/* Cart Dropdown on Hover */}
               {isCartHovered && (
                 <div
-                  className="hidden md:block absolute right-0 top-full pt-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150"
+                  className="absolute right-0 top-full pt-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150"
                   onMouseEnter={() => {
                     if (cartCloseTimeoutRef.current) clearTimeout(cartCloseTimeoutRef.current);
                   }}
@@ -997,10 +1140,8 @@ const PublicLayout = () => {
                   }}
                 >
                   <div className="w-[360px] sm:w-[420px] bg-white rounded-xl shadow-2xl border border-gray-200 relative overflow-hidden text-left">
-                    {/* Top indicator arrow pointing up to cart icon */}
                     <div className="absolute -top-1.5 right-6 w-3 h-3 bg-white border-t border-l border-gray-200 rotate-45 transform z-10" />
 
-                    {/* EMPTY STATE */}
                     {cartItems.length === 0 ? (
                       <div className="py-10 px-6 text-center select-none">
                         <p className="text-gray-500 font-medium text-sm sm:text-base">
@@ -1008,7 +1149,6 @@ const PublicLayout = () => {
                         </p>
                       </div>
                     ) : (
-                      /* CART PRODUCTS LIST (Matching Reference Images) */
                       <div className="p-3.5 space-y-3">
                         <div className="max-h-72 overflow-y-auto divide-y divide-gray-100 pr-1 space-y-2.5">
                           {cartItems.map((item, idx) => {
@@ -1017,13 +1157,6 @@ const PublicLayout = () => {
                               item.priceSnapshot || item.price || product.standardPrice || product.price || 0;
                             const img =
                               product.images?.[0]?.url || product.image;
-                            const pid =
-                              product.sku ||
-                              (product._id ? `A${String(product._id).slice(-4).toUpperCase()}` : 'A2522');
-                            const itemCd =
-                              product.specifications?.find((s) => s.key?.toLowerCase().includes('code'))?.value ||
-                              product.sku?.slice(0, 8).toUpperCase() ||
-                              '1CXARIE';
 
                             return (
                               <div
@@ -1069,7 +1202,6 @@ const PublicLayout = () => {
                           })}
                         </div>
 
-                        {/* Total & Action Buttons (Matching Reference Image) */}
                         <div className="pt-3 border-t border-gray-200 space-y-3">
                           <div className="flex items-center justify-between px-1">
                             <span className="text-sm font-bold text-gray-900">Total</span>
@@ -1095,38 +1227,13 @@ const PublicLayout = () => {
                 </div>
               )}
             </div>
-
           </div>
         </div>
+      </div>
 
-        {/* Mobile Search Bar Row (small screens) */}
-        <div className="md:hidden bg-[#800020] px-3 pb-3" ref={mobileSearchRef}>
-          <form onSubmit={handleSearchSubmit} className="flex w-full items-center relative rounded-full bg-white overflow-visible">
-            <button type="submit" className="pl-3 text-gray-600" aria-label="Search products"><Search className="h-4 w-4" /></button>
-            <div className="relative min-w-0 flex-1 flex items-center">
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={headerSearch}
-                onFocus={() => {
-                  if (headerSearch.trim()) setIsSearchOpen(true);
-                }}
-                onChange={(e) => {
-                  setHeaderSearch(e.target.value);
-                  if (e.target.value.trim()) setIsSearchOpen(true);
-                }}
-                className="w-full h-10 px-2 bg-transparent text-gray-900 placeholder-gray-400 text-xs border-0 focus:outline-none"
-              />
-              {renderSearchDropdown()}
-            </div>
-            <span className="px-1.5 text-gray-500" aria-hidden="true"><Mic className="h-4 w-4" /></span>
-            <span className="pl-1.5 pr-3 text-gray-500" aria-hidden="true"><Camera className="h-4 w-4" /></span>
-          </form>
-        </div>
-
-        {/* 3. CATEGORY NAVIGATION BAR WITH MEGA MENU ON HOVER (Compact sleek scale matching Mega Jaipur) */}
-        <nav className="hidden md:block w-full bg-[#800020] text-white shadow-xs relative z-40 select-none">
-          <div className="storefront-container px-2 sm:px-3 lg:px-4 2xl:px-6 flex items-center relative h-[38px] sm:h-[40px]">
+        {/* 3. CATEGORY NAVIGATION BAR WITH MEGA MENU ON HOVER (Hidden on mobile / tablet / 175%+ zoom, active on desktop >= lg) */}
+        <nav className="hidden lg:block w-full max-w-full bg-[#800020] text-white shadow-xs relative z-40 select-none">
+          <div className="storefront-container px-2 sm:px-3 lg:px-4 2xl:px-6 flex items-center relative h-[38px] sm:h-[40px] min-w-0">
             
             {/* Scroll Left Button (if categories overflow on narrow screens) */}
             {canScrollLeft && (
@@ -1145,17 +1252,31 @@ const PublicLayout = () => {
               ref={categoryNavRef}
               onScroll={checkNavScroll}
               onWheel={handleCategoryWheel}
-              className="w-full flex items-center overflow-x-auto scrollbar-none h-full"
+              className="flex-1 min-w-0 flex items-center overflow-x-auto scrollbar-none h-full pr-8"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {/* Shop By Brand Button */}
-              <Link
-                to="/brands"
-                className="flex items-center gap-1.5 bg-white text-[#800020] hover:bg-gray-100 font-bold text-xs sm:text-[13px] px-2.5 h-[29px] rounded shadow-2xs transition-colors mr-1 sm:mr-1.5 whitespace-nowrap shrink-0"
+              <div
+                ref={(el) => {
+                  if (el) headerItemRefs.current['shop-by-brand'] = el;
+                }}
+                className="shrink-0 h-full flex items-center relative mr-1 sm:mr-1.5"
+                onMouseEnter={() => handleMouseEnterHeader('shop-by-brand')}
+                onMouseLeave={handleMouseLeaveHeader}
               >
-                <Store className="w-3.5 h-3.5 text-[#800020]" />
-                <span>Shop By Brand</span>
-              </Link>
+                <Link
+                  to="/brands"
+                  onClick={handleHeaderClick}
+                  className={`flex items-center gap-1.5 font-bold text-xs sm:text-[13px] px-2.5 h-[29px] rounded shadow-2xs transition-colors whitespace-nowrap ${
+                    hoveredHeaderId === 'shop-by-brand'
+                      ? 'bg-gray-100 text-[#800020]'
+                      : 'bg-white text-[#800020] hover:bg-gray-100'
+                  }`}
+                >
+                  <Store className="w-3.5 h-3.5 text-[#800020]" />
+                  <span>Shop By Brand</span>
+                </Link>
+              </div>
 
               {categoriesLoading && <div role="status" aria-label="Loading categories" className="flex items-center gap-2 px-2">{[80, 64, 96, 72, 88, 64].map((width, index) => <Skeleton key={index} className="h-6 shrink-0 rounded" style={{ width }} />)}</div>}
               {categoriesError && <button className="px-3 text-xs" onClick={() => setCategoryRetry((value) => value + 1)}>{categoriesError}. Retry</button>}
@@ -1307,6 +1428,71 @@ const PublicLayout = () => {
               </div>
             </div>
           )}
+
+          {/* Shop By Brand Mega Dropdown Card */}
+          {hoveredHeaderId === 'shop-by-brand' && catalogBrands && catalogBrands.length > 0 && (
+            <div
+              ref={megaMenuRef}
+              className="absolute top-full z-50 pt-1 pointer-events-auto"
+              style={{
+                left: `${Math.max(12, Math.min(dropdownLeft, windowWidth - Math.min(840, windowWidth - 24) - 12))}px`,
+                width: `${Math.min(840, windowWidth - 24)}px`,
+              }}
+              onMouseEnter={() => {
+                if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+              }}
+              onMouseLeave={handleMouseLeaveHeader}
+            >
+              {/* Upward arrow connecting dropdown to button above */}
+              <div
+                className="absolute -top-1 w-0 h-0 border-x-[7px] border-x-transparent border-b-[7px] border-b-[#800020] z-50 pointer-events-none"
+                style={{
+                  left: `${Math.max(20, Math.min(dropdownLeft - Math.max(12, Math.min(dropdownLeft, windowWidth - Math.min(840, windowWidth - 24) - 12)) + 16, Math.min(840, windowWidth - 24) - 40))}px`,
+                }}
+              />
+
+              <div className="w-full bg-white rounded-md shadow-2xl border border-gray-200 overflow-hidden text-left animate-in fade-in slide-in-from-top-1 duration-150">
+                {/* Dropdown Header Bar */}
+                <div className="bg-[#800020] text-white px-4 py-2.5 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 font-bold text-sm sm:text-base tracking-wide text-white">
+                    <div className="w-6 h-6 rounded bg-white/15 flex items-center justify-center shrink-0">
+                      <Store className="w-4 h-4 text-white" />
+                    </div>
+                    <span>Featured Brands</span>
+                  </div>
+                  <Link
+                    to="/brands"
+                    onClick={() => setHoveredHeaderId(null)}
+                    className="text-xs font-semibold text-white/90 hover:text-white hover:underline flex items-center gap-1"
+                  >
+                    <span>View All Brands ({catalogBrands.length})</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+
+                {/* Brands Grid */}
+                <div className="p-3.5 sm:p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-[70vh] overflow-y-auto bg-white">
+                  {catalogBrands.slice(0, 24).map((brand) => (
+                    <Link
+                      key={brand._id || brand.name}
+                      to={buildBrandUrl(brand.name)}
+                      onClick={() => setHoveredHeaderId(null)}
+                      className="border border-gray-200 rounded-md p-2.5 bg-white hover:border-[#800020] hover:bg-[#800020]/5 hover:shadow-xs transition-all flex items-center justify-between group no-underline"
+                    >
+                      <span className="text-xs font-bold text-gray-800 group-hover:text-[#800020] transition-colors truncate">
+                        {brand.name}
+                      </span>
+                      {brand.count > 0 && (
+                        <span className="text-[10px] text-gray-400 font-medium ml-1.5 shrink-0">
+                          {brand.count}
+                        </span>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </nav>
       </header>
 
@@ -1432,7 +1618,7 @@ const PublicLayout = () => {
       )}
 
       {/* 5. MAIN PAGE CONTENT (Natural Height Flow Matching Mega Jaipur) */}
-      <main className="w-full flex flex-col">
+      <main className="w-full max-w-full flex flex-col min-w-0 flex-1 overflow-x-hidden">
         <Outlet />
       </main>
 
@@ -1447,16 +1633,30 @@ const PublicLayout = () => {
               ))}
             </div>}
           </div>
-          <div className="space-y-2 text-[15px]">
+          <div className="text-[15px]">
             <h4 className="font-bold text-xl text-white mb-4">{footerData.quickLinksHeading || 'Information'}</h4>
-            {[...(footerData.quickLinks || []), ...(footerData.legalLinks || [])]
-              .filter((link) => !['all products', 'category directory', 'component library', 'privacy policy', 'terms & conditions'].includes((link.label || '').trim().toLowerCase()))
-              .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)).map((link, index) => (
-              <a key={`${link.label}-${index}`} className="block text-white/90 hover:text-white hover:underline" href={link.url}>{link.label}</a>
-            ))}
-            <Link className="block text-white/90 hover:text-white hover:underline" to="/privacy">Privacy Policy</Link>
-            <Link className="block text-white/90 hover:text-white hover:underline" to="/terms">Terms &amp; Conditions</Link>
-            <button type="button" onClick={openStorageChoices} className="block text-left text-white/90 hover:text-white hover:underline">Storage choices</button>
+            {(() => {
+              const filteredLinks = [...(footerData.quickLinks || []), ...(footerData.legalLinks || [])]
+                .filter((link) => !['all products', 'category directory', 'component library', 'privacy policy', 'terms & conditions'].includes((link.label || '').trim().toLowerCase()))
+                .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+              const allLinks = [
+                ...filteredLinks.map((link, index) => (
+                  <a key={`${link.label}-${index}`} className="block text-white/90 hover:text-white hover:underline mb-2" href={link.url}>{link.label}</a>
+                )),
+                <Link key="privacy" className="block text-white/90 hover:text-white hover:underline mb-2" to="/privacy">Privacy Policy</Link>,
+                <Link key="terms" className="block text-white/90 hover:text-white hover:underline mb-2" to="/terms">Terms &amp; Conditions</Link>,
+                <button key="storage" type="button" onClick={openStorageChoices} className="block text-left text-white/90 hover:text-white hover:underline mb-2">Storage choices</button>,
+              ];
+              const MAX_PER_COL = 7;
+              const col1 = allLinks.slice(0, MAX_PER_COL);
+              const col2 = allLinks.slice(MAX_PER_COL);
+              return (
+                <div className="flex gap-6">
+                  <div className="flex flex-col">{col1}</div>
+                  {col2.length > 0 && <div className="flex flex-col">{col2}</div>}
+                </div>
+              );
+            })()}
           </div>
           <div className="space-y-3 text-[15px] text-white/90">
             <h4 className="font-bold text-xl text-white mb-4">{footerData.contactHeading || 'Contact Details'}</h4>

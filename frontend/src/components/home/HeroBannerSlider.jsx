@@ -69,7 +69,7 @@ const HeroBannerSlider = ({ slides = [], autoPlayInterval = 5000 }) => {
     >
       {/* Keep desktop artwork in its wide banner ratio, including TV and zoomed-out viewports. */}
       <div
-        className="flex w-full aspect-[12/5] sm:aspect-[5/2] lg:aspect-[15/4] transition-transform duration-600 ease-out"
+        className="flex w-full aspect-[16/9] sm:aspect-[21/9] lg:aspect-[15/4] transition-transform duration-600 ease-out"
         style={{
           transform: `translateX(-${currentIndex * 100}%)`,
         }}
@@ -77,13 +77,13 @@ const HeroBannerSlider = ({ slides = [], autoPlayInterval = 5000 }) => {
         {slides.map((slide, idx) => (
           <div
             key={slide.id || idx}
-            className="w-full shrink-0 h-full relative"
+            className="w-full max-w-full shrink-0 h-full relative overflow-hidden"
           >
-            <div className="block w-full h-full relative overflow-hidden select-none">
+            <div className="block w-full h-full relative overflow-hidden select-none pointer-events-none">
               <img
                 src={slide.image}
-                alt={slide.title}
-                className="w-full h-full object-cover object-center transition-transform duration-700 ease-out"
+                alt={slide.title || 'Vinexus Banner'}
+                className="w-full h-full object-cover object-top"
                 loading={idx === 0 ? 'eager' : 'lazy'}
                 draggable={false}
               />

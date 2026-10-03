@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams, Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import productService from '../../services/productService';
 import categoryService from '../../services/categoryService';
@@ -48,6 +48,7 @@ const DEFAULT_AVAILABILITY = ['in-stock', 'low-stock', 'on-order'];
 export const ProductsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const params = useParams();
   const { headerSlug, param2, param3, brandSlug } = params;
 
@@ -79,12 +80,21 @@ export const ProductsPage = () => {
     specs: true,
   });
 
+  // Synchronized scrolling refs
+  const catalogContainerRef = useRef(null);
+  const asideRef = useRef(null);
+  const sidebarInnerRef = useRef(null);
+  const sidebarContentRef = useRef(null);
+  const productsRef = useRef(null);
+  const lastScrollYRef = useRef(0);
+  const sidebarTopRef = useRef(0);
+
   // Data states
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [categoryError, setCategoryError] = useState(null);
-  const [facets, setFacets] = useState({ brands: [], availability: [], specs: [] });
+  const [facets, setFacets] = useState({ categories: [], brands: [], availability: [], specs: [] });
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
 
   // UI state
@@ -210,11 +220,138 @@ export const ProductsPage = () => {
     return () => controller.abort();
   }, [fetchProducts]);
 
+  const isAllProductsRoute = location.pathname.startsWith('/products');
+
+  const availableCategories = facets.categories || [];
+  const displayCategories = useMemo(() => {
+    if (availableCategories.length > 0) return availableCategories;
+    return categories
+      .filter((c) => !c.parentId)
+      .map((c) => ({ _id: c._id, name: c.name, slug: c.slug, count: c.productCount || 0 }));
+  }, [availableCategories, categories]);
+
+  // When on /products, show only header categories with rolled-up product counts
+  const headerCategoriesList = useMemo(() => {
+    if (!isAllProductsRoute) return null;
+    const roots = categories.filter((c) => !c.parentId);
+    const parentMap = new Map(
+      categories.map((c) => [
+        String(c._id),
+        c.parentId?._id ? String(c.parentId._id) : (c.parentId ? String(c.parentId) : null),
+      ])
+    );
+    const getRootId = (catId) => {
+      let curr = String(catId);
+      let p = parentMap.get(curr);
+      while (p) {
+        curr = p;
+        p = parentMap.get(curr);
+      }
+      return curr;
+    };
+    const counts = new Map();
+    for (const item of (facets.categories || [])) {
+      const rootId = getRootId(item._id);
+      counts.set(rootId, (counts.get(rootId) || 0) + (item.count || 0));
+    }
+    return roots.map((root) => ({
+      _id: root._id,
+      name: root.name,
+      slug: root.slug,
+      count: counts.get(String(root._id)) || 0,
+    }));
+  }, [isAllProductsRoute, categories, facets.categories]);
+
+  const categoriesToRender = isAllProductsRoute ? (headerCategoriesList || []) : displayCategories;
   const availableBrands = facets.brands;
   const dynamicSpecs = facets.specs;
   const availabilityFacets = facets.availability || [];
   // Filtering and pagination are performed together by MongoDB.
   const displayedProducts = products;
+
+  // Current category (resolved from hierarchical route or query category)
+  const currentCategory = useMemo(() => {
+    if (routeCategory) return routeCategory;
+    if (initialCategory && !initialCategory.includes(',')) {
+      return categories.find((c) => c._id === initialCategory || c.slug === initialCategory) || null;
+    }
+    return null;
+  }, [routeCategory, initialCategory, categories]);
+
+  // If products are few (<= 12 products, 1-2 rows): only Categories, Brands, Availability.
+  // If products are multiple rows (> 12 products): show specs according to products!
+  const totalProductCount = pagination.total || products.length;
+  const hasMultipleRows = totalProductCount > 12;
+  const specsToRender = hasMultipleRows && dynamicSpecs && dynamicSpecs.length > 0
+    ? dynamicSpecs.slice(0, 6)
+    : [];
+
+  // Selected category slugs / IDs
+  const selectedCategorySlugs = useMemo(() => {
+    if (targetCategorySlug) return [targetCategorySlug.toLowerCase()];
+    if (!initialCategory) return [];
+    return initialCategory
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+  }, [targetCategorySlug, initialCategory]);
+
+  const isAllCategoriesChecked = selectedCategorySlugs.length === 0;
+
+  const isCategoryChecked = useCallback((cat) => {
+    if (!cat) return isAllCategoriesChecked;
+    const catSlug = (cat.slug || '').toLowerCase();
+    const catId = String(cat._id || '').toLowerCase();
+    return (
+      (Boolean(catSlug) && selectedCategorySlugs.includes(catSlug)) ||
+      (Boolean(catId) && selectedCategorySlugs.includes(catId))
+    );
+  }, [isAllCategoriesChecked, selectedCategorySlugs]);
+
+  // Handle category selection in filter sidebar using checkboxes
+  const handleToggleCategory = (cat) => {
+    setCurrentPage(1);
+    setSelectedSpecs({});
+    const next = new URLSearchParams(searchParams);
+
+    if (!cat) {
+      // Clicked "All Categories": clear specific category filters
+      next.delete('category');
+      next.delete('categoryId');
+      if (targetCategorySlug) {
+        navigate('/products');
+      } else {
+        setSearchParams(next);
+      }
+      return;
+    }
+
+    const catSlug = (cat.slug || cat._id).toLowerCase();
+    const checked = isCategoryChecked(cat);
+
+    let updatedSlugs;
+    if (checked) {
+      updatedSlugs = selectedCategorySlugs.filter(
+        (s) => s !== catSlug && s !== String(cat._id || '').toLowerCase()
+      );
+    } else {
+      updatedSlugs = [...selectedCategorySlugs, cat.slug || cat._id];
+    }
+
+    if (updatedSlugs.length === 0) {
+      next.delete('category');
+      next.delete('categoryId');
+    } else {
+      next.set('category', updatedSlugs.join(','));
+      next.delete('categoryId');
+    }
+
+    if (targetCategorySlug) {
+      navigate(`/products${next.toString() ? `?${next.toString()}` : ''}`);
+    } else {
+      setSearchParams(next);
+    }
+  };
 
   // Current Active Category Object
   const activeCategory = useMemo(() => {
@@ -295,7 +432,13 @@ export const ProductsPage = () => {
     setSortOption('default');
     setCurrentPage(1);
     setIsMobileFilterOpen(false);
-    const destination = activeCategory ? buildCategoryPath(activeCategory, categories) : '/search';
+    if (brandSlug) {
+      navigate(`/brands/${brandSlug}`);
+      return;
+    }
+    const destination = location.pathname.startsWith('/products')
+      ? '/products'
+      : (activeCategory ? buildCategoryPath(activeCategory, categories) : '/search');
     const preserved = new URLSearchParams();
     if (searchTerm.trim()) preserved.set('search', searchTerm.trim());
     navigate(`${destination}${preserved.size ? `?${preserved}` : ''}`);
@@ -303,6 +446,10 @@ export const ProductsPage = () => {
 
   // Compute Page Header Title (Matching Mega Jaipur: "Branded Laptop", "Laptop Hinges", "ACER")
   const pageTitle = useMemo(() => {
+    if (isAllProductsRoute) {
+      if (searchTerm) return `Search: "${searchTerm}"`;
+      return 'All Products';
+    }
     if (activeCategory?.name) {
       return activeCategory.name;
     }
@@ -313,8 +460,127 @@ export const ProductsPage = () => {
       return `Search: "${searchTerm}"`;
     }
     return 'All Products';
-    return 'All Products';
-  }, [activeCategory, brandSlug, routeBrand, searchTerm]);
+  }, [isAllProductsRoute, activeCategory, brandSlug, routeBrand, searchTerm]);
+
+  // ---------------------------------------------------------------------------
+  // Synchronized Proportional Scrolling: Left Filters <-> Right Products
+  //
+  // Rules:
+  //  1. Hovering over filters must NOT cause independent scrolling.
+  //  2. Few products (≤12): filters pinned at top, no sync needed.
+  //  3. Many products, products > filters: filter card translates down
+  //     proportionally so filters and products reach the footer together.
+  //  4. Many products, filters > products: filter card is clipped to products
+  //     height and filter content scrolls internally.
+  //  5. Products fit in viewport: no page scroll to sync, pin at top.
+  // ---------------------------------------------------------------------------
+  const syncScroll = useCallback(() => {
+    if (typeof window === 'undefined') return;
+
+    const container = catalogContainerRef.current;
+    const inner = sidebarInnerRef.current;
+    const content = sidebarContentRef.current;
+    const productsEl = productsRef.current;
+
+    if (!container || !inner || !content || !productsEl) return;
+
+    // Reset styles on mobile & tablet (< 1024px)
+    if (window.innerWidth < 1024) {
+      inner.style.transform = '';
+      inner.style.maxHeight = '';
+      inner.style.overflow = '';
+      content.style.transform = '';
+      return;
+    }
+
+    const viewportHeight = window.innerHeight;
+    const topOffset = 110; // clearance below sticky header
+    const bottomOffset = 24;
+    const visibleHeight = Math.max(200, viewportHeight - topOffset - bottomOffset);
+
+    const productsHeight = productsEl.offsetHeight;
+    const filterNaturalHeight = content.scrollHeight + 32; // +32 for padding
+
+    // ── PIN AT TOP: few products OR products fit in viewport ──────────────
+    if (!hasMultipleRows || productsHeight <= visibleHeight) {
+      inner.style.transform = 'translate3d(0, 0, 0)';
+      inner.style.maxHeight = 'none';
+      inner.style.overflow = 'visible';
+      content.style.transform = 'none';
+      return;
+    }
+
+    // ── MANY PRODUCTS & page scrolls ─────────────────────────────────────
+    const containerRect = container.getBoundingClientRect();
+    const scrollableProductDistance = productsHeight - visibleHeight; // always > 0 here
+    const currentScrolled = Math.max(0, topOffset - containerRect.top);
+    const progress = Math.max(0, Math.min(1, currentScrolled / scrollableProductDistance));
+
+    if (productsHeight >= filterNaturalHeight) {
+      // CASE A — Products taller than filters:
+      //   Translate the whole filter card down so it ends flush with products.
+      inner.style.maxHeight = 'none';
+      inner.style.overflow = 'visible';
+      content.style.transform = 'none';
+
+      const maxFilterTravel = productsHeight - filterNaturalHeight;
+      inner.style.transform = `translate3d(0, ${Math.round(progress * maxFilterTravel)}px, 0)`;
+    } else {
+      // CASE B — Filters taller than products:
+      //   Clip filter card to products height & scroll content internally.
+      const cardHeight = Math.max(300, productsHeight);
+      inner.style.maxHeight = `${cardHeight}px`;
+      inner.style.overflow = 'hidden';
+      inner.style.transform = 'translate3d(0, 0, 0)';
+
+      const filterOverflow = filterNaturalHeight - cardHeight;
+      if (filterOverflow > 0) {
+        content.style.transform = `translate3d(0, ${Math.round(-progress * filterOverflow)}px, 0)`;
+      } else {
+        content.style.transform = 'none';
+      }
+    }
+  }, [hasMultipleRows]);
+
+  useEffect(() => {
+    let rafId = null;
+
+    const onScroll = () => {
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        syncScroll();
+      });
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', syncScroll, { passive: true });
+
+    // Block independent wheel scroll on desktop sidebar
+    const asideElement = asideRef.current;
+    const blockWheel = (e) => { e.preventDefault(); e.stopPropagation(); };
+    if (asideElement) {
+      asideElement.addEventListener('wheel', blockWheel, { passive: false });
+    }
+
+    // Observe content / products size changes → re-sync
+    let ro;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => syncScroll());
+      if (sidebarContentRef.current) ro.observe(sidebarContentRef.current);
+      if (productsRef.current) ro.observe(productsRef.current);
+    }
+
+    syncScroll();
+
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', syncScroll);
+      if (asideElement) asideElement.removeEventListener('wheel', blockWheel);
+      if (ro) ro.disconnect();
+    };
+  }, [syncScroll, displayedProducts.length, openSections]);
 
   // Sidebar Filter Content (used in both desktop sidebar & mobile drawer)
   const renderSidebarFilters = () => (
@@ -334,7 +600,7 @@ export const ProductsPage = () => {
         </button>
       </div>
 
-      {/* 2. Categories Accordion (matching Screenshot) */}
+      {/* 2. Categories Accordion (matching Availability checkbox pattern) */}
       <div className="border-b border-gray-200 pb-3">
         <button
           type="button"
@@ -355,39 +621,112 @@ export const ProductsPage = () => {
         </button>
 
         {openSections.categories && (
-          <div className="mt-2.5">
-            <div className="flex items-center gap-2 rounded bg-primary/5 border border-primary/20 p-2 text-xs font-bold text-primary select-none">
-              <CheckSquare className="w-4 h-4 shrink-0" />
-              <span className="truncate">{activeCategory?.name || 'All Products'}</span>
-            </div>
+          <div className="mt-2.5 space-y-1.5">
+            {currentCategory ? (
+              /* When inside a specific category page: show ONLY the current category, already ticked */
+              <label className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group">
+                <span className="flex items-center gap-2 truncate">
+                  <input
+                    type="checkbox"
+                    checked={true}
+                    onChange={() => navigate('/products')}
+                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#800020] cursor-pointer"
+                  />
+                  <span className="truncate font-bold text-gray-900">
+                    {currentCategory.name}
+                  </span>
+                </span>
+                {pagination.total > 0 && (
+                  <span className="text-[11px] text-gray-400 font-medium ml-2 shrink-0">
+                    {pagination.total}
+                  </span>
+                )}
+              </label>
+            ) : categoriesToRender.length > 0 ? (
+              /* On general /products page: show All Categories + Header categories */
+              <>
+                <label className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group">
+                  <span className="flex items-center gap-2 truncate">
+                    <input
+                      type="checkbox"
+                      checked={isAllCategoriesChecked}
+                      onChange={() => handleToggleCategory(null)}
+                      className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#800020] cursor-pointer"
+                    />
+                    <span
+                      className={`truncate ${
+                        isAllCategoriesChecked ? 'font-bold text-gray-900' : 'group-hover:text-primary'
+                      }`}
+                    >
+                      All Categories
+                    </span>
+                  </span>
+                </label>
+                {categoriesToRender.map((cat) => {
+                  const isChecked = isCategoryChecked(cat);
+                  return (
+                    <label
+                      key={cat._id}
+                      className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group"
+                    >
+                      <span className="flex items-center gap-2 truncate">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleToggleCategory(cat)}
+                          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#800020] cursor-pointer"
+                        />
+                        <span
+                          className={`truncate ${
+                            isChecked ? 'font-bold text-gray-900' : 'group-hover:text-primary'
+                          }`}
+                        >
+                          {cat.name}
+                        </span>
+                      </span>
+                      {cat.count !== undefined && cat.count > 0 && (
+                        <span className="text-[11px] text-gray-400 font-medium ml-2 shrink-0">
+                          {cat.count}
+                        </span>
+                      )}
+                    </label>
+                  );
+                })}
+              </>
+            ) : (
+              <div className="flex items-center gap-2 rounded bg-primary/5 border border-primary/20 p-2 text-xs font-bold text-primary select-none">
+                <CheckSquare className="w-4 h-4 shrink-0" />
+                <span className="truncate">{activeCategory?.name || 'All Products'}</span>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* 3. Brands Accordion */}
-      <div className="border-b border-gray-200 pb-3">
-        <button
-          type="button"
-          onClick={() =>
-            setOpenSections((prev) => ({ ...prev, brands: !prev.brands }))
-          }
-          className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-gray-800 py-1.5 hover:text-primary transition-colors select-none"
-        >
-          <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-primary" />
-            <span>Brands</span>
-          </div>
-          <ChevronDown
-            className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
-              openSections.brands ? 'rotate-180' : ''
-            }`}
-          />
-        </button>
+      {/* 2. Brands Accordion (below Categories: shows only brands that have products available in this category) */}
+      {(Boolean(currentCategory) || (!isAllProductsRoute && !brandSlug)) && availableBrands.length > 0 && (
+        <div className="border-b border-gray-200 pb-3">
+          <button
+            type="button"
+            onClick={() =>
+              setOpenSections((prev) => ({ ...prev, brands: !prev.brands }))
+            }
+            className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-gray-800 py-1.5 hover:text-primary transition-colors select-none"
+          >
+            <div className="flex items-center gap-2">
+              <Layers className="w-4 h-4 text-primary" />
+              <span>Brands</span>
+            </div>
+            <ChevronDown
+              className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
+                openSections.brands ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
 
-        {openSections.brands && (
-          <div className="mt-2.5 space-y-2">
-            {availableBrands.length > 0 ? (
-              availableBrands.map((brand) => {
+          {openSections.brands && (
+            <div className="mt-2.5 space-y-1.5">
+              {availableBrands.map((brand) => {
                 const isChecked = selectedBrands.includes(brand.name.toUpperCase());
                 return (
                   <label
@@ -414,15 +753,74 @@ export const ProductsPage = () => {
                     </span>
                   </label>
                 );
-              })
-            ) : (
-              <p className="text-xs text-gray-400 italic py-1">No brand tags found</p>
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 3. Category-specific specification filters (Shown when multiple rows of products exist: > 12 products) */}
+      {(Boolean(currentCategory) || !isAllProductsRoute) && specsToRender.length > 0 && (
+        specsToRender.map((spec) => (
+          <div key={spec.key} className="border-b border-gray-200 pb-3">
+            <button
+              type="button"
+              onClick={() =>
+                setOpenSections((prev) => ({
+                  ...prev,
+                  [`spec_${spec.key}`]: prev[`spec_${spec.key}`] === false ? true : false,
+                }))
+              }
+              className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-gray-800 py-1.5 hover:text-primary transition-colors select-none"
+            >
+              <div className="flex items-center gap-2">
+                <Cpu className="w-4 h-4 text-primary" />
+                <span className="truncate">{spec.label || spec.key}{spec.unit ? ` (${spec.unit})` : ''}</span>
+              </div>
+              <ChevronDown
+                className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
+                  openSections[`spec_${spec.key}`] !== false ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+
+            {openSections[`spec_${spec.key}`] !== false && (
+              <div className="mt-2.5 space-y-1.5">
+                {spec.values.map(({ val, count }) => {
+                  const isChecked = (selectedSpecs[spec.key] || []).includes(val);
+                  return (
+                    <label
+                      key={val}
+                      className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleToggleSpec(spec.key, val)}
+                          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#800020] cursor-pointer"
+                        />
+                        <span
+                          className={`truncate ${
+                            isChecked ? 'font-bold text-gray-900' : 'group-hover:text-primary'
+                          }`}
+                        >
+                          {val}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-gray-400 font-medium ml-2 shrink-0">
+                        {count}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
             )}
           </div>
-        )}
-      </div>
+        ))
+      )}
 
-      {/* 4. Availability is present on every catalog page */}
+      {/* 4. Availability (last filter: as is) */}
       <div className="border-b border-gray-200 pb-3">
         <button
           type="button"
@@ -447,82 +845,25 @@ export const ProductsPage = () => {
               const checked = selectedAvailability.includes(status);
               const count = availabilityFacets.find((item) => item.status === status)?.count || 0;
               return (
-                <label key={status} className="flex items-center justify-between text-xs text-gray-700 hover:text-primary cursor-pointer select-none py-0.5">
-                  <span className="flex items-center gap-2">
+                <label key={status} className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group">
+                  <span className="flex items-center gap-2 truncate">
                     <input
                       type="checkbox"
                       checked={checked}
                       onChange={() => handleToggleAvailability(status)}
                       className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#800020] cursor-pointer"
                     />
-                    <span className={checked ? 'font-bold text-gray-900' : ''}>{label}</span>
+                    <span className={`truncate ${checked ? 'font-bold text-gray-900' : 'group-hover:text-primary'}`}>
+                      {label}
+                    </span>
                   </span>
-                  <span className="text-[11px] text-gray-400 font-medium">{count}</span>
+                  <span className="text-[11px] text-gray-400 font-medium ml-2 shrink-0">{count}</span>
                 </label>
               );
             })}
           </div>
         )}
       </div>
-
-      {/* 5. Up to five category-specific product specification filters */}
-      {dynamicSpecs.map((specGroup) => (
-        <div key={specGroup.key} className="border-b border-gray-200 pb-3">
-          <button
-            type="button"
-            onClick={() =>
-              setOpenSections((prev) => ({
-                ...prev,
-                [`spec_${specGroup.key}`]: !prev[`spec_${specGroup.key}`],
-              }))
-            }
-            className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-gray-800 py-1.5 hover:text-primary transition-colors select-none"
-          >
-            <div className="flex items-center gap-2">
-              <Cpu className="w-4 h-4 text-primary" />
-              <span className="truncate">{specGroup.label || specGroup.key}{specGroup.unit ? ` (${specGroup.unit})` : ''}</span>
-            </div>
-            <ChevronDown
-              className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
-                openSections[`spec_${specGroup.key}`] !== false ? 'rotate-180' : ''
-              }`}
-            />
-          </button>
-
-          {openSections[`spec_${specGroup.key}`] !== false && (
-            <div className="mt-2.5 space-y-1.5">
-              {specGroup.values.map(({ val, count }) => {
-                const isChecked = (selectedSpecs[specGroup.key] || []).includes(val);
-                return (
-                  <label
-                    key={val}
-                    className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group"
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => handleToggleSpec(specGroup.key, val)}
-                        className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#800020] cursor-pointer"
-                      />
-                      <span
-                        className={`truncate ${
-                          isChecked ? 'font-bold text-gray-900' : 'group-hover:text-primary'
-                        }`}
-                      >
-                        {val}
-                      </span>
-                    </div>
-                    <span className="text-[11px] text-gray-400 font-medium ml-2 shrink-0">
-                      {count}
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      ))}
 
     </div>
   );
@@ -637,14 +978,24 @@ export const ProductsPage = () => {
         </div>
 
         {/* 2. TWO-COLUMN LAYOUT: SIDEBAR (lg:col-span-3) + PRODUCT GRID (lg:col-span-9) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        <div ref={catalogContainerRef} className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start relative">
           {/* DESKTOP SIDEBAR FILTERS (matching Screenshot) */}
-          <aside className="hidden lg:block lg:col-span-3 xl:col-span-3 2xl:col-span-2 bg-white rounded-lg border border-gray-200 p-4 shadow-2xs">
-            {isLoading && displayedProducts.length === 0 ? <FilterSidebarSkeleton /> : renderSidebarFilters()}
+          <aside
+            ref={asideRef}
+            className="hidden lg:block lg:col-span-3 xl:col-span-3 2xl:col-span-2 relative select-none"
+          >
+            <div
+              ref={sidebarInnerRef}
+              className="bg-white rounded-lg border border-gray-200 p-4 shadow-2xs will-change-transform"
+            >
+              <div ref={sidebarContentRef} className="will-change-transform">
+                {isLoading && displayedProducts.length === 0 ? <FilterSidebarSkeleton /> : renderSidebarFilters()}
+              </div>
+            </div>
           </aside>
 
           {/* MAIN PRODUCT CATALOG CONTENT */}
-          <main className="relative lg:col-span-9 xl:col-span-9 2xl:col-span-10 space-y-4 min-h-80">
+          <main ref={productsRef} className="relative lg:col-span-9 xl:col-span-9 2xl:col-span-10 space-y-4 min-h-80">
             {/* PRODUCT CARDS HIGH-DENSITY GRID (matching Screenshot: 4-5 cards per row on large displays) */}
             {isLoading && displayedProducts.length === 0 ? (
               <div className="storefront-product-grid gap-3 sm:gap-3.5">

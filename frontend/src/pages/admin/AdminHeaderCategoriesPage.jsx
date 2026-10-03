@@ -18,6 +18,7 @@ import Toast from '../../components/ui/Toast';
 import Pagination from '../../components/ui/Pagination';
 import { Plus, Edit2, Trash2, Layers, Search, ArrowUpDown } from 'lucide-react';
 import CategoryIcon from '../../components/ui/CategoryIcon';
+import CategoryFilterBuilder from '../../components/admin/CategoryFilterBuilder';
 
 /**
  * Dedicated Header Category Management Page (Tier 1 Root Categories)
@@ -123,6 +124,7 @@ const AdminHeaderCategoriesPage = () => {
       slug: '',
       image: '',
       description: '',
+      filterDefinitions: [],
       isActive: true,
       sortOrder: (categories.length || 0) + 1,
     });
@@ -138,6 +140,7 @@ const AdminHeaderCategoriesPage = () => {
       slug: category.slug || '',
       image: category.image || '',
       description: category.description || '',
+      filterDefinitions: category.filterDefinitions || [],
       isActive: category.isActive !== undefined ? category.isActive : true,
       sortOrder: category.sortOrder || 0,
     });
@@ -164,6 +167,7 @@ const AdminHeaderCategoriesPage = () => {
         parentId: null, // Always root / Header Category
         image: uploadedImage?.data?.url || formData.image.trim() || undefined,
         description: formData.description.trim() || undefined,
+        filterDefinitions: formData.filterDefinitions || [],
         isActive: formData.isActive,
         sortOrder: Number(formData.sortOrder) || 0,
       };
@@ -402,6 +406,11 @@ const AdminHeaderCategoriesPage = () => {
               rows={3}
             />
           </FormField>
+
+          <CategoryFilterBuilder
+            value={formData.filterDefinitions || []}
+            onChange={(filterDefinitions) => setFormData({ ...formData, filterDefinitions })}
+          />
 
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Sort Order Position">

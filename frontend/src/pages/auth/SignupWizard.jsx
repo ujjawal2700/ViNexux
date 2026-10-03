@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
+import Logo from '../../components/ui/Logo';
 import dealerService from '../../services/dealerService';
 import useToast from '../../hooks/useToast';
 import { INDIA_STATES, getCitiesForState } from '../../data/indiaStatesCities';
@@ -352,7 +353,13 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
 
   return (
     <div className={cn("w-full bg-white border border-gray-200/90 rounded-xl p-6 sm:p-8 shadow-sm relative z-10 transition-all duration-300", cardWidth)}>
-      
+      {/* Brand Logo Header */}
+      <div className="flex justify-center mb-6">
+        <Link to="/" className="inline-block transition-transform hover:scale-105" aria-label="Go to home">
+          <Logo className="h-11 sm:h-12 w-auto max-w-[220px] object-contain" />
+        </Link>
+      </div>
+
       {/* Top Segmented Tabs: Login | Register (Mega Jaipur Style) */}
       <div className="grid grid-cols-2 rounded-md overflow-hidden bg-[#f4eff1] p-1 mb-5 border border-gray-200/60">
         <button

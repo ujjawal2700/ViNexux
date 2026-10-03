@@ -1,5 +1,6 @@
 import { DealerProfile } from '../models/DealerProfile.js';
 import { User } from '../models/User.js';
+import { Session } from '../models/Session.js';
 import { storageService } from './storage/storage.service.js';
 import { whatsAppService } from './whatsapp/whatsapp.service.js';
 import { emailService } from './email/email.service.js';
@@ -408,6 +409,12 @@ export const revokeDealerStatus = async (dealerId, reason, adminId = null) => {
     profile.kycReviewAction = 'revoked';
   }
   await profile.save();
+
+  // Invalidate all active sessions for this dealer account so they are immediately logged out
+  await Session.updateMany(
+    { userId: profile.userId, isActive: true },
+    { isActive: false, revokedAt: new Date() }
+  );
 
   return await profile.populate([
     { path: 'userId', select: 'fullName email phone role accountStatus isPhoneVerified isEmailVerified' },

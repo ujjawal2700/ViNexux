@@ -65,12 +65,11 @@ const AdminCmsFooterPage = () => {
         quickLinksHeading: data.quickLinksHeading || 'Information',
         legalLinksHeading: data.legalLinksHeading || 'Legal',
         contactHeading: data.contactHeading || 'Contact Us',
-        quickLinks: Array.isArray(data.quickLinks)
-          ? data.quickLinks.map((link) => ({ label: link.label || '', url: link.url || '' }))
-          : [],
-        legalLinks: Array.isArray(data.legalLinks)
-          ? data.legalLinks.map((link) => ({ label: link.label || '', url: link.url || '' }))
-          : [],
+        quickLinks: [
+          ...(Array.isArray(data.quickLinks) ? data.quickLinks.map((link) => ({ label: link.label || '', url: link.url || '' })) : []),
+          ...(Array.isArray(data.legalLinks) ? data.legalLinks.map((link) => ({ label: link.label || '', url: link.url || '' })) : []),
+        ],
+        legalLinks: [],
         socialLinks: Array.isArray(data.socialLinks)
           ? data.socialLinks.map((link) => ({ label: link.label || '', url: link.url || '' }))
           : [],
@@ -108,24 +107,7 @@ const AdminCmsFooterPage = () => {
     setFormData({ ...formData, quickLinks: updated });
   };
 
-  // Array item handlers for Legal Links
-  const handleLegalLinkChange = (index, field, value) => {
-    const updated = [...formData.legalLinks];
-    updated[index][field] = value;
-    setFormData({ ...formData, legalLinks: updated });
-  };
-
-  const handleAddLegalLink = () => {
-    setFormData({
-      ...formData,
-      legalLinks: [...formData.legalLinks, { label: '', url: '' }],
-    });
-  };
-
-  const handleRemoveLegalLink = (index) => {
-    const updated = formData.legalLinks.filter((_, i) => i !== index);
-    setFormData({ ...formData, legalLinks: updated });
-  };
+  // (Legal links merged into quickLinks)
 
   const handleSocialLinkChange = (index, field, value) => {
     const updated = [...formData.socialLinks];
@@ -160,15 +142,7 @@ const AdminCmsFooterPage = () => {
       errors.quickLinks = qLinkErrors.join(' ');
     }
 
-    const lLinkErrors = [];
-    formData.legalLinks.forEach((link, idx) => {
-      if ((link.label && !link.url) || (!link.label && link.url)) {
-        lLinkErrors.push(`Legal link #${idx + 1} requires both a Label and a URL.`);
-      }
-    });
-    if (lLinkErrors.length > 0) {
-      errors.legalLinks = lLinkErrors.join(' ');
-    }
+    // legalLinks merged into quickLinks — validation handled above
 
     const socialErrors = [];
     formData.socialLinks.forEach((link, idx) => {
@@ -192,9 +166,7 @@ const AdminCmsFooterPage = () => {
         .filter((l) => l.label.trim() && l.url.trim())
         .map((l, index) => ({ label: l.label.trim(), url: l.url.trim(), sortOrder: index }));
 
-      const cleanedLegalLinks = formData.legalLinks
-        .filter((l) => l.label.trim() && l.url.trim())
-        .map((l, index) => ({ label: l.label.trim(), url: l.url.trim(), sortOrder: index }));
+      const cleanedLegalLinks = []; // merged into quickLinks
 
       const cleanedSocialLinks = formData.socialLinks
         .filter((l) => l.label.trim() && l.url.trim())
@@ -239,7 +211,7 @@ const AdminCmsFooterPage = () => {
         legalLinksHeading: updated.legalLinksHeading || 'Legal',
         contactHeading: updated.contactHeading || 'Contact Us',
         quickLinks: Array.isArray(updated.quickLinks) ? updated.quickLinks : cleanedQuickLinks,
-        legalLinks: Array.isArray(updated.legalLinks) ? updated.legalLinks : cleanedLegalLinks,
+        legalLinks: [],
         socialLinks: Array.isArray(updated.socialLinks) ? updated.socialLinks : cleanedSocialLinks,
         copyrightText: updated.copyrightText || '© {year} {company}. All Rights Reserved.',
         isActive: updated.isActive !== undefined ? updated.isActive : true,
@@ -389,26 +361,26 @@ const AdminCmsFooterPage = () => {
             </FormField>
           </Card>
 
-          {/* Quick Links */}
+          {/* Footer Information Links — Quick + Legal merged into one */}
           <Card className="p-6 space-y-4">
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Quick Navigation Links</h3>
-                <p className="text-xs text-gray-500">Links shown in the primary footer column</p>
+                <h3 className="text-lg font-semibold text-gray-900">Footer Information Links</h3>
+                <p className="text-xs text-gray-500">All links shown under the &quot;Information&quot; column in the footer. Max 7 per column — extras auto-wrap to a second column.</p>
               </div>
               <Button type="button" variant="secondary" size="sm" onClick={handleAddQuickLink}>
                 + Add Link
               </Button>
             </div>
 
-            <FormField label="Quick Links Column Heading">
+            <FormField label="Column Heading">
               <Input value={formData.quickLinksHeading} onChange={(e) => setFormData({ ...formData, quickLinksHeading: e.target.value })} placeholder="Information" />
             </FormField>
 
             {formErrors.quickLinks && <FormError message={formErrors.quickLinks} />}
 
             {formData.quickLinks.length === 0 ? (
-              <p className="text-xs text-gray-400 italic">No quick links configured.</p>
+              <p className="text-xs text-gray-400 italic">No links configured yet. Click &quot;+ Add Link&quot; to add one.</p>
             ) : (
               <div className="space-y-3">
                 {formData.quickLinks.map((link, idx) => (
@@ -416,14 +388,14 @@ const AdminCmsFooterPage = () => {
                     <span className="text-xs font-bold text-gray-400 w-6">#{idx + 1}</span>
                     <Input
                       type="text"
-                      placeholder="Label (e.g. Catalog)"
+                      placeholder="Label (e.g. About Vinexus)"
                       value={link.label}
                       onChange={(e) => handleQuickLinkChange(idx, 'label', e.target.value)}
                       className="flex-1"
                     />
                     <Input
                       type="text"
-                      placeholder="URL (e.g. /laptop/branded-laptop)"
+                      placeholder="URL (e.g. /content/pages/about-us)"
                       value={link.url}
                       onChange={(e) => handleQuickLinkChange(idx, 'url', e.target.value)}
                       className="flex-1"
@@ -433,59 +405,6 @@ const AdminCmsFooterPage = () => {
                       variant="danger"
                       size="sm"
                       onClick={() => handleRemoveQuickLink(idx)}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          {/* Legal Links */}
-          <Card className="p-6 space-y-4">
-            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Legal & Policy Links</h3>
-                <p className="text-xs text-gray-500">Links shown in the bottom legal strip/footer secondary column</p>
-              </div>
-              <Button type="button" variant="secondary" size="sm" onClick={handleAddLegalLink}>
-                + Add Legal Link
-              </Button>
-            </div>
-
-            <FormField label="Legal Links Column Heading">
-              <Input value={formData.legalLinksHeading} onChange={(e) => setFormData({ ...formData, legalLinksHeading: e.target.value })} placeholder="Legal" />
-            </FormField>
-
-            {formErrors.legalLinks && <FormError message={formErrors.legalLinks} />}
-
-            {formData.legalLinks.length === 0 ? (
-              <p className="text-xs text-gray-400 italic">No legal links configured.</p>
-            ) : (
-              <div className="space-y-3">
-                {formData.legalLinks.map((link, idx) => (
-                  <div key={idx} className="flex items-center space-x-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                    <span className="text-xs font-bold text-gray-400 w-6">#{idx + 1}</span>
-                    <Input
-                      type="text"
-                      placeholder="Label (e.g. Privacy Policy)"
-                      value={link.label}
-                      onChange={(e) => handleLegalLinkChange(idx, 'label', e.target.value)}
-                      className="flex-1"
-                    />
-                    <Input
-                      type="text"
-                      placeholder="URL (e.g. /pages/privacy-policy)"
-                      value={link.url}
-                      onChange={(e) => handleLegalLinkChange(idx, 'url', e.target.value)}
-                      className="flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="danger"
-                      size="sm"
-                      onClick={() => handleRemoveLegalLink(idx)}
                     >
                       Remove
                     </Button>

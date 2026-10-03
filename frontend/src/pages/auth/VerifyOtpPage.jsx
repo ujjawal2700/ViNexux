@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
+import Logo from '../../components/ui/Logo';
 import useToast from '../../hooks/useToast';
 import { ArrowLeft, Check, ShieldAlert } from 'lucide-react';
 
@@ -192,10 +193,16 @@ export const VerifyOtpPage = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-220px)] flex items-center justify-center p-4 sm:p-6 bg-white sm:bg-[#f8fafc] text-gray-900">
+    <div className="min-h-[calc(100vh-140px)] flex items-center justify-center p-4 sm:p-6 bg-white sm:bg-[#f8fafc] text-gray-900">
       {/* Mega Jaipur Layout Card with ViNexus Maroon Brand Styling */}
       <div className="w-full max-w-[430px] bg-white rounded-lg sm:shadow-sm sm:border sm:border-gray-200/90 p-5 sm:p-7">
-        
+        {/* Brand Logo Header */}
+        <div className="flex justify-center mb-5">
+          <Link to="/" className="inline-block transition-transform hover:scale-105" aria-label="Go to home">
+            <Logo className="h-10 sm:h-11 w-auto max-w-[200px] object-contain" />
+          </Link>
+        </div>
+
         {/* Top Segmented Header */}
         {portal === 'admin' ? (
           <div className="mb-6 p-2.5 bg-[#fdf2f4] border border-[#f3d5dc] rounded text-center">

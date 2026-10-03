@@ -1,6 +1,27 @@
 import axios from 'axios';
-import { getStoredRefreshToken, setStoredRefreshToken, clearStoredRefreshToken } from '../utils/tokenStorage';
+import { getStoredRefreshToken, setStoredRefreshToken, clearStoredRefreshToken, clearStoredUser } from '../utils/tokenStorage';
 import { loadingTracker } from '../utils/loadingTracker';
+
+// Throttled notification for session expiration to prevent multiple duplicate toasts
+let lastSessionExpiredTime = 0;
+export const notifySessionExpired = (portal = 'customer', message = 'Your session has expired. Please login again.') => {
+  const now = Date.now();
+  if (now - lastSessionExpiredTime < 5000) {
+    return;
+  }
+  lastSessionExpiredTime = now;
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('session-expired', {
+        detail: {
+          portal,
+          message,
+        },
+      })
+    );
+  }
+};
 
 // Normalize VITE_API_BASE_URL so a misconfigured value (missing "/api",
 // or with a trailing slash) still resolves correctly, instead of silently
@@ -90,7 +111,10 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    if (config.dedupe !== false) {
+    const method = (config.method || 'get').toLowerCase();
+    const isMutation = ['post', 'put', 'patch', 'delete'].includes(method);
+
+    if (isMutation && config.dedupe !== false) {
       const key = requestKey(config);
       if (inFlightRequests.has(key)) {
         const duplicateError = new axios.CanceledError('An identical request is already in progress.');
@@ -106,7 +130,6 @@ apiClient.interceptors.request.use(
     }
     if (!config.skipGlobalLoader) {
       config._globalLoaderTracked = true;
-      const method = (config.method || 'get').toLowerCase();
       const message = config.loadingMessage || (method === 'get' ? 'Loading content...' : 'Processing request...');
       loadingTracker.start(message);
     }
@@ -165,19 +188,8 @@ apiClient.interceptors.response.use(
 
       if (!refreshToken) {
         setAccessToken(null, portal);
-        if (typeof window !== 'undefined') {
-          try {
-            sessionStorage.setItem('pending_session_toast', 'Your session has expired. Please login again.');
-          } catch (e) {}
-          window.dispatchEvent(
-            new CustomEvent('session-expired', {
-              detail: {
-                portal,
-                message: 'Your session has expired. Please login again.',
-              },
-            })
-          );
-        }
+        // Do NOT dispatch session-expired or set pending toast here.
+        // A visitor or guest without a refresh token never had an active session.
         return Promise.reject(error);
       }
 
@@ -218,20 +230,9 @@ apiClient.interceptors.response.use(
       } catch (refreshErr) {
         processQueue(refreshErr, null);
         clearStoredRefreshToken(portal);
+        clearStoredUser(portal);
         setAccessToken(null, portal);
-        if (typeof window !== 'undefined') {
-          try {
-            sessionStorage.setItem('pending_session_toast', 'Your session has expired. Please login again.');
-          } catch (e) {}
-          window.dispatchEvent(
-            new CustomEvent('session-expired', {
-              detail: {
-                portal,
-                message: 'Your session has expired. Please login again.',
-              },
-            })
-          );
-        }
+        notifySessionExpired(portal);
         return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;

@@ -95,7 +95,9 @@ const AdminProductDetailPage = () => {
   const [sku, setSku] = useState("");
   const [modelNumber, setModelNumber] = useState("");
   const [model, setModel] = useState("");
-  const [informationPhone, setInformationPhone] = useState("");
+  const [stockQuantity, setStockQuantity] = useState("0");
+  const [variant, setVariant] = useState("");
+  const [warranty, setWarranty] = useState("1 Year ON-SITE / Direct Replacement Warranty");
   const [productUrl, setProductUrl] = useState("");
 
   // Pricing
@@ -242,7 +244,9 @@ const AdminProductDetailPage = () => {
       setDescription(prod.description || "");
       setModelNumber(prod.modelNumber || "");
       setModel(prod.model || "");
-      setInformationPhone(prod.informationPhone || "");
+      setStockQuantity(prod.stockQuantity !== undefined ? String(prod.stockQuantity) : "0");
+      setVariant(prod.variant || "");
+      setWarranty(prod.warranty || "1 Year ON-SITE / Direct Replacement Warranty");
       setProductUrl(prod.productUrl || "");
       setSelectedBrandId(String(prod.brandId?._id || prod.brandId || ""));
       setStandardPrice(
@@ -461,8 +465,8 @@ const AdminProductDetailPage = () => {
       setActiveTab("general");
       return;
     }
-    if (!model.trim()) {
-      setFormError("Model is required.");
+    if (stockQuantity === "" || isNaN(Number(stockQuantity)) || Number(stockQuantity) < 0) {
+      setFormError("Stock Quantity is required and must be a non-negative number.");
       setActiveTab("general");
       return;
     }
@@ -526,8 +530,10 @@ const AdminProductDetailPage = () => {
       const payload = {
         name: name.trim(),
         modelNumber: modelNumber.trim(),
-        model: model.trim(),
-        informationPhone: informationPhone.trim(),
+        model: model.trim() || "Standard Model",
+        stockQuantity: Number(stockQuantity) >= 0 ? Number(stockQuantity) : 0,
+        variant: variant.trim(),
+        warranty: warranty.trim(),
         productUrl: productUrl.trim(),
         sku: sku.trim().toUpperCase(),
         ...(effectiveCategoryId ? { categoryId: effectiveCategoryId } : {}),
@@ -735,15 +741,14 @@ const AdminProductDetailPage = () => {
               <label className="text-[11px] font-black uppercase tracking-wider text-[#800020] block mb-2">
                 Status
               </label>
-              <div className="relative">
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="w-full appearance-none bg-white border border-[#f0e6e8] rounded-xl px-4 py-2.5 text-xs font-bold text-[#800020] focus:outline-none focus:ring-2 focus:ring-[#800020]/20">
-                  <option value="published">PUBLISHED</option>
-                  <option value="draft">DRAFT / INACTIVE</option>
-                </select>
-              </div>
+              <Select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                options={[
+                  { value: 'published', label: 'PUBLISHED' },
+                  { value: 'draft', label: 'DRAFT / INACTIVE' },
+                ]}
+              />
               <p className="text-[10px] text-gray-500 mt-1.5">
                 {status === "published"
                   ? "Active in catalog and visible for order inquiries"
@@ -784,12 +789,12 @@ const AdminProductDetailPage = () => {
 
               {/* Description */}
               <FormField
-                label="ABOUT THIS ITEM"
-                hint="Provide detailed tech overview, capabilities and features">
+                label="KEY FEATURES"
+                hint="Provide key features, tech overview, capabilities and highlights">
                 <Textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Describe the item specifications, build material, features and overview here..."
+                  placeholder="Describe key features, item specifications, overview and highlights here..."
                   rows={4}
                   className="text-sm"
                 />
@@ -842,7 +847,7 @@ const AdminProductDetailPage = () => {
               </div>
 
               {/* Hardware Spec Attributes Grid (Only DB fields) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-2 border-t border-gray-100">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-2 border-t border-gray-100">
                 <FormField
                   label="MODEL NUMBER"
                   required
@@ -855,24 +860,45 @@ const AdminProductDetailPage = () => {
                   />
                 </FormField>
 
-                <FormField label="MODEL" required hint="Specific model line">
+                <FormField label="MODEL (OPTIONAL)" hint="Specific model line">
                   <Input
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
                     placeholder="e.g. ROG Strix G16"
+                  />
+                </FormField>
+
+                <FormField
+                  label="STOCK QUANTITY"
+                  required
+                  hint="Current available units (Required)">
+                  <Input
+                    type="number"
+                    min="0"
+                    value={stockQuantity}
+                    onChange={(e) => setStockQuantity(e.target.value)}
+                    placeholder="e.g. 25"
                     required
                   />
                 </FormField>
 
-                <FormField label="MORE INFORMATION PHONE" hint="Support phone">
+                <FormField label="VARIANT (OPTIONAL)" hint="e.g. 16GB RAM | 512GB SSD">
                   <Input
-                    value={informationPhone}
-                    onChange={(e) => setInformationPhone(e.target.value)}
-                    placeholder="e.g. +91 70738 88300"
+                    value={variant}
+                    onChange={(e) => setVariant(e.target.value)}
+                    placeholder="e.g. 16GB / 512GB NVMe SSD"
                   />
                 </FormField>
 
-                <FormField label="PRODUCT URL" hint="Brand official page">
+                <FormField label="WARRANTY (OPTIONAL)" hint="Warranty terms & conditions">
+                  <Input
+                    value={warranty}
+                    onChange={(e) => setWarranty(e.target.value)}
+                    placeholder="e.g. 1 Year ON-SITE / Direct Replacement Warranty"
+                  />
+                </FormField>
+
+                <FormField label="PRODUCT URL (OPTIONAL)" hint="Brand official page">
                   <Input
                     type="url"
                     value={productUrl}

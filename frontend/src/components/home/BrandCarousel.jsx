@@ -312,7 +312,7 @@ export const BrandCarousel = () => {
 
   return (
     <div
-      className="relative storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 my-3"
+      className="relative storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 my-3 overflow-hidden min-w-0 max-w-full"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
@@ -329,7 +329,7 @@ export const BrandCarousel = () => {
       {/* Brands Track (Clean SQUARE shape cards) */}
       <div
         ref={scrollRef}
-        className="flex items-center gap-2.5 sm:gap-3.5 overflow-x-auto scrollbar-none py-3 sm:py-4 px-2 sm:px-10"
+        className="flex items-center gap-2.5 sm:gap-3.5 overflow-x-auto scrollbar-none py-3 sm:py-4 px-2 sm:px-10 min-w-0 max-w-full"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {displayBrands.map((brand, index) => (

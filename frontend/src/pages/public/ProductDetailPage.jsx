@@ -316,42 +316,45 @@ export const ProductDetailPage = () => {
   )?.value || 'Standard Model';
 
   const warrantyText = useMemo(() => {
-    const fromSpec = product?.specifications?.find((s) => s.key.toLowerCase().includes('warranty'))?.value;
-    return fromSpec || '1 Year ON-SITE / Direct Replacement Warranty';
+    return product?.warranty || product?.specifications?.find((s) => s.key.toLowerCase().includes('warranty'))?.value || '1 Year ON-SITE / Direct Replacement Warranty';
   }, [product]);
 
-  // Structured Full Specifications List (Matching Image 2)
+  // Structured Full Specifications List
   const fullSpecifications = useMemo(() => {
     if (!product) return [];
     const list = [];
 
-    // Keep the client-managed identifiers first and separate.
+    // 1. Brand
     list.push({ key: 'Brand', value: brandName });
-    list.push({ key: 'Model Number', value: modelNumber });
-    list.push({ key: 'Model', value: modelName });
-    if (product.productUrl) list.push({ key: 'Product URL', value: product.productUrl });
 
-    // Add all existing specs from product.specifications if not already present
+    // 2. Stock Quantity
+    const stockVal = product.stockQuantity !== undefined && product.stockQuantity !== null
+      ? product.stockQuantity
+      : (availableStock !== undefined && availableStock !== null ? availableStock : 0);
+    list.push({ key: 'Stock Quantity', value: String(stockVal) });
+
+    // 3. Variant (if provided)
+    if (product.variant && product.variant.trim()) {
+      list.push({ key: 'Variant', value: product.variant.trim() });
+    }
+
+    // 4. Manually added specifications
     if (product.specifications && Array.isArray(product.specifications)) {
       product.specifications.forEach((s) => {
-        if (s.key && s.value && s.key.toLowerCase() !== 'brand' && !s.key.toLowerCase().includes('model')) {
-          list.push({ key: s.key, value: s.value });
+        const keyLower = s.key?.trim().toLowerCase();
+        if (s.key && s.value && !['brand', 'stock', 'inventory', 'stock quantity', 'variant'].includes(keyLower)) {
+          list.push({ key: s.key.trim(), value: s.value.trim() });
         }
       });
     }
 
-    // Warranty if not already in list
-    if (!list.some((s) => s.key.toLowerCase().includes('warranty'))) {
-      list.push({ key: 'Warranty Period', value: warrantyText });
-    }
-
-    // Key Features summary if available
-    if (product.description) {
-      list.push({ key: 'Key Features', value: product.description });
+    // 5. Key Features
+    if (product.description && product.description.trim()) {
+      list.push({ key: 'Key Features', value: product.description.trim() });
     }
 
     return list;
-  }, [product, brandName, modelNumber, modelName, warrantyText]);
+  }, [product, brandName, availableStock]);
 
   // Product Images Gallery (Safe for hooks order)
   const images = useMemo(() => {
@@ -595,19 +598,6 @@ export const ProductDetailPage = () => {
               </tbody>
             </table>
           </div>
-
-          {/* Contact Assistance Row (Matching Given Image: "For More Information: 70738 88300") */}
-          <div className="bg-[#fbf7f9] border border-rose-200/70 rounded-xl px-4 py-2.5 flex items-center text-xs">
-            <div className="flex items-center gap-2 text-gray-800">
-              <CheckCircle2 className="w-4 h-4 text-[#800020] shrink-0" />
-              <span>For More Information:</span>
-              {product.informationPhone ? (
-                <a href={`tel:${product.informationPhone.replace(/\s/g, '')}`} className="font-bold text-[#800020] hover:underline font-mono">{product.informationPhone}</a>
-              ) : (
-                <span className="font-semibold text-gray-500">Number will be updated by admin</span>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* Purchase card: product quantity is adjusted later in the cart. */}
@@ -733,6 +723,10 @@ export const ProductDetailPage = () => {
                       <a href={spec.value} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[#800020] underline underline-offset-2 hover:text-[#650019]">
                         View Product <ExternalLink className="w-3 h-3" />
                       </a>
+                    ) : spec.key === 'Key Features' ? (
+                      <div className="whitespace-pre-line font-sans font-normal text-gray-800 text-xs sm:text-sm leading-relaxed">
+                        {spec.value}
+                      </div>
                     ) : spec.value}
                   </td>
                 </tr>

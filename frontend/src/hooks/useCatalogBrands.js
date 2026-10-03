@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import axios from 'axios';
 import productService from '../services/productService';
 
 export default function useCatalogBrands() {
@@ -11,7 +12,8 @@ export default function useCatalogBrands() {
     try {
       const response = await productService.getBrands();
       setBrands(response.data?.brands || []);
-    } catch {
+    } catch (err) {
+      if (axios.isCancel(err)) return;
       setError('Unable to load brands. Please try again.');
     } finally {
       setLoading(false);

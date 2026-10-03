@@ -329,6 +329,23 @@
 /* Custom Modern Page Scrollbar */
 html {
   scroll-behavior: smooth;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 ::-webkit-scrollbar {
@@ -365,11 +382,17 @@ html {
   animation: shrinkProgress 5s linear forwards;
 }
 
-/* Public storefront widths stay readable on TVs without leaving laptop layouts cramped. */
+/* Public storefront widths: Full width (100%) at 100%, 90%, 80%, 75% zoom; centered margins only appear at 67% and 50% zoom (>= 2200px) */
 .storefront-container {
   width: 100%;
-  max-width: 2600px;
+  max-width: 100%;
   margin-inline: auto;
+}
+
+@media (min-width: 2200px) {
+  .storefront-container {
+    max-width: 2000px;
+  }
 }
 
 .storefront-product-grid {
@@ -388,3 +411,38 @@ html {
     grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
   }
 }
+
+/* Customer Home Screen Dedicated Product Grid:
+   - Exactly 6 products per row on 100% zoom laptops and desktop monitors (1280px - 1679px)
+   - Exactly 8 products per row when zoomed out to 80% or on wide / 32-inch monitors (>= 1680px)
+   - Fully responsive on mobile, tablet, and small laptop displays
+*/
+.home-product-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 769px) {
+  .home-product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .home-product-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .home-product-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1680px) {
+  .home-product-grid {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+}
+

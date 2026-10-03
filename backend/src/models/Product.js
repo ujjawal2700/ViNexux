@@ -75,10 +75,26 @@ const productSchema = new mongoose.Schema(
     },
     model: {
       type: String,
-      required: [true, 'Model is required'],
       trim: true,
       default: 'Standard Model',
       maxlength: [100, 'Model cannot exceed 100 characters'],
+    },
+    stockQuantity: {
+      type: Number,
+      default: 0,
+      min: [0, 'Stock quantity cannot be negative'],
+    },
+    variant: {
+      type: String,
+      trim: true,
+      default: '',
+      maxlength: [100, 'Variant cannot exceed 100 characters'],
+    },
+    warranty: {
+      type: String,
+      trim: true,
+      default: '1 Year ON-SITE / Direct Replacement Warranty',
+      maxlength: [200, 'Warranty cannot exceed 200 characters'],
     },
     informationPhone: {
       type: String,

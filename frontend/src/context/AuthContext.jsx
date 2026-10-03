@@ -1,20 +1,26 @@
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
 import authService from '../services/authService';
 import cartService from '../services/cartService';
 import guestCartService from '../services/guestCartService';
-import { setAccessToken } from '../api/axios';
-import { getStoredRefreshToken, setStoredRefreshToken, clearStoredRefreshToken } from '../utils/tokenStorage';
+import { setAccessToken, notifySessionExpired } from '../api/axios';
+import { getStoredRefreshToken, setStoredRefreshToken, clearStoredRefreshToken, getStoredUser, setStoredUser, clearStoredUser } from '../utils/tokenStorage';
 import { ROLES } from '../constants';
 
 export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  // 1. Customer / Dealer session state
-  const [user, setUser] = useState(null);
+  // 1. Customer / Dealer session state (guarded by presence of refresh token)
+  const [user, setUser] = useState(() => {
+    const refresh = getStoredRefreshToken('customer');
+    return refresh ? getStoredUser('customer') : null;
+  });
   const [accessToken, setAccessTokenState] = useState(null);
 
-  // 2. Admin session state
-  const [adminUser, setAdminUser] = useState(null);
+  // 2. Admin session state (guarded by presence of refresh token)
+  const [adminUser, setAdminUser] = useState(() => {
+    const refresh = getStoredRefreshToken('admin');
+    return refresh ? getStoredUser('admin') : null;
+  });
   const [adminAccessToken, setAdminAccessTokenState] = useState(null);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -51,9 +57,11 @@ export const AuthProvider = ({ children }) => {
           setStoredRefreshToken(newRefresh, 'admin');
         }
         setAdminUser(u);
+        setStoredUser(u, 'admin');
 
         if (portal !== 'admin') {
           clearStoredRefreshToken('customer');
+          clearStoredUser('customer');
           setAccessToken(null, 'customer');
           setUser(null);
           setAccessTokenState(null);
@@ -68,6 +76,7 @@ export const AuthProvider = ({ children }) => {
           setStoredRefreshToken(newRefresh, 'customer');
         }
         setUser(u);
+        setStoredUser(u, 'customer');
 
         // Merge the standard-price guest cart into the authenticated cart.
         // The backend recalculates every item using the account's current
@@ -97,7 +106,11 @@ export const AuthProvider = ({ children }) => {
         setAdminAccessTokenState(null);
         setAccessToken(null, 'admin');
         clearStoredRefreshToken('admin');
+        clearStoredUser('admin');
         if (window.location.pathname.startsWith('/admin') && !window.location.pathname.includes('/login')) {
+          try {
+            sessionStorage.setItem('pending_session_toast', 'Your session has expired. Please login again.');
+          } catch (err) {}
           window.location.href = '/admin/login';
         }
       } else {
@@ -105,7 +118,17 @@ export const AuthProvider = ({ children }) => {
         setAccessTokenState(null);
         setAccessToken(null, 'customer');
         clearStoredRefreshToken('customer');
-        if (window.location.pathname !== '/') {
+        clearStoredUser('customer');
+
+        const isCustomerProtectedRoute =
+          window.location.pathname.startsWith('/account') ||
+          window.location.pathname.startsWith('/dealer') ||
+          window.location.pathname.startsWith('/checkout');
+
+        if (isCustomerProtectedRoute) {
+          try {
+            sessionStorage.setItem('pending_session_toast', 'Your session has expired. Please login again.');
+          } catch (err) {}
           window.location.href = '/';
         }
       }
@@ -115,59 +138,101 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener('session-expired', handleSessionExpiredEvent);
   }, []);
 
+  const isRestoringRef = useRef(false);
+
   // Restore sessions on initial application load
   useEffect(() => {
+    if (isRestoringRef.current) return;
+    isRestoringRef.current = true;
+
     const restoreSession = async () => {
       const storedCustomerRefresh = getStoredRefreshToken('customer');
       const storedAdminRefresh = getStoredRefreshToken('admin');
 
-      // 1. Restore Customer / Dealer session if present
+      const tasks = [];
+
+      // 1. Customer restore task
       if (storedCustomerRefresh) {
-        try {
-          const response = await authService.refreshToken(storedCustomerRefresh);
-          if (response.success && response.data?.accessToken) {
-            await handleAuthSuccess(response.data, 'customer');
-          } else {
-            clearStoredRefreshToken('customer');
-            setAccessToken(null, 'customer');
-          }
-        } catch (err) {
-          console.warn('Customer session restoration failed:', err);
-          clearStoredRefreshToken('customer');
-          setAccessToken(null, 'customer');
-          setUser(null);
-          setAccessTokenState(null);
-          try {
-            sessionStorage.setItem('pending_session_toast', 'Your session has expired. Please login again.');
-          } catch (e) {}
-          window.dispatchEvent(
-            new CustomEvent('session-expired', {
-              detail: { portal: 'customer', message: 'Your session has expired. Please login again.' },
-            })
-          );
-          if (window.location.pathname.startsWith('/account') || window.location.pathname.startsWith('/customer') || window.location.pathname.startsWith('/dealer')) {
-            window.location.href = '/';
-          }
-        }
+        tasks.push(
+          (async () => {
+            try {
+              const response = await authService.refreshToken(storedCustomerRefresh);
+              if (response.success && response.data?.accessToken) {
+                await handleAuthSuccess(response.data, 'customer');
+              } else {
+                clearStoredRefreshToken('customer');
+                clearStoredUser('customer');
+                setAccessToken(null, 'customer');
+                setUser(null);
+                setAccessTokenState(null);
+              }
+            } catch (err) {
+              console.warn('Customer session restoration failed:', err);
+              clearStoredRefreshToken('customer');
+              clearStoredUser('customer');
+              setAccessToken(null, 'customer');
+              setUser(null);
+              setAccessTokenState(null);
+
+              const isCustomerProtectedRoute =
+                window.location.pathname.startsWith('/account') ||
+                window.location.pathname.startsWith('/dealer') ||
+                window.location.pathname.startsWith('/checkout');
+
+              if (isCustomerProtectedRoute) {
+                try {
+                  sessionStorage.setItem('pending_session_toast', 'Your session has expired. Please login again.');
+                } catch (e) {}
+                window.location.href = '/';
+              } else {
+                notifySessionExpired('customer');
+              }
+            }
+          })()
+        );
+      } else {
+        clearStoredUser('customer');
       }
 
-      // 2. Restore Admin session if present
+      // 2. Admin restore task (runs in parallel!)
       if (storedAdminRefresh) {
-        try {
-          const response = await authService.refreshToken(storedAdminRefresh);
-          if (response.success && response.data?.accessToken) {
-            await handleAuthSuccess(response.data, 'admin');
-          } else {
-            clearStoredRefreshToken('admin');
-            setAccessToken(null, 'admin');
-          }
-        } catch (err) {
-          console.warn('Admin session restoration failed:', err);
-          clearStoredRefreshToken('admin');
-          setAccessToken(null, 'admin');
-        }
+        tasks.push(
+          (async () => {
+            try {
+              const response = await authService.refreshToken(storedAdminRefresh);
+              if (response.success && response.data?.accessToken) {
+                await handleAuthSuccess(response.data, 'admin');
+              } else {
+                clearStoredRefreshToken('admin');
+                clearStoredUser('admin');
+                setAccessToken(null, 'admin');
+                setAdminUser(null);
+                setAdminAccessTokenState(null);
+              }
+            } catch (err) {
+              console.warn('Admin session restoration failed:', err);
+              clearStoredRefreshToken('admin');
+              clearStoredUser('admin');
+              setAccessToken(null, 'admin');
+              setAdminUser(null);
+              setAdminAccessTokenState(null);
+
+              if (window.location.pathname.startsWith('/admin') && !window.location.pathname.includes('/login')) {
+                try {
+                  sessionStorage.setItem('pending_session_toast', 'Your session has expired. Please login again.');
+                } catch (e) {}
+                window.location.href = '/admin/login';
+              } else {
+                notifySessionExpired('admin');
+              }
+            }
+          })()
+        );
+      } else {
+        clearStoredUser('admin');
       }
 
+      await Promise.allSettled(tasks);
       setIsLoading(false);
     };
 
@@ -266,11 +331,13 @@ export const AuthProvider = ({ children }) => {
         setAdminAccessTokenState(null);
         setAccessToken(null, 'admin');
         clearStoredRefreshToken('admin');
+        clearStoredUser('admin');
       } else {
         setUser(null);
         setAccessTokenState(null);
         setAccessToken(null, 'customer');
         clearStoredRefreshToken('customer');
+        clearStoredUser('customer');
       }
       setSessionConflict(false);
       setConflictTicket(null);
@@ -304,8 +371,10 @@ export const AuthProvider = ({ children }) => {
 
       if (isAdminUpdate) {
         setAdminUser((prev) => ({ ...prev, ...freshUser }));
+        setStoredUser(freshUser, 'admin');
       } else {
         setUser((prev) => ({ ...prev, ...freshUser }));
+        setStoredUser(freshUser, 'customer');
       }
       response.data.user = freshUser;
     }

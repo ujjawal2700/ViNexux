@@ -2,18 +2,19 @@ import contentService from '../../services/contentService';
 import { ErrorState } from '../../components/ui/ErrorState';
 import useAuth from '../../hooks/useAuth';
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import axios from 'axios';
 import categoryService from '../../services/categoryService';
 import productService from '../../services/productService';
 import ProductCard from '../../components/products/ProductCard';
 import BrandCarousel from '../../components/home/BrandCarousel';
-import CategorySlider from '../../components/home/CategorySlider';
 import HeroBannerSlider from '../../components/home/HeroBannerSlider';
 import Skeleton, { BrandCarouselSkeleton, ProductCardSkeleton } from '../../components/ui/Skeleton';
+import { Link } from 'react-router-dom';
+import { ChevronRight } from 'lucide-react';
 
 const HomePageSkeleton = () => (
   <div className="w-full min-h-screen bg-gray-50 pb-16 space-y-6 sm:space-y-8" role="status" aria-label="Loading storefront">
-    <Skeleton className="w-full aspect-[12/5] sm:aspect-[5/2] lg:aspect-[15/4] rounded-none" />
+    <Skeleton className="w-full aspect-[16/9] sm:aspect-[21/9] lg:aspect-[15/4] rounded-none" />
 
     <div className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12">
       <BrandCarouselSkeleton count={8} className="px-0" />
@@ -21,8 +22,8 @@ const HomePageSkeleton = () => (
 
     <div className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-4">
       <Skeleton className="h-6 w-44" />
-      <div className="storefront-product-grid gap-3 sm:gap-4">
-        {Array.from({ length: 6 }).map((_, index) => (
+      <div className="home-product-grid gap-3 sm:gap-4">
+        {Array.from({ length: 8 }).map((_, index) => (
           <ProductCardSkeleton key={index} />
         ))}
       </div>
@@ -41,7 +42,7 @@ export const HomePage = () => {
   // Products state
   const [updatedProducts, setUpdatedProducts] = useState([]);
   const [newArrivals, setNewArrivals] = useState([]);
-  const [headerCategorySections, setHeaderCategorySections] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showLoadingSkeleton, setShowLoadingSkeleton] = useState(false);
 
@@ -62,8 +63,8 @@ export const HomePage = () => {
       const [bannerResponse, catRes, featured, newest] = await Promise.all([
         contentService.getBanners(),
         categoryService.getCategoryTree(),
-        productService.getProducts({ sortBy: 'updatedAt', sortOrder: 'desc', limit: 6 }),
-        productService.getProducts({ sortBy: 'createdAt', sortOrder: 'desc', limit: 6 }),
+        productService.getProducts({ sortBy: 'updatedAt', sortOrder: 'desc', limit: 8 }),
+        productService.getProducts({ sortBy: 'createdAt', sortOrder: 'desc', limit: 8 }),
       ]);
       setBanners((bannerResponse.data?.banners || []).map((banner) => ({ ...banner, id: banner._id, image: banner.image?.url, link: banner.link || '/' })));
       const rootCats = (catRes.data?.categories || []).filter((category) => !category.parentId);
@@ -72,20 +73,22 @@ export const HomePage = () => {
       setNewArrivals(newest.data?.products || []);
       setIsLoading(false);
 
-      // Category product rows are below the fold. Load them after the main
-      // storefront is visible so they do not block the hero banner.
+      // Load 1 representative product per available root header category (max 12 products for 2 rows of 6)
       const sectionResults = await Promise.allSettled(rootCats.map(async (category) => {
         const response = await productService.getProducts(
-          { categoryId: category._id, limit: 8 },
+          { categoryId: category._id, limit: 1 },
           { skipGlobalLoader: true }
         );
-        return { category, products: response.data?.products || [] };
+        const prods = response.data?.products || [];
+        return prods.length > 0 ? prods[0] : null;
       }));
-      const sections = sectionResults
-        .filter((result) => result.status === 'fulfilled' && result.value.products.length)
-        .map((result) => result.value);
-      setHeaderCategorySections(sections);
-    } catch {
+      const repProducts = sectionResults
+        .filter((result) => result.status === 'fulfilled' && result.value)
+        .map((result) => result.value)
+        .slice(0, 12);
+      setAllProducts(repProducts);
+    } catch (err) {
+      if (axios.isCancel(err)) return;
       setError('Unable to load the storefront. Please retry.');
     } finally {
       setIsLoading(false);
@@ -100,7 +103,7 @@ export const HomePage = () => {
   if (isLoading && showLoadingSkeleton) return <HomePageSkeleton />;
 
   return (
-    <div className="w-full bg-gray-50 pb-16 space-y-6 sm:space-y-8">
+    <div className="w-full max-w-full bg-gray-50 pb-16 space-y-6 sm:space-y-8 overflow-x-hidden">
       
       {/* 1. HERO WIDE BANNER SLIDER */}
       <section className="relative w-full overflow-hidden shadow-xs">
@@ -112,78 +115,59 @@ export const HomePage = () => {
         <BrandCarousel />
       </section>
 
-      {/* 3. ALL HEADER CATEGORIES WITH LOGOS / ICONS SLIDING */}
-      <section className="w-full">
-        <CategorySlider categories={categories} />
-      </section>
-
-      {/* 4. UPDATED PRODUCTS SECTION (Full Width Grid - Exactly 6 per row) */}
+      {/* 3. UPDATED PRODUCTS SECTION (6 items per row at 100%, 8 items per row at 80% / wide screen, max 8 items) */}
       <section className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3">
-        <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+        <div className="border-b border-gray-200 pb-2">
           <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight text-left">
             Updated Products
           </h2>
-          <Link
-            to="/search"
-            className="text-xs font-semibold text-primary hover:underline"
-          >
-            View All
-          </Link>
         </div>
 
-        <div className="storefront-product-grid gap-3 sm:gap-4">
-          {updatedProducts.map((product) => (
+        <div className="home-product-grid gap-3 sm:gap-4">
+          {updatedProducts.slice(0, 8).map((product) => (
             <ProductCard key={product._id} product={product} />
           ))}
         </div>
       </section>
 
-      {/* 5. NEW ARRIVALS SECTION (Full Width Grid - Exactly 6 per row) */}
+      {/* 5. NEW ARRIVALS SECTION (6 items per row at 100%, 8 items per row at 80% / wide screen, max 8 items) */}
       <section className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3 pt-2 sm:pt-4">
-        <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+        <div className="border-b border-gray-200 pb-2">
           <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight text-left">
             New Arrivals
           </h2>
-          <Link
-            to="/search"
-            className="text-xs font-semibold text-primary hover:underline"
-          >
-            View All
-          </Link>
         </div>
 
-        <div className="storefront-product-grid gap-3 sm:gap-4">
-          {newArrivals.map((product) => (
+        <div className="home-product-grid gap-3 sm:gap-4">
+          {newArrivals.slice(0, 8).map((product) => (
             <ProductCard key={product._id} product={product} />
           ))}
         </div>
       </section>
 
-      {/* 6. HEADER CATEGORIES LINE BY LINE (Matching Mega Jaipur Image 4 & 5)
-             - Renders each real Header Category in line-by-line sequence (Desktop, Laptop, Storage, etc.)
-             - Max 8 products per category
-             - NO "View All" link
-      */}
-      {headerCategorySections.map((section) => (
-        <section
-          key={section.category._id || section.category.slug}
-          className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3 pt-2 sm:pt-4"
-        >
-          {/* Category Header: Name only (NO View All option, matching Mega Jaipur) */}
-          <div className="border-b border-gray-200 pb-2">
+      {/* 6. ALL PRODUCTS SECTION (1 product per available header category, max 2 rows of 6 products) */}
+      {allProducts.length > 0 && (
+        <section className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3 pt-2 sm:pt-4">
+          <div className="flex items-center justify-between border-b border-gray-200 pb-2">
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight text-left">
-              {section.category.name}
+              All Products
             </h2>
+            <Link
+              to="/products"
+              className="inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-[#800020] hover:text-[#650019] hover:underline transition-colors cursor-pointer"
+            >
+              <span>View All</span>
+              <ChevronRight className="w-4 h-4" />
+            </Link>
           </div>
 
-          {/* Up to 8 Products in responsive grid */}
-          <div className="storefront-product-grid gap-3 sm:gap-4">
-            {section.products.slice(0, 8).map((product) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4">
+            {allProducts.slice(0, 12).map((product) => (
               <ProductCard key={product._id} product={product} />
             ))}
           </div>
         </section>
-      ))}
+      )}
 
     </div>
   );
