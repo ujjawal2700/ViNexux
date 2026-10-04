@@ -12,7 +12,8 @@
     "test:product-import": "node tests/productImport.test.js",
     "backfill:product-models": "node scripts/backfill_product_models.js",
     "backfill:catalog-fields": "node scripts/backfill_catalog_fields.js",
-    "cleanup:business-data": "node scripts/delete_business_data.js"
+    "cleanup:business-data": "node scripts/delete_business_data.js",
+    "seed:admin": "node scripts/seed_admin.js"
   },
   "keywords": [
     "vinexus",
@@ -47,5 +48,11 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.9"
+  },
+  "overrides": {
+    "uuid": "^11.1.1",
+    "nodemon": {
+      "chokidar": "^4.0.3"
+    }
   }
 }

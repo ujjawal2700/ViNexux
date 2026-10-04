@@ -305,7 +305,8 @@ export const prepareProductImport = async (workbookBuffer, archiveBuffer) => {
         }
       } catch { errors.push('Specifications JSON must be a JSON object.'); }
     }
-    specifications.push({ key: 'Stock', value: String(numeric(fields['Stock Quantity'], 'Stock Quantity', errors, true)) });
+    const stockQuantity = numeric(fields['Stock Quantity'], 'Stock Quantity', errors, true);
+    specifications.push({ key: 'Stock', value: String(stockQuantity) });
     const payload = {
       sku, modelNumber,
       model: fields['Product Name / Model'] ?? fields.Model,
@@ -313,6 +314,7 @@ export const prepareProductImport = async (workbookBuffer, archiveBuffer) => {
       categoryId: category ? String(category._id) : undefined, brandId: String(brand?._id || ''),
       standardPrice: numeric(fields['Standard Price'], 'Standard Price', errors),
       dealerPrice: numeric(fields['Dealer Price'], 'Dealer Price', errors),
+      stockQuantity,
       description: fields.Description || '', informationPhone: fields['Information Phone'] || '',
       productUrl: fields['Product URL (Optional)'] ?? fields['Product URL'],
       specifications: [...specifications, ...(brand ? [{ key: 'Brand', value: brand.name }] : [])],

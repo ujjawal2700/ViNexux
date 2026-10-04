@@ -27,6 +27,7 @@ async function seed() {
   // passwordHash. ADMIN_DEFAULT_PASSWORD lets a real deployment set its own;
   // local/dev falls back to a documented default - either way, this is only
   // the FIRST factor, an OTP is still required after it.
+  const adminDefaultEmail = process.env.ADMIN_DEFAULT_EMAIL || 'admin@vinexus.in';
   const adminDefaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'Admin@12345';
   const adminPasswordHash = await bcrypt.hash(adminDefaultPassword, 10);
   if (!process.env.ADMIN_DEFAULT_PASSWORD) {
@@ -48,7 +49,7 @@ async function seed() {
     {
       fullName: 'System Administrator',
       name: 'System Administrator',
-      email: 'admin@vinexus.com',
+      email: adminDefaultEmail,
       phone: '8949940610',
       role: 'admin',
       accountStatus: 'active',
@@ -70,10 +71,7 @@ async function seed() {
   ];
 
   for (const uData of usersData) {
-    // +passwordHash: needed below so a reseed never clobbers an admin's
-    // real password (e.g. one they've already set via /forgot-password) -
-    // select:false would otherwise hide it from `existing`, making it look
-    // unset even when it isn't.
+    // +passwordHash: needed below so a reseed can inspect and ensure admin credentials
     let existing = await User.findOne({ email: uData.email }).select('+passwordHash');
     if (!existing) {
       existing = await User.findOne({ phone: uData.phone }).select('+passwordHash');
@@ -82,9 +80,7 @@ async function seed() {
     let user;
     if (existing) {
       Object.assign(existing, uData);
-      // Only set the demo default password if this admin has never had one
-      // set at all - never overwrite a real password on reseed.
-      if (uData.role === 'admin' && !existing.passwordHash) {
+      if (uData.role === 'admin') {
         existing.passwordHash = adminPasswordHash;
       }
       user = await existing.save();

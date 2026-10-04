@@ -335,7 +335,11 @@ isActive,
     if (updateData.model !== undefined) product.model = updateData.model.trim();
     if (updateData.stockQuantity !== undefined) {
       const parsedStock = Number(updateData.stockQuantity);
-      product.stockQuantity = !isNaN(parsedStock) && parsedStock >= 0 ? parsedStock : 0;
+      const newStock = !isNaN(parsedStock) && parsedStock >= 0 ? parsedStock : 0;
+      if (product.stockQuantity !== newStock) {
+        product.stockQuantity = newStock;
+        product.stockUpdatedAt = new Date();
+      }
     }
     if (updateData.variant !== undefined) product.variant = updateData.variant.trim();
     if (updateData.warranty !== undefined) product.warranty = updateData.warranty.trim();

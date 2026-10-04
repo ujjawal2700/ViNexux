@@ -92,7 +92,7 @@ export const buildProductPath = (product, allCategories = []) => {
   const categoryId = product.categoryId?._id || product.categoryId;
   const category = allCategories.find((item) => String(item._id) === String(categoryId));
   const categoryPath = buildCategoryPath(category || product.categoryId, allCategories);
-  return categoryPath === '/' ? '/' : `${categoryPath}/${product._id}`;
+  return categoryPath === '/' ? `/products/${product._id}` : `${categoryPath}/${product._id}`;
 };
 
 /**

@@ -93,7 +93,10 @@ const loadSearchVocabulary = async () => {
   };
   const categories = await getPublicCategories();
   categories.forEach((category) => add(category.name));
-  const cursor = Product.find({ isActive: true, categoryId: { $in: categories.map((category) => category._id) } })
+  const categoryMatch = categories.length
+    ? { $or: [{ categoryId: { $in: categories.map((c) => c._id) } }, { categoryId: null }, { categoryId: { $exists: false } }] }
+    : {};
+  const cursor = Product.find({ isActive: true, ...categoryMatch })
     .select('name +brandKey')
     .lean()
     .cursor();
@@ -150,14 +153,17 @@ const correctSearchTerm = async (term) => {
 export const getPublicBrands = async () => {
   const categories = await getPublicCategories();
   const managed = await Brand.find({ isActive: true }).sort({ sortOrder: 1, name: 1 }).lean();
+  const categoryMatch = categories.length
+    ? { $or: [{ categoryId: { $in: categories.map((c) => c._id) } }, { categoryId: null }, { categoryId: { $exists: false } }] }
+    : {};
   const counts = await Product.aggregate([
-    { $match: { isActive: true, categoryId: { $in: categories.map((category) => category._id) } } },
+    { $match: { isActive: true, ...categoryMatch } },
     { $group: { _id: '$brandId', count: { $sum: 1 } } },
   ]);
   const countById = new Map(counts.filter((row) => row._id).map((row) => [String(row._id), row.count]));
   // Compatibility until existing specification-only brands are migrated in admin.
   const legacy = await Product.aggregate([
-    { $match: { isActive: true, categoryId: { $in: categories.map((category) => category._id) } } },
+    { $match: { isActive: true, ...categoryMatch } },
     { $match: { brandKey: { $ne: '' } } },
     { $group: { _id: '$brandKey', count: { $sum: 1 } } },
     { $sort: { _id: 1 } },
@@ -241,12 +247,31 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
       allowedIds = [];
     }
   }
-  const match = { isActive: true, categoryId: { $in: allowedIds } };
+  const match = { isActive: true };
+  if (requestedCategory) {
+    match.categoryId = { $in: allowedIds };
+  } else if (allowedIds.length > 0) {
+    match.$or = [
+      { categoryId: { $in: allowedIds } },
+      { categoryId: null },
+      { categoryId: { $exists: false } },
+    ];
+  }
   if (query.id) match._id = new mongoose.Types.ObjectId(query.id);
   if (options.ids) match._id = { $in: options.ids.map((id) => new mongoose.Types.ObjectId(id)) };
+  if (query.sortBy === 'stockUpdatedAt') {
+    match.stockUpdatedAt = { $ne: null };
+  }
   const searchTerm = options.searchWords ? '' : query.search?.trim() || '';
   const searchOr = searchTerm ? buildSearchOr(categories, searchTerm) : null;
-  if (searchOr) match.$or = searchOr;
+  if (searchOr) {
+    if (match.$or) {
+      match.$and = [...(match.$and || []), { $or: match.$or }, { $or: searchOr }];
+      delete match.$or;
+    } else {
+      match.$or = searchOr;
+    }
+  }
   if (options.searchWords) match.$and = options.searchWords.map((word) => ({ $or: buildSearchOr(categories, word) }));
   // Brand and stock fields are stored on each product, so every filter below
   // is a plain $match that can use indexes; nothing is computed per document
@@ -290,7 +315,7 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   const page = Math.max(1, Number(query.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
   const sortField = ['standardPrice', 'dealerPrice'].includes(query.sortBy) ? 'applicablePrice'
-    : ['name', 'modelNumber', 'sku', 'createdAt', 'updatedAt'].includes(query.sortBy) ? query.sortBy : 'createdAt';
+    : ['name', 'modelNumber', 'sku', 'createdAt', 'updatedAt', 'stockUpdatedAt'].includes(query.sortBy) ? query.sortBy : 'createdAt';
   // The dealer-price lookup is per document, so run it on the current page
   // only, unless a price filter or price sort needs it for every match.
   const priceNeededBeforePaging = sortField === 'applicablePrice' || query.minPrice !== undefined || query.maxPrice !== undefined;
@@ -299,10 +324,13 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   // ahead of $facet (where they can use indexes) when no facets are requested.
   const facetFilters = includeFacets ? filtered : [];
   if (!includeFacets) pipeline.push(...filtered);
+  const sortStage = query.sortBy === 'stockUpdatedAt'
+    ? { stockUpdatedAt: query.sortOrder === 'asc' ? 1 : -1, updatedAt: -1, _id: 1 }
+    : { [sortField]: query.sortOrder === 'asc' ? 1 : -1, _id: 1 };
   const resultFacets = {
     products: [
       ...facetFilters,
-      { $sort: { [sortField]: query.sortOrder === 'asc' ? 1 : -1, _id: 1 } },
+      { $sort: sortStage },
       { $skip: (page - 1) * limit },
       { $limit: limit },
       ...(priceNeededBeforePaging ? [] : pricingStages),

@@ -217,16 +217,31 @@ const AdminHeaderCategoriesPage = () => {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <AdminPageHeader
-        title="Header Categories"
-        subtitle="Manage all top-level root categories (Tier 1)"
-        badge={`${categories.length} Categories`}
+        title="Header Categories (Top Departments)"
+        subtitle="Manage the primary shopping departments displayed on the top navigation bar of your website."
+        badge={`${categories.length} Departments`}
         action={
           <Button variant="primary" size="sm" onClick={handleOpenCreate}>
             <Plus className="w-4 h-4 mr-1.5" />
-            Add Header Category
+            Add Header Department
           </Button>
         }
       />
+
+      {/* Non-tech Friendly Explanatory Card */}
+      <div className="rounded-xl border border-rose-200/80 bg-gradient-to-r from-rose-50/70 via-white to-white p-4 text-xs text-gray-700 shadow-2xs">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-lg bg-[#800020]/10 text-[#800020] shrink-0 mt-0.5">
+            <Layers className="w-5 h-5" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-bold text-gray-900 text-sm">How Header Categories Work</h3>
+            <p className="text-gray-600 leading-relaxed">
+              <strong>Header Categories</strong> are the main shopping departments shown across the top navigation bar of your store (e.g. <em>Desktop, Laptop, Storage, Security</em>). Each department can contain <strong>Main Categories</strong> (e.g. under "Security" you can have "CCTV Cameras", "Biometrics"), which then contain specific <strong>Subcategories</strong>.
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Search & Filter Bar */}
       <div className="bg-white border border-gray-200 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
@@ -367,42 +382,75 @@ const AdminHeaderCategoriesPage = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingCategory ? 'Edit Header Category' : 'Create Header Category'}
+        title={editingCategory ? 'Edit Department (Header Category)' : 'Create New Department (Header Category)'}
+        description="Top-level shopping departments displayed across your website's main navigation menu."
+        size="xl"
+        className="max-w-3xl sm:max-w-4xl"
+        footer={
+          <div className="flex items-center justify-end gap-3 w-full">
+            <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" form="header-category-form" isLoading={formSubmitting}>
+              {editingCategory ? 'Save Changes' : 'Create Header Category'}
+            </Button>
+          </div>
+        }
       >
-        <form onSubmit={handleFormSubmit} className="space-y-4">
+        <form id="header-category-form" onSubmit={handleFormSubmit} className="space-y-4 pt-1">
           <FormError message={formError} />
 
-          <FormField label="Header Category Name" required>
+          <FormField
+            label="Department / Category Name"
+            required
+            helperText="The primary name displayed in the top navigation bar (e.g. Laptops, Storage, CCTV Security)."
+          >
             <Input
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="e.g. Desktop, Laptop, Security..."
+              placeholder="e.g. Desktop Computers, Laptops, Security Systems"
               required
             />
           </FormField>
 
-          <FormField label="URL Slug (Optional)" hint="Leave blank to auto-generate from name">
+          <FormField
+            label="Web Address Link (URL Slug)"
+            hint="Optional — leave blank to automatically create a clean web link from the name"
+          >
             <Input
               value={formData.slug}
               onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-              placeholder="e.g. desktop"
+              placeholder="e.g. laptops (or leave empty)"
             />
           </FormField>
 
-          <FormField label="Category Image">
-            <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={(e) => setCategoryImageFile(e.target.files?.[0] || null)} className="mb-2 block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-muted file:px-3 file:py-2 file:text-xs file:font-semibold" />
-            <Input
-              value={formData.image}
-              onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-              placeholder="Existing image URL or optional external URL"
-            />
+          <FormField
+            label="Department Photo or Banner (Optional)"
+            helperText="Upload an image (PNG, JPG, WebP) or enter an external image URL."
+          >
+            <div className="space-y-2">
+              <input
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                onChange={(e) => setCategoryImageFile(e.target.files?.[0] || null)}
+                className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-gray-700 hover:file:bg-gray-200 cursor-pointer"
+              />
+              <Input
+                value={formData.image}
+                onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                placeholder="Or paste external image URL (e.g. https://...)"
+              />
+            </div>
           </FormField>
 
-          <FormField label="Description (Optional)">
+          <FormField
+            label="Department Description (Optional)"
+            helperText="A brief overview of the products found in this department."
+          >
             <Textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Brief overview of this header category..."
+              placeholder="Brief overview of products in this category..."
               rows={3}
             />
           </FormField>
@@ -412,8 +460,11 @@ const AdminHeaderCategoriesPage = () => {
             onChange={(filterDefinitions) => setFormData({ ...formData, filterDefinitions })}
           />
 
-          <div className="grid grid-cols-2 gap-4">
-            <FormField label="Sort Order Position">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              label="Menu Order Position"
+              helperText="Lower numbers appear first on the menu (e.g. 1 is first on the left)."
+            >
               <Input
                 type="number"
                 min="0"
@@ -422,25 +473,19 @@ const AdminHeaderCategoriesPage = () => {
               />
             </FormField>
 
-            <FormField label="Active Status">
+            <FormField
+              label="Website Visibility"
+              helperText="Control whether this category is active and visible to shoppers."
+            >
               <Select
                 value={formData.isActive ? 'true' : 'false'}
                 onChange={(e) => setFormData({ ...formData, isActive: e.target.value === 'true' })}
                 options={[
-                  { value: 'true', label: 'Active' },
-                  { value: 'false', label: 'Inactive' },
+                  { value: 'true', label: 'Visible on Website' },
+                  { value: 'false', label: 'Hidden (Draft)' },
                 ]}
               />
             </FormField>
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4 border-t border-border">
-            <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" isLoading={formSubmitting}>
-              {editingCategory ? 'Save Changes' : 'Create Header Category'}
-            </Button>
           </div>
         </form>
       </Modal>

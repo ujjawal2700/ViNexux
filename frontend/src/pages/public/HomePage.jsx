@@ -60,27 +60,19 @@ export const HomePage = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [bannerResponse, catRes, featured, newest] = await Promise.all([
+      const [bannerResponse, catRes, featured, newest, allRes] = await Promise.all([
         contentService.getBanners(),
         categoryService.getCategoryTree(),
-        productService.getProducts({ sortBy: 'updatedAt', sortOrder: 'desc', limit: 8, includeFacets: false }),
+        productService.getProducts({ sortBy: 'stockUpdatedAt', sortOrder: 'desc', limit: 8, includeFacets: false }),
         productService.getProducts({ sortBy: 'createdAt', sortOrder: 'desc', limit: 8, includeFacets: false }),
+        productService.getProducts({ page: 1, limit: 16, includeFacets: false }),
       ]);
       setBanners((bannerResponse.data?.banners || []).map((banner) => ({ ...banner, id: banner._id, image: banner.image?.url, link: banner.link || '/' })));
       const rootCats = (catRes.data?.categories || []).filter((category) => !category.parentId);
       setCategories(rootCats);
       setUpdatedProducts(featured.data?.products || []);
       setNewArrivals(newest.data?.products || []);
-      setIsLoading(false);
-
-      // 1 representative product per root header category (max 12 for 2 rows of 6).
-      // Non-critical section: a failure leaves it empty rather than erroring the page.
-      try {
-        const highlights = await productService.getCategoryHighlights({ skipGlobalLoader: true });
-        setAllProducts((highlights.data?.products || []).slice(0, 12));
-      } catch {
-        setAllProducts([]);
-      }
+      setAllProducts(allRes.data?.products || []);
     } catch (err) {
       if (axios.isCancel(err)) return;
       setError('Unable to load the storefront. Please retry.');
@@ -109,37 +101,41 @@ export const HomePage = () => {
         <BrandCarousel />
       </section>
 
-      {/* 3. UPDATED PRODUCTS SECTION (6 items per row at 100%, 8 items per row at 80% / wide screen, max 8 items) */}
-      <section className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3">
-        <div className="border-b border-gray-200 pb-2">
-          <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight text-left">
-            Updated Products
-          </h2>
-        </div>
+      {/* 3. UPDATED PRODUCTS SECTION */}
+      {updatedProducts.length > 0 && (
+        <section className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3">
+          <div className="border-b border-gray-200 pb-2">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight text-left">
+              Updated Products
+            </h2>
+          </div>
 
-        <div className="home-product-grid gap-3 sm:gap-4">
-          {updatedProducts.slice(0, 8).map((product) => (
-            <ProductCard key={product._id} product={product} />
-          ))}
-        </div>
-      </section>
+          <div className="home-product-grid gap-3 sm:gap-4">
+            {updatedProducts.slice(0, 8).map((product) => (
+              <ProductCard key={product._id} product={product} />
+            ))}
+          </div>
+        </section>
+      )}
 
-      {/* 5. NEW ARRIVALS SECTION (6 items per row at 100%, 8 items per row at 80% / wide screen, max 8 items) */}
-      <section className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3 pt-2 sm:pt-4">
-        <div className="border-b border-gray-200 pb-2">
-          <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight text-left">
-            New Arrivals
-          </h2>
-        </div>
+      {/* 4. NEW ARRIVALS SECTION */}
+      {newArrivals.length > 0 && (
+        <section className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3 pt-2 sm:pt-4">
+          <div className="border-b border-gray-200 pb-2">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight text-left">
+              New Arrivals
+            </h2>
+          </div>
 
-        <div className="home-product-grid gap-3 sm:gap-4">
-          {newArrivals.slice(0, 8).map((product) => (
-            <ProductCard key={product._id} product={product} />
-          ))}
-        </div>
-      </section>
+          <div className="home-product-grid gap-3 sm:gap-4">
+            {newArrivals.slice(0, 8).map((product) => (
+              <ProductCard key={product._id} product={product} />
+            ))}
+          </div>
+        </section>
+      )}
 
-      {/* 6. ALL PRODUCTS SECTION (1 product per available header category, max 2 rows of 6 products) */}
+      {/* 5. ALL PRODUCTS SECTION (2 horizontal rows of products + Show All button in front) */}
       {allProducts.length > 0 && (
         <section className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3 pt-2 sm:pt-4">
           <div className="flex items-center justify-between border-b border-gray-200 pb-2">
@@ -148,17 +144,33 @@ export const HomePage = () => {
             </h2>
             <Link
               to="/products"
-              className="inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-[#800020] hover:text-[#650019] hover:underline transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-[#800020] bg-white text-xs sm:text-sm font-semibold text-[#800020] hover:bg-[#800020] hover:text-white shadow-2xs transition-all cursor-pointer"
             >
-              <span>View All</span>
+              <span>Show All</span>
               <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4">
-            {allProducts.slice(0, 12).map((product) => (
-              <ProductCard key={product._id} product={product} />
-            ))}
+          <div className="home-product-grid gap-3 sm:gap-4">
+            {allProducts.slice(0, 16).map((product, index) => {
+              // Hide overflow items dynamically to always maintain exactly 2 horizontal lines
+              let breakpointClass = '';
+              if (index >= 12) {
+                breakpointClass = 'hidden 2xl:block';
+              } else if (index >= 8) {
+                breakpointClass = 'hidden xl:block';
+              } else if (index >= 6) {
+                breakpointClass = 'hidden md:block';
+              } else if (index >= 4) {
+                breakpointClass = 'hidden sm:block';
+              }
+
+              return (
+                <div key={product._id} className={breakpointClass}>
+                  <ProductCard product={product} />
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
