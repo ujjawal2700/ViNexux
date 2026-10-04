@@ -178,7 +178,16 @@ export const getPublicBrands = async () => {
     ...legacy.filter((brand) => !managedNames.has(brand._id.toLowerCase()))
       .map((brand) => ({ name: brand._id, slug: slugify(brand._id), count: brand.count, sortOrder: 9999, legacy: true })),
   ];
-  return allActiveBrands.sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0) || a.name.localeCompare(b.name));
+  const sorted = allActiveBrands.sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0) || a.name.localeCompare(b.name));
+  const seen = new Set();
+  const dedupedBrands = [];
+  for (const brand of sorted) {
+    const key = (brand.name || '').trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    dedupedBrands.push(brand);
+  }
+  return dedupedBrands;
 };
 
 // Substring search on name, SKU and brand. The indexed searchTokens clause

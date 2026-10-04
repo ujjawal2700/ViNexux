@@ -1,26 +1,41 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useSearchParams, Link, useNavigate, useParams, useLocation } from 'react-router-dom';
-import productService from '../../services/productService';
-import categoryService from '../../services/categoryService';
-import ProductCard from '../../components/products/ProductCard';
-import { Drawer } from '../../components/ui/Drawer';
-import { Pagination } from '../../components/ui/Pagination';
-import { FilterSidebarSkeleton, ProductCardSkeleton } from '../../components/ui/Skeleton';
-import { EmptyState } from '../../components/ui/EmptyState';
-import { ErrorState } from '../../components/ui/ErrorState';
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
+import {
+  useSearchParams,
+  Link,
+  useNavigate,
+  useParams,
+  useLocation,
+} from "react-router-dom";
+import productService from "../../services/productService";
+import categoryService from "../../services/categoryService";
+import ProductCard from "../../components/products/ProductCard";
+import { Drawer } from "../../components/ui/Drawer";
+import { Pagination } from "../../components/ui/Pagination";
+import {
+  FilterSidebarSkeleton,
+  ProductCardSkeleton,
+} from "../../components/ui/Skeleton";
+import { EmptyState } from "../../components/ui/EmptyState";
+import { ErrorState } from "../../components/ui/ErrorState";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '../../components/ui/DropdownMenu';
-import NotFoundPage from './NotFoundPage';
-import useAuth from '../../hooks/useAuth';
+} from "../../components/ui/DropdownMenu";
+import NotFoundPage from "./NotFoundPage";
+import useAuth from "../../hooks/useAuth";
 import {
   buildCategoryPath,
   buildCategoryTrail,
   buildBrandUrl,
-} from '../../utils/categoryUrls';
+} from "../../utils/categoryUrls";
 import {
   Filter,
   ChevronRight,
@@ -33,17 +48,22 @@ import {
   Cpu,
   Check,
   ArrowUpDown,
-} from 'lucide-react';
+} from "lucide-react";
 
 const SORT_OPTIONS = [
-  { value: 'default', label: 'Default' },
-  { value: 'name_asc', label: 'Name (A - Z)' },
-  { value: 'name_desc', label: 'Name (Z - A)' },
-  { value: 'price_asc', label: 'Price (Low > High)' },
-  { value: 'price_desc', label: 'Price (High > Low)' },
+  { value: "default", label: "Default" },
+  { value: "name_asc", label: "Name (A - Z)" },
+  { value: "name_desc", label: "Name (Z - A)" },
+  { value: "price_asc", label: "Price (Low > High)" },
+  { value: "price_desc", label: "Price (High > Low)" },
 ];
 
-const DEFAULT_AVAILABILITY = ['in-stock', 'low-stock', 'on-order', 'out-of-stock'];
+const DEFAULT_AVAILABILITY = [
+  "in-stock",
+  "low-stock",
+  "on-order",
+  "out-of-stock",
+];
 
 export const ProductsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -53,21 +73,25 @@ export const ProductsPage = () => {
   const { headerSlug, param2, param3, brandSlug } = params;
 
   // Target category slug from hierarchical route (header / main / sub)
-  const targetCategorySlug = !brandSlug ? (param3 || param2 || headerSlug || '') : '';
+  const targetCategorySlug = !brandSlug
+    ? param3 || param2 || headerSlug || ""
+    : "";
 
   // URL Query Parameters
   const { user } = useAuth();
-  const initialSearch = searchParams.get('search') || '';
-  const initialCategory = searchParams.get('categoryId') || searchParams.get('category') || '';
-  const initialBrand = searchParams.get('brand') || '';
+  const initialSearch = searchParams.get("search") || "";
+  const initialCategory =
+    searchParams.get("categoryId") || searchParams.get("category") || "";
+  const initialBrand = searchParams.get("brand") || "";
 
   // Local state
   const searchTerm = initialSearch;
 
-
   const [selectedSpecs, setSelectedSpecs] = useState({}); // { "Wattage": ["65w"], ... }
-  const [selectedAvailability, setSelectedAvailability] = useState(() => [...DEFAULT_AVAILABILITY]);
-  const [sortOption, setSortOption] = useState('default');
+  const [selectedAvailability, setSelectedAvailability] = useState(() => [
+    ...DEFAULT_AVAILABILITY,
+  ]);
+  const [sortOption, setSortOption] = useState("default");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 28;
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
@@ -94,11 +118,20 @@ export const ProductsPage = () => {
   const [categories, setCategories] = useState([]);
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [categoryError, setCategoryError] = useState(null);
-  const [facets, setFacets] = useState({ categories: [], brands: [], availability: [], specs: [] });
+  const [facets, setFacets] = useState({
+    categories: [],
+    brands: [],
+    availability: [],
+    specs: [],
+  });
   const facetKeyRef = useRef(null);
   // Set when the server found no exact matches and searched corrected words.
-  const [correctedSearch, setCorrectedSearch] = useState('');
-  const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
+  const [correctedSearch, setCorrectedSearch] = useState("");
+  const [pagination, setPagination] = useState({
+    page: 1,
+    totalPages: 1,
+    total: 0,
+  });
 
   // UI state
   const [isLoading, setIsLoading] = useState(true);
@@ -112,7 +145,7 @@ export const ProductsPage = () => {
         const list = res.data?.categories || res.categories || [];
         setCategories(list);
       } catch {
-        setCategoryError('Unable to load categories. Please retry.');
+        setCategoryError("Unable to load categories. Please retry.");
       } finally {
         setCategoriesLoaded(true);
       }
@@ -127,107 +160,175 @@ export const ProductsPage = () => {
     let parentId = null;
     let current = null;
     for (const slug of [headerSlug, param2, param3].filter(Boolean)) {
-      current = categories.find((category) => category.slug === slug.toLowerCase()
-        && String(category.parentId?._id || category.parentId || '') === String(parentId || ''));
+      current = categories.find(
+        (category) =>
+          category.slug === slug.toLowerCase() &&
+          String(category.parentId?._id || category.parentId || "") ===
+            String(parentId || ""),
+      );
       if (!current) return null;
       parentId = current._id;
     }
     return current;
   }, [categories, headerSlug, param2, param3, targetCategorySlug]);
-  const queryCategory = categories.find((category) => category._id === initialCategory || category.slug === initialCategory);
-  const selectedCategoryId = targetCategorySlug ? (routeCategory?._id || '') : (queryCategory?._id || initialCategory);
-  const routeBrand = brandSlug ? brandSlug.replace(/-/g, ' ').toUpperCase() : '';
+  const queryCategory = categories.find(
+    (category) =>
+      category._id === initialCategory || category.slug === initialCategory,
+  );
+  const selectedCategoryId = targetCategorySlug
+    ? routeCategory?._id || ""
+    : queryCategory?._id || initialCategory;
+  const routeBrand = brandSlug
+    ? brandSlug.replace(/-/g, " ").toUpperCase()
+    : "";
   const selectedBrands = useMemo(() => {
-    const names = initialBrand ? initialBrand.split(',') : (routeBrand ? [routeBrand] : []);
-    return [...new Set(names.map((name) => name.trim().toUpperCase()).filter(Boolean))];
+    const names = initialBrand
+      ? initialBrand.split(",")
+      : routeBrand
+        ? [routeBrand]
+        : [];
+    return [
+      ...new Set(
+        names.map((name) => name.trim().toUpperCase()).filter(Boolean),
+      ),
+    ];
   }, [initialBrand, routeBrand]);
-  const resolvedBrand = selectedBrands.length === 1 ? selectedBrands[0] : '';
+  const resolvedBrand = selectedBrands.length === 1 ? selectedBrands[0] : "";
 
   // 3. Fetch products from API
-  const fetchProducts = useCallback(async (signal) => {
-    if (!categoriesLoaded || categoryError || (targetCategorySlug && !routeCategory)) return;
-    setIsLoading(true);
-    setError(null);
+  const fetchProducts = useCallback(
+    async (signal) => {
+      if (
+        !categoriesLoaded ||
+        categoryError ||
+        (targetCategorySlug && !routeCategory)
+      )
+        return;
+      setIsLoading(true);
+      setError(null);
 
-    try {
-      let sortBy = 'createdAt';
-      let sortOrder = 'desc';
+      try {
+        let sortBy = "createdAt";
+        let sortOrder = "desc";
 
-      if (sortOption === 'price_asc') {
-        sortBy = 'standardPrice';
-        sortOrder = 'asc';
-      } else if (sortOption === 'price_desc') {
-        sortBy = 'standardPrice';
-        sortOrder = 'desc';
-      } else if (sortOption === 'name_asc') {
-        sortBy = 'name';
-        sortOrder = 'asc';
-      } else if (sortOption === 'name_desc') {
-        sortBy = 'name';
-        sortOrder = 'desc';
-      } else if (sortOption === 'newest') {
-        sortBy = 'createdAt';
-        sortOrder = 'desc';
-      } else {
-        sortBy = 'createdAt';
-        sortOrder = 'desc';
+        if (sortOption === "price_asc") {
+          sortBy = "standardPrice";
+          sortOrder = "asc";
+        } else if (sortOption === "price_desc") {
+          sortBy = "standardPrice";
+          sortOrder = "desc";
+        } else if (sortOption === "name_asc") {
+          sortBy = "name";
+          sortOrder = "asc";
+        } else if (sortOption === "name_desc") {
+          sortBy = "name";
+          sortOrder = "desc";
+        } else if (sortOption === "newest") {
+          sortBy = "createdAt";
+          sortOrder = "desc";
+        } else {
+          sortBy = "createdAt";
+          sortOrder = "desc";
+        }
+
+        const query = {
+          page: currentPage,
+          limit: itemsPerPage,
+          isActive: true,
+          sortBy,
+          sortOrder,
+        };
+
+        if (searchTerm.trim()) {
+          query.search = searchTerm.trim();
+        }
+
+        if (
+          selectedCategoryId &&
+          /^[0-9a-fA-F]{24}$/.test(selectedCategoryId)
+        ) {
+          query.categoryId = selectedCategoryId;
+        } else if (initialCategory) {
+          query.category = initialCategory;
+        }
+
+        if (brandSlug && !initialBrand) query.brandSlug = brandSlug;
+        else if (initialBrand) query.brand = initialBrand;
+        if (selectedAvailability.length && selectedAvailability.length < 4) {
+          query.availability = selectedAvailability.join(",");
+        }
+        if (Object.values(selectedSpecs).some((values) => values.length))
+          query.specs = JSON.stringify(selectedSpecs);
+        // Facets depend on the filters, not the page. When only the page (or a
+        // user-driven refetch) changes, reuse the facets already on screen.
+        const { page: _page, ...facetQuery } = query;
+        const facetKey = JSON.stringify({
+          ...facetQuery,
+          user: user?.id || null,
+          dealerStatus: user?.dealerStatus || null,
+        });
+        const reuseFacets = facetKeyRef.current === facetKey;
+        if (reuseFacets) query.includeFacets = false;
+        const response = await productService.getProducts(query, {
+          signal,
+          skipGlobalLoader: true,
+        });
+        if (signal?.aborted) return;
+        if (!reuseFacets) {
+          setFacets(
+            response.data?.facets || {
+              brands: [],
+              availability: [],
+              specs: [],
+            },
+          );
+          facetKeyRef.current = facetKey;
+        }
+        const productList = response.data?.products || response.products || [];
+        const pageInfo = response.data?.pagination ||
+          response.pagination || {
+            page: 1,
+            totalPages: 1,
+            total: productList.length,
+          };
+
+        setProducts(productList);
+        setPagination(pageInfo);
+        setCorrectedSearch(
+          response.data?.searchMode === "fuzzy"
+            ? response.data?.correctedSearch || ""
+            : "",
+        );
+      } catch (err) {
+        if (signal?.aborted || err.code === "ERR_CANCELED") return;
+        setProducts([]);
+        console.error("Catalog products fetch error:", err);
+        setError(
+          "Unable to load catalog products. Please check your connection.",
+        );
+      } finally {
+        if (!signal?.aborted) setIsLoading(false);
       }
-
-      const query = {
-        page: currentPage,
-        limit: itemsPerPage,
-        isActive: true,
-        sortBy,
-        sortOrder,
-      };
-
-      if (searchTerm.trim()) {
-        query.search = searchTerm.trim();
-      }
-
-      if (selectedCategoryId && /^[0-9a-fA-F]{24}$/.test(selectedCategoryId)) {
-        query.categoryId = selectedCategoryId;
-      } else if (initialCategory) {
-        query.category = initialCategory;
-      }
-
-      if (brandSlug && !initialBrand) query.brandSlug = brandSlug;
-      else if (initialBrand) query.brand = initialBrand;
-      if (selectedAvailability.length && selectedAvailability.length < 4) {
-        query.availability = selectedAvailability.join(',');
-      }
-      if (Object.values(selectedSpecs).some((values) => values.length)) query.specs = JSON.stringify(selectedSpecs);
-      // Facets depend on the filters, not the page. When only the page (or a
-      // user-driven refetch) changes, reuse the facets already on screen.
-      const { page: _page, ...facetQuery } = query;
-      const facetKey = JSON.stringify({ ...facetQuery, user: user?.id || null, dealerStatus: user?.dealerStatus || null });
-      const reuseFacets = facetKeyRef.current === facetKey;
-      if (reuseFacets) query.includeFacets = false;
-      const response = await productService.getProducts(query, { signal, skipGlobalLoader: true });
-      if (signal?.aborted) return;
-      if (!reuseFacets) {
-        setFacets(response.data?.facets || { brands: [], availability: [], specs: [] });
-        facetKeyRef.current = facetKey;
-      }
-      const productList = response.data?.products || response.products || [];
-      const pageInfo = response.data?.pagination || response.pagination || {
-        page: 1,
-        totalPages: 1,
-        total: productList.length,
-      };
-
-      setProducts(productList);
-      setPagination(pageInfo);
-      setCorrectedSearch(response.data?.searchMode === 'fuzzy' ? (response.data?.correctedSearch || '') : '');
-    } catch (err) {
-      if (signal?.aborted || err.code === 'ERR_CANCELED') return;
-      setProducts([]);
-      console.error('Catalog products fetch error:', err);
-      setError('Unable to load catalog products. Please check your connection.');
-    } finally {
-      if (!signal?.aborted) setIsLoading(false);
-    }
-  }, [currentPage, itemsPerPage, searchTerm, selectedCategoryId, targetCategorySlug, sortOption, initialCategory, initialBrand, brandSlug, selectedAvailability, selectedSpecs, categoriesLoaded, categoryError, routeCategory, user?.id, user?.dealerStatus]);
+    },
+    [
+      currentPage,
+      itemsPerPage,
+      searchTerm,
+      selectedCategoryId,
+      targetCategorySlug,
+      sortOption,
+      initialCategory,
+      initialBrand,
+      brandSlug,
+      selectedAvailability,
+      selectedSpecs,
+      categoriesLoaded,
+      categoryError,
+      routeCategory,
+      user?.id,
+      user?.dealerStatus,
+    ],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -235,14 +336,19 @@ export const ProductsPage = () => {
     return () => controller.abort();
   }, [fetchProducts]);
 
-  const isAllProductsRoute = location.pathname.startsWith('/products');
+  const isAllProductsRoute = location.pathname.startsWith("/products");
 
   const availableCategories = facets.categories || [];
   const displayCategories = useMemo(() => {
     if (availableCategories.length > 0) return availableCategories;
     return categories
       .filter((c) => !c.parentId)
-      .map((c) => ({ _id: c._id, name: c.name, slug: c.slug, count: c.productCount || 0 }));
+      .map((c) => ({
+        _id: c._id,
+        name: c.name,
+        slug: c.slug,
+        count: c.productCount || 0,
+      }));
   }, [availableCategories, categories]);
 
   // When on /products, show only header categories with rolled-up product counts
@@ -252,8 +358,12 @@ export const ProductsPage = () => {
     const parentMap = new Map(
       categories.map((c) => [
         String(c._id),
-        c.parentId?._id ? String(c.parentId._id) : (c.parentId ? String(c.parentId) : null),
-      ])
+        c.parentId?._id
+          ? String(c.parentId._id)
+          : c.parentId
+            ? String(c.parentId)
+            : null,
+      ]),
     );
     const getRootId = (catId) => {
       let curr = String(catId);
@@ -265,7 +375,7 @@ export const ProductsPage = () => {
       return curr;
     };
     const counts = new Map();
-    for (const item of (facets.categories || [])) {
+    for (const item of facets.categories || []) {
       const rootId = getRootId(item._id);
       counts.set(rootId, (counts.get(rootId) || 0) + (item.count || 0));
     }
@@ -277,7 +387,9 @@ export const ProductsPage = () => {
     }));
   }, [isAllProductsRoute, categories, facets.categories]);
 
-  const categoriesToRender = isAllProductsRoute ? (headerCategoriesList || []) : displayCategories;
+  const categoriesToRender = isAllProductsRoute
+    ? headerCategoriesList || []
+    : displayCategories;
   const availableBrands = facets.brands;
   const dynamicSpecs = facets.specs;
   const availabilityFacets = facets.availability || [];
@@ -287,8 +399,12 @@ export const ProductsPage = () => {
   // Current category (resolved from hierarchical route or query category)
   const currentCategory = useMemo(() => {
     if (routeCategory) return routeCategory;
-    if (initialCategory && !initialCategory.includes(',')) {
-      return categories.find((c) => c._id === initialCategory || c.slug === initialCategory) || null;
+    if (initialCategory && !initialCategory.includes(",")) {
+      return (
+        categories.find(
+          (c) => c._id === initialCategory || c.slug === initialCategory,
+        ) || null
+      );
     }
     return null;
   }, [routeCategory, initialCategory, categories]);
@@ -297,31 +413,35 @@ export const ProductsPage = () => {
   // If products are multiple rows (> 12 products): show specs according to products!
   const totalProductCount = pagination.total || products.length;
   const hasMultipleRows = totalProductCount > 12;
-  const specsToRender = hasMultipleRows && dynamicSpecs && dynamicSpecs.length > 0
-    ? dynamicSpecs.slice(0, 6)
-    : [];
+  const specsToRender =
+    hasMultipleRows && dynamicSpecs && dynamicSpecs.length > 0
+      ? dynamicSpecs.slice(0, 6)
+      : [];
 
   // Selected category slugs / IDs
   const selectedCategorySlugs = useMemo(() => {
     if (targetCategorySlug) return [targetCategorySlug.toLowerCase()];
     if (!initialCategory) return [];
     return initialCategory
-      .split(',')
+      .split(",")
       .map((s) => s.trim().toLowerCase())
       .filter(Boolean);
   }, [targetCategorySlug, initialCategory]);
 
   const isAllCategoriesChecked = selectedCategorySlugs.length === 0;
 
-  const isCategoryChecked = useCallback((cat) => {
-    if (!cat) return isAllCategoriesChecked;
-    const catSlug = (cat.slug || '').toLowerCase();
-    const catId = String(cat._id || '').toLowerCase();
-    return (
-      (Boolean(catSlug) && selectedCategorySlugs.includes(catSlug)) ||
-      (Boolean(catId) && selectedCategorySlugs.includes(catId))
-    );
-  }, [isAllCategoriesChecked, selectedCategorySlugs]);
+  const isCategoryChecked = useCallback(
+    (cat) => {
+      if (!cat) return isAllCategoriesChecked;
+      const catSlug = (cat.slug || "").toLowerCase();
+      const catId = String(cat._id || "").toLowerCase();
+      return (
+        (Boolean(catSlug) && selectedCategorySlugs.includes(catSlug)) ||
+        (Boolean(catId) && selectedCategorySlugs.includes(catId))
+      );
+    },
+    [isAllCategoriesChecked, selectedCategorySlugs],
+  );
 
   // Handle category selection in filter sidebar using checkboxes
   const handleToggleCategory = (cat) => {
@@ -331,10 +451,10 @@ export const ProductsPage = () => {
 
     if (!cat) {
       // Clicked "All Categories": clear specific category filters
-      next.delete('category');
-      next.delete('categoryId');
+      next.delete("category");
+      next.delete("categoryId");
       if (targetCategorySlug) {
-        navigate('/products');
+        navigate("/products");
       } else {
         setSearchParams(next);
       }
@@ -347,22 +467,22 @@ export const ProductsPage = () => {
     let updatedSlugs;
     if (checked) {
       updatedSlugs = selectedCategorySlugs.filter(
-        (s) => s !== catSlug && s !== String(cat._id || '').toLowerCase()
+        (s) => s !== catSlug && s !== String(cat._id || "").toLowerCase(),
       );
     } else {
       updatedSlugs = [...selectedCategorySlugs, cat.slug || cat._id];
     }
 
     if (updatedSlugs.length === 0) {
-      next.delete('category');
-      next.delete('categoryId');
+      next.delete("category");
+      next.delete("categoryId");
     } else {
-      next.set('category', updatedSlugs.join(','));
-      next.delete('categoryId');
+      next.set("category", updatedSlugs.join(","));
+      next.delete("categoryId");
     }
 
     if (targetCategorySlug) {
-      navigate(`/products${next.toString() ? `?${next.toString()}` : ''}`);
+      navigate(`/products${next.toString() ? `?${next.toString()}` : ""}`);
     } else {
       setSearchParams(next);
     }
@@ -376,13 +496,17 @@ export const ProductsPage = () => {
 
   // Compute Breadcrumb Trail (Supports Brand view like "Home > Brands > ACER" & Category hierarchy like "Home > Laptop > Branded Laptop")
   const breadcrumbTrail = useMemo(() => {
-    const brandName = resolvedBrand || (selectedBrands.length === 1 && !selectedCategoryId ? selectedBrands[0] : '');
+    const brandName =
+      resolvedBrand ||
+      (selectedBrands.length === 1 && !selectedCategoryId
+        ? selectedBrands[0]
+        : "");
 
     // Brand view: Home > Brands > ACER
     if (brandName && !selectedCategoryId) {
       return [
-        { label: 'Home', path: '/' },
-        { label: 'Brands', path: '/brands' },
+        { label: "Home", path: "/" },
+        { label: "Brands", path: "/brands" },
         { label: brandName, path: null },
       ];
     }
@@ -390,8 +514,8 @@ export const ProductsPage = () => {
     // Brand + Category: Home > Brands > ACER > Laptop
     if (brandName && selectedCategoryId && activeCategory) {
       return [
-        { label: 'Home', path: '/' },
-        { label: 'Brands', path: '/brands' },
+        { label: "Home", path: "/" },
+        { label: "Brands", path: "/brands" },
         { label: brandName, path: buildBrandUrl(brandName) },
         { label: activeCategory.name, path: null },
       ];
@@ -403,10 +527,16 @@ export const ProductsPage = () => {
     }
 
     return [
-      { label: 'Home', path: '/' },
-      { label: 'All Products', path: null },
+      { label: "Home", path: "/" },
+      { label: "All Products", path: null },
     ];
-  }, [resolvedBrand, selectedBrands, selectedCategoryId, activeCategory, categories]);
+  }, [
+    resolvedBrand,
+    selectedBrands,
+    selectedCategoryId,
+    activeCategory,
+    categories,
+  ]);
 
   // Keep search and category constraints when changing a brand.
   const handleToggleBrand = (brandName) => {
@@ -415,8 +545,8 @@ export const ProductsPage = () => {
     const updated = selectedBrands.includes(normalized)
       ? selectedBrands.filter((name) => name !== normalized)
       : [...selectedBrands, normalized];
-    if (updated.length) next.set('brand', updated.join(','));
-    else next.delete('brand');
+    if (updated.length) next.set("brand", updated.join(","));
+    else next.delete("brand");
     setCurrentPage(1);
     if (brandSlug) navigate(`/search?${next}`);
     else setSearchParams(next);
@@ -436,45 +566,49 @@ export const ProductsPage = () => {
 
   const handleToggleAvailability = (status) => {
     setCurrentPage(1);
-    setSelectedAvailability((current) => current.includes(status)
-      ? current.filter((item) => item !== status)
-      : [...current, status]);
+    setSelectedAvailability((current) =>
+      current.includes(status)
+        ? current.filter((item) => item !== status)
+        : [...current, status],
+    );
   };
 
   const handleResetFilters = () => {
     setSelectedSpecs({});
     setSelectedAvailability([...DEFAULT_AVAILABILITY]);
-    setSortOption('default');
+    setSortOption("default");
     setCurrentPage(1);
     setIsMobileFilterOpen(false);
     if (brandSlug) {
       navigate(`/brands/${brandSlug}`);
       return;
     }
-    const destination = location.pathname.startsWith('/products')
-      ? '/products'
-      : (activeCategory ? buildCategoryPath(activeCategory, categories) : '/search');
+    const destination = location.pathname.startsWith("/products")
+      ? "/products"
+      : activeCategory
+        ? buildCategoryPath(activeCategory, categories)
+        : "/search";
     const preserved = new URLSearchParams();
-    if (searchTerm.trim()) preserved.set('search', searchTerm.trim());
-    navigate(`${destination}${preserved.size ? `?${preserved}` : ''}`);
+    if (searchTerm.trim()) preserved.set("search", searchTerm.trim());
+    navigate(`${destination}${preserved.size ? `?${preserved}` : ""}`);
   };
 
   // Compute Page Header Title (Matching Mega Jaipur: "Branded Laptop", "Laptop Hinges", "ACER")
   const pageTitle = useMemo(() => {
     if (isAllProductsRoute) {
       if (searchTerm) return `Search: "${searchTerm}"`;
-      return 'All Products';
+      return "All Products";
     }
     if (activeCategory?.name) {
       return activeCategory.name;
     }
     if (brandSlug) {
-      return routeBrand || brandSlug.replace(/-/g, ' ').toUpperCase();
+      return routeBrand || brandSlug.replace(/-/g, " ").toUpperCase();
     }
     if (searchTerm) {
       return `Search: "${searchTerm}"`;
     }
-    return 'All Products';
+    return "All Products";
   }, [isAllProductsRoute, activeCategory, brandSlug, routeBrand, searchTerm]);
 
   // ---------------------------------------------------------------------------
@@ -490,7 +624,7 @@ export const ProductsPage = () => {
   //  5. Products fit in viewport: no page scroll to sync, pin at top.
   // ---------------------------------------------------------------------------
   const syncScroll = useCallback(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
 
     const container = catalogContainerRef.current;
     const inner = sidebarInnerRef.current;
@@ -501,27 +635,30 @@ export const ProductsPage = () => {
 
     // Reset styles on mobile & tablet (< 1024px)
     if (window.innerWidth < 1024) {
-      inner.style.transform = '';
-      inner.style.maxHeight = '';
-      inner.style.overflow = '';
-      content.style.transform = '';
+      inner.style.transform = "";
+      inner.style.maxHeight = "";
+      inner.style.overflow = "";
+      content.style.transform = "";
       return;
     }
 
     const viewportHeight = window.innerHeight;
     const topOffset = 110; // clearance below sticky header
     const bottomOffset = 24;
-    const visibleHeight = Math.max(200, viewportHeight - topOffset - bottomOffset);
+    const visibleHeight = Math.max(
+      200,
+      viewportHeight - topOffset - bottomOffset,
+    );
 
     const productsHeight = productsEl.offsetHeight;
     const filterNaturalHeight = content.scrollHeight + 32; // +32 for padding
 
     // ── PIN AT TOP: few products OR products fit in viewport ──────────────
     if (!hasMultipleRows || productsHeight <= visibleHeight) {
-      inner.style.transform = 'translate3d(0, 0, 0)';
-      inner.style.maxHeight = 'none';
-      inner.style.overflow = 'visible';
-      content.style.transform = 'none';
+      inner.style.transform = "translate3d(0, 0, 0)";
+      inner.style.maxHeight = "none";
+      inner.style.overflow = "visible";
+      content.style.transform = "none";
       return;
     }
 
@@ -529,14 +666,17 @@ export const ProductsPage = () => {
     const containerRect = container.getBoundingClientRect();
     const scrollableProductDistance = productsHeight - visibleHeight; // always > 0 here
     const currentScrolled = Math.max(0, topOffset - containerRect.top);
-    const progress = Math.max(0, Math.min(1, currentScrolled / scrollableProductDistance));
+    const progress = Math.max(
+      0,
+      Math.min(1, currentScrolled / scrollableProductDistance),
+    );
 
     if (productsHeight >= filterNaturalHeight) {
       // CASE A — Products taller than filters:
       //   Translate the whole filter card down so it ends flush with products.
-      inner.style.maxHeight = 'none';
-      inner.style.overflow = 'visible';
-      content.style.transform = 'none';
+      inner.style.maxHeight = "none";
+      inner.style.overflow = "visible";
+      content.style.transform = "none";
 
       const maxFilterTravel = productsHeight - filterNaturalHeight;
       inner.style.transform = `translate3d(0, ${Math.round(progress * maxFilterTravel)}px, 0)`;
@@ -545,14 +685,14 @@ export const ProductsPage = () => {
       //   Clip filter card to products height & scroll content internally.
       const cardHeight = Math.max(300, productsHeight);
       inner.style.maxHeight = `${cardHeight}px`;
-      inner.style.overflow = 'hidden';
-      inner.style.transform = 'translate3d(0, 0, 0)';
+      inner.style.overflow = "hidden";
+      inner.style.transform = "translate3d(0, 0, 0)";
 
       const filterOverflow = filterNaturalHeight - cardHeight;
       if (filterOverflow > 0) {
         content.style.transform = `translate3d(0, ${Math.round(-progress * filterOverflow)}px, 0)`;
       } else {
-        content.style.transform = 'none';
+        content.style.transform = "none";
       }
     }
   }, [hasMultipleRows]);
@@ -568,19 +708,22 @@ export const ProductsPage = () => {
       });
     };
 
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', syncScroll, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", syncScroll, { passive: true });
 
     // Block independent wheel scroll on desktop sidebar
     const asideElement = asideRef.current;
-    const blockWheel = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const blockWheel = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
     if (asideElement) {
-      asideElement.addEventListener('wheel', blockWheel, { passive: false });
+      asideElement.addEventListener("wheel", blockWheel, { passive: false });
     }
 
     // Observe content / products size changes → re-sync
     let ro;
-    if (typeof ResizeObserver !== 'undefined') {
+    if (typeof ResizeObserver !== "undefined") {
       ro = new ResizeObserver(() => syncScroll());
       if (sidebarContentRef.current) ro.observe(sidebarContentRef.current);
       if (productsRef.current) ro.observe(productsRef.current);
@@ -590,9 +733,9 @@ export const ProductsPage = () => {
 
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', syncScroll);
-      if (asideElement) asideElement.removeEventListener('wheel', blockWheel);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", syncScroll);
+      if (asideElement) asideElement.removeEventListener("wheel", blockWheel);
       if (ro) ro.disconnect();
     };
   }, [syncScroll, displayedProducts.length, openSections]);
@@ -609,8 +752,7 @@ export const ProductsPage = () => {
         <button
           type="button"
           onClick={handleResetFilters}
-          className="text-xs font-bold text-primary hover:underline transition-colors cursor-pointer"
-        >
+          className="text-xs font-bold text-primary hover:underline transition-colors cursor-pointer">
           Reset
         </button>
       </div>
@@ -620,17 +762,19 @@ export const ProductsPage = () => {
         <button
           type="button"
           onClick={() =>
-            setOpenSections((prev) => ({ ...prev, categories: !prev.categories }))
+            setOpenSections((prev) => ({
+              ...prev,
+              categories: !prev.categories,
+            }))
           }
-          className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-gray-800 py-1.5 hover:text-primary transition-colors select-none"
-        >
+          className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-gray-800 py-1.5 hover:text-primary transition-colors select-none">
           <div className="flex items-center gap-2">
             <LayoutGrid className="w-4 h-4 text-primary" />
             <span>Categories</span>
           </div>
           <ChevronDown
             className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
-              openSections.categories ? 'rotate-180' : ''
+              openSections.categories ? "rotate-180" : ""
             }`}
           />
         </button>
@@ -644,7 +788,7 @@ export const ProductsPage = () => {
                   <input
                     type="checkbox"
                     checked={true}
-                    onChange={() => navigate('/products')}
+                    onChange={() => navigate("/products")}
                     className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#800020] cursor-pointer"
                   />
                   <span className="truncate font-bold text-gray-900">
@@ -670,9 +814,10 @@ export const ProductsPage = () => {
                     />
                     <span
                       className={`truncate ${
-                        isAllCategoriesChecked ? 'font-bold text-gray-900' : 'group-hover:text-primary'
-                      }`}
-                    >
+                        isAllCategoriesChecked
+                          ? "font-bold text-gray-900"
+                          : "group-hover:text-primary"
+                      }`}>
                       All Categories
                     </span>
                   </span>
@@ -682,8 +827,7 @@ export const ProductsPage = () => {
                   return (
                     <label
                       key={cat._id}
-                      className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group"
-                    >
+                      className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group">
                       <span className="flex items-center gap-2 truncate">
                         <input
                           type="checkbox"
@@ -693,9 +837,10 @@ export const ProductsPage = () => {
                         />
                         <span
                           className={`truncate ${
-                            isChecked ? 'font-bold text-gray-900' : 'group-hover:text-primary'
-                          }`}
-                        >
+                            isChecked
+                              ? "font-bold text-gray-900"
+                              : "group-hover:text-primary"
+                          }`}>
                           {cat.name}
                         </span>
                       </span>
@@ -711,7 +856,9 @@ export const ProductsPage = () => {
             ) : (
               <div className="flex items-center gap-2 rounded bg-primary/5 border border-primary/20 p-2 text-xs font-bold text-primary select-none">
                 <CheckSquare className="w-4 h-4 shrink-0" />
-                <span className="truncate">{activeCategory?.name || 'All Products'}</span>
+                <span className="truncate">
+                  {activeCategory?.name || "All Products"}
+                </span>
               </div>
             )}
           </div>
@@ -719,63 +866,66 @@ export const ProductsPage = () => {
       </div>
 
       {/* 2. Brands Accordion (below Categories: shows only brands that have products available in this category) */}
-      {(Boolean(currentCategory) || (!isAllProductsRoute && !brandSlug)) && availableBrands.length > 0 && (
-        <div className="border-b border-gray-200 pb-3">
-          <button
-            type="button"
-            onClick={() =>
-              setOpenSections((prev) => ({ ...prev, brands: !prev.brands }))
-            }
-            className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-gray-800 py-1.5 hover:text-primary transition-colors select-none"
-          >
-            <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4 text-primary" />
-              <span>Brands</span>
-            </div>
-            <ChevronDown
-              className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
-                openSections.brands ? 'rotate-180' : ''
-              }`}
-            />
-          </button>
+      {(Boolean(currentCategory) || (!isAllProductsRoute && !brandSlug)) &&
+        availableBrands.length > 0 && (
+          <div className="border-b border-gray-200 pb-3">
+            <button
+              type="button"
+              onClick={() =>
+                setOpenSections((prev) => ({ ...prev, brands: !prev.brands }))
+              }
+              className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-gray-800 py-1.5 hover:text-primary transition-colors select-none">
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-primary" />
+                <span>Brands</span>
+              </div>
+              <ChevronDown
+                className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
+                  openSections.brands ? "rotate-180" : ""
+                }`}
+              />
+            </button>
 
-          {openSections.brands && (
-            <div className="mt-2.5 space-y-1.5">
-              {availableBrands.map((brand) => {
-                const isChecked = selectedBrands.includes(brand.name.toUpperCase());
-                return (
-                  <label
-                    key={brand.name}
-                    className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group"
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => handleToggleBrand(brand.name)}
-                        className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#800020] cursor-pointer"
-                      />
-                      <span
-                        className={`truncate ${
-                          isChecked ? 'font-bold text-gray-900' : 'group-hover:text-primary'
-                        }`}
-                      >
-                        {brand.name}
+            {openSections.brands && (
+              <div className="mt-2.5 space-y-1.5">
+                {availableBrands.map((brand) => {
+                  const isChecked = selectedBrands.includes(
+                    brand.name.toUpperCase(),
+                  );
+                  return (
+                    <label
+                      key={brand.name}
+                      className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group">
+                      <div className="flex items-center gap-2 truncate">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleToggleBrand(brand.name)}
+                          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#800020] cursor-pointer"
+                        />
+                        <span
+                          className={`truncate ${
+                            isChecked
+                              ? "font-bold text-gray-900"
+                              : "group-hover:text-primary"
+                          }`}>
+                          {brand.name}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-gray-400 font-medium ml-2 shrink-0">
+                        {brand.count}
                       </span>
-                    </div>
-                    <span className="text-[11px] text-gray-400 font-medium ml-2 shrink-0">
-                      {brand.count}
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
       {/* 3. Category-specific specification filters (Shown when multiple rows of products exist: > 12 products) */}
-      {(Boolean(currentCategory) || !isAllProductsRoute) && specsToRender.length > 0 && (
+      {(Boolean(currentCategory) || !isAllProductsRoute) &&
+        specsToRender.length > 0 &&
         specsToRender.map((spec) => (
           <div key={spec.key} className="border-b border-gray-200 pb-3">
             <button
@@ -783,18 +933,21 @@ export const ProductsPage = () => {
               onClick={() =>
                 setOpenSections((prev) => ({
                   ...prev,
-                  [`spec_${spec.key}`]: prev[`spec_${spec.key}`] === false ? true : false,
+                  [`spec_${spec.key}`]:
+                    prev[`spec_${spec.key}`] === false ? true : false,
                 }))
               }
-              className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-gray-800 py-1.5 hover:text-primary transition-colors select-none"
-            >
+              className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-gray-800 py-1.5 hover:text-primary transition-colors select-none">
               <div className="flex items-center gap-2">
                 <Cpu className="w-4 h-4 text-primary" />
-                <span className="truncate">{spec.label || spec.key}{spec.unit ? ` (${spec.unit})` : ''}</span>
+                <span className="truncate">
+                  {spec.label || spec.key}
+                  {spec.unit ? ` (${spec.unit})` : ""}
+                </span>
               </div>
               <ChevronDown
                 className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
-                  openSections[`spec_${spec.key}`] !== false ? 'rotate-180' : ''
+                  openSections[`spec_${spec.key}`] !== false ? "rotate-180" : ""
                 }`}
               />
             </button>
@@ -802,12 +955,13 @@ export const ProductsPage = () => {
             {openSections[`spec_${spec.key}`] !== false && (
               <div className="mt-2.5 space-y-1.5">
                 {spec.values.map(({ val, count }) => {
-                  const isChecked = (selectedSpecs[spec.key] || []).includes(val);
+                  const isChecked = (selectedSpecs[spec.key] || []).includes(
+                    val,
+                  );
                   return (
                     <label
                       key={val}
-                      className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group"
-                    >
+                      className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group">
                       <div className="flex items-center gap-2 truncate">
                         <input
                           type="checkbox"
@@ -817,9 +971,10 @@ export const ProductsPage = () => {
                         />
                         <span
                           className={`truncate ${
-                            isChecked ? 'font-bold text-gray-900' : 'group-hover:text-primary'
-                          }`}
-                        >
+                            isChecked
+                              ? "font-bold text-gray-900"
+                              : "group-hover:text-primary"
+                          }`}>
                           {val}
                         </span>
                       </div>
@@ -832,35 +987,44 @@ export const ProductsPage = () => {
               </div>
             )}
           </div>
-        ))
-      )}
+        ))}
 
       {/* 4. Availability (last filter: as is) */}
       <div className="border-b border-gray-200 pb-3">
         <button
           type="button"
-          onClick={() => setOpenSections((prev) => ({ ...prev, availability: !prev.availability }))}
-          className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-gray-800 py-1.5 hover:text-primary transition-colors select-none"
-        >
+          onClick={() =>
+            setOpenSections((prev) => ({
+              ...prev,
+              availability: !prev.availability,
+            }))
+          }
+          className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-gray-800 py-1.5 hover:text-primary transition-colors select-none">
           <div className="flex items-center gap-2">
             <PackageCheck className="w-4 h-4 text-primary" />
             <span>Availability</span>
           </div>
-          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${openSections.availability ? 'rotate-180' : ''}`} />
+          <ChevronDown
+            className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${openSections.availability ? "rotate-180" : ""}`}
+          />
         </button>
 
         {openSections.availability && (
           <div className="mt-2.5 space-y-1.5">
             {[
-              ['in-stock', 'In Stock'],
-              ['low-stock', 'Low Stock'],
-              ['on-order', 'On Order'],
-              ['out-of-stock', 'Out of Stock'],
+              ["in-stock", "In Stock"],
+              ["low-stock", "Low Stock"],
+              ["on-order", "On Order"],
+              ["out-of-stock", "Out of Stock"],
             ].map(([status, label]) => {
               const checked = selectedAvailability.includes(status);
-              const count = availabilityFacets.find((item) => item.status === status)?.count || 0;
+              const count =
+                availabilityFacets.find((item) => item.status === status)
+                  ?.count || 0;
               return (
-                <label key={status} className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group">
+                <label
+                  key={status}
+                  className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group">
                   <span className="flex items-center gap-2 truncate">
                     <input
                       type="checkbox"
@@ -868,22 +1032,31 @@ export const ProductsPage = () => {
                       onChange={() => handleToggleAvailability(status)}
                       className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#800020] cursor-pointer"
                     />
-                    <span className={`truncate ${checked ? 'font-bold text-gray-900' : 'group-hover:text-primary'}`}>
+                    <span
+                      className={`truncate ${checked ? "font-bold text-gray-900" : "group-hover:text-primary"}`}>
                       {label}
                     </span>
                   </span>
-                  <span className="text-[11px] text-gray-400 font-medium ml-2 shrink-0">{count}</span>
+                  <span className="text-[11px] text-gray-400 font-medium ml-2 shrink-0">
+                    {count}
+                  </span>
                 </label>
               );
             })}
           </div>
         )}
       </div>
-
     </div>
   );
 
-  if (categoryError) return <ErrorState title="Categories unavailable" description={categoryError} onRetry={() => window.location.reload()} />;
+  if (categoryError)
+    return (
+      <ErrorState
+        title="Categories unavailable"
+        description={categoryError}
+        onRetry={() => window.location.reload()}
+      />
+    );
 
   // If a category was requested in the URL path but does not exist
   if (targetCategorySlug && categoriesLoaded && !routeCategory) {
@@ -902,14 +1075,19 @@ export const ProductsPage = () => {
       <div className="w-full bg-[#f8f9fa]">
         <div className="storefront-container px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-0 space-y-2">
           <div className="min-h-12 flex items-center justify-center">
-            <div className="h-8 w-48 rounded bg-gray-200 animate-pulse" aria-label="Loading category" />
+            <div
+              className="h-8 w-48 rounded bg-gray-200 animate-pulse"
+              aria-label="Loading category"
+            />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
             <aside className="hidden lg:block lg:col-span-3 xl:col-span-3 2xl:col-span-2 bg-white rounded-lg border border-gray-200 p-4">
               <FilterSidebarSkeleton />
             </aside>
             <div className="lg:col-span-9 xl:col-span-9 2xl:col-span-10 storefront-product-grid gap-3 sm:gap-3.5">
-              {[...Array(12)].map((_, i) => <ProductCardSkeleton key={i} />)}
+              {[...Array(12)].map((_, i) => (
+                <ProductCardSkeleton key={i} />
+              ))}
             </div>
           </div>
         </div>
@@ -925,20 +1103,22 @@ export const ProductsPage = () => {
           {/* Breadcrumb row */}
           <nav
             aria-label="Breadcrumb"
-            className="hidden md:flex w-full min-w-0 max-w-full items-center flex-nowrap gap-2 overflow-x-auto whitespace-nowrap text-sm sm:text-base text-[#800020] font-medium lg:absolute lg:left-0 lg:w-auto lg:max-w-[35%]"
-          >
+            className="hidden md:flex w-full min-w-0 max-w-full items-center flex-nowrap gap-2 overflow-x-auto whitespace-nowrap text-sm sm:text-base text-[#800020] font-medium lg:absolute lg:left-0 lg:w-auto lg:max-w-[35%]">
             {breadcrumbTrail.map((crumb, idx) => (
               <React.Fragment key={crumb.label + idx}>
-                {idx > 0 && <ChevronRight className="w-4 h-4 text-[#800020] shrink-0" />}
+                {idx > 0 && (
+                  <ChevronRight className="w-4 h-4 text-[#800020] shrink-0" />
+                )}
                 {crumb.path ? (
                   <Link
                     to={crumb.path}
-                    className="shrink-0 hover:text-[#650019] transition-colors"
-                  >
+                    className="shrink-0 hover:text-[#650019] transition-colors">
                     {crumb.label}
                   </Link>
                 ) : (
-                  <span className="shrink-0 text-[#800020] font-semibold">{crumb.label}</span>
+                  <span className="shrink-0 text-[#800020] font-semibold">
+                    {crumb.label}
+                  </span>
                 )}
               </React.Fragment>
             ))}
@@ -953,8 +1133,7 @@ export const ProductsPage = () => {
             <button
               type="button"
               onClick={() => setIsMobileFilterOpen(true)}
-              className="order-2 lg:hidden flex items-center gap-1.5 px-2.5 sm:px-3 py-2.5 rounded-full sm:rounded-lg border border-gray-300 bg-white text-xs font-bold text-gray-700 hover:border-[#800020] transition-colors cursor-pointer"
-            >
+              className="order-2 lg:hidden flex items-center gap-1.5 px-2.5 sm:px-3 py-2.5 rounded-full sm:rounded-lg border border-gray-300 bg-white text-xs font-bold text-gray-700 hover:border-[#800020] transition-colors cursor-pointer">
               <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
               <span>Filters</span>
             </button>
@@ -963,15 +1142,19 @@ export const ProductsPage = () => {
                 <button
                   type="button"
                   aria-label="Sort products"
-                  className="order-1 flex w-auto sm:w-48 items-center justify-between gap-1.5 sm:gap-3 text-xs sm:text-sm font-semibold text-gray-800 bg-white border border-[#800020] rounded-full sm:rounded-lg px-2.5 sm:px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#800020]/20 cursor-pointer shadow-2xs"
-                >
+                  className="order-1 flex w-auto sm:w-48 items-center justify-between gap-1.5 sm:gap-3 text-xs sm:text-sm font-semibold text-gray-800 bg-white border border-[#800020] rounded-full sm:rounded-lg px-2.5 sm:px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#800020]/20 cursor-pointer shadow-2xs">
                   <ArrowUpDown className="h-3.5 w-3.5 text-[#800020] sm:hidden" />
                   <span className="sm:hidden">Sort</span>
-                  <span className="hidden sm:inline">{SORT_OPTIONS.find((option) => option.value === sortOption)?.label || 'Default'}</span>
+                  <span className="hidden sm:inline">
+                    {SORT_OPTIONS.find((option) => option.value === sortOption)
+                      ?.label || "Default"}
+                  </span>
                   <ChevronDown className="hidden sm:block w-4 h-4 text-[#800020]" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 border-[#800020]/25">
+              <DropdownMenuContent
+                align="end"
+                className="w-56 border-[#800020]/25">
                 {SORT_OPTIONS.map((option) => (
                   <DropdownMenuItem
                     key={option.value}
@@ -979,12 +1162,15 @@ export const ProductsPage = () => {
                       setSortOption(option.value);
                       setCurrentPage(1);
                     }}
-                    className={sortOption === option.value
-                      ? 'bg-[#800020] text-white focus:bg-[#800020] focus:text-white'
-                      : 'text-gray-800 focus:bg-[#800020]/10 focus:text-[#800020]'}
-                  >
+                    className={
+                      sortOption === option.value
+                        ? "bg-[#800020] text-white focus:bg-[#800020] focus:text-white"
+                        : "text-gray-800 focus:bg-[#800020]/10 focus:text-[#800020]"
+                    }>
                     <span className="flex-1">{option.label}</span>
-                    {sortOption === option.value && <Check className="w-4 h-4" />}
+                    {sortOption === option.value && (
+                      <Check className="w-4 h-4" />
+                    )}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -993,24 +1179,30 @@ export const ProductsPage = () => {
         </div>
 
         {/* 2. TWO-COLUMN LAYOUT: SIDEBAR (lg:col-span-3) + PRODUCT GRID (lg:col-span-9) */}
-        <div ref={catalogContainerRef} className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start relative">
+        <div
+          ref={catalogContainerRef}
+          className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start relative">
           {/* DESKTOP SIDEBAR FILTERS (matching Screenshot) */}
           <aside
             ref={asideRef}
-            className="hidden lg:block lg:col-span-3 xl:col-span-3 2xl:col-span-2 relative select-none"
-          >
+            className="hidden lg:block lg:col-span-3 xl:col-span-3 2xl:col-span-2 relative select-none">
             <div
               ref={sidebarInnerRef}
-              className="bg-white rounded-lg border border-gray-200 p-4 shadow-2xs will-change-transform"
-            >
+              className="bg-white rounded-lg border border-gray-200 p-4 shadow-2xs will-change-transform">
               <div ref={sidebarContentRef} className="will-change-transform">
-                {isLoading && displayedProducts.length === 0 ? <FilterSidebarSkeleton /> : renderSidebarFilters()}
+                {isLoading && displayedProducts.length === 0 ? (
+                  <FilterSidebarSkeleton />
+                ) : (
+                  renderSidebarFilters()
+                )}
               </div>
             </div>
           </aside>
 
           {/* MAIN PRODUCT CATALOG CONTENT */}
-          <main ref={productsRef} className="relative lg:col-span-9 xl:col-span-9 2xl:col-span-10 space-y-4 min-h-80">
+          <main
+            ref={productsRef}
+            className="relative lg:col-span-9 xl:col-span-9 2xl:col-span-10 space-y-4 min-h-80">
             {/* PRODUCT CARDS HIGH-DENSITY GRID (matching Screenshot: 4-5 cards per row on large displays) */}
             {isLoading && displayedProducts.length === 0 ? (
               <div className="storefront-product-grid gap-3 sm:gap-3.5">
@@ -1019,13 +1211,23 @@ export const ProductsPage = () => {
                 ))}
               </div>
             ) : error ? (
-              <ErrorState title="Catalog Error" description={error} onRetry={() => fetchProducts()} />
+              <ErrorState
+                title="Catalog Error"
+                description={error}
+                onRetry={() => fetchProducts()}
+              />
             ) : displayedProducts.length > 0 ? (
               <>
                 {correctedSearch && searchTerm.trim() && (
-                  <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
-                    No exact matches for &ldquo;{searchTerm.trim()}&rdquo;. Showing results for{' '}
-                    <span className="font-semibold">&ldquo;{correctedSearch}&rdquo;</span>.
+                  <p
+                    role="status"
+                    className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+                    No exact matches for &ldquo;{searchTerm.trim()}&rdquo;.
+                    Showing results for{" "}
+                    <span className="font-semibold">
+                      &ldquo;{correctedSearch}&rdquo;
+                    </span>
+                    .
                   </p>
                 )}
                 <div className="storefront-product-grid gap-3 sm:gap-3.5">
@@ -1048,7 +1250,7 @@ export const ProductsPage = () => {
                     variant="catalog"
                     onPageChange={(page) => {
                       setCurrentPage(page);
-                      window.scrollTo({ top: 120, behavior: 'smooth' });
+                      window.scrollTo({ top: 120, behavior: "smooth" });
                     }}
                   />
                 </div>
@@ -1058,10 +1260,10 @@ export const ProductsPage = () => {
                 title="No Products Found"
                 description={
                   selectedBrands.length > 0
-                    ? `No products found under ${selectedBrands.join(', ')}.`
+                    ? `No products found under ${selectedBrands.join(", ")}.`
                     : activeCategory
-                    ? `No products found under "${activeCategory.name}".`
-                    : 'No products match your current search or category filter criteria.'
+                      ? `No products found under "${activeCategory.name}".`
+                      : "No products match your current search or category filter criteria."
                 }
                 actionLabel="Reset All Filters"
                 onAction={handleResetFilters}
@@ -1078,8 +1280,7 @@ export const ProductsPage = () => {
         position="left"
         title="Filter Products"
         className="!max-w-[min(90vw,380px)]"
-        contentClassName="!p-3"
-      >
+        contentClassName="!p-3">
         <div>{renderSidebarFilters()}</div>
       </Drawer>
     </div>
