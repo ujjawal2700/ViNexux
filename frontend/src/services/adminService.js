@@ -397,8 +397,8 @@ export const adminService = {
   },
 
   // Static CMS Pages
-  async getCmsPagesAdmin() {
-    const response = await apiClient.get('/admin/cms/pages');
+  async getCmsPagesAdmin(params = {}) {
+    const response = await apiClient.get('/admin/cms/pages', { params });
     return response.data;
   },
 

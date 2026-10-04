@@ -99,7 +99,7 @@ export const CartPage = () => {
         }
 
         // Fetch top featured / popular products as fallback / supplement
-        const res = await productService.getProducts({ limit: 12, isActive: true });
+        const res = await productService.getProducts({ limit: 12, isActive: true, includeFacets: false });
         const list = res.data?.products || res.products || [];
         
         // Merge stored with fetched
@@ -508,7 +508,7 @@ export const CartPage = () => {
                       <div className="flex items-start gap-2.5">
                         <input type="checkbox" aria-label={`Select ${prod.name || 'product'}`} checked={selectedItemIds.has(prodId)} onChange={() => handleToggleSelectItem(prodId)} className="mt-3 h-4 w-4 shrink-0 accent-[#800020]" />
                         <Link to={buildProductPath(prod)} className="flex h-16 w-16 shrink-0 items-center justify-center rounded border border-gray-200 bg-white p-1">
-                          {imgUrl ? <img src={imgUrl} alt={prod.name || 'Product'} className="max-h-full max-w-full object-contain" /> : <span className="text-[10px] text-gray-400">No image</span>}
+                          {imgUrl ? <img loading="lazy" decoding="async" src={imgUrl} alt={prod.name || 'Product'} className="max-h-full max-w-full object-contain" /> : <span className="text-[10px] text-gray-400">No image</span>}
                         </Link>
                         <div className="min-w-0 flex-1">
                           <Link to={buildProductPath(prod)} className="line-clamp-2 text-xs font-semibold leading-snug text-gray-900">{prod.name || 'Vinexus Product'}</Link>
@@ -603,7 +603,7 @@ export const CartPage = () => {
                           {/* IMAGE (Thumbnail matching reference image) */}
                           <td className="py-3 px-2.5 text-center">
                             <div className="w-10 h-10 sm:w-11 sm:h-11 bg-white rounded border border-gray-200 p-0.5 inline-flex items-center justify-center overflow-hidden shrink-0">
-                              <img
+                              <img loading="lazy" decoding="async"
                                 src={imgUrl}
                                 alt={prod.name || 'Product'}
                                 className="max-h-full max-w-full object-contain"

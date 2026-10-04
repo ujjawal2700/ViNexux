@@ -1,4 +1,3 @@
-import admin from 'firebase-admin';
 import { PushProvider } from './PushProvider.js';
 import { config } from '../../config/env.js';
 import { AppError } from '../../utils/AppError.js';
@@ -6,8 +5,9 @@ import { HTTP_STATUS } from '../../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../../constants/errorCodes.js';
 
 let firebaseApp = null;
+let firebaseAdmin = null;
 
-const getFirebaseApp = () => {
+const getFirebaseApp = async () => {
   if (firebaseApp) return firebaseApp;
 
   if (!config.firebaseProjectId || !config.firebaseClientEmail || !config.firebasePrivateKey) {
@@ -19,11 +19,14 @@ const getFirebaseApp = () => {
   }
 
   const formattedPrivateKey = config.firebasePrivateKey.replace(/\\n/g, '\n');
+  if (!firebaseAdmin) {
+    ({ default: firebaseAdmin } = await import('firebase-admin'));
+  }
 
-  firebaseApp = admin.apps.length
-    ? admin.app()
-    : admin.initializeApp({
-        credential: admin.credential.cert({
+  firebaseApp = firebaseAdmin.apps.length
+    ? firebaseAdmin.app()
+    : firebaseAdmin.initializeApp({
+        credential: firebaseAdmin.credential.cert({
           projectId: config.firebaseProjectId,
           clientEmail: config.firebaseClientEmail,
           privateKey: formattedPrivateKey,
@@ -44,14 +47,14 @@ export class FirebasePushProvider extends PushProvider {
     }
 
     try {
-      getFirebaseApp();
+      await getFirebaseApp();
 
       // Stringify all data values - FCM requires a flat map of strings
       const stringData = Object.fromEntries(
         Object.entries(data).map(([key, value]) => [key, String(value)])
       );
 
-      const response = await admin.messaging().sendEachForMulticast({
+      const response = await firebaseAdmin.messaging().sendEachForMulticast({
         tokens,
         notification: { title, body },
         data: stringData,

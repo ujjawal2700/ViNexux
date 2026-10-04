@@ -2,6 +2,9 @@ import { z } from 'zod';
 
 const INDIAN_PHONE_REGEX = /^[6-9]\d{9}$/;
 const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+const MSME_REGEX = /^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/;
+const ORGANISATION_TYPES = ['Proprietorship', 'Partnership', 'Limited Liability Partnership (LLP)', 'Private Limited Company', 'Limited Company', 'Others'];
 const contactIdentifier = z.string().trim().min(3).max(254).refine(
   (value) => z.string().email().safeParse(value).success || INDIAN_PHONE_REGEX.test(value),
   { message: 'Enter a valid email address or 10-digit Indian mobile number' }
@@ -38,13 +41,21 @@ export const signupSchema = {
         .default('customer'),
       // Dealer KYC fields (optional for customer, validated for dealer)
       companyName: z.string().trim().min(2).max(150).optional(),
+      organisationType: z.enum(ORGANISATION_TYPES).optional(),
       gstin: z.string().trim().optional(),
       pan: z.string().trim().optional(),
+      msmeNumber: z.string().trim().optional(),
+      whatsappNumber: z.string().trim().optional(),
       aadhaarNumber: z.string().trim().optional(),
       address: z.string().trim().optional(),
       city: z.string().trim().optional(),
       state: z.string().trim().optional(),
       pincode: z.string().trim().optional(),
+      officeLocation: z.object({
+        latitude: z.coerce.number().min(-90).max(90),
+        longitude: z.coerce.number().min(-180).max(180),
+        formattedAddress: z.string().trim().max(500).optional(),
+      }).optional(),
       acceptPrivacyPolicy: z.literal(true, { errorMap: () => ({ message: 'Please accept the Privacy Policy' }) }),
       acceptTerms: z.literal(true, { errorMap: () => ({ message: 'Please accept the Terms & Conditions' }) }),
     })
@@ -52,7 +63,11 @@ export const signupSchema = {
       if (data.role !== 'dealer') return;
       const required = [
         ['companyName', data.companyName, 'Company / firm name is required'],
+        ['organisationType', data.organisationType, 'Organisation type is required'],
         ['gstin', data.gstin, 'GSTIN is required'],
+        ['pan', data.pan, 'PAN number is required'],
+        ['msmeNumber', data.msmeNumber, 'MSME / Udyam registration number is required'],
+        ['whatsappNumber', data.whatsappNumber, 'WhatsApp number is required'],
         ['aadhaarNumber', data.aadhaarNumber, 'Aadhaar number is required'],
         ['address', data.address, 'Business address is required'],
         ['city', data.city, 'City is required'],
@@ -64,6 +79,18 @@ export const signupSchema = {
       }
       if (data.gstin && !GSTIN_REGEX.test(data.gstin.toUpperCase())) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['gstin'], message: 'Enter a valid 15-character GSTIN' });
+      }
+      if (data.pan && !PAN_REGEX.test(data.pan.toUpperCase())) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['pan'], message: 'Enter a valid 10-character PAN' });
+      }
+      if (data.msmeNumber && !MSME_REGEX.test(data.msmeNumber.toUpperCase())) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['msmeNumber'], message: 'Enter a valid Udyam number (UDYAM-XX-00-0000000)' });
+      }
+      if (data.whatsappNumber && !INDIAN_PHONE_REGEX.test(data.whatsappNumber)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['whatsappNumber'], message: 'Enter a valid 10-digit WhatsApp number' });
+      }
+      if (!data.officeLocation) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['officeLocation'], message: 'Please select your office location on the map' });
       }
       if (data.aadhaarNumber && !/^\d{12}$/.test(data.aadhaarNumber)) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['aadhaarNumber'], message: 'Aadhaar number must contain exactly 12 digits' });

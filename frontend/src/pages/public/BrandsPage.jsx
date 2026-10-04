@@ -17,7 +17,7 @@ import { BrandGridSkeleton } from '../../components/ui/Skeleton';
  */
 const BrandLogoDisplay = ({ brand }) => {
   const { name, color } = brand;
-  if (brand.logo?.url) return <img src={brand.logo.url} alt={name} className="max-h-16 max-w-full object-contain" />;
+  if (brand.logo?.url) return <img loading="lazy" decoding="async" src={brand.logo.url} alt={name} className="max-h-16 max-w-full object-contain" />;
 
   // Custom visual styles for iconic brands
   switch (name) {

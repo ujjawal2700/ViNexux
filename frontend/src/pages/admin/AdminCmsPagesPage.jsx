@@ -19,6 +19,24 @@ import Toast from '../../components/ui/Toast';
 import { Plus, Edit2, Trash2, FileText, ExternalLink } from 'lucide-react';
 
 const legalPathForSlug = (slug) => slug === 'privacy-policy' ? '/privacy' : slug === 'terms-and-conditions' ? '/terms' : null;
+const LEGAL_PAGE_DEFAULTS = [
+  {
+    _id: null,
+    _isPlaceholder: true,
+    slug: 'privacy-policy',
+    title: 'Privacy Policy',
+    content: '<h2>Privacy Policy</h2><p>Replace this draft with your approved privacy policy.</p>',
+    isPublished: false,
+  },
+  {
+    _id: null,
+    _isPlaceholder: true,
+    slug: 'terms-and-conditions',
+    title: 'Terms & Conditions',
+    content: '<h2>Terms & Conditions</h2><p>Replace this draft with your approved terms and conditions.</p>',
+    isPublished: false,
+  },
+];
 
 const AdminCmsPagesPage = () => {
   const [pages, setPages] = useState([]);
@@ -48,8 +66,10 @@ const AdminCmsPagesPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await adminService.getCmsPagesAdmin();
-      setPages(res.data?.pages || res.data || []);
+      const res = await adminService.getCmsPagesAdmin({ limit: 100 });
+      const loadedPages = res.data?.pages || res.data || [];
+      const missingLegalPages = LEGAL_PAGE_DEFAULTS.filter((legalPage) => !loadedPages.some((page) => page.slug === legalPage.slug));
+      setPages([...missingLegalPages, ...loadedPages]);
     } catch (err) {
       console.error('Error fetching static CMS pages:', err);
       setError(err.response?.data?.message || 'Failed to load static pages list');
@@ -98,11 +118,6 @@ const AdminCmsPagesPage = () => {
       setFormError('Slug can only contain lowercase alphanumeric characters and hyphens');
       return;
     }
-    if (legalPathForSlug(formData.slug.trim().toLowerCase())) {
-      setFormError('Privacy Policy and Terms are maintained in the app and cannot be edited here.');
-      return;
-    }
-
     // Client-side XSS validation preview check
     const scriptRegex = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi;
     const inlineJsRegex = /on\w+\s*=/gi;
@@ -121,7 +136,7 @@ const AdminCmsPagesPage = () => {
         isPublished: formData.isPublished,
       };
 
-      if (editingPage) {
+      if (editingPage?._id) {
         await adminService.updateCmsPageAdmin(editingPage._id, payload);
         setToast({ message: 'Static page updated successfully!', type: 'success' });
       } else {
@@ -161,7 +176,7 @@ const AdminCmsPagesPage = () => {
 
       <AdminPageHeader
         title="CMS — Static Pages Content Editor"
-        subtitle="Manage dynamic website pages. The current Privacy Policy and Terms are maintained in the app at /privacy and /terms, not edited here."
+        subtitle="Manage website pages, including the public Privacy Policy and Terms & Conditions."
         badge={`${pages.length} Pages`}
         action={
           <Button variant="primary" size="sm" onClick={handleOpenCreate}>
@@ -201,7 +216,7 @@ const AdminCmsPagesPage = () => {
           </Table.Header>
           <Table.Body>
             {pages.map((p) => (
-              <Table.Row key={p._id}>
+              <Table.Row key={p._id || p.slug}>
                 <Table.Cell className="font-mono text-xs text-rose-400 font-bold">
                   {legalPathForSlug(p.slug) || `/content/pages/${p.slug}`}
                 </Table.Cell>
@@ -209,10 +224,10 @@ const AdminCmsPagesPage = () => {
                   {p.title}
                 </Table.Cell>
                 <Table.Cell>
-                  {legalPathForSlug(p.slug) ? <span className="text-xs text-gray-500">Managed in app</span> : <StatusBadge status={p.isPublished ? 'active' : 'inactive'} />}
+                  {p._isPlaceholder ? <span className="text-xs font-medium text-amber-700">Not configured</span> : <StatusBadge status={p.isPublished ? 'active' : 'inactive'} />}
                 </Table.Cell>
                 <Table.Cell className="text-xs text-muted-foreground">
-                  {new Date(p.updatedAt || p.createdAt).toLocaleDateString('en-IN')}
+                  {p.updatedAt || p.createdAt ? new Date(p.updatedAt || p.createdAt).toLocaleDateString('en-IN') : '—'}
                 </Table.Cell>
                 <Table.Cell className="text-right">
                   <div className="flex items-center justify-end gap-2">
@@ -221,7 +236,7 @@ const AdminCmsPagesPage = () => {
                         <ExternalLink className="w-3.5 h-3.5 mr-1" /> Preview
                       </Button>
                     </Link>
-                    {!legalPathForSlug(p.slug) && <Button
+                    <Button
                       variant="ghost"
                       size="sm"
                       iconOnly
@@ -230,7 +245,7 @@ const AdminCmsPagesPage = () => {
                       className="bg-muted/80 hover:bg-primary/20 text-foreground hover:text-primary border border-border hover:border-primary/40 transition-all shadow-xs"
                     >
                       <Edit2 className="w-4 h-4 shrink-0" />
-                    </Button>}
+                    </Button>
                     {!legalPathForSlug(p.slug) && <Button
                       variant="ghost"
                       size="sm"
@@ -265,6 +280,7 @@ const AdminCmsPagesPage = () => {
                 value={formData.slug}
                 onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase() })}
                 placeholder="e.g. terms-and-conditions"
+                disabled={Boolean(editingPage && legalPathForSlug(editingPage.slug))}
                 required
               />
             </FormField>
@@ -306,7 +322,7 @@ const AdminCmsPagesPage = () => {
               Cancel
             </Button>
             <Button variant="primary" type="submit" isLoading={formSubmitting}>
-              {editingPage ? 'Update Page' : 'Publish Page'}
+              {editingPage?._id ? 'Update Page' : 'Publish Page'}
             </Button>
           </div>
         </form>

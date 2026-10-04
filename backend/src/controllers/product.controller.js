@@ -1,4 +1,4 @@
-import { getPublicProducts, getPublicProductById, getPublicBrands } from '../services/catalog.service.js';
+import { getPublicProducts, getPublicProductById, getPublicBrands, getCategoryHighlights } from '../services/catalog.service.js';
 import { productService } from '../services/product.service.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -22,6 +22,17 @@ export const getProducts = asyncHandler(async (req, res) => {
     res,
     'Products fetched successfully',
     result,
+    HTTP_STATUS.OK
+  );
+});
+
+export const getProductHighlights = asyncHandler(async (req, res) => {
+  const products = await getCategoryHighlights(req.user);
+
+  return ApiResponse.success(
+    res,
+    'Category highlights fetched successfully',
+    { products },
     HTTP_STATUS.OK
   );
 });

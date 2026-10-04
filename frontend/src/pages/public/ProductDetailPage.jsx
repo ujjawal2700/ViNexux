@@ -112,7 +112,13 @@ export const ProductDetailPage = () => {
       const catId = typeof prod.categoryId === 'object' ? prod.categoryId._id : prod.categoryId;
       if (catId) {
         try {
-          const relRes = await productService.getProducts({ categoryId: catId, exactCategory: 'true', limit: 5, isActive: true });
+          const relRes = await productService.getProducts({
+            categoryId: catId,
+            exactCategory: 'true',
+            limit: 5,
+            isActive: true,
+            includeFacets: false,
+          });
           const relList = relRes.data?.products || relRes.products || [];
           setRelatedProducts(relList.filter((p) => String(p._id) !== String(prod._id) && String(p.categoryId?._id || p.categoryId) === String(catId)).slice(0, 4));
         } catch (relErr) {

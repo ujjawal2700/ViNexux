@@ -7,6 +7,15 @@ const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
 const pincodeRegex = /^\d{6}$/;
 const aadhaarRegex = /^\d{12}$/;
+const phoneRegex = /^[6-9]\d{9}$/;
+const msmeRegex = /^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/;
+const organisationTypes = ['Proprietorship', 'Partnership', 'Limited Liability Partnership (LLP)', 'Private Limited Company', 'Limited Company', 'Others'];
+
+const officeLocationSchema = z.object({
+  latitude: z.coerce.number().min(-90).max(90),
+  longitude: z.coerce.number().min(-180).max(180),
+  formattedAddress: z.string().trim().max(500).optional(),
+});
 
 const kycDocumentSchema = z.object({
   type: z.enum(['gst', 'pan', 'aadhaar', 'msme'], {
@@ -27,6 +36,7 @@ export const createDealerProfileSchema = {
       .trim()
       .min(2, { message: 'Company name must be at least 2 characters' })
       .max(150, { message: 'Company name cannot exceed 150 characters' }),
+    organisationType: z.enum(organisationTypes).optional(),
     gstin: z
       .string()
       .trim()
@@ -43,6 +53,13 @@ export const createDealerProfileSchema = {
         message: 'Please enter a valid 10-character PAN format',
       })
       .optional(),
+    msmeNumber: z
+      .string()
+      .trim()
+      .transform((val) => val.toUpperCase())
+      .refine((val) => !val || msmeRegex.test(val), { message: 'Please enter a valid Udyam registration number' })
+      .optional(),
+    whatsappNumber: z.string().trim().regex(phoneRegex, { message: 'Please enter a valid 10-digit WhatsApp number' }).optional(),
     aadhaarNumber: z
       .string()
       .trim()
@@ -72,6 +89,7 @@ export const createDealerProfileSchema = {
         message: 'Please enter a valid 6-digit pincode',
       })
       .optional(),
+    officeLocation: officeLocationSchema.optional(),
     kycDocuments: z.array(kycDocumentSchema).optional().default([]),
   }),
 };
@@ -84,6 +102,7 @@ export const updateDealerProfileSchema = {
       .min(2, { message: 'Company name must be at least 2 characters' })
       .max(150, { message: 'Company name cannot exceed 150 characters' })
       .optional(),
+    organisationType: z.enum(organisationTypes).optional(),
     gstin: z
       .string()
       .nullable()
@@ -99,6 +118,21 @@ export const updateDealerProfileSchema = {
       .transform((val) => (typeof val === 'string' ? val.trim().toUpperCase() : val))
       .refine((val) => val === undefined || val === null || val === '' || panRegex.test(val), {
         message: 'Please enter a valid 10-character PAN format',
+      }),
+    msmeNumber: z
+      .string()
+      .nullable()
+      .optional()
+      .transform((val) => (typeof val === 'string' ? val.trim().toUpperCase() : val))
+      .refine((val) => val === undefined || val === null || val === '' || msmeRegex.test(val), {
+        message: 'Please enter a valid Udyam registration number',
+      }),
+    whatsappNumber: z
+      .string()
+      .nullable()
+      .optional()
+      .refine((val) => val === undefined || val === null || val === '' || phoneRegex.test(val), {
+        message: 'Please enter a valid 10-digit WhatsApp number',
       }),
     aadhaarNumber: z
       .string()
@@ -130,6 +164,7 @@ export const updateDealerProfileSchema = {
         message: 'Please enter a valid 6-digit pincode',
       })
       .optional(),
+    officeLocation: officeLocationSchema.optional(),
     kycDocuments: z.array(kycDocumentSchema).optional(),
   }),
 };

@@ -149,6 +149,7 @@ export const getProductsQuerySchema = {
     brand: z.string().optional(),
     isFeatured: z.string().optional(),
     isActive: z.string().optional(),
+    includeFacets: z.enum(['true', 'false']).optional(),
     page: z
       .string()
       .refine((val) => !isNaN(val) && parseInt(val, 10) >= 1, { message: 'Page must be a positive integer >= 1' })
@@ -167,4 +168,3 @@ export const getProductsQuerySchema = {
     sortOrder: z.enum(['asc', 'desc']).optional(),
   }),
 };
-

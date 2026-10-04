@@ -1,74 +1,81 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 
 // Layouts
 import PublicLayout from '../layouts/PublicLayout';
-import AdminLayout from '../layouts/AdminLayout';
 
 // Route Guards
 import PublicRoute from './PublicRoute';
 import ProtectedRoute from './ProtectedRoute';
 import RoleRoute from './RoleRoute';
 
+import lazyWithRetry from '../utils/lazyWithRetry';
+import RouteFallback from '../components/ui/RouteFallback';
+
 // Constants
 import { ROLES } from '../constants';
 
-// Public Pages
+// Storefront core pages stay in the main bundle; everything else is split
+// into per-route chunks so shoppers never download the admin panel.
 import HomePage from '../pages/public/HomePage';
-import LoginPage from '../pages/auth/LoginPage';
-import AdminLoginPage from '../pages/auth/AdminLoginPage';
-import VerifyOtpPage from '../pages/auth/VerifyOtpPage';
-import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
-import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
 import ProductsPage from '../pages/public/ProductsPage';
 import ProductDetailPage from '../pages/public/ProductDetailPage';
-import WishlistPage from '../pages/public/WishlistPage';
-import BrandsPage from '../pages/public/BrandsPage';
-import CmsPage from '../pages/public/CmsPage';
-import LegalPage from '../pages/public/LegalPage';
-import UnauthorizedPage from '../pages/public/UnauthorizedPage';
 import NotFoundPage from '../pages/public/NotFoundPage';
-import UiPreviewPage from '../pages/public/UiPreviewPage';
 import {
   CategoryRoute,
   CategoryLevel2Route,
   CategoryLevel3Route,
 } from './HierarchicalCategoryRoutes';
 
+const AdminLayout = lazyWithRetry(() => import('../layouts/AdminLayout'));
+
+// Public Pages
+const LoginPage = lazyWithRetry(() => import('../pages/auth/LoginPage'));
+const AdminLoginPage = lazyWithRetry(() => import('../pages/auth/AdminLoginPage'));
+const VerifyOtpPage = lazyWithRetry(() => import('../pages/auth/VerifyOtpPage'));
+const ForgotPasswordPage = lazyWithRetry(() => import('../pages/auth/ForgotPasswordPage'));
+const ResetPasswordPage = lazyWithRetry(() => import('../pages/auth/ResetPasswordPage'));
+const WishlistPage = lazyWithRetry(() => import('../pages/public/WishlistPage'));
+const BrandsPage = lazyWithRetry(() => import('../pages/public/BrandsPage'));
+const CmsPage = lazyWithRetry(() => import('../pages/public/CmsPage'));
+const LegalPage = lazyWithRetry(() => import('../pages/public/LegalPage'));
+const UnauthorizedPage = lazyWithRetry(() => import('../pages/public/UnauthorizedPage'));
+const UiPreviewPage = lazyWithRetry(() => import('../pages/public/UiPreviewPage'));
+
 // Account Pages (shared by customer & dealer roles - no more separate
 // dealer portal; see pages/account/)
-import CartPage from '../pages/account/CartPage';
-import CheckoutEnquiryPage from '../pages/account/CheckoutEnquiryPage';
-import EnquiryDetailPage from '../pages/account/EnquiryDetailPage';
-import ProfilePage from '../pages/account/ProfilePage';
-import ProfileUpdatePage from '../pages/account/ProfileUpdatePage';
+const CartPage = lazyWithRetry(() => import('../pages/account/CartPage'));
+const CheckoutEnquiryPage = lazyWithRetry(() => import('../pages/account/CheckoutEnquiryPage'));
+const EnquiryDetailPage = lazyWithRetry(() => import('../pages/account/EnquiryDetailPage'));
+const ProfilePage = lazyWithRetry(() => import('../pages/account/ProfilePage'));
+const ProfileUpdatePage = lazyWithRetry(() => import('../pages/account/ProfileUpdatePage'));
 
 // Admin Pages
-import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
-import AdminCategoriesPage from '../pages/admin/AdminCategoriesPage';
-import AdminHeaderCategoriesPage from '../pages/admin/AdminHeaderCategoriesPage';
-import AdminMainCategoriesPage from '../pages/admin/AdminMainCategoriesPage';
-import AdminSubCategoriesPage from '../pages/admin/AdminSubCategoriesPage';
-import AdminProductsPage from '../pages/admin/AdminProductsPage';
-import AdminBrandsPage from '../pages/admin/AdminBrandsPage';
-import AdminProductDetailPage from '../pages/admin/AdminProductDetailPage';
-import AdminProductImportPage from '../pages/admin/AdminProductImportPage';
-import AdminDealersPage from '../pages/admin/AdminDealersPage';
-import AdminDealerDetailPage from '../pages/admin/AdminDealerDetailPage';
-import AdminCustomersPage from '../pages/admin/AdminCustomersPage';
-import AdminCustomerDetailPage from '../pages/admin/AdminCustomerDetailPage';
-import AdminEnquiriesPage from '../pages/admin/AdminEnquiriesPage';
-import AdminEnquiryDetailPage from '../pages/admin/AdminEnquiryDetailPage';
-import AdminSessionsPage from '../pages/admin/AdminSessionsPage';
-import AdminReportsPage from '../pages/admin/AdminReportsPage';
-import AdminCmsBannersPage from '../pages/admin/AdminCmsBannersPage';
-import AdminCmsPromoPage from '../pages/admin/AdminCmsPromoPage';
-import AdminCmsPagesPage from '../pages/admin/AdminCmsPagesPage';
+const AdminDashboardPage = lazyWithRetry(() => import('../pages/admin/AdminDashboardPage'));
+const AdminCategoriesPage = lazyWithRetry(() => import('../pages/admin/AdminCategoriesPage'));
+const AdminHeaderCategoriesPage = lazyWithRetry(() => import('../pages/admin/AdminHeaderCategoriesPage'));
+const AdminMainCategoriesPage = lazyWithRetry(() => import('../pages/admin/AdminMainCategoriesPage'));
+const AdminSubCategoriesPage = lazyWithRetry(() => import('../pages/admin/AdminSubCategoriesPage'));
+const AdminProductsPage = lazyWithRetry(() => import('../pages/admin/AdminProductsPage'));
+const AdminBrandsPage = lazyWithRetry(() => import('../pages/admin/AdminBrandsPage'));
+const AdminProductDetailPage = lazyWithRetry(() => import('../pages/admin/AdminProductDetailPage'));
+const AdminProductImportPage = lazyWithRetry(() => import('../pages/admin/AdminProductImportPage'));
+const AdminDealersPage = lazyWithRetry(() => import('../pages/admin/AdminDealersPage'));
+const AdminDealerDetailPage = lazyWithRetry(() => import('../pages/admin/AdminDealerDetailPage'));
+const AdminCustomersPage = lazyWithRetry(() => import('../pages/admin/AdminCustomersPage'));
+const AdminCustomerDetailPage = lazyWithRetry(() => import('../pages/admin/AdminCustomerDetailPage'));
+const AdminEnquiriesPage = lazyWithRetry(() => import('../pages/admin/AdminEnquiriesPage'));
+const AdminEnquiryDetailPage = lazyWithRetry(() => import('../pages/admin/AdminEnquiryDetailPage'));
+const AdminSessionsPage = lazyWithRetry(() => import('../pages/admin/AdminSessionsPage'));
+const AdminReportsPage = lazyWithRetry(() => import('../pages/admin/AdminReportsPage'));
+const AdminCmsBannersPage = lazyWithRetry(() => import('../pages/admin/AdminCmsBannersPage'));
+const AdminCmsPromoPage = lazyWithRetry(() => import('../pages/admin/AdminCmsPromoPage'));
+const AdminCmsPagesPage = lazyWithRetry(() => import('../pages/admin/AdminCmsPagesPage'));
 
-import AdminCmsFooterPage from '../pages/admin/AdminCmsFooterPage';
-import AdminWebsiteSettingsPage from '../pages/admin/AdminWebsiteSettingsPage';
-import AdminProfilePage from '../pages/admin/AdminProfilePage';
-import AdminProfileUpdatePage from '../pages/admin/AdminProfileUpdatePage';
+const AdminCmsFooterPage = lazyWithRetry(() => import('../pages/admin/AdminCmsFooterPage'));
+const AdminWebsiteSettingsPage = lazyWithRetry(() => import('../pages/admin/AdminWebsiteSettingsPage'));
+const AdminProfilePage = lazyWithRetry(() => import('../pages/admin/AdminProfilePage'));
+const AdminProfileUpdatePage = lazyWithRetry(() => import('../pages/admin/AdminProfileUpdatePage'));
 
 // Tiny helper so the one dynamic-param legacy redirect
 // (/customer/enquiries/:id) can interpolate :id - <Navigate> alone can't.
@@ -79,6 +86,7 @@ const EnquiryDetailRedirect = () => {
 
 const AppRoutes = () => {
   return (
+    <Suspense fallback={<RouteFallback />}>
     <Routes>
       {/* PUBLIC ROUTES (WITH PUBLIC LAYOUT) */}
       <Route element={<PublicLayout />}>
@@ -216,6 +224,7 @@ const AppRoutes = () => {
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
+    </Suspense>
   );
 };
 

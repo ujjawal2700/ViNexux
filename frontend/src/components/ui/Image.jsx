@@ -38,6 +38,8 @@ const ImageContent = ({
         <img
           src={src || fallbackSrc}
           alt={alt}
+          loading="lazy"
+          decoding="async"
           onLoad={handleLoad}
           onError={handleError}
           className={`w-full h-full ${objectFit} transition-opacity duration-300 ${

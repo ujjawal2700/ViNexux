@@ -1,0 +1,17 @@
+{
+  "name": "vinexus-quality-suite",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "npm run test:unit && npm run test:api",
+    "test:unit": "NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --config tests/jest.unit.config.cjs",
+    "test:api": "NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --config tests/jest.api.config.cjs --runInBand",
+    "test:e2e": "playwright test",
+    "test:all": "npm run test && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.1",
+    "jest": "^30.2.0",
+    "supertest": "^7.1.4"
+  }
+}

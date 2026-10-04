@@ -10,7 +10,13 @@ const createModelNumber = (used) => {
 };
 
 export const backfillProductModels = async () => {
-  const products = await Product.find({}).select('_id modelNumber model specifications').lean();
+  // modelNumber is uniquely indexed, so only products missing a model number
+  // or model can need repair. This keeps the startup run cheap once migrated.
+  const missing = { $in: [null, ''] };
+  const products = await Product.find({ $or: [{ modelNumber: missing }, { model: missing }] })
+    .select('_id modelNumber model specifications')
+    .lean();
+  if (!products.length) return { updated: 0, total: 0 };
   const used = new Set();
   const updates = [];
 

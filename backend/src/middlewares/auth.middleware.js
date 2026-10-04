@@ -4,6 +4,9 @@ import { User } from '../models/User.js';
 import { AppError } from '../utils/AppError.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../constants/errorCodes.js';
+import { isSessionExpired } from '../utils/session.util.js';
+
+const LAST_ACTIVE_WRITE_INTERVAL_MS = 5 * 60 * 1000;
 
 export const authenticate = async (req, res, next) => {
   try {
@@ -44,8 +47,11 @@ export const authenticate = async (req, res, next) => {
       );
     }
 
-    // Find active session in MongoDB
-    const session = await Session.findOne({ sessionId, isActive: true });
+    // Session and user lookups are independent; run them together.
+    const [session, user] = await Promise.all([
+      Session.findOne({ sessionId, isActive: true }),
+      User.findById(userId),
+    ]);
     if (!session) {
       throw new AppError(
         'Session is inactive or has been revoked.',
@@ -54,7 +60,7 @@ export const authenticate = async (req, res, next) => {
       );
     }
 
-    if (session.expiresAt && session.expiresAt < new Date()) {
+    if (isSessionExpired(session)) {
       session.isActive = false;
       await session.save();
       throw new AppError(
@@ -64,8 +70,7 @@ export const authenticate = async (req, res, next) => {
       );
     }
 
-    // Fetch user and check account status
-    const user = await User.findById(userId);
+    // Check account status
     if (!user || user.accountStatus === 'blocked' || user.status === 'blocked') {
       throw new AppError(
         'User account is blocked or no longer exists.',
@@ -74,9 +79,13 @@ export const authenticate = async (req, res, next) => {
       );
     }
 
-    // Update session lastActiveAt (timestamp tracking)
-    session.lastActiveAt = new Date();
-    await session.save();
+    // Update session lastActiveAt at most every few minutes rather than
+    // writing to the database on every authenticated request.
+    const now = new Date();
+    if (!session.lastActiveAt || now - session.lastActiveAt > LAST_ACTIVE_WRITE_INTERVAL_MS) {
+      session.lastActiveAt = now;
+      await Session.updateOne({ _id: session._id }, { $set: { lastActiveAt: now } });
+    }
 
     // Attach user and session to request object
     req.user = user;

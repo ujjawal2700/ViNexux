@@ -152,7 +152,7 @@ export const updateDealerProfileByUserId = async (userId, updateData) => {
     }
   }
 
-  // Detect critical KYC changes (GSTIN change/clearing, PAN change/clearing, kycDocuments update/clearing)
+  // Detect critical KYC changes (registration numbers or supporting documents).
   const currentGstin = profile.gstin || '';
   const newGstin = updateData.gstin !== undefined ? updateData.gstin || '' : undefined;
   const isGstinChanged = newGstin !== undefined && newGstin !== currentGstin;
@@ -161,9 +161,13 @@ export const updateDealerProfileByUserId = async (userId, updateData) => {
   const newPan = updateData.pan !== undefined ? updateData.pan || '' : undefined;
   const isPanChanged = newPan !== undefined && newPan !== currentPan;
 
+  const currentMsmeNumber = profile.msmeNumber || '';
+  const newMsmeNumber = updateData.msmeNumber !== undefined ? updateData.msmeNumber || '' : undefined;
+  const isMsmeNumberChanged = newMsmeNumber !== undefined && newMsmeNumber !== currentMsmeNumber;
+
   const isKycDocsChanged = updateData.kycDocuments !== undefined;
 
-  const isUpdatingCriticalKyc = isGstinChanged || isPanChanged || isKycDocsChanged;
+  const isUpdatingCriticalKyc = isGstinChanged || isPanChanged || isMsmeNumberChanged || isKycDocsChanged;
 
   // Status transition logic:
   // 1. If currently rejected, any resubmission resets status to 'pending' and clears rejectionReason.
@@ -232,6 +236,9 @@ export const listDealers = async (query = {}) => {
       { companyName: new RegExp(safeSearch, 'i') },
       { gstin: new RegExp(safeSearch, 'i') },
       { pan: new RegExp(safeSearch, 'i') },
+      { msmeNumber: new RegExp(safeSearch, 'i') },
+      { whatsappNumber: new RegExp(safeSearch, 'i') },
+      { organisationType: new RegExp(safeSearch, 'i') },
     ];
 
     if (matchingUsers.length > 0) {
@@ -510,4 +517,3 @@ export const deleteKycDocument = async (userId, type) => {
   await profile.save();
   return await profile.populate('userId', 'fullName email phone role accountStatus isPhoneVerified isEmailVerified');
 };
-

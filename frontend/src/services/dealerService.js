@@ -11,7 +11,7 @@ export const dealerService = {
 
   /**
    * Create a new dealer profile.
-   * @param {Object} data - { companyName, gstin, pan, address, city, state, pincode, kycDocuments }
+   * @param {Object} data - Dealer business, KYC, contact, and office-location details.
    */
   async createDealerProfile(data) {
     const response = await apiClient.post('/dealers/profile', data);
@@ -20,7 +20,7 @@ export const dealerService = {
 
   /**
    * Update existing dealer profile.
-   * @param {Object} data - { companyName, gstin, pan, address, city, state, pincode, kycDocuments }
+   * @param {Object} data - Updated dealer business, KYC, contact, and office-location details.
    */
   async updateDealerProfile(data) {
     const response = await apiClient.put('/dealers/profile', data);

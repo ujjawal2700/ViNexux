@@ -2,8 +2,22 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// TRUST_PROXY: unset/false (direct traffic), a hop count ("1"), "true", or an
+// Express preset/subnet list such as "loopback" (nginx on the same server).
+const parseTrustProxy = (value) => {
+  if (value === undefined || value === '' || value === 'false') return false;
+  if (value === 'true') return true;
+  if (/^\d+$/.test(value)) return Number(value);
+  return value;
+};
+
 export const config = {
   port: Number(process.env.PORT) || 5000,
+  trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
+  // Connections per server process; multiply by PM2 instances for the total.
+  mongoMaxPoolSize: Number(process.env.MONGO_MAX_POOL_SIZE) || 100,
+  // PM2 cluster mode numbers instances 0..n-1; one-off startup work runs on 0.
+  isPrimaryInstance: (process.env.NODE_APP_INSTANCE ?? '0') === '0',
   nodeEnv: process.env.NODE_ENV || 'development',
   mongodbUri: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/vinexus',
   apiBaseUrl: process.env.API_BASE_URL || '/api',
@@ -24,6 +38,7 @@ export const config = {
   jwtSecretFallback: process.env.NODE_ENV !== 'production' ? 'vinexus_jwt_secret_key_development_mode_12345' : null,
   jwtAccessExpiry: process.env.JWT_ACCESS_EXPIRY || '15m',
   jwtRefreshExpiryDays: Number(process.env.JWT_REFRESH_EXPIRY_DAYS) || 30,
+  customerSessionExpiryHours: Number(process.env.CUSTOMER_SESSION_EXPIRY_HOURS) || 24,
   jwtConflictExpiry: process.env.JWT_CONFLICT_EXPIRY || '5m',
   jwtResetExpiry: process.env.JWT_RESET_EXPIRY || '10m',
   adminDefaultPassword: process.env.ADMIN_DEFAULT_PASSWORD || 'Admin@12345',

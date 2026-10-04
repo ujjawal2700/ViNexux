@@ -5,6 +5,7 @@ import Logo from '../../components/ui/Logo';
 import { Mail, Lock, ShieldCheck, User, MessageSquare, Check } from 'lucide-react';
 import SignupWizard from './SignupWizard';
 import { cn } from '../../lib/utils';
+import { getLastCustomerPhone } from '../../utils/tokenStorage';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^[6-9]\d{9}$/;
@@ -13,6 +14,9 @@ export const LoginPage = ({ initialTab = 'login' }) => {
   const [searchParams] = useSearchParams();
   const queryMode = searchParams.get('mode') || searchParams.get('tab');
   const roleParam = searchParams.get('role');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [savedPhone] = useState(() => getLastCustomerPhone());
 
   // Mode: 'login' or 'signup'
   const [activeTab, setActiveTab] = useState(
@@ -20,18 +24,15 @@ export const LoginPage = ({ initialTab = 'login' }) => {
   );
 
   // Input States - Sign In
-  const [identifier, setIdentifier] = useState('');
+  const [identifier, setIdentifier] = useState(() => location.state?.identifier || savedPhone);
   const [otpChannel, setOtpChannel] = useState('sms');
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   // Status States
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const { sendOtp } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-
   useEffect(() => {
     if (queryMode === 'signup' || queryMode === 'register') {
       setActiveTab('signup');
@@ -43,7 +44,7 @@ export const LoginPage = ({ initialTab = 'login' }) => {
   const handleTabSwitch = (tab) => {
     setActiveTab(tab);
     setError(null);
-    setIdentifier('');
+    setIdentifier(tab === 'login' ? savedPhone : '');
     navigate(tab === 'signup' ? '/register' : '/login', { replace: true });
   };
 
@@ -82,6 +83,7 @@ export const LoginPage = ({ initialTab = 'login' }) => {
             mockOtpEnabled: response.data?.mockOtpEnabled,
             mockOtp: response.data?.mockOtp,
             resendAvailableInSeconds: response.data?.resendAvailableInSeconds,
+            rememberPhone: rememberMe,
           },
         });
       } else {
@@ -164,6 +166,9 @@ export const LoginPage = ({ initialTab = 'login' }) => {
                   disabled={loading}
                 />
               </div>
+              {savedPhone && identifier === savedPhone && (
+                <p className="text-[11px] text-emerald-700">Your previously used mobile number has been filled in.</p>
+              )}
             </div>
 
             {/* SEND OTP VIA Channel Selector (Only SMS and Email, WhatsApp removed) */}
@@ -201,7 +206,7 @@ export const LoginPage = ({ initialTab = 'login' }) => {
               </div>
             </div>
 
-            {/* Remember Me Checkbox */}
+            {/* Remember previous customer number */}
             <div className="flex items-center text-xs pt-0.5 text-left">
               <label className="flex items-center gap-2.5 text-gray-600 hover:text-gray-900 cursor-pointer select-none">
                 <input
@@ -220,7 +225,7 @@ export const LoginPage = ({ initialTab = 'login' }) => {
                 >
                   {rememberMe && <Check className="w-3 h-3 stroke-[3]" />}
                 </div>
-                <span>Remember me</span>
+                <span>Remember this mobile number</span>
               </label>
             </div>
 

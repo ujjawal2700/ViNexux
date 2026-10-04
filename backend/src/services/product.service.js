@@ -7,6 +7,7 @@ import { AppError } from '../utils/AppError.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../constants/errorCodes.js';
 import { effectiveFilterDefinitions, getPublicCategories } from './catalog.service.js';
+import { findCategoryAndDescendantIds } from './category.service.js';
 
 const validateCategorySpecifications = async (categoryId, specifications = []) => {
   const categories = await getPublicCategories();
@@ -181,9 +182,7 @@ isActive,
       }).select('_id').lean();
 
       if (matchedCategories.length > 0) {
-        const matchedCatIds = matchedCategories.map((c) => c._id);
-        const childCats = await Category.find({ parentId: { $in: matchedCatIds } }).select('_id').lean();
-        const allCatIds = [...matchedCatIds, ...childCats.map((c) => c._id)];
+        const allCatIds = await findCategoryAndDescendantIds(matchedCategories.map((c) => c._id));
         andClauses.push({
           $or: [
             { name: searchRegex },
@@ -207,22 +206,14 @@ isActive,
       if (!mongoose.Types.ObjectId.isValid(categoryId)) {
         throw new AppError('Invalid categoryId query filter format.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
       }
-      const directChildren = await Category.find({ parentId: categoryId }).select('_id').lean();
-      const directChildIds = directChildren.map((c) => c._id);
-      const subChildren = await Category.find({ parentId: { $in: directChildIds } }).select('_id').lean();
-      const allCategoryIds = [categoryId, ...directChildIds, ...subChildren.map((c) => c._id)];
-      filter.categoryId = { $in: allCategoryIds };
+      filter.categoryId = { $in: await findCategoryAndDescendantIds([categoryId]) };
     } else if (categorySlug && categorySlug.trim()) {
       const trimmedSlug = categorySlug.trim().toLowerCase();
       const foundCategory = await Category.findOne({
         $or: [{ slug: trimmedSlug }, { name: new RegExp(`^${escapeRegex(trimmedSlug)}$`, 'i') }],
       }).select('_id').lean();
       if (foundCategory) {
-        const directChildren = await Category.find({ parentId: foundCategory._id }).select('_id').lean();
-        const directChildIds = directChildren.map((c) => c._id);
-        const subChildren = await Category.find({ parentId: { $in: directChildIds } }).select('_id').lean();
-        const allCategoryIds = [foundCategory._id, ...directChildIds, ...subChildren.map((c) => c._id)];
-        filter.categoryId = { $in: allCategoryIds };
+        filter.categoryId = { $in: await findCategoryAndDescendantIds([foundCategory._id]) };
       }
     }
 

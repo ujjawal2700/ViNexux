@@ -459,7 +459,7 @@ const AdminCmsFooterPage = () => {
             >
               Reset Changes
             </Button>
-            <Button type="submit" loading={saving} size="lg">
+            <Button type="submit" isLoading={saving} size="lg">
               Save Footer Settings
             </Button>
           </div>

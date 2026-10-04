@@ -15,6 +15,14 @@ export const productService = {
   },
 
   /**
+   * Newest product from each root category (home page section), in one request.
+   */
+  async getCategoryHighlights(options = {}) {
+    const response = await apiClient.get('/products/category-highlights', options);
+    return response.data;
+  },
+
+  /**
    * Fetch single product detail view by ID.
    * @param {string} id
    */

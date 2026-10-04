@@ -5,6 +5,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { Badge } from '../../components/ui/Badge';
 import { Calendar, FileText, ArrowLeft } from 'lucide-react';
+import { sanitizeHtml } from '../../lib/sanitizeHtml';
 
 export const CmsPage = () => {
   const { slug } = useParams();
@@ -100,7 +101,7 @@ export const CmsPage = () => {
       <article className="prose max-w-none text-[#664448] leading-relaxed text-sm space-y-4">
         {page.content ? (
           <div
-            dangerouslySetInnerHTML={{ __html: page.content }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(page.content) }}
             className="space-y-4 [&>h2]:text-xl [&>h2]:font-bold [&>h2]:text-foreground [&>h3]:text-lg [&>h3]:font-semibold [&>h3]:text-foreground [&>p]:leading-relaxed [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5"
           />
         ) : (

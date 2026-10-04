@@ -22,6 +22,7 @@ import {
 import { normalizePhoneNumber } from '../utils/phone.util.js';
 import { emailService } from './email/email.service.js';
 import { LEGAL_DOCUMENT_VERSION } from '../constants/legal.js';
+import { getEffectiveSessionExpiry, getSessionExpiryForRole, isSessionExpired } from '../utils/session.util.js';
 
 const normalizeIdentifier = (identifier) => {
   if (!identifier) return '';
@@ -57,13 +58,17 @@ export const authService = {
     dob,
     role = 'customer',
     companyName,
+    organisationType,
     gstin,
     pan,
+    msmeNumber,
+    whatsappNumber,
     aadhaarNumber,
     address,
     city,
     state,
     pincode,
+    officeLocation,
     acceptPrivacyPolicy,
     acceptTerms,
     reqInfo,
@@ -137,13 +142,17 @@ export const authService = {
         const dealerProfile = await DealerProfile.create({
           userId: user._id,
           companyName: companyName ? companyName.trim() : `${fullName.trim()} Enterprise`,
+          organisationType,
           gstin: gstin ? gstin.trim().toUpperCase() : undefined,
           pan: pan ? pan.trim().toUpperCase() : undefined,
+          msmeNumber: msmeNumber ? msmeNumber.trim().toUpperCase() : undefined,
+          whatsappNumber: whatsappNumber ? whatsappNumber.trim() : undefined,
           aadhaarNumber: aadhaarNumber ? aadhaarNumber.trim() : undefined,
           address: address ? address.trim() : undefined,
           city: city ? city.trim() : undefined,
           state: state ? state.trim() : undefined,
           pincode: pincode ? pincode.trim() : undefined,
+          officeLocation,
           status: 'pending',
         });
 
@@ -200,13 +209,17 @@ export const authService = {
       dealerProfile = await DealerProfile.create({
         userId: user._id,
         companyName: companyName ? companyName.trim() : `${fullName.trim()} Enterprise`,
+        organisationType,
         gstin: gstin ? gstin.trim().toUpperCase() : undefined,
         pan: pan ? pan.trim().toUpperCase() : undefined,
+        msmeNumber: msmeNumber ? msmeNumber.trim().toUpperCase() : undefined,
+        whatsappNumber: whatsappNumber ? whatsappNumber.trim() : undefined,
         aadhaarNumber: aadhaarNumber ? aadhaarNumber.trim() : undefined,
         address: address ? address.trim() : undefined,
         city: city ? city.trim() : undefined,
         state: state ? state.trim() : undefined,
         pincode: pincode ? pincode.trim() : undefined,
+        officeLocation,
         status: 'pending',
       });
 
@@ -542,7 +555,7 @@ export const authService = {
     // Check for existing active session (Single Active Session Enforcement)
     const existingSession = await Session.findOne({ userId: user._id, isActive: true });
 
-    if (existingSession && existingSession.expiresAt > new Date()) {
+    if (existingSession && !isSessionExpired(existingSession)) {
       // Session conflict detected! Generate a secure short-lived conflict ticket bound to existingSessionId
       const conflictTicket = generateConflictTicket({
         userId: user._id,
@@ -558,6 +571,12 @@ export const authService = {
           lastActiveAt: existingSession.lastActiveAt,
         },
       };
+    }
+
+    if (existingSession) {
+      existingSession.isActive = false;
+      existingSession.revokedAt = new Date();
+      await existingSession.save();
     }
 
     // No existing active session -> create brand new session & issue tokens
@@ -744,7 +763,8 @@ export const authService = {
     const sessionId = crypto.randomUUID();
     const refreshToken = generateRefreshToken();
     const refreshTokenHash = hashToken(refreshToken);
-    const sessionExpiresAt = new Date(Date.now() + config.jwtRefreshExpiryDays * 24 * 60 * 60 * 1000);
+    const issuedAt = new Date();
+    const sessionExpiresAt = getSessionExpiryForRole(user.role, issuedAt);
 
     const session = await Session.create({
       userId: user._id,
@@ -754,8 +774,8 @@ export const authService = {
       deviceInfo: reqInfo?.deviceInfo || {},
       ipAddress: reqInfo?.ipAddress || '127.0.0.1',
       isActive: true,
-      issuedAt: new Date(),
-      lastActiveAt: new Date(),
+      issuedAt,
+      lastActiveAt: issuedAt,
       expiresAt: sessionExpiresAt,
     });
 
@@ -849,7 +869,7 @@ export const authService = {
       isActive: true,
     }).select('+refreshTokenHash');
 
-    if (!session || session.expiresAt < new Date()) {
+    if (!session || isSessionExpired(session)) {
       if (session) {
         session.isActive = false;
         await session.save();
@@ -896,6 +916,10 @@ export const authService = {
         status: user.status,
         dealerStatus: user.dealerStatus,
         dealerProfileId: user.dealerProfileId,
+      },
+      session: {
+        sessionId: session.sessionId,
+        expiresAt: getEffectiveSessionExpiry(session),
       },
     };
   },

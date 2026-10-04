@@ -28,14 +28,52 @@ export const clearRefreshToken = (portal) => {
       localStorage.removeItem(STORAGE_KEYS.ADMIN_REFRESH_TOKEN);
     } else if (portal === 'customer') {
       localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+      localStorage.removeItem(STORAGE_KEYS.CUSTOMER_SESSION_EXPIRES_AT);
     } else {
       localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
       localStorage.removeItem(STORAGE_KEYS.ADMIN_REFRESH_TOKEN);
+      localStorage.removeItem(STORAGE_KEYS.CUSTOMER_SESSION_EXPIRES_AT);
     }
   } catch (err) {
     console.error('Error clearing refresh token from storage:', err);
   }
 };
+
+export const getStoredCustomerSessionExpiry = () => {
+  try {
+    return localStorage.getItem(STORAGE_KEYS.CUSTOMER_SESSION_EXPIRES_AT);
+  } catch {
+    return null;
+  }
+};
+
+export const setStoredCustomerSessionExpiry = (expiresAt) => {
+  try {
+    if (expiresAt) localStorage.setItem(STORAGE_KEYS.CUSTOMER_SESSION_EXPIRES_AT, String(expiresAt));
+    else localStorage.removeItem(STORAGE_KEYS.CUSTOMER_SESSION_EXPIRES_AT);
+  } catch (err) {
+    console.error('Error saving customer session expiry:', err);
+  }
+};
+
+export const getLastCustomerPhone = () => {
+  try {
+    return localStorage.getItem(STORAGE_KEYS.LAST_CUSTOMER_PHONE) || '';
+  } catch {
+    return '';
+  }
+};
+
+export const setLastCustomerPhone = (phone) => {
+  try {
+    if (phone) localStorage.setItem(STORAGE_KEYS.LAST_CUSTOMER_PHONE, phone);
+    else localStorage.removeItem(STORAGE_KEYS.LAST_CUSTOMER_PHONE);
+  } catch (err) {
+    console.error('Error saving previous customer phone number:', err);
+  }
+};
+
+export const clearLastCustomerPhone = () => setLastCustomerPhone('');
 
 export const getStoredUser = (portal) => {
   try {

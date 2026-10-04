@@ -3,7 +3,7 @@ import authService from '../services/authService';
 import cartService from '../services/cartService';
 import guestCartService from '../services/guestCartService';
 import { setAccessToken, notifySessionExpired } from '../api/axios';
-import { getStoredRefreshToken, setStoredRefreshToken, clearStoredRefreshToken, getStoredUser, setStoredUser, clearStoredUser } from '../utils/tokenStorage';
+import { getStoredRefreshToken, setStoredRefreshToken, clearStoredRefreshToken, getStoredUser, setStoredUser, clearStoredUser, getStoredCustomerSessionExpiry, setStoredCustomerSessionExpiry } from '../utils/tokenStorage';
 import { ROLES } from '../constants';
 
 export const AuthContext = createContext(null);
@@ -15,6 +15,7 @@ export const AuthProvider = ({ children }) => {
     return refresh ? getStoredUser('customer') : null;
   });
   const [accessToken, setAccessTokenState] = useState(null);
+  const [customerSessionExpiresAt, setCustomerSessionExpiresAt] = useState(() => getStoredCustomerSessionExpiry());
 
   // 2. Admin session state (guarded by presence of refresh token)
   const [adminUser, setAdminUser] = useState(() => {
@@ -29,7 +30,7 @@ export const AuthProvider = ({ children }) => {
 
   // Helper to handle tokens & load user profile (portal: 'admin' | 'customer')
   const handleAuthSuccess = useCallback(async (tokens, portal) => {
-    const { accessToken: newAccess, refreshToken: newRefresh, user: authUser } = tokens;
+    const { accessToken: newAccess, refreshToken: newRefresh, user: authUser, session } = tokens;
 
     let u = authUser || null;
 
@@ -65,6 +66,8 @@ export const AuthProvider = ({ children }) => {
           setAccessToken(null, 'customer');
           setUser(null);
           setAccessTokenState(null);
+          setCustomerSessionExpiresAt(null);
+          setStoredCustomerSessionExpiry(null);
         }
       } else {
         // Normal Customer / Dealer
@@ -77,6 +80,14 @@ export const AuthProvider = ({ children }) => {
         }
         setUser(u);
         setStoredUser(u, 'customer');
+
+        if (u.role === ROLES.CUSTOMER && session?.expiresAt) {
+          setCustomerSessionExpiresAt(session.expiresAt);
+          setStoredCustomerSessionExpiry(session.expiresAt);
+        } else {
+          setCustomerSessionExpiresAt(null);
+          setStoredCustomerSessionExpiry(null);
+        }
 
         // Merge the standard-price guest cart into the authenticated cart.
         // The backend recalculates every item using the account's current
@@ -101,6 +112,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const handleSessionExpiredEvent = (e) => {
       const portal = e.detail?.portal;
+      const expiryMessage = e.detail?.message || 'Your session has expired. Please login again.';
       if (portal === 'admin') {
         setAdminUser(null);
         setAdminAccessTokenState(null);
@@ -109,7 +121,7 @@ export const AuthProvider = ({ children }) => {
         clearStoredUser('admin');
         if (window.location.pathname.startsWith('/admin') && !window.location.pathname.includes('/login')) {
           try {
-            sessionStorage.setItem('pending_session_toast', 'Your session has expired. Please login again.');
+            sessionStorage.setItem('pending_session_toast', expiryMessage);
           } catch (err) {}
           window.location.href = '/admin/login';
         }
@@ -119,6 +131,7 @@ export const AuthProvider = ({ children }) => {
         setAccessToken(null, 'customer');
         clearStoredRefreshToken('customer');
         clearStoredUser('customer');
+        setCustomerSessionExpiresAt(null);
 
         const isCustomerProtectedRoute =
           window.location.pathname.startsWith('/account') ||
@@ -127,9 +140,9 @@ export const AuthProvider = ({ children }) => {
 
         if (isCustomerProtectedRoute) {
           try {
-            sessionStorage.setItem('pending_session_toast', 'Your session has expired. Please login again.');
+            sessionStorage.setItem('pending_session_toast', expiryMessage);
           } catch (err) {}
-          window.location.href = '/';
+          window.location.href = '/login';
         }
       }
     };
@@ -137,6 +150,21 @@ export const AuthProvider = ({ children }) => {
     window.addEventListener('session-expired', handleSessionExpiredEvent);
     return () => window.removeEventListener('session-expired', handleSessionExpiredEvent);
   }, []);
+
+  // A customer is logged out at the exact server-issued 24-hour deadline,
+  // even when the page is idle and no API request is made at that moment.
+  useEffect(() => {
+    if (user?.role !== ROLES.CUSTOMER || !customerSessionExpiresAt) return undefined;
+    const remainingMs = new Date(customerSessionExpiresAt).getTime() - Date.now();
+    if (!Number.isFinite(remainingMs) || remainingMs <= 0) {
+      notifySessionExpired('customer', 'Your 24-hour login session has ended. Please log in again.');
+      return undefined;
+    }
+    const timerId = window.setTimeout(() => {
+      notifySessionExpired('customer', 'Your 24-hour login session has ended. Please log in again.');
+    }, remainingMs);
+    return () => window.clearTimeout(timerId);
+  }, [customerSessionExpiresAt, user?.role]);
 
   const isRestoringRef = useRef(false);
 
@@ -165,6 +193,7 @@ export const AuthProvider = ({ children }) => {
                 setAccessToken(null, 'customer');
                 setUser(null);
                 setAccessTokenState(null);
+                setCustomerSessionExpiresAt(null);
               }
             } catch (err) {
               console.warn('Customer session restoration failed:', err);
@@ -173,6 +202,7 @@ export const AuthProvider = ({ children }) => {
               setAccessToken(null, 'customer');
               setUser(null);
               setAccessTokenState(null);
+              setCustomerSessionExpiresAt(null);
 
               const isCustomerProtectedRoute =
                 window.location.pathname.startsWith('/account') ||
@@ -192,6 +222,7 @@ export const AuthProvider = ({ children }) => {
         );
       } else {
         clearStoredUser('customer');
+        setCustomerSessionExpiresAt(null);
       }
 
       // 2. Admin restore task (runs in parallel!)
@@ -338,6 +369,7 @@ export const AuthProvider = ({ children }) => {
         setAccessToken(null, 'customer');
         clearStoredRefreshToken('customer');
         clearStoredUser('customer');
+        setCustomerSessionExpiresAt(null);
       }
       setSessionConflict(false);
       setConflictTicket(null);

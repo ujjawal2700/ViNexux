@@ -58,35 +58,82 @@ export const validateProductAndCategoryActive = async (productId) => {
 };
 
 /**
+ * Batch form of validateProductAndCategoryActive: same checks and messages,
+ * reported for the first failing id in order. Returns products keyed by id.
+ */
+export const validateProductsAndCategoriesActive = async (productIds) => {
+  const products = await Product.find({ _id: { $in: productIds } });
+  const productById = new Map(products.map((product) => [String(product._id), product]));
+  const categories = await Category.find({ _id: { $in: products.map((product) => product.categoryId).filter(Boolean) } })
+    .select('isActive')
+    .lean();
+  const categoryById = new Map(categories.map((category) => [String(category._id), category]));
+
+  for (const productId of productIds) {
+    const product = productById.get(String(productId));
+    if (!product) {
+      throw new AppError('Product not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
+    }
+    if (product.isActive === false) {
+      throw new AppError(
+        'Product is currently inactive and cannot be added to cart',
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.BAD_REQUEST
+      );
+    }
+    const category = categoryById.get(String(product.categoryId));
+    if (!category || category.isActive === false) {
+      throw new AppError(
+        'Product belongs to an inactive category and cannot be added to cart',
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.BAD_REQUEST
+      );
+    }
+  }
+  return productById;
+};
+
+/**
  * Calculate applicable price based on user role and approval status:
  * - Approved dealer -> DealerPricing or product.dealerPrice (fallback to standardPrice)
  * - Customer / Pending Dealer / Rejected Dealer -> product.standardPrice
  * - Dealer pricing is NEVER exposed to non-approved users.
  */
-export const calculateApplicablePrice = async (userId, product) => {
-  const user = await User.findById(userId);
-  if (!user) return product.standardPrice || 0;
+export const calculateApplicablePrices = async (userId, products) => {
+  const prices = new Map();
+  const fallbackPrice = (product) => product.standardPrice || 0;
+  if (!products.length) return prices;
 
-  if (user.role === 'dealer') {
-    const dealerProfile = await DealerProfile.findOne({ userId });
-    if (dealerProfile && dealerProfile.status === 'approved') {
-      const customPricing = await DealerPricing.findOne({
-        dealerId: dealerProfile._id,
-        productId: product._id,
-        isActive: true,
-      });
-
-      if (customPricing && customPricing.price !== undefined) {
-        return customPricing.price;
-      }
-
-      if (product.dealerPrice !== undefined && product.dealerPrice > 0) {
-        return product.dealerPrice;
-      }
-    }
+  const user = await User.findById(userId).select('role').lean();
+  let dealerProfile = null;
+  if (user?.role === 'dealer') {
+    dealerProfile = await DealerProfile.findOne({ userId }).select('_id status').lean();
   }
 
-  return product.standardPrice || 0;
+  if (dealerProfile?.status !== 'approved') {
+    for (const product of products) prices.set(String(product._id), fallbackPrice(product));
+    return prices;
+  }
+
+  const customPricing = await DealerPricing.find({
+    dealerId: dealerProfile._id,
+    productId: { $in: products.map((product) => product._id) },
+    isActive: true,
+  }).select('productId price').lean();
+  const customPriceByProduct = new Map(customPricing.map((row) => [String(row.productId), row.price]));
+
+  for (const product of products) {
+    const customPrice = customPriceByProduct.get(String(product._id));
+    if (customPrice !== undefined && customPrice !== null) prices.set(String(product._id), customPrice);
+    else if (product.dealerPrice !== undefined && product.dealerPrice > 0) prices.set(String(product._id), product.dealerPrice);
+    else prices.set(String(product._id), fallbackPrice(product));
+  }
+  return prices;
+};
+
+export const calculateApplicablePrice = async (userId, product) => {
+  const prices = await calculateApplicablePrices(userId, [product]);
+  return prices.get(String(product._id));
 };
 
 /**
@@ -107,10 +154,13 @@ const formatPopulatedCart = async (cart, userId) => {
   // approval/rejection/revocation or an admin price edit therefore applies
   // on the next cart read without trusting an older snapshot.
   let pricingChanged = false;
+  const products = await Product.find({ _id: { $in: (cart.items || []).map((item) => item.productId) } })
+    .select('standardPrice dealerPrice')
+    .lean();
+  const currentPrices = await calculateApplicablePrices(userId, products);
   for (const item of cart.items || []) {
-    const product = await Product.findById(item.productId);
-    if (!product) continue;
-    const currentPrice = await calculateApplicablePrice(userId, product);
+    const currentPrice = currentPrices.get(String(item.productId));
+    if (currentPrice === undefined) continue;
     if (item.priceSnapshot !== currentPrice) {
       item.priceSnapshot = currentPrice;
       pricingChanged = true;

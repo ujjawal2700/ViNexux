@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
 import { config } from './config/env.js';
 import { httpLogger } from './utils/logger.js';
 import apiRouter from './routes/index.js';
@@ -10,6 +11,10 @@ import { mongoSanitize } from './middlewares/mongoSanitize.js';
 import { apiRateLimiter } from './middlewares/rateLimiter.js';
 
 const app = express();
+
+// Behind nginx every connection comes from the proxy; trusting it makes
+// req.ip the real client address, which the rate limiters key on.
+app.set('trust proxy', config.trustProxy);
 
 // 1. Security HTTP headers
 app.use(helmet({
@@ -35,20 +40,23 @@ app.use(
   })
 );
 
-// 3. Body Parsing Middlewares
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// 3. Response compression (JSON catalog payloads compress well)
+app.use(compression());
 
-// 4. NoSQL Operator Injection Sanitization Middleware
+// 4. Body Parsing Middlewares (file uploads use multer, not these parsers)
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// 5. NoSQL Operator Injection Sanitization Middleware
 app.use(mongoSanitize);
 
-// 5. Rate Limiter Middleware
+// 6. Rate Limiter Middleware
 app.use(config.apiBaseUrl, apiRateLimiter);
 
-// 6. Request Logging
+// 7. Request Logging
 app.use(httpLogger);
 
-// 7. API Routes
+// 8. API Routes
 app.use(config.apiBaseUrl, apiRouter);
 
 // Root route: hosting platforms (Render, etc.) commonly health-check the
@@ -63,10 +71,10 @@ app.get('/', (req, res) => {
   });
 });
 
-// 8. Resource Not Found (404) Handler
+// 9. Resource Not Found (404) Handler
 app.use(notFoundHandler);
 
-// 9. Centralized Error Handler Middleware
+// 10. Centralized Error Handler Middleware
 app.use(errorHandler);
 
 export default app;

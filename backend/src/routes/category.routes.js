@@ -9,6 +9,7 @@ import {
 } from '../controllers/category.controller.js';
 import { validate } from '../middlewares/validate.js';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
+import { publicCache } from '../middlewares/cacheControl.js';
 import {
   createCategorySchema,
   updateCategorySchema,
@@ -20,9 +21,9 @@ import {
 const router = Router();
 
 // Public Category Endpoints
-router.get('/tree', getCategoryTree);
-router.get('/', validate(getCategoriesQuerySchema), getCategories);
-router.get('/:id', validate(getCategoryByIdSchema), getCategoryById);
+router.get('/tree', publicCache(), getCategoryTree);
+router.get('/', publicCache(), validate(getCategoriesQuerySchema), getCategories);
+router.get('/:id', publicCache(), validate(getCategoryByIdSchema), getCategoryById);
 
 // Protected Admin Category Operations
 router.post('/', authenticate, authorize('admin'), validate(createCategorySchema), createCategory);

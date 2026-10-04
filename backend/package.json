@@ -10,7 +10,9 @@
     "test": "node tests/health.test.js",
     "test:catalog-integration": "node tests/catalogIntegration.test.js",
     "test:product-import": "node tests/productImport.test.js",
-    "backfill:product-models": "node scripts/backfill_product_models.js"
+    "backfill:product-models": "node scripts/backfill_product_models.js",
+    "backfill:catalog-fields": "node scripts/backfill_catalog_fields.js",
+    "cleanup:business-data": "node scripts/delete_business_data.js"
   },
   "keywords": [
     "vinexus",
@@ -24,6 +26,7 @@
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.11.0",
+    "compression": "^1.8.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "exceljs": "^4.4.0",

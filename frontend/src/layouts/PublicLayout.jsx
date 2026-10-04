@@ -1,5 +1,6 @@
 import { Image } from '../components/ui/Image';
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { Suspense, useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import RouteFallback from '../components/ui/RouteFallback';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 import contentService from '../services/contentService';
@@ -95,6 +96,7 @@ const PublicLayout = () => {
   // Search state
   const [headerSearch, setHeaderSearch] = useState('');
   const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [correctedSuggestion, setCorrectedSuggestion] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const desktopSearchRef = useRef(null);
@@ -562,8 +564,10 @@ const PublicLayout = () => {
   // Debounced Live Search Suggestions
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
     const query = headerSearch.trim();
-    if (!query) {
+    // Single characters match nearly everything and only load the server.
+    if (query.length < 2) {
       setSearchSuggestions([]);
       setIsSearching(false);
       setIsSearchOpen(false);
@@ -582,10 +586,12 @@ const PublicLayout = () => {
           ...(searchCategory ? { categoryId: searchCategory._id } : {}),
           limit: 8,
           isActive: true,
-        });
+          includeFacets: false,
+        }, { signal: controller.signal, skipGlobalLoader: true });
         const prods = res?.data?.products || res?.products || [];
         if (!active) return;
         setSearchSuggestions(prods);
+        setCorrectedSuggestion(res?.data?.searchMode === 'fuzzy' ? (res?.data?.correctedSearch || '') : '');
         setIsSearchOpen(true);
       } catch (err) {
         if (!active) return;
@@ -599,6 +605,7 @@ const PublicLayout = () => {
 
     return () => {
       active = false;
+      controller.abort();
       if (searchDebounceRef.current) {
         clearTimeout(searchDebounceRef.current);
       }
@@ -689,7 +696,7 @@ const PublicLayout = () => {
         ) : (
           <div>
             <div className="px-4 pt-3 pb-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 bg-gray-50/50">
-              PRODUCTS
+              {correctedSuggestion ? `Showing results for "${correctedSuggestion}"` : 'PRODUCTS'}
             </div>
             <div className="max-h-[380px] overflow-y-auto divide-y divide-gray-100">
               {searchSuggestions.map((prod) => {
@@ -1619,7 +1626,9 @@ const PublicLayout = () => {
 
       {/* 5. MAIN PAGE CONTENT (Natural Height Flow Matching Mega Jaipur) */}
       <main className="w-full max-w-full flex flex-col min-w-0 flex-1 overflow-x-hidden">
-        <Outlet />
+        <Suspense fallback={<RouteFallback />}>
+          <Outlet />
+        </Suspense>
       </main>
 
       {footerData && <footer className="w-full bg-[#111111] text-white px-6 pt-10 text-left">

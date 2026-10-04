@@ -189,7 +189,7 @@ export const WishlistPage = () => {
                         to={buildProductPath(product)}
                         className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 flex items-center justify-center bg-white rounded p-1 overflow-hidden"
                       >
-                        <img
+                        <img loading="lazy" decoding="async"
                           src={imgUrl}
                           alt={product.name || 'Product'}
                           className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform"

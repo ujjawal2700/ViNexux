@@ -232,7 +232,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
           </div>
 
           {brandLogo ? (
-            <img src={brandLogo} alt={`${brandName} logo`} title={brandName} className="h-7 w-14 shrink-0 object-contain object-right" />
+            <img loading="lazy" decoding="async" src={brandLogo} alt={`${brandName} logo`} title={brandName} className="h-7 w-14 shrink-0 object-contain object-right" />
           ) : (
             <span className="max-w-[72px] shrink-0 truncate text-right text-[10px] font-extrabold uppercase text-[#800020]" title={brandName}>{brandName}</span>
           )}

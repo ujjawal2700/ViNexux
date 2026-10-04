@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import Logo from '../../components/ui/Logo';
@@ -22,12 +22,16 @@ import {
 } from 'lucide-react';
 
 const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+const MSME_REGEX = /^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/;
 const AADHAAR_REGEX = /^\d{12}$/;
 const PINCODE_REGEX = /^\d{6}$/;
 const PHONE_REGEX = /^[6-9]\d{9}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ORGANISATION_TYPES = ['Proprietorship', 'Partnership', 'Limited Liability Partnership (LLP)', 'Private Limited Company', 'Limited Company', 'Others'];
+const OfficeLocationPicker = lazy(() => import('../../components/auth/OfficeLocationPicker'));
 
 const inputClass =
   'w-full bg-white border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary rounded pl-10 pr-4 py-2.5 text-xs sm:text-sm text-gray-900 placeholder-gray-400 outline-none transition-all font-medium';
@@ -35,15 +39,9 @@ const plainInputClass =
   'w-full bg-white border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary rounded px-3.5 py-2.5 text-xs sm:text-sm text-gray-900 placeholder-gray-400 outline-none transition-all font-medium';
 
 const LegalAcceptances = ({ prefix, agreedTerms, setAgreedTerms, agreedPrivacy, setAgreedPrivacy }) => (
-  <div className="space-y-2 pt-1 text-left text-xs text-gray-700">
-    <div className="flex items-start gap-2">
-      <input id={`${prefix}-privacy`} type="checkbox" checked={agreedPrivacy} onChange={(e) => setAgreedPrivacy(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[#800020]" />
-      <div><label htmlFor={`${prefix}-privacy`} className="cursor-pointer">I agree to the use of my details as described in the </label><Link to="/privacy" target="_blank" rel="noopener noreferrer" className="font-bold text-primary underline">Privacy Policy</Link>.</div>
-    </div>
-    <div className="flex items-start gap-2">
-      <input id={`${prefix}-terms`} type="checkbox" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[#800020]" />
-      <div><label htmlFor={`${prefix}-terms`} className="cursor-pointer">I have read and agree to the </label><Link to="/terms" target="_blank" rel="noopener noreferrer" className="font-bold text-primary underline">Terms &amp; Conditions</Link>.</div>
-    </div>
+  <div className="flex items-start gap-2 pt-1 text-left text-xs text-gray-700">
+    <input id={`${prefix}-legal`} type="checkbox" checked={agreedTerms && agreedPrivacy} onChange={(e) => { setAgreedTerms(e.target.checked); setAgreedPrivacy(e.target.checked); }} className="mt-0.5 h-4 w-4 shrink-0 accent-[#800020]" />
+    <div><label htmlFor={`${prefix}-legal`} className="cursor-pointer">I accept the </label><Link to="/terms" target="_blank" rel="noopener noreferrer" className="font-bold text-primary underline">Terms &amp; Conditions</Link> and <Link to="/privacy" target="_blank" rel="noopener noreferrer" className="font-bold text-primary underline">Privacy Policy</Link>.</div>
   </div>
 );
 
@@ -96,15 +94,21 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
   const [dealerName, setDealerName] = useState('');
   const [dealerEmail, setDealerEmail] = useState('');
   const [dealerPhone, setDealerPhone] = useState('');
+  const [whatsappNumber, setWhatsappNumber] = useState('');
   const [companyName, setCompanyName] = useState('');
+  const [organisationType, setOrganisationType] = useState('');
   const [gstin, setGstin] = useState('');
   const [gstFile, setGstFile] = useState(null);
+  const [pan, setPan] = useState('');
+  const [msmeNumber, setMsmeNumber] = useState('');
+  const [msmeFile, setMsmeFile] = useState(null);
   const [aadhaarNumber, setAadhaarNumber] = useState('');
   const [aadhaarFile, setAadhaarFile] = useState(null);
   const [dealerAddress, setDealerAddress] = useState('');
   const [selectedState, setSelectedState] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [pincode, setPincode] = useState('');
+  const [officeLocation, setOfficeLocation] = useState({ latitude: '', longitude: '', formattedAddress: '' });
 
   // OTP step
   const [otp, setOtp] = useState('');
@@ -172,11 +176,23 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
     if (!companyName.trim()) {
       return 'Business / Company Name is required.';
     }
+    if (!organisationType) {
+      return 'Please select your organisation type.';
+    }
+    if (!PHONE_REGEX.test(whatsappNumber.trim())) {
+      return 'Please enter a valid 10-digit WhatsApp number.';
+    }
     if (!gstin.trim() || !GSTIN_REGEX.test(gstin.trim().toUpperCase())) {
       return 'A valid 15-character GSTIN is required.';
     }
     if (!gstFile) {
       return 'Please upload a photo or PDF of your GST Certificate.';
+    }
+    if (!PAN_REGEX.test(pan.trim().toUpperCase())) {
+      return 'A valid 10-character PAN number is required.';
+    }
+    if (!MSME_REGEX.test(msmeNumber.trim().toUpperCase())) {
+      return 'Enter a valid MSME/Udyam number in the format UDYAM-XX-00-0000000.';
     }
     if (!aadhaarNumber.trim() || !AADHAAR_REGEX.test(aadhaarNumber.trim())) {
       return 'A valid 12-digit Aadhaar number is required.';
@@ -196,7 +212,11 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
     if (!pincode.trim() || !PINCODE_REGEX.test(pincode.trim())) {
       return 'Please enter a valid 6-digit pincode.';
     }
-    for (const [file, label] of [[gstFile, 'GST Certificate'], [aadhaarFile, 'Aadhaar Card']]) {
+    if (!Number.isFinite(Number(officeLocation.latitude)) || !Number.isFinite(Number(officeLocation.longitude)) || officeLocation.latitude === '' || officeLocation.longitude === '') {
+      return 'Please select your office location on the map.';
+    }
+    for (const [file, label] of [[gstFile, 'GST Certificate'], [aadhaarFile, 'Aadhaar Card'], [msmeFile, 'MSME Certificate']]) {
+      if (!file) continue;
       if (!ALLOWED_FILE_TYPES.includes(file.type)) {
         return `${label}: invalid file format. Please upload JPG, PNG, WEBP, or PDF.`;
       }
@@ -267,12 +287,17 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
           acceptPrivacyPolicy: agreedPrivacy,
           acceptTerms: agreedTerms,
           companyName,
+          organisationType,
           gstin: gstin.toUpperCase(),
+          pan: pan.toUpperCase(),
+          msmeNumber: msmeNumber.toUpperCase(),
+          whatsappNumber,
           aadhaarNumber,
           address: dealerAddress.trim(),
           city: selectedCity,
           state: selectedState,
           pincode,
+          officeLocation,
         }
       : {
           fullName: custName.trim(),
@@ -293,13 +318,20 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
       const uploadFailures = [];
       try {
         await dealerService.uploadKycDocument('gst', gstFile);
-      } catch (_err) {
+      } catch {
         uploadFailures.push('GST Certificate');
       }
       try {
         await dealerService.uploadKycDocument('aadhaar', aadhaarFile);
-      } catch (_err) {
+      } catch {
         uploadFailures.push('Aadhaar Card');
+      }
+      if (msmeFile) {
+        try {
+          await dealerService.uploadKycDocument('msme', msmeFile);
+        } catch {
+          uploadFailures.push('MSME Certificate');
+        }
       }
 
       if (uploadFailures.length) {
@@ -498,6 +530,7 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
                 />
               </div>
             </div>
+
           </div>
 
           <LegalAcceptances prefix="customer" agreedTerms={agreedTerms} setAgreedTerms={setAgreedTerms} agreedPrivacy={agreedPrivacy} setAgreedPrivacy={setAgreedPrivacy} />
@@ -593,6 +626,24 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
                 />
               </div>
             </div>
+
+            <div className="space-y-1">
+              <label className="block text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                WHATSAPP NUMBER *
+              </label>
+              <div className="relative">
+                <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="tel"
+                  required
+                  value={whatsappNumber}
+                  onChange={(e) => setWhatsappNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder="10-digit WhatsApp Number"
+                  className={inputClass}
+                  disabled={loading}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Business & KYC Verification Section */}
@@ -607,6 +658,16 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div className="space-y-1">
                 <label className="block text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                  ORGANISATION TYPE *
+                </label>
+                <select required value={organisationType} onChange={(e) => setOrganisationType(e.target.value)} className={plainInputClass} disabled={loading}>
+                  <option value="">Select organisation type</option>
+                  {ORGANISATION_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                   GSTIN NUMBER *
                 </label>
                 <input
@@ -616,6 +677,38 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
                   onChange={(e) => setGstin(e.target.value.toUpperCase())}
                   placeholder="15-character GSTIN"
                   maxLength={15}
+                  className={`${plainInputClass} uppercase`}
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                  PAN NUMBER *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={pan}
+                  onChange={(e) => setPan(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 10))}
+                  placeholder="10-character PAN"
+                  maxLength={10}
+                  className={`${plainInputClass} uppercase`}
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                  MSME / UDYAM NUMBER *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={msmeNumber}
+                  onChange={(e) => setMsmeNumber(e.target.value.toUpperCase().slice(0, 23))}
+                  placeholder="UDYAM-RJ-00-0000000"
+                  maxLength={23}
                   className={`${plainInputClass} uppercase`}
                   disabled={loading}
                 />
@@ -639,12 +732,18 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
             </div>
 
             {/* Document Uploads */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               <FileDropField
                 label="GST Certificate (Photo or PDF)"
                 required
                 file={gstFile}
                 onChange={setGstFile}
+                disabled={loading}
+              />
+              <FileDropField
+                label="MSME Certificate (Optional)"
+                file={msmeFile}
+                onChange={setMsmeFile}
                 disabled={loading}
               />
               <FileDropField
@@ -721,6 +820,12 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
                   disabled={loading}
                 />
               </div>
+            </div>
+
+            <div className="pt-3 border-t border-gray-200">
+              <Suspense fallback={<div className="h-72 animate-pulse rounded-lg bg-gray-100" aria-label="Loading office map" />}>
+                <OfficeLocationPicker value={officeLocation} onChange={setOfficeLocation} disabled={loading} />
+              </Suspense>
             </div>
           </div>
 

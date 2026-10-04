@@ -63,8 +63,8 @@ export const HomePage = () => {
       const [bannerResponse, catRes, featured, newest] = await Promise.all([
         contentService.getBanners(),
         categoryService.getCategoryTree(),
-        productService.getProducts({ sortBy: 'updatedAt', sortOrder: 'desc', limit: 8 }),
-        productService.getProducts({ sortBy: 'createdAt', sortOrder: 'desc', limit: 8 }),
+        productService.getProducts({ sortBy: 'updatedAt', sortOrder: 'desc', limit: 8, includeFacets: false }),
+        productService.getProducts({ sortBy: 'createdAt', sortOrder: 'desc', limit: 8, includeFacets: false }),
       ]);
       setBanners((bannerResponse.data?.banners || []).map((banner) => ({ ...banner, id: banner._id, image: banner.image?.url, link: banner.link || '/' })));
       const rootCats = (catRes.data?.categories || []).filter((category) => !category.parentId);
@@ -73,20 +73,14 @@ export const HomePage = () => {
       setNewArrivals(newest.data?.products || []);
       setIsLoading(false);
 
-      // Load 1 representative product per available root header category (max 12 products for 2 rows of 6)
-      const sectionResults = await Promise.allSettled(rootCats.map(async (category) => {
-        const response = await productService.getProducts(
-          { categoryId: category._id, limit: 1 },
-          { skipGlobalLoader: true }
-        );
-        const prods = response.data?.products || [];
-        return prods.length > 0 ? prods[0] : null;
-      }));
-      const repProducts = sectionResults
-        .filter((result) => result.status === 'fulfilled' && result.value)
-        .map((result) => result.value)
-        .slice(0, 12);
-      setAllProducts(repProducts);
+      // 1 representative product per root header category (max 12 for 2 rows of 6).
+      // Non-critical section: a failure leaves it empty rather than erroring the page.
+      try {
+        const highlights = await productService.getCategoryHighlights({ skipGlobalLoader: true });
+        setAllProducts((highlights.data?.products || []).slice(0, 12));
+      } catch {
+        setAllProducts([]);
+      }
     } catch (err) {
       if (axios.isCancel(err)) return;
       setError('Unable to load the storefront. Please retry.');

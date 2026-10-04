@@ -4,6 +4,8 @@ import useAuth from '../../hooks/useAuth';
 import Logo from '../../components/ui/Logo';
 import useToast from '../../hooks/useToast';
 import { ArrowLeft, Check, ShieldAlert } from 'lucide-react';
+import { ROLES } from '../../constants';
+import { clearLastCustomerPhone, setLastCustomerPhone } from '../../utils/tokenStorage';
 
 export const VerifyOtpPage = () => {
   const location = useLocation();
@@ -14,6 +16,7 @@ export const VerifyOtpPage = () => {
   const portal = location.state?.portal || (location.pathname.startsWith('/admin') ? 'admin' : 'customer');
   const mockOtpEnabled = location.state?.mockOtpEnabled === true;
   const mockOtp = location.state?.mockOtp;
+  const rememberPhone = location.state?.rememberPhone !== false;
 
   // Format phone number nicely (e.g. +91 8209224481)
   const formatPhoneNumber = (val) => {
@@ -29,6 +32,14 @@ export const VerifyOtpPage = () => {
   };
 
   const displayIdentifier = formatPhoneNumber(identifier);
+
+  const updateRememberedPhone = (response) => {
+    const authenticatedUser = response?.data?.user || response?.user;
+    if (portal !== 'admin' && authenticatedUser?.role === ROLES.CUSTOMER && /^\d{10}$/.test(identifier)) {
+      if (rememberPhone) setLastCustomerPhone(identifier);
+      else clearLastCustomerPhone();
+    }
+  };
 
   // 6 digit OTP state
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
@@ -132,6 +143,7 @@ export const VerifyOtpPage = () => {
         return;
       }
       if (res.success || res.data?.accessToken) {
+        updateRememberedPhone(res);
         toast.success('Verification successful!');
         if (portal === 'admin') {
           navigate('/admin/dashboard', { replace: true });
@@ -175,6 +187,7 @@ export const VerifyOtpPage = () => {
     try {
       const res = await forceLogin(conflictTicket, portal);
       if (res.success || res.data?.accessToken) {
+        updateRememberedPhone(res);
         toast.success('Other device disconnected! Logging you in...');
         if (portal === 'admin') {
           navigate('/admin/dashboard', { replace: true });

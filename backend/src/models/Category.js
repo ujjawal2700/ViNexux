@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { invalidateCategoryCache } from '../utils/categoryCache.js';
 
 const filterDefinitionSchema = new mongoose.Schema(
   {
@@ -72,6 +73,15 @@ const categorySchema = new mongoose.Schema(
 
 // Compound index for efficient catalog navigation queries (filtering by parentId, status, and sorting by sortOrder)
 categorySchema.index({ parentId: 1, isActive: 1, sortOrder: 1 });
+
+// Any write must drop the cached public category tree (see utils/categoryCache.js).
+categorySchema.post('save', invalidateCategoryCache);
+categorySchema.post('insertMany', invalidateCategoryCache);
+categorySchema.post(
+  ['updateOne', 'updateMany', 'findOneAndUpdate', 'findOneAndReplace', 'replaceOne', 'deleteOne', 'deleteMany', 'findOneAndDelete'],
+  invalidateCategoryCache
+);
+categorySchema.post('deleteOne', { document: true, query: false }, invalidateCategoryCache);
 
 export const Category = mongoose.model('Category', categorySchema);
 export default Category;

@@ -1,4 +1,3 @@
-import sharp from 'sharp';
 import { getStorageProvider } from '../../integrations/storage/index.js';
 import { AppError } from '../../utils/AppError.js';
 import { HTTP_STATUS } from '../../constants/httpStatusCodes.js';
@@ -27,6 +26,7 @@ const prepareImageBuffer = async (buffer, mimetype) => {
   }
 
   try {
+    const { default: sharp } = await import('sharp');
     const converted = await sharp(buffer)
       .rotate() // respect EXIF orientation before stripping metadata
       .resize({

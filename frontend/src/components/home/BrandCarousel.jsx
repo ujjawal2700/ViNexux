@@ -11,7 +11,7 @@ import { BrandCarouselSkeleton } from '../ui/Skeleton';
  */
 const BrandLogo = ({ brand }) => {
   const { name } = brand;
-  if (brand.logo?.url) return <img src={brand.logo.url} alt={name} className="max-h-full max-w-full object-contain" />;
+  if (brand.logo?.url) return <img loading="lazy" decoding="async" src={brand.logo.url} alt={name} className="max-h-full max-w-full object-contain" />;
 
   switch (name) {
     case 'XPG':

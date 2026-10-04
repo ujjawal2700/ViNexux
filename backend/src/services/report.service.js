@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { User } from '../models/User.js';
 import { DealerProfile } from '../models/DealerProfile.js';
 import { Product } from '../models/Product.js';
@@ -12,45 +13,51 @@ const escapeRegex = (string) => {
  * Admin: Summary report of platform metrics
  */
 export const getReportSummary = async () => {
-  const [
-    totalCustomers,
-    activeCustomers,
-    pendingCustomers,
-    blockedCustomers,
-    totalDealers,
-    pendingDealers,
-    approvedDealers,
-    rejectedDealers,
-    totalProducts,
-    activeProducts,
-    totalCategories,
-    activeCategories,
-    totalEnquiries,
-    newEnquiries,
-    contactedEnquiries,
-    inProgressEnquiries,
-    closedEnquiries,
-    spamEnquiries,
-  ] = await Promise.all([
-    User.countDocuments({ role: 'customer' }),
-    User.countDocuments({ role: 'customer', $or: [{ accountStatus: 'active' }, { status: 'active' }] }),
-    User.countDocuments({ role: 'customer', $or: [{ accountStatus: 'pending' }, { status: 'pending' }] }),
-    User.countDocuments({ role: 'customer', $or: [{ accountStatus: 'blocked' }, { status: 'blocked' }] }),
-    User.countDocuments({ role: 'dealer' }),
-    DealerProfile.countDocuments({ status: 'pending' }),
-    DealerProfile.countDocuments({ status: 'approved' }),
-    DealerProfile.countDocuments({ status: 'rejected' }),
-    Product.countDocuments({}),
-    Product.countDocuments({ isActive: true }),
-    Category.countDocuments({}),
-    Category.countDocuments({ isActive: true }),
-    Enquiry.countDocuments({}),
-    Enquiry.countDocuments({ status: 'new' }),
-    Enquiry.countDocuments({ status: 'contacted' }),
-    Enquiry.countDocuments({ status: 'in-progress' }),
-    Enquiry.countDocuments({ status: 'closed' }),
-    Enquiry.countDocuments({ status: 'spam' }),
+  const sumIf = (condition) => ({ $sum: { $cond: [condition, 1, 0] } });
+  const customerWithStatus = (value) => ({
+    $and: [{ $eq: ['$role', 'customer'] }, { $or: [{ $eq: ['$accountStatus', value] }, { $eq: ['$status', value] }] }],
+  });
+  const countBy = (rows) => new Map(rows.map((row) => [row._id, row.count]));
+
+  // One grouped pass per collection instead of one count query per metric.
+  const [[userCounts = {}], dealerRows, [productCounts = {}], [categoryCounts = {}], enquiryRows] = await Promise.all([
+    User.aggregate([
+      { $match: { role: { $in: ['customer', 'dealer'] } } },
+      { $group: {
+        _id: null,
+        totalCustomers: sumIf({ $eq: ['$role', 'customer'] }),
+        activeCustomers: sumIf(customerWithStatus('active')),
+        pendingCustomers: sumIf(customerWithStatus('pending')),
+        blockedCustomers: sumIf(customerWithStatus('blocked')),
+        totalDealers: sumIf({ $eq: ['$role', 'dealer'] }),
+      } },
+    ]),
+    DealerProfile.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
+    Product.aggregate([{ $group: { _id: null, total: { $sum: 1 }, active: sumIf({ $eq: ['$isActive', true] }) } }]),
+    Category.aggregate([{ $group: { _id: null, total: { $sum: 1 }, active: sumIf({ $eq: ['$isActive', true] }) } }]),
+    Enquiry.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
   ]);
+  const dealerByStatus = countBy(dealerRows);
+  const enquiryByStatus = countBy(enquiryRows);
+
+  const totalCustomers = userCounts.totalCustomers || 0;
+  const activeCustomers = userCounts.activeCustomers || 0;
+  const pendingCustomers = userCounts.pendingCustomers || 0;
+  const blockedCustomers = userCounts.blockedCustomers || 0;
+  const totalDealers = userCounts.totalDealers || 0;
+  const pendingDealers = dealerByStatus.get('pending') || 0;
+  const approvedDealers = dealerByStatus.get('approved') || 0;
+  const rejectedDealers = dealerByStatus.get('rejected') || 0;
+  const totalProducts = productCounts.total || 0;
+  const activeProducts = productCounts.active || 0;
+  const totalCategories = categoryCounts.total || 0;
+  const activeCategories = categoryCounts.active || 0;
+  const totalEnquiries = enquiryRows.reduce((sum, row) => sum + row.count, 0);
+  const newEnquiries = enquiryByStatus.get('new') || 0;
+  const contactedEnquiries = enquiryByStatus.get('contacted') || 0;
+  const inProgressEnquiries = enquiryByStatus.get('in-progress') || 0;
+  const closedEnquiries = enquiryByStatus.get('closed') || 0;
+  const spamEnquiries = enquiryByStatus.get('spam') || 0;
 
   return {
     customers: {
@@ -120,27 +127,22 @@ export const getEnquiryReport = async (query = {}) => {
 
   const skip = (page - 1) * limit;
 
-  const [
-    total,
-    filteredCount,
-    newCount,
-    contactedCount,
-    inProgressCount,
-    closedCount,
-    spamCount,
-    customerCount,
-    dealerCount,
-    enquiries,
-  ] = await Promise.all([
+  // Each breakdown keeps the other filters but ignores its own dimension,
+  // matching the previous per-value countDocuments({ ...filter, field }) calls.
+  // Aggregation does not cast like countDocuments, so cast ObjectIds here.
+  const matchFilter = { ...filter };
+  if (matchFilter.assignedTo && mongoose.isValidObjectId(matchFilter.assignedTo)) {
+    matchFilter.assignedTo = new mongoose.Types.ObjectId(String(matchFilter.assignedTo));
+  }
+  const { status: _status, ...withoutStatus } = matchFilter;
+  const { userType: _userType, ...withoutUserType } = matchFilter;
+  const countBy = (rows) => new Map(rows.map((row) => [row._id, row.count]));
+
+  const [total, filteredCount, statusRows, userTypeRows, enquiries] = await Promise.all([
     Enquiry.countDocuments({}),
     Enquiry.countDocuments(filter),
-    Enquiry.countDocuments({ ...filter, status: 'new' }),
-    Enquiry.countDocuments({ ...filter, status: 'contacted' }),
-    Enquiry.countDocuments({ ...filter, status: 'in-progress' }),
-    Enquiry.countDocuments({ ...filter, status: 'closed' }),
-    Enquiry.countDocuments({ ...filter, status: 'spam' }),
-    Enquiry.countDocuments({ ...filter, userType: 'customer' }),
-    Enquiry.countDocuments({ ...filter, userType: 'dealer' }),
+    Enquiry.aggregate([{ $match: withoutStatus }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
+    Enquiry.aggregate([{ $match: withoutUserType }, { $group: { _id: '$userType', count: { $sum: 1 } } }]),
     Enquiry.find(filter)
       .populate([
         { path: 'userId', select: 'fullName email phone role accountStatus' },
@@ -152,6 +154,15 @@ export const getEnquiryReport = async (query = {}) => {
       .limit(limit)
       .lean(),
   ]);
+  const statusCounts = countBy(statusRows);
+  const userTypeCounts = countBy(userTypeRows);
+  const newCount = statusCounts.get('new') || 0;
+  const contactedCount = statusCounts.get('contacted') || 0;
+  const inProgressCount = statusCounts.get('in-progress') || 0;
+  const closedCount = statusCounts.get('closed') || 0;
+  const spamCount = statusCounts.get('spam') || 0;
+  const customerCount = userTypeCounts.get('customer') || 0;
+  const dealerCount = userTypeCounts.get('dealer') || 0;
 
   return {
     total,

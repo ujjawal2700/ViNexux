@@ -1,8 +1,7 @@
 import { Enquiry } from '../models/Enquiry.js';
 import { Cart } from '../models/Cart.js';
 import { User } from '../models/User.js';
-import { Product } from '../models/Product.js';
-import { calculateApplicablePrice, validateProductAndCategoryActive } from './cart.service.js';
+import { calculateApplicablePrices, validateProductsAndCategoriesActive } from './cart.service.js';
 import { AppError } from '../utils/AppError.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../constants/errorCodes.js';
@@ -95,9 +94,7 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
   }
 
   // 3. Validate selected products against the live catalog.
-  for (const item of selectedItems) {
-    await validateProductAndCategoryActive(item.productId);
-  }
+  const productById = await validateProductsAndCategoriesActive(selectedItems.map((item) => item.productId));
 
   // 4. Build Contact Snapshot
   const contactName = payload.contactName || user.fullName || user.name || 'Vinexus Customer';
@@ -135,10 +132,11 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
 
   // 7. Build Enquiry Items Snapshot (productName & priceShown snapshots)
   const enquiryItems = [];
+  const pricesByProduct = await calculateApplicablePrices(userId, [...productById.values()]);
   for (const item of selectedItems) {
-    const product = await Product.findById(item.productId);
+    const product = productById.get(String(item.productId));
     const productName = product ? product.name : 'Vinexus Product';
-    const priceShown = product ? await calculateApplicablePrice(userId, product) : 0;
+    const priceShown = product ? pricesByProduct.get(String(product._id)) : 0;
 
     enquiryItems.push({
       productId: item.productId,

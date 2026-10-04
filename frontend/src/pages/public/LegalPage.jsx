@@ -1,5 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import contentService from '../../services/contentService';
+import { sanitizeHtml } from '../../lib/sanitizeHtml';
 
 const updated = '29 September 2026';
 
@@ -12,23 +14,44 @@ const Section = ({ title, children }) => (
 
 const LegalPage = ({ type }) => {
   const privacy = type === 'privacy';
+  const legalSlug = privacy ? 'privacy-policy' : 'terms-and-conditions';
+  const [managedContent, setManagedContent] = useState({ slug: '', page: null });
+  const managedPage = managedContent.slug === legalSlug ? managedContent.page : null;
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
   }, [type]);
+
+  useEffect(() => {
+    let active = true;
+    contentService.getCmsPageBySlug(legalSlug)
+      .then((response) => {
+        const page = response.data?.page || response.page || null;
+        if (active && page) setManagedContent({ slug: legalSlug, page });
+      })
+      .catch(() => {
+        // Keep the built-in legal copy as a reliable fallback until an admin publishes a replacement.
+      });
+    return () => { active = false; };
+  }, [legalSlug]);
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
       <nav className="mb-6 text-sm text-[#800020]" aria-label="Breadcrumb">
         <Link to="/" className="hover:underline">Home</Link> <span aria-hidden="true">›</span> {privacy ? 'Privacy Policy' : 'Terms & Conditions'}
       </nav>
       <header className="mb-8 border-b border-gray-200 pb-6">
-        <h1 className="text-3xl font-bold text-gray-950 sm:text-4xl">{privacy ? 'Privacy Policy' : 'Terms & Conditions'}</h1>
-        <p className="mt-2 text-sm text-gray-500">Last updated: {updated}</p>
+        <h1 className="text-3xl font-bold text-gray-950 sm:text-4xl">{managedPage?.title || (privacy ? 'Privacy Policy' : 'Terms & Conditions')}</h1>
+        <p className="mt-2 text-sm text-gray-500">Last updated: {managedPage ? new Date(managedPage.updatedAt || managedPage.createdAt).toLocaleDateString('en-IN') : updated}</p>
       </header>
 
-      {privacy ? (
+      {managedPage ? (
+        <article
+          className="prose max-w-none space-y-4 text-sm leading-7 text-gray-700 sm:text-base [&>h2]:text-xl [&>h2]:font-bold [&>h2]:text-[#800020] [&>h3]:text-lg [&>h3]:font-semibold [&>ul]:list-disc [&>ul]:pl-6 [&>ol]:list-decimal [&>ol]:pl-6 [&_a]:text-[#800020] [&_a]:underline"
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(managedPage.content) }}
+        />
+      ) : privacy ? (
         <div className="space-y-9 text-sm sm:text-base">
           <Section title="Who we are and what this covers">
             <p>Vinexus - Lead Generation &amp; Product Catalog Platform operates this online product catalogue, customer accounts, dealer registration and product enquiry service. This notice explains how we handle personal information you give us or that is generated while using the website. For privacy questions or requests, email <a href="mailto:vinexus@gmail.com" className="text-[#800020] underline">vinexus@gmail.com</a> or call <a href="tel:+918209224481" className="text-[#800020] underline">+91 82092 24481</a>.</p>
@@ -36,7 +59,7 @@ const LegalPage = ({ type }) => {
           <Section title="Information we collect and why">
             <ul className="list-disc space-y-2 pl-6">
               <li><strong>Account and verification:</strong> name, email address, mobile number, date of birth if you provide it, and OTP verification status to create an account, verify access, send important account messages and prevent misuse. A password credential, where used, is stored as a one-way hash. If you use Google sign-in, we receive basic profile and account identifier details needed for that sign-in.</li>
-              <li><strong>Dealer verification:</strong> business or company name, GSTIN, PAN if provided, Aadhaar number, business address, city, state, pincode and uploaded GST/Aadhaar documents to review dealer eligibility and manage dealer pricing. Do not upload documents unless you are applying as a dealer.</li>
+              <li><strong>Dealer verification:</strong> business or company name, organisation type, GSTIN, PAN, MSME/Udyam number, mobile and WhatsApp numbers, Aadhaar number, business address, office map coordinates and uploaded GST, Aadhaar or optional MSME documents to review dealer eligibility and manage dealer pricing. Do not upload documents unless you are applying as a dealer.</li>
               <li><strong>Shopping and enquiries:</strong> cart items, saved addresses, enquiries, requested products and related contact or delivery details to answer enquiries, prepare quotations, fulfil confirmed requests and provide support.</li>
               <li><strong>Technical and security records:</strong> IP address, browser/device information, login sessions, tokens and basic service logs to authenticate users, protect accounts, troubleshoot errors and maintain the website. If you enable push notifications, a device notification token is used to deliver them.</li>
               <li><strong>Device preferences:</strong> with your optional storage choice, wishlist and recently viewed products are saved in this browser for convenience.</li>
@@ -44,7 +67,7 @@ const LegalPage = ({ type }) => {
             <p>We use the information for these stated purposes and for legal or accounting obligations where applicable. We do not treat registration as consent to unrelated marketing.</p>
           </Section>
           <Section title="Browser storage and cookies">
-            <p>Authentication refresh tokens, cart contents, checkout state and your storage choice may be kept in browser local or session storage so the requested features work. Access tokens are used to authenticate requests. The website currently does not set advertising or analytics cookies. Optional wishlist and recently viewed history are saved only when you choose “Allow saved preferences”. Select “Essential only” to remove those optional items from this browser. You can reopen “Storage choices” from the footer at any time. Clearing browser storage may sign you out and empty your guest cart.</p>
+            <p>Authentication refresh tokens, session expiry, cart contents, checkout state and your storage choice may be kept in browser local or session storage so the requested features work. When “Remember this mobile number” is selected at login, the last successfully used customer number is also saved in this browser to prefill the next login. Access tokens are used to authenticate requests. The website currently does not set advertising or analytics cookies. Optional wishlist and recently viewed history are saved only when you choose “Allow saved preferences”. Select “Essential only” to remove those optional items from this browser. You can reopen “Storage choices” from the footer at any time. Clearing browser storage may sign you out, remove the remembered number and empty your guest cart.</p>
           </Section>
           <Section title="Who may receive information">
             <p>Authorised Vinexus staff may access information needed to process accounts, dealer checks and enquiries. Service providers used for hosting, database storage, OTP/email or other message delivery, notifications, file storage and technical operations may process the information needed to provide those services. We may disclose information when required by law or to protect the service. We do not sell your personal information. A brand or manufacturer website you open through a product link has its own privacy practices.</p>

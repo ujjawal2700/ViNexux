@@ -38,6 +38,18 @@ const dealerProfileSchema = new mongoose.Schema(
       trim: true,
       maxlength: [150, 'Company name cannot exceed 150 characters'],
     },
+    organisationType: {
+      type: String,
+      enum: [
+        'Proprietorship',
+        'Partnership',
+        'Limited Liability Partnership (LLP)',
+        'Private Limited Company',
+        'Limited Company',
+        'Others',
+      ],
+      trim: true,
+    },
     gstin: {
       type: String,
       trim: true,
@@ -52,6 +64,17 @@ const dealerProfileSchema = new mongoose.Schema(
       trim: true,
       uppercase: true,
       match: [/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, 'Please enter a valid PAN format'],
+    },
+    msmeNumber: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      maxlength: [30, 'MSME number cannot exceed 30 characters'],
+    },
+    whatsappNumber: {
+      type: String,
+      trim: true,
+      match: [/^[6-9]\d{9}$/, 'Please enter a valid 10-digit WhatsApp number'],
     },
     aadhaarNumber: {
       type: String,
@@ -78,6 +101,11 @@ const dealerProfileSchema = new mongoose.Schema(
       type: String,
       trim: true,
       match: [/^\d{6}$/, 'Please enter a valid 6-digit pincode'],
+    },
+    officeLocation: {
+      latitude: { type: Number, min: -90, max: 90 },
+      longitude: { type: Number, min: -180, max: 180 },
+      formattedAddress: { type: String, trim: true, maxlength: 500 },
     },
     kycDocuments: [kycDocumentSchema],
     status: {

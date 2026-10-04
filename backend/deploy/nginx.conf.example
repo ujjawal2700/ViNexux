@@ -1,0 +1,59 @@
+# Example nginx site for the VPS: serves the built frontend and proxies /api
+# to the PM2 cluster (ecosystem.config.cjs) on 127.0.0.1:5000.
+# Copy to /etc/nginx/sites-available/vinexus, adjust server_name and paths,
+# symlink into sites-enabled, then: sudo nginx -t && sudo systemctl reload nginx
+# Add HTTPS with: sudo certbot --nginx -d example.com -d www.example.com
+
+upstream vinexus_api {
+    server 127.0.0.1:5000;
+    # Reuse connections to Node instead of opening one per request.
+    # Node's keepAliveTimeout (65s) is longer than nginx's default (60s).
+    keepalive 64;
+}
+
+server {
+    listen 80;
+    server_name example.com www.example.com;
+
+    # Frontend build output (frontend/dist), with VITE_API_BASE_URL=https://example.com/api
+    root /var/www/vinexus/frontend/dist;
+    index index.html;
+
+    client_max_body_size 100m;  # product import: 2 files x 50 MB (multer limit)
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+
+    location /api/ {
+        proxy_pass http://vinexus_api;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        # The API trusts these from loopback only (TRUST_PROXY=loopback).
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;    # bulk product imports
+    }
+
+    # Hashed build assets never change: cache for a year.
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # The service worker and app shell must always be fresh after a deploy.
+    location = /firebase-messaging-sw.js {
+        add_header Cache-Control "no-cache";
+        try_files $uri =404;
+    }
+    location = /index.html {
+        add_header Cache-Control "no-cache";
+    }
+
+    # Client-side routes fall back to the SPA shell.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

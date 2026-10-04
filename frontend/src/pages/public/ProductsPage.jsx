@@ -95,6 +95,9 @@ export const ProductsPage = () => {
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [categoryError, setCategoryError] = useState(null);
   const [facets, setFacets] = useState({ categories: [], brands: [], availability: [], specs: [] });
+  const facetKeyRef = useRef(null);
+  // Set when the server found no exact matches and searched corrected words.
+  const [correctedSearch, setCorrectedSearch] = useState('');
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
 
   // UI state
@@ -192,9 +195,18 @@ export const ProductsPage = () => {
       else if (initialBrand) query.brand = initialBrand;
       if (selectedAvailability.length) query.availability = selectedAvailability.join(',');
       if (Object.values(selectedSpecs).some((values) => values.length)) query.specs = JSON.stringify(selectedSpecs);
+      // Facets depend on the filters, not the page. When only the page (or a
+      // user-driven refetch) changes, reuse the facets already on screen.
+      const { page: _page, ...facetQuery } = query;
+      const facetKey = JSON.stringify({ ...facetQuery, user: user?.id || null, dealerStatus: user?.dealerStatus || null });
+      const reuseFacets = facetKeyRef.current === facetKey;
+      if (reuseFacets) query.includeFacets = false;
       const response = await productService.getProducts(query, { signal, skipGlobalLoader: true });
       if (signal?.aborted) return;
-      setFacets(response.data?.facets || { brands: [], availability: [], specs: [] });
+      if (!reuseFacets) {
+        setFacets(response.data?.facets || { brands: [], availability: [], specs: [] });
+        facetKeyRef.current = facetKey;
+      }
       const productList = response.data?.products || response.products || [];
       const pageInfo = response.data?.pagination || response.pagination || {
         page: 1,
@@ -204,6 +216,7 @@ export const ProductsPage = () => {
 
       setProducts(productList);
       setPagination(pageInfo);
+      setCorrectedSearch(response.data?.searchMode === 'fuzzy' ? (response.data?.correctedSearch || '') : '');
     } catch (err) {
       if (signal?.aborted || err.code === 'ERR_CANCELED') return;
       setProducts([]);
@@ -1007,6 +1020,12 @@ export const ProductsPage = () => {
               <ErrorState title="Catalog Error" description={error} onRetry={() => fetchProducts()} />
             ) : displayedProducts.length > 0 ? (
               <>
+                {correctedSearch && searchTerm.trim() && (
+                  <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+                    No exact matches for &ldquo;{searchTerm.trim()}&rdquo;. Showing results for{' '}
+                    <span className="font-semibold">&ldquo;{correctedSearch}&rdquo;</span>.
+                  </p>
+                )}
                 <div className="storefront-product-grid gap-3 sm:gap-3.5">
                   {displayedProducts.map((product) => (
                     <ProductCard

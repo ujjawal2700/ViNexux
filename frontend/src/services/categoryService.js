@@ -1,9 +1,19 @@
 import apiClient from '../api/axios';
 
+let categoryTreeRequest = null;
+
 export const categoryService = {
   async getCategoryTree(options = {}) {
-    const response = await apiClient.get('/categories/tree', options);
-    return response.data;
+    // PublicLayout and the current page commonly mount together. Share their
+    // request instead of downloading the same category tree twice.
+    if (!categoryTreeRequest) {
+      categoryTreeRequest = apiClient.get('/categories/tree', options)
+        .then((response) => response.data)
+        .finally(() => {
+          categoryTreeRequest = null;
+        });
+    }
+    return categoryTreeRequest;
   },
   /**
    * Fetch category listing with optional query parameters.

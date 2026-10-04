@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import adminService from '../../services/adminService';
-import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import DocumentViewerModal from '../../components/admin/DocumentViewerModal';
 import Card from '../../components/ui/Card';
-import Badge, { StatusBadge } from '../../components/ui/Badge';
+import { StatusBadge } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
@@ -24,8 +23,6 @@ import {
   RotateCcw, 
   ExternalLink, 
   MapPin, 
-  Phone, 
-  Mail, 
   ShieldAlert 
 } from 'lucide-react';
 
@@ -216,6 +213,11 @@ const AdminDealerDetailPage = () => {
             </div>
 
             <div className="flex justify-between py-1 border-b border-border">
+              <span className="text-muted-foreground">Organisation Type</span>
+              <span className="font-bold text-foreground text-right">{profile.organisationType || 'Not Provided'}</span>
+            </div>
+
+            <div className="flex justify-between py-1 border-b border-border">
               <span className="text-muted-foreground">GSTIN Number</span>
               <span className="font-mono font-bold text-foreground">{profile.gstin || 'Not Provided'}</span>
             </div>
@@ -225,10 +227,22 @@ const AdminDealerDetailPage = () => {
               <span className="font-mono font-bold text-foreground">{profile.pan || 'Not Provided'}</span>
             </div>
 
+            <div className="flex justify-between py-1 border-b border-border">
+              <span className="text-muted-foreground">MSME / Udyam Number</span>
+              <span className="font-mono font-bold text-foreground">{profile.msmeNumber || 'Not Provided'}</span>
+            </div>
+
             <div className="flex justify-between py-1">
               <span className="text-muted-foreground">Business Address</span>
               <span className="text-right text-foreground max-w-xs">{addressStr || 'Not Provided'}</span>
             </div>
+
+            {profile.officeLocation?.latitude != null && profile.officeLocation?.longitude != null && (
+              <a href={`https://www.google.com/maps?q=${profile.officeLocation.latitude},${profile.officeLocation.longitude}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-lg bg-primary/5 px-3 py-2 text-primary hover:bg-primary/10">
+                <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> Office Map Location</span>
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            )}
           </div>
         </Card>
 
@@ -253,6 +267,11 @@ const AdminDealerDetailPage = () => {
             <div className="flex justify-between py-1 border-b border-border">
               <span className="text-muted-foreground">Phone Number</span>
               <span className="font-mono text-foreground">{userObj.phone || 'N/A'}</span>
+            </div>
+
+            <div className="flex justify-between py-1 border-b border-border">
+              <span className="text-muted-foreground">WhatsApp Number</span>
+              <span className="font-mono text-foreground">{profile.whatsappNumber || 'Not Provided'}</span>
             </div>
 
             <div className="flex justify-between py-1">

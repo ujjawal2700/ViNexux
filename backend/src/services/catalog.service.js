@@ -5,13 +5,18 @@ import { DealerProfile } from '../models/DealerProfile.js';
 import { DealerPricing } from '../models/DealerPricing.js';
 import { Brand } from '../models/Brand.js';
 import { AppError } from '../utils/AppError.js';
+import { getCachedCategories } from '../utils/categoryCache.js';
+import { allowedTypos, editDistance, requiredSearchTokens, searchWords, toBrandKey } from '../utils/productCatalogFields.js';
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const slugify = (value) => value.toLowerCase().trim().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
 // Only nodes reachable from an active root belong in the public catalog.
 // A disabled/missing parent must hide its whole branch, even if a child is active.
-export const getPublicCategories = async () => {
+// Cached: callers must treat the returned rows as read-only.
+export const getPublicCategories = () => getCachedCategories(loadPublicCategories);
+
+const loadPublicCategories = async () => {
   const rows = await Category.find({ isActive: true }).sort({ sortOrder: 1, name: 1, _id: 1 }).lean();
   const byId = new Map(rows.map((row) => [String(row._id), row]));
   const children = new Map();
@@ -68,45 +73,78 @@ export const effectiveFilterDefinitions = (categories, categoryId) => {
   return [...definitions.values()].sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label));
 };
 
-const brandExpression = {
-  $trim: { input: { $ifNull: [{ $arrayElemAt: [{ $map: {
-    input: { $filter: { input: '$specifications', as: 'spec', cond: { $in: [{ $toLower: '$$spec.key' }, ['brand', 'manufacturer']] } } },
-    as: 'spec', in: '$$spec.value',
-  } }, 0] }, ''] } },
+// Stored per product by the Product model hooks (utils/productCatalogFields.js).
+const INTERNAL_CATALOG_FIELDS = ['brandKey', 'stockLevel', 'searchTokens', 'catalogFieldsVersion'];
+
+// Vocabulary for "did you mean" spelling correction: words from active
+// product names, brands and category names, with how often each appears.
+const VOCABULARY_TTL_MS = 5 * 60 * 1000;
+const MIN_CORRECTABLE_LENGTH = 3;
+let vocabulary = null;
+let vocabularyAt = 0;
+let vocabularyRequest = null;
+
+const loadSearchVocabulary = async () => {
+  const counts = new Map();
+  const add = (text) => {
+    for (const word of searchWords(text)) {
+      if (Array.from(word).length >= MIN_CORRECTABLE_LENGTH) counts.set(word, (counts.get(word) || 0) + 1);
+    }
+  };
+  const categories = await getPublicCategories();
+  categories.forEach((category) => add(category.name));
+  const cursor = Product.find({ isActive: true, categoryId: { $in: categories.map((category) => category._id) } })
+    .select('name +brandKey')
+    .lean()
+    .cursor();
+  for await (const product of cursor) {
+    add(product.name);
+    add(product.brandKey);
+  }
+  return counts;
 };
 
-const stockNumberExpression = {
-  $ifNull: [
-    '$stockQuantity',
-    {
-      $convert: {
-        input: {
-          $trim: {
-            input: {
-              $ifNull: [{ $arrayElemAt: [{ $map: {
-                input: { $filter: { input: '$specifications', as: 'spec', cond: { $in: [{ $toLower: '$$spec.key' }, ['stock', 'inventory']] } } },
-                as: 'spec', in: '$$spec.value',
-              } }, 0] }, ''],
-            },
-          },
-        },
-        to: 'double',
-        onError: null,
-        onNull: null,
-      },
-    },
-  ],
+const getSearchVocabulary = async () => {
+  if (vocabulary && Date.now() - vocabularyAt < VOCABULARY_TTL_MS) return vocabulary;
+  if (!vocabularyRequest) {
+    vocabularyRequest = loadSearchVocabulary()
+      .then((counts) => {
+        vocabulary = counts;
+        vocabularyAt = Date.now();
+        return counts;
+      })
+      .finally(() => {
+        vocabularyRequest = null;
+      });
+  }
+  return vocabularyRequest;
 };
 
-const stockStatusExpression = {
-  $switch: {
-    branches: [
-      { case: { $eq: ['$stockQuantity', 0] }, then: 'out-of-stock' },
-      { case: { $and: [{ $gt: ['$stockQuantity', 0] }, { $lt: ['$stockQuantity', 5] }] }, then: 'low-stock' },
-      { case: { $gte: ['$stockQuantity', 5] }, then: 'in-stock' },
-    ],
-    default: 'on-order',
-  },
+// Replace each misspelled word with its closest catalog word (most common on
+// ties). Words with no close match are dropped. Returns null when nothing
+// usable remains.
+const correctSearchTerm = async (term) => {
+  const words = searchWords(term);
+  if (!words.length) return null;
+  const counts = await getSearchVocabulary();
+  const corrected = [];
+  for (const word of words) {
+    if (Array.from(word).length < MIN_CORRECTABLE_LENGTH || counts.has(word)) {
+      corrected.push(word);
+      continue;
+    }
+    const max = allowedTypos(word);
+    let best = null;
+    for (const [candidate, frequency] of counts) {
+      const distance = editDistance(word, candidate, max);
+      if (distance > max) continue;
+      if (!best || distance < best.distance || (distance === best.distance && frequency > best.frequency)) {
+        best = { word: candidate, distance, frequency };
+      }
+    }
+    if (best) corrected.push(best.word);
+  }
+  return corrected.some((word) => Array.from(word).length >= MIN_CORRECTABLE_LENGTH) ? corrected : null;
 };
 
 export const getPublicBrands = async () => {
@@ -120,9 +158,8 @@ export const getPublicBrands = async () => {
   // Compatibility until existing specification-only brands are migrated in admin.
   const legacy = await Product.aggregate([
     { $match: { isActive: true, categoryId: { $in: categories.map((category) => category._id) } } },
-    { $project: { brand: { $toUpper: brandExpression } } },
-    { $match: { brand: { $ne: '' } } },
-    { $group: { _id: '$brand', count: { $sum: 1 } } },
+    { $match: { brandKey: { $ne: '' } } },
+    { $group: { _id: '$brandKey', count: { $sum: 1 } } },
     { $sort: { _id: 1 } },
   ]);
   const managedNames = new Set(managed.map((brand) => brand.name.toLowerCase()));
@@ -138,8 +175,56 @@ export const getPublicBrands = async () => {
   return allActiveBrands.sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0) || a.name.localeCompare(b.name));
 };
 
-export const getPublicProducts = async (query = {}, user = null) => {
-  const categories = await getPublicCategories();
+// Substring search on name, SKU and brand. The indexed searchTokens clause
+// narrows candidates to products containing every fragment of the term; the
+// regex clauses then confirm the exact substring match on those few.
+const buildSearchOr = (categories, term) => {
+  const regex = new RegExp(escapeRegex(term), 'i');
+  const matchingCategories = categories.filter((category) => regex.test(category.name) || regex.test(category.slug));
+  const textMatch = { $or: [
+    { name: regex }, { sku: regex },
+    { specifications: { $elemMatch: { key: /^(brand|manufacturer)$/i, value: regex } } },
+  ] };
+  const tokens = requiredSearchTokens(term);
+  return [
+    tokens.length ? { $and: [{ searchTokens: { $all: tokens } }, textMatch] } : textMatch,
+    { categoryId: { $in: descendantIds(categories, matchingCategories.map((category) => category._id)) } },
+  ];
+};
+
+// Brand names compare case-insensitively against the stored brandKey. ASCII
+// names become an indexed equality; names with other letters keep the
+// anchored case-insensitive regex, since brandKey only upper-cases ASCII.
+const brandKeyValue = (name) => (/^[\x00-\x7F]*$/.test(name.trim())
+  ? toBrandKey(name)
+  : new RegExp(`^${escapeRegex(name.trim())}$`, 'i'));
+const buildBrandMatch = (brand, managedBrandId) => (managedBrandId ? {
+  $or: [
+    { brandId: new mongoose.Types.ObjectId(managedBrandId) },
+    { brandKey: brandKeyValue(brand) },
+  ],
+} : {
+  brandKey: { $in: String(brand).split(',').map(brandKeyValue) },
+});
+
+// Resolve a brand slug with one indexed lookup; only legacy specification-only
+// brands (no Brand document) need the full brand aggregation.
+const resolveBrandSlug = async (brandSlug) => {
+  const managed = await Brand.findOne({ slug: brandSlug, isActive: true }).select('_id name').lean();
+  if (managed) return { brand: managed.name, managedBrandId: managed._id };
+  const legacy = (await getPublicBrands()).find((item) => item.slug === brandSlug);
+  return { brand: legacy?.name || '__unknown_brand__', managedBrandId: legacy?._id || null };
+};
+
+// `options` is for internal callers only (never taken from the request):
+// `ids` restricts to those products; `searchWords` replaces the search term
+// with words that must each match (the spelling-corrected retry).
+export const getPublicProducts = async (query = {}, user = null, options = {}) => {
+  const includeFacets = query.includeFacets !== 'false' && query.includeFacets !== false;
+  const [categories, approvedDealer] = await Promise.all([
+    getPublicCategories(),
+    user?.role === 'dealer' ? DealerProfile.findOne({ userId: user._id, status: 'approved' }).lean() : null,
+  ]);
   let allowedIds = categories.map((category) => category._id);
   let requestedCategoryRecord = null;
   const requestedCategory = query.categoryId || query.category || query.categorySlug;
@@ -158,50 +243,30 @@ export const getPublicProducts = async (query = {}, user = null) => {
   }
   const match = { isActive: true, categoryId: { $in: allowedIds } };
   if (query.id) match._id = new mongoose.Types.ObjectId(query.id);
-  if (query.search?.trim()) {
-    const regex = new RegExp(escapeRegex(query.search.trim()), 'i');
-    const matchingCategories = categories.filter((category) => regex.test(category.name) || regex.test(category.slug));
-    match.$or = [
-      { name: regex }, { sku: regex },
-      { specifications: { $elemMatch: { key: /^(brand|manufacturer)$/i, value: regex } } },
-      { categoryId: { $in: descendantIds(categories, matchingCategories.map((category) => category._id)) } },
-    ];
-  }
-  const basePipeline = [
-    { $match: match },
-    { $set: { brand: { $toUpper: brandExpression }, stockQuantity: stockNumberExpression } },
-    { $set: { stockStatus: stockStatusExpression } },
-  ];
-  const pipeline = [...basePipeline];
+  if (options.ids) match._id = { $in: options.ids.map((id) => new mongoose.Types.ObjectId(id)) };
+  const searchTerm = options.searchWords ? '' : query.search?.trim() || '';
+  const searchOr = searchTerm ? buildSearchOr(categories, searchTerm) : null;
+  if (searchOr) match.$or = searchOr;
+  if (options.searchWords) match.$and = options.searchWords.map((word) => ({ $or: buildSearchOr(categories, word) }));
+  // Brand and stock fields are stored on each product, so every filter below
+  // is a plain $match that can use indexes; nothing is computed per document
+  // until the current page has been selected.
+  const pipeline = [{ $match: match }];
   let brand = query.brand;
   let managedBrandId = null;
-  if (query.brandSlug) {
-    const brands = await getPublicBrands();
-    const selectedBrand = brands.find((item) => item.slug === query.brandSlug);
-    brand = selectedBrand?.name || '__unknown_brand__';
-    managedBrandId = selectedBrand?._id || null;
-  }
-  if (brand) pipeline.push({ $match: managedBrandId ? {
-    $or: [
-      { brandId: new mongoose.Types.ObjectId(managedBrandId) },
-      { brand: new RegExp(`^${escapeRegex(brand.trim())}$`, 'i') },
-    ],
-  } : {
-    brand: {
-      $in: String(brand).split(',').map((name) => new RegExp(`^${escapeRegex(name.trim())}$`, 'i')),
-    },
-  } });
+  if (query.brandSlug) ({ brand, managedBrandId } = await resolveBrandSlug(query.brandSlug));
+  const brandMatch = brand ? buildBrandMatch(brand, managedBrandId) : null;
+  if (brandMatch) pipeline.push({ $match: brandMatch });
 
-  const approvedDealer = user?.role === 'dealer'
-    ? await DealerProfile.findOne({ userId: user._id, status: 'approved' }).lean() : null;
+  const pricingStages = [];
   if (approvedDealer) {
-    pipeline.push({ $lookup: {
+    pricingStages.push({ $lookup: {
       from: DealerPricing.collection.name, let: { productId: '$_id' },
       pipeline: [{ $match: { dealerId: approvedDealer._id, isActive: true, $expr: { $eq: ['$productId', '$$productId'] } } }],
       as: '_pricing',
     } });
   }
-  pipeline.push({ $set: { applicablePrice: approvedDealer
+  pricingStages.push({ $set: { applicablePrice: approvedDealer
     ? { $ifNull: [{ $arrayElemAt: ['$_pricing.price', 0] }, { $cond: [{ $gt: ['$dealerPrice', 0] }, '$dealerPrice', '$standardPrice'] }] }
     : '$standardPrice' } });
 
@@ -226,46 +291,64 @@ export const getPublicProducts = async (query = {}, user = null) => {
   const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
   const sortField = ['standardPrice', 'dealerPrice'].includes(query.sortBy) ? 'applicablePrice'
     : ['name', 'modelNumber', 'sku', 'createdAt', 'updatedAt'].includes(query.sortBy) ? query.sortBy : 'createdAt';
-  const [result] = await Product.aggregate([...pipeline, { $facet: {
-    products: [...filtered, { $sort: { [sortField]: query.sortOrder === 'asc' ? 1 : -1, _id: 1 } }, { $skip: (page - 1) * limit }, { $limit: limit }, { $unset: ['_pricing', '__v'] }],
-    total: [...filtered, { $count: 'count' }],
-    specs: [{ $unwind: '$specifications' }, { $group: { _id: { key: '$specifications.key', value: '$specifications.value' }, count: { $sum: 1 } } }, { $sort: { '_id.key': 1, '_id.value': 1 } }],
-  } }]);
-  const allCategoryIds = categories.map((category) => category._id);
-  const categoryFacetMatch = { ...match, categoryId: { $in: allCategoryIds } };
-  if (match.$or && query.search?.trim()) {
-    const regex = new RegExp(escapeRegex(query.search.trim()), 'i');
-    const matchingCategories = categories.filter((category) => regex.test(category.name) || regex.test(category.slug));
-    categoryFacetMatch.$or = [
-      { name: regex }, { sku: regex },
-      { specifications: { $elemMatch: { key: /^(brand|manufacturer)$/i, value: regex } } },
-      { categoryId: { $in: descendantIds(categories, matchingCategories.map((category) => category._id)) } },
+  // The dealer-price lookup is per document, so run it on the current page
+  // only, unless a price filter or price sort needs it for every match.
+  const priceNeededBeforePaging = sortField === 'applicablePrice' || query.minPrice !== undefined || query.maxPrice !== undefined;
+  if (priceNeededBeforePaging) pipeline.push(...pricingStages);
+  // The specs facet counts the unfiltered set, so extra filters can only move
+  // ahead of $facet (where they can use indexes) when no facets are requested.
+  const facetFilters = includeFacets ? filtered : [];
+  if (!includeFacets) pipeline.push(...filtered);
+  const resultFacets = {
+    products: [
+      ...facetFilters,
+      { $sort: { [sortField]: query.sortOrder === 'asc' ? 1 : -1, _id: 1 } },
+      { $skip: (page - 1) * limit },
+      { $limit: limit },
+      ...(priceNeededBeforePaging ? [] : pricingStages),
+      { $set: { brand: '$brandKey', stockQuantity: '$stockLevel' } },
+      { $unset: ['_pricing', '__v', ...INTERNAL_CATALOG_FIELDS] },
+    ],
+    total: [...facetFilters, { $count: 'count' }],
+  };
+  if (includeFacets) {
+    resultFacets.specs = [
+      { $unwind: '$specifications' },
+      { $group: { _id: { key: '$specifications.key', value: '$specifications.value' }, count: { $sum: 1 } } },
+      { $sort: { '_id.key': 1, '_id.value': 1 } },
     ];
+    resultFacets.availability = [...facetFilters, { $group: { _id: '$stockStatus', count: { $sum: 1 } } }];
   }
+  const categoryFacetMatch = { ...match, categoryId: { $in: categories.map((category) => category._id) } };
   const categoryFacetPipeline = [
-    { $match: categoryFacetMatch },
-    { $set: { brand: { $toUpper: brandExpression } } },
-    ...(brand ? [{ $match: managedBrandId ? {
-      $or: [
-        { brandId: new mongoose.Types.ObjectId(managedBrandId) },
-        { brand: new RegExp(`^${escapeRegex(brand.trim())}$`, 'i') },
-      ],
-    } : {
-      brand: {
-        $in: String(brand).split(',').map((name) => new RegExp(`^${escapeRegex(name.trim())}$`, 'i')),
-      },
-    } }] : []),
+    { $match: brandMatch ? { $and: [categoryFacetMatch, brandMatch] } : categoryFacetMatch },
     { $match: { categoryId: { $ne: null } } },
     { $group: { _id: '$categoryId', count: { $sum: 1 } } },
-    { $sort: { count: -1 } },
+    { $sort: { count: -1, _id: 1 } },
   ];
 
-  const [categoryBrands, availabilityCounts, categoryGroupCounts] = await Promise.all([
-    // Group brands from basePipeline (category-scoped, unaffected by selected brand) so all available brands in this category are shown
-    Product.aggregate([...basePipeline, { $match: { brand: { $ne: '' } } }, { $group: { _id: '$brand', count: { $sum: 1 } } }, { $sort: { _id: 1 } }]),
-    Product.aggregate([...pipeline, ...filtered, { $group: { _id: '$stockStatus', count: { $sum: 1 } } }]),
-    Product.aggregate(categoryFacetPipeline),
+  const [[result], categoryBrands, categoryGroupCounts] = await Promise.all([
+    Product.aggregate([...pipeline, { $facet: resultFacets }]),
+    // Group brands from the base match (category-scoped, unaffected by selected brand) so all available brands in this category are shown
+    includeFacets
+      ? Product.aggregate([{ $match: { $and: [match, { brandKey: { $ne: '' } }] } }, { $group: { _id: '$brandKey', count: { $sum: 1 } } }, { $sort: { _id: 1 } }])
+      : [],
+    includeFacets ? Product.aggregate(categoryFacetPipeline) : [],
   ]);
+
+  // No exact matches for a search: retry once with spelling-corrected words,
+  // each required to match, keeping every other filter. The response says so
+  // via `searchMode` and `correctedSearch`.
+  const exactTotal = result.total[0]?.count || 0;
+  if (searchTerm && exactTotal === 0 && !query.id && !options.ids) {
+    const correctedWords = await correctSearchTerm(searchTerm);
+    if (correctedWords) {
+      const fuzzy = await getPublicProducts(query, user, { searchWords: correctedWords });
+      if (fuzzy.pagination.total > 0) return { ...fuzzy, searchMode: 'fuzzy', correctedSearch: correctedWords.join(' ') };
+    }
+  }
+
+  const availabilityCounts = result.availability || [];
   const byId = new Map(categories.map((category) => [String(category._id), category]));
   const productBrandIds = result.products.map((product) => product.brandId).filter(Boolean);
   const productBrands = productBrandIds.length ? await Brand.find({ _id: { $in: productBrandIds }, isActive: true }).lean() : [];
@@ -319,7 +402,7 @@ export const getPublicProducts = async (query = {}, user = null) => {
   }
   const configuredByKey = new Map(configuredDefinitions.map((definition) => [definition.key.toLowerCase(), definition]));
   const specMap = new Map();
-  for (const spec of result.specs) {
+  for (const spec of result.specs || []) {
     const rawKey = spec._id.key?.trim() || '';
     if (!rawKey) continue;
     if (/^(brand|manufacturer|model|model number|sku|warranty|country of origin|hsn|hsn code|stock|inventory|variant|highlight \d+|product url|information phone|dealer price|price|standard price)$/i.test(rawKey)) continue;
@@ -391,7 +474,45 @@ export const getPublicProducts = async (query = {}, user = null) => {
 };
 
 export const getPublicProductById = async (id, user) => {
-  const result = await getPublicProducts({ id, limit: 1 }, user);
+  const result = await getPublicProducts({ id, limit: 1, includeFacets: 'false' }, user);
   if (!result.products.length) throw new AppError('Product not found.', 404, 'NOT_FOUND');
   return result.products[0];
+};
+
+// Newest product from each root category's subtree, in root category order.
+// Replaces one catalog request per root category on the storefront home page.
+export const getCategoryHighlights = async (user, maxItems = 12) => {
+  const categories = await getPublicCategories();
+  const byId = new Map(categories.map((category) => [String(category._id), category]));
+  const rootIdOf = (category) => {
+    const visited = new Set();
+    let current = category;
+    while (current?.parentId && !visited.has(String(current._id))) {
+      visited.add(String(current._id));
+      current = byId.get(String(current.parentId._id || current.parentId));
+    }
+    return current ? String(current._id) : null;
+  };
+  const newestPerCategory = await Product.aggregate([
+    { $match: { isActive: true, categoryId: { $in: categories.map((category) => category._id) } } },
+    { $sort: { categoryId: 1, createdAt: -1, _id: 1 } },
+    { $group: { _id: '$categoryId', productId: { $first: '$_id' }, createdAt: { $first: '$createdAt' } } },
+  ]);
+  const newestPerRoot = new Map();
+  for (const row of newestPerCategory) {
+    const rootId = rootIdOf(byId.get(String(row._id)));
+    if (!rootId) continue;
+    const current = newestPerRoot.get(rootId);
+    const isNewer = !current || row.createdAt > current.createdAt
+      || (row.createdAt?.getTime() === current.createdAt?.getTime() && String(row.productId) < String(current.productId));
+    if (isNewer) newestPerRoot.set(rootId, row);
+  }
+  const orderedIds = categories
+    .filter((category) => !category.parentId && newestPerRoot.has(String(category._id)))
+    .map((category) => String(newestPerRoot.get(String(category._id)).productId))
+    .slice(0, maxItems);
+  if (!orderedIds.length) return [];
+  const { products } = await getPublicProducts({ limit: orderedIds.length, includeFacets: 'false' }, user, { ids: orderedIds });
+  const productById = new Map(products.map((product) => [String(product._id), product]));
+  return orderedIds.map((id) => productById.get(id)).filter(Boolean);
 };

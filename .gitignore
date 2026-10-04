@@ -22,6 +22,8 @@ yarn-error.log*
 # Testing & Coverage
 coverage/
 .nyc_output/
+playwright-report/
+test-results/
 
 # Operating System Files
 .DS_Store

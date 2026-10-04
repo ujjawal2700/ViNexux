@@ -1,9 +1,17 @@
-import { v2 as cloudinary } from 'cloudinary';
 import { StorageProvider } from './StorageProvider.js';
 import { config } from '../../config/env.js';
 import { AppError } from '../../utils/AppError.js';
 import { HTTP_STATUS } from '../../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../../constants/errorCodes.js';
+
+let cloudinaryClient = null;
+
+const loadCloudinary = async () => {
+  if (!cloudinaryClient) {
+    ({ v2: cloudinaryClient } = await import('cloudinary'));
+  }
+  return cloudinaryClient;
+};
 
 /**
  * Production Cloudinary Storage Provider implementation.
@@ -16,12 +24,17 @@ export class CloudinaryStorageProvider extends StorageProvider {
     this.apiKey = options.apiKey || config.cloudinaryApiKey;
     this.apiSecret = options.apiSecret || config.cloudinaryApiSecret;
 
-    cloudinary.config({
+  }
+
+  async getClient() {
+    const client = await loadCloudinary();
+    client.config({
       cloud_name: this.cloudName,
       api_key: this.apiKey,
       api_secret: this.apiSecret,
       secure: true,
     });
+    return client;
   }
 
   async uploadFile({ buffer, originalname, mimetype, folder, category }) {
@@ -36,6 +49,7 @@ export class CloudinaryStorageProvider extends StorageProvider {
     const isImage = mimetype && mimetype.startsWith('image/');
     const resourceType = isImage ? 'image' : 'raw';
     const cleanFolder = (folder || 'vinexus/uploads').replace(/^\/+|\/+$/g, '');
+    const cloudinary = await this.getClient();
 
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
@@ -86,6 +100,7 @@ export class CloudinaryStorageProvider extends StorageProvider {
     }
 
     try {
+      const cloudinary = await this.getClient();
       // Try image resource_type first, fallback to raw if not found
       let result = await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
       if (result.result !== 'ok') {

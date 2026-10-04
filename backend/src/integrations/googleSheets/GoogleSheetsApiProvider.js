@@ -1,4 +1,3 @@
-import { google } from 'googleapis';
 import { GoogleSheetsProvider } from './GoogleSheetsProvider.js';
 import { config } from '../../config/env.js';
 import { AppError } from '../../utils/AppError.js';
@@ -14,7 +13,7 @@ export class GoogleSheetsApiProvider extends GoogleSheetsProvider {
     this.customSheetsClient = customSheetsClient;
   }
 
-  getSheetsClient() {
+  async getSheetsClient() {
     if (this.customSheetsClient) {
       return this.customSheetsClient;
     }
@@ -28,6 +27,7 @@ export class GoogleSheetsApiProvider extends GoogleSheetsProvider {
     }
 
     const formattedPrivateKey = config.googleServiceAccountPrivateKey.replace(/\\n/g, '\n');
+    const { google } = await import('googleapis');
 
     const auth = new google.auth.JWT({
       email: config.googleServiceAccountEmail,
@@ -51,7 +51,7 @@ export class GoogleSheetsApiProvider extends GoogleSheetsProvider {
     }
 
     try {
-      const sheets = this.getSheetsClient();
+      const sheets = await this.getSheetsClient();
       const range = `${targetTab}!A:M`;
 
       const response = await sheets.spreadsheets.values.append({

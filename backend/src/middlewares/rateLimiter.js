@@ -1,4 +1,5 @@
 import rateLimit from 'express-rate-limit';
+import { MongoRateLimitStore } from '../utils/mongoRateLimitStore.js';
 
 const isDevOrTest = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
 const isTest = process.env.NODE_ENV === 'test';
@@ -10,6 +11,9 @@ const normalizeIdentifier = (value = '') => {
 /**
  * General API rate limiter.
  * Limits IP addresses to 300 requests per 15-minute window.
+ * Kept in process memory (no database write per request), so under PM2
+ * cluster mode each instance counts separately; it is a coarse abuse guard.
+ * The auth/OTP limiters below share counts across instances via MongoDB.
  */
 export const apiRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -31,6 +35,9 @@ export const apiRateLimiter = rateLimit({
  * Limits IP addresses to 30 requests per 10-minute window.
  */
 export const authRateLimiter = rateLimit({
+  store: new MongoRateLimitStore({ prefix: 'auth' }),
+  // A database hiccup must not lock everyone out of signing in.
+  passOnStoreError: true,
   windowMs: 10 * 60 * 1000,
   max: 30,
   skip: () => isDevOrTest,
@@ -50,6 +57,9 @@ export const authRateLimiter = rateLimit({
  * one user's SMS quota even if the attacker changes IP addresses.
  */
 export const otpRequestRateLimiter = rateLimit({
+  store: new MongoRateLimitStore({ prefix: 'otp-request' }),
+  // A database hiccup must not lock everyone out of signing in.
+  passOnStoreError: true,
   windowMs: 10 * 60 * 1000,
   max: 5,
   skip: () => isTest,
@@ -71,6 +81,9 @@ export const otpRequestRateLimiter = rateLimit({
  * Limits IP addresses to a max of 15 requests per 15-minute window.
  */
 export const otpRateLimiter = rateLimit({
+  store: new MongoRateLimitStore({ prefix: 'otp' }),
+  // A database hiccup must not lock everyone out of signing in.
+  passOnStoreError: true,
   windowMs: 15 * 60 * 1000,
   max: 15,
   skip: () => isDevOrTest,
@@ -89,6 +102,9 @@ export const otpRateLimiter = rateLimit({
  * Rate limiter middleware for admin manual notification resend endpoints.
  */
 export const resendRateLimiter = rateLimit({
+  store: new MongoRateLimitStore({ prefix: 'resend' }),
+  // A database hiccup must not lock everyone out of signing in.
+  passOnStoreError: true,
   windowMs: 15 * 60 * 1000,
   max: 20,
   skip: () => isDevOrTest,

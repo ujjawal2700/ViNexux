@@ -47,7 +47,7 @@ export const ProductCard2 = React.forwardRef(
       >
         {/* Product Image */}
         <div className="relative mb-4 flex h-44 w-full items-center justify-center overflow-hidden rounded-xl bg-muted/30">
-          <img
+          <img loading="lazy" decoding="async"
             src={imageUrl || 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=800&auto=format&fit=crop&q=80'}
             alt={name}
             className="h-full w-full object-contain p-2 transition-transform duration-500 group-hover:scale-110"

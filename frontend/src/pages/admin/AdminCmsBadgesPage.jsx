@@ -370,7 +370,7 @@ const AdminCmsBadgesPage = () => {
             >
               Cancel
             </Button>
-            <Button type="submit" loading={submitting}>
+            <Button type="submit" isLoading={submitting}>
               {editingBadge ? 'Update Badge' : 'Create Badge'}
             </Button>
           </div>

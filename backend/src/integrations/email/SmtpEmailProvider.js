@@ -1,4 +1,3 @@
-import nodemailer from 'nodemailer';
 import { EmailProvider } from './EmailProvider.js';
 import { config } from '../../config/env.js';
 import { AppError } from '../../utils/AppError.js';
@@ -15,7 +14,7 @@ export class SmtpEmailProvider extends EmailProvider {
     this.transporter = customTransporter;
   }
 
-  getTransporter() {
+  async getTransporter() {
     if (this.transporter) {
       return this.transporter;
     }
@@ -28,6 +27,7 @@ export class SmtpEmailProvider extends EmailProvider {
       );
     }
 
+    const { default: nodemailer } = await import('nodemailer');
     return nodemailer.createTransport({
       host: config.emailHost,
       port: config.emailPort || 587,
@@ -41,7 +41,7 @@ export class SmtpEmailProvider extends EmailProvider {
 
   async sendEmail({ to, subject, html, text, from }) {
     try {
-      const transporter = this.getTransporter();
+      const transporter = await this.getTransporter();
       const sender = from || `"${config.emailFromName}" <${config.emailFrom}>`;
 
       const info = await transporter.sendMail({

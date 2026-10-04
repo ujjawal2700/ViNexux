@@ -4,6 +4,7 @@ import { Product } from '../models/Product.js';
 import { AppError } from '../utils/AppError.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../constants/errorCodes.js';
+import { descendantIds } from './catalog.service.js';
 
 /**
  * Generate URL-friendly slug from string name.
@@ -19,24 +20,33 @@ const slugify = (text) => {
     .replace(/^-+|-+$/g, '');
 };
 
+// All categories (active or not) as a light id/parent list for tree walks.
+const loadCategoryLinks = () => Category.find().select('_id parentId').lean();
+
 /**
- * Recursively checks whether targetParentId is a child/descendant of categoryId.
+ * Checks whether targetParentId is categoryId itself or one of its descendants.
  * @param {string} categoryId
  * @param {string} targetParentId
  * @returns {Promise<boolean>}
  */
 const isDescendant = async (categoryId, targetParentId) => {
-  let currentParentId = targetParentId;
-  while (currentParentId) {
-    if (currentParentId.toString() === categoryId.toString()) {
-      return true;
-    }
-    const parentCategory = await Category.findById(currentParentId).select('parentId');
-    if (!parentCategory) break;
-    currentParentId = parentCategory.parentId;
+  const parentById = new Map((await loadCategoryLinks()).map((row) => [String(row._id), row.parentId]));
+  const visited = new Set();
+  let currentParentId = targetParentId ? String(targetParentId) : null;
+  while (currentParentId && !visited.has(currentParentId)) {
+    if (currentParentId === String(categoryId)) return true;
+    visited.add(currentParentId);
+    const next = parentById.get(currentParentId);
+    currentParentId = next ? String(next) : null;
   }
   return false;
 };
+
+/**
+ * Ids of the given categories and every descendant, at any depth.
+ * @param {Array<string>} rootIds
+ */
+export const findCategoryAndDescendantIds = async (rootIds) => descendantIds(await loadCategoryLinks(), rootIds);
 
 export const categoryService = {
   /**
@@ -271,11 +281,8 @@ export const categoryService = {
       throw new AppError('Category not found.', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
     }
 
-    // Find all direct and indirect children
-    const directChildren = await Category.find({ parentId: id }).select('_id');
-    const directChildIds = directChildren.map((c) => c._id);
-    const subChildren = await Category.find({ parentId: { $in: directChildIds } }).select('_id');
-    const allDescendantIds = [id, ...directChildIds, ...subChildren.map((c) => c._id)];
+    // Find all descendants at any depth
+    const allDescendantIds = await findCategoryAndDescendantIds([id]);
 
     // Clean up products in this category or any of its children
     await Product.deleteMany({ categoryId: { $in: allDescendantIds } });

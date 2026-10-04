@@ -30,4 +30,6 @@ export const STORAGE_KEYS = {
   ADMIN_REFRESH_TOKEN: 'vinexus_admin_refresh_token',
   USER: 'vinexus_user',
   ADMIN_USER: 'vinexus_admin_user',
+  CUSTOMER_SESSION_EXPIRES_AT: 'vinexus_customer_session_expires_at',
+  LAST_CUSTOMER_PHONE: 'vinexus_last_customer_phone',
 };

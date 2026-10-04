@@ -4,10 +4,12 @@ import {
   getBrands,
   getProducts,
   getProductById,
+  getProductHighlights,
   updateProduct,
   deleteProduct,
 } from '../controllers/product.controller.js';
 import { validate } from '../middlewares/validate.js';
+import { publicCache } from '../middlewares/cacheControl.js';
 import { authenticate, authorize, optionalAuthenticate } from '../middlewares/auth.middleware.js';
 import {
   createProductSchema,
@@ -20,8 +22,9 @@ import {
 const router = Router();
 
 // Public Product Catalog Endpoints
-router.get('/brands', getBrands);
+router.get('/brands', publicCache(), getBrands);
 router.get('/', optionalAuthenticate, validate(getProductsQuerySchema), getProducts);
+router.get('/category-highlights', optionalAuthenticate, getProductHighlights);
 router.get('/:id', optionalAuthenticate, validate(getProductByIdSchema), getProductById);
 
 // Protected Admin Product Operations

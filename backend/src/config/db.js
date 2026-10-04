@@ -14,6 +14,10 @@ export const connectDB = async () => {
   try {
     const conn = await mongoose.connect(config.mongodbUri, {
       serverSelectionTimeoutMS: 5000,
+      maxPoolSize: config.mongoMaxPoolSize,
+      // Index builds run once, from the primary instance, not from every
+      // cluster process at the same time.
+      autoIndex: config.isPrimaryInstance,
     });
     console.log(`[Database] MongoDB connected successfully: ${conn.connection.host}/${conn.connection.name}`);
     
