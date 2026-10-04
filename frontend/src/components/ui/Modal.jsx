@@ -28,6 +28,14 @@ export const Modal = ({
   closeOnOutsideClick = true,
   className = '',
 }) => {
+  const scrollRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (isOpen && scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+    }
+  }, [isOpen]);
+
   return (
     <DialogPrimitive.Root open={isOpen} onOpenChange={(open) => !open && onClose?.()}>
       <DialogPrimitive.Portal>
@@ -72,7 +80,7 @@ export const Modal = ({
             </div>
           )}
 
-          <div className="p-6 overflow-y-auto flex-1 space-y-4 text-sm text-gray-700 bg-white">
+          <div ref={scrollRef} className="p-6 overflow-y-auto flex-1 space-y-4 text-sm text-gray-700 bg-white">
             {children}
           </div>
 

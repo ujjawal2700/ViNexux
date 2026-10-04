@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import adminService from '../../services/adminService';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import Table from '../../components/ui/Table';
@@ -25,6 +25,7 @@ import CategoryFilterBuilder from '../../components/admin/CategoryFilterBuilder'
  * Under Header Categories
  */
 const AdminMainCategoriesPage = () => {
+  const nameInputRef = useRef(null);
   const [allCategories, setAllCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -155,6 +156,9 @@ const AdminMainCategoriesPage = () => {
     });
     setFormError('');
     setIsModalOpen(true);
+    setTimeout(() => {
+      nameInputRef.current?.focus();
+    }, 120);
   };
 
   const handleOpenEdit = (category) => {
@@ -172,16 +176,22 @@ const AdminMainCategoriesPage = () => {
     });
     setFormError('');
     setIsModalOpen(true);
+    setTimeout(() => {
+      nameInputRef.current?.focus();
+    }, 120);
   };
 
   const handleFormSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.name.trim()) {
-      setFormError('Category name is required');
+    if (e && e.preventDefault) e.preventDefault();
+    if (!formData.parentId) {
+      setFormError('Please select a parent Header Department for this Main Category');
+      setToast({ message: 'Please select a parent Header Department.', type: 'error' });
       return;
     }
-    if (!formData.parentId) {
-      setFormError('Please select a parent Header Category for this Main Category');
+    if (!formData.name.trim()) {
+      setFormError('Main category name is required');
+      setToast({ message: 'Please enter a Main Category Name.', type: 'error' });
+      nameInputRef.current?.focus();
       return;
     }
 
@@ -199,7 +209,7 @@ const AdminMainCategoriesPage = () => {
         description: formData.description.trim() || undefined,
         isActive: formData.isActive,
         sortOrder: Number(formData.sortOrder) || 0,
-        filterDefinitions: formData.filterDefinitions,
+        filterDefinitions: formData.filterDefinitions || [],
       };
 
       if (editingCategory) {
@@ -214,7 +224,9 @@ const AdminMainCategoriesPage = () => {
       fetchCategories();
     } catch (err) {
       console.error('Main category save error:', err);
-      setFormError(err.response?.data?.message || 'Failed to save main category');
+      const msg = err.response?.data?.message || err.message || 'Failed to save main category';
+      setFormError(msg);
+      setToast({ message: msg, type: 'error' });
     } finally {
       setFormSubmitting(false);
     }
@@ -248,7 +260,7 @@ const AdminMainCategoriesPage = () => {
 
       <AdminPageHeader
         title="Main Categories"
-        subtitle="Manage main categories classified under Header Categories (Tier 2)"
+        subtitle="Manage product groups classified under Header Departments (Tier 2)"
         badge={`${mainCategories.length} Categories`}
         action={
           <Button variant="primary" size="sm" onClick={handleOpenCreate}>
@@ -257,6 +269,21 @@ const AdminMainCategoriesPage = () => {
           </Button>
         }
       />
+
+      {/* Non-tech Friendly Explanatory Card */}
+      <div className="rounded-xl border border-rose-200/80 bg-gradient-to-r from-rose-50/70 via-white to-white p-4 text-xs text-gray-700 shadow-2xs">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-lg bg-[#800020]/10 text-[#800020] shrink-0 mt-0.5">
+            <FolderTree className="w-5 h-5" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-bold text-gray-900 text-sm">How Main Categories Work</h3>
+            <p className="text-gray-600 leading-relaxed">
+              <strong>Main Categories</strong> are the product groups inside each Department. For example, under the "Security" department, you can have "CCTV Cameras", "Biometrics", and "Network Video Recorders". Each Main Category can also contain optional <strong>Subcategories</strong> for even more detailed browsing.
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Filter Bar */}
       <div className="bg-white border border-gray-200 rounded-xl p-3 flex flex-col md:flex-row items-center justify-between gap-3 shadow-xs">
@@ -436,66 +463,124 @@ const AdminMainCategoriesPage = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingCategory ? 'Edit Main Category' : 'Create Main Category'}
+        title={editingCategory ? 'Edit Main Category' : 'Create New Main Category'}
+        description="Specific product groups placed inside a Header Department (e.g. Laptops > Gaming Laptops, Security > CCTV Cameras)."
+        size="xl"
+        className="max-w-3xl sm:max-w-4xl"
+        footer={
+          <div className="flex items-center justify-end gap-3 w-full">
+            <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              type="button"
+              onClick={handleFormSubmit}
+              isLoading={formSubmitting}
+            >
+              {editingCategory ? 'Save Changes' : 'Create Main Category'}
+            </Button>
+          </div>
+        }
       >
-        <form onSubmit={handleFormSubmit} className="space-y-4">
+        <form id="main-category-form" noValidate onSubmit={handleFormSubmit} className="space-y-4 pt-1">
           <FormError message={formError} />
 
-          <FormField label="Header Category (Parent)" required hint="Choose the Header Category this Main Category belongs to">
+          <FormField
+            label="Header Department (Parent)"
+            required
+            error={formError && !formData.parentId ? 'Please select a parent Header Department' : undefined}
+            helperText="Choose the main top-level department this category belongs inside."
+          >
             <Select
               value={formData.parentId}
-              onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
-              placeholder="Select a Header Category"
+              onChange={(e) => {
+                setFormData({ ...formData, parentId: e.target.value });
+                if (formError) setFormError('');
+              }}
+              placeholder="Select a Header Department..."
               options={headerCategories.map((h) => ({
                 value: h._id,
-                label: `${h.name} (Header)`,
+                label: `${h.name} (Department)`,
               }))}
-              required
             />
           </FormField>
 
-          <FormField label="Main Category Name" required>
-            <Input
+          <FormField
+            label="Main Category Name"
+            required
+            error={formError && !formData.name.trim() ? 'Main Category name is required' : undefined}
+            helperText="The specific product group name (e.g. Gaming Desktops, CCTV Cameras, Network Switches)."
+          >
+            <input
+              ref={nameInputRef}
+              type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="e.g. All-in-One PCs, Gaming Desktops, CCTV Cameras..."
-              required
+              onChange={(e) => {
+                setFormData({ ...formData, name: e.target.value });
+                if (formError) setFormError('');
+              }}
+              placeholder="e.g. Gaming Desktops, CCTV Cameras, Network Switches"
+              className={`w-full bg-card border ${
+                formError && !formData.name.trim()
+                  ? 'border-rose-500 ring-1 ring-rose-500'
+                  : 'border-border focus:border-primary focus:ring-1 focus:ring-primary/20'
+              } rounded-xl px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground/70 transition-all`}
             />
           </FormField>
 
-          <FormField label="URL Slug (Optional)" hint="Leave blank to auto-generate from name">
+          <FormField
+            label="Web Address Link (URL Slug)"
+            hint="Optional — leave blank to automatically create a clean web link from the name"
+          >
             <Input
               value={formData.slug}
               onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-              placeholder="e.g. all-in-one-pcs"
+              placeholder="e.g. cctv-cameras (or leave empty)"
             />
           </FormField>
 
-          <FormField label="Category Image">
-            <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={(e) => setCategoryImageFile(e.target.files?.[0] || null)} className="mb-2 block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-muted file:px-3 file:py-2 file:text-xs file:font-semibold" />
-            <Input
-              value={formData.image}
-              onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-              placeholder="Existing image URL or optional external URL"
-            />
+          <FormField
+            label="Category Photo or Banner (Optional)"
+            helperText="Upload an image (PNG, JPG, WebP) or enter an external image URL."
+          >
+            <div className="space-y-2">
+              <input
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                onChange={(e) => setCategoryImageFile(e.target.files?.[0] || null)}
+                className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-gray-700 hover:file:bg-gray-200 cursor-pointer"
+              />
+              <Input
+                value={formData.image}
+                onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                placeholder="Or paste external image URL (e.g. https://...)"
+              />
+            </div>
           </FormField>
 
-          <FormField label="Description (Optional)">
+          <FormField
+            label="Category Description (Optional)"
+            helperText="A brief overview of the products in this category."
+          >
             <Textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Brief overview of this main category..."
+              placeholder="Brief overview of products in this category..."
               rows={3}
             />
           </FormField>
 
           <CategoryFilterBuilder
-            value={formData.filterDefinitions}
+            value={formData.filterDefinitions || []}
             onChange={(filterDefinitions) => setFormData({ ...formData, filterDefinitions })}
           />
 
-          <div className="grid grid-cols-2 gap-4">
-            <FormField label="Sort Order Position">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              label="Sort Order Position"
+              helperText="Lower numbers appear first within the department."
+            >
               <Input
                 type="number"
                 min="0"
@@ -504,25 +589,19 @@ const AdminMainCategoriesPage = () => {
               />
             </FormField>
 
-            <FormField label="Active Status">
+            <FormField
+              label="Website Visibility"
+              helperText="Control whether this category is active and visible to shoppers."
+            >
               <Select
                 value={formData.isActive ? 'true' : 'false'}
                 onChange={(e) => setFormData({ ...formData, isActive: e.target.value === 'true' })}
                 options={[
-                  { value: 'true', label: 'Active' },
-                  { value: 'false', label: 'Inactive' },
+                  { value: 'true', label: 'Visible on Website' },
+                  { value: 'false', label: 'Hidden (Draft)' },
                 ]}
               />
             </FormField>
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4 border-t border-border">
-            <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" isLoading={formSubmitting}>
-              {editingCategory ? 'Save Changes' : 'Create Main Category'}
-            </Button>
           </div>
         </form>
       </Modal>

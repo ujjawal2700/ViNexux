@@ -303,7 +303,7 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   if (query.inStock === 'true') extraFilters.push({ specifications: { $elemMatch: { key: /^(stock|inventory)$/i, value: /^\s*[1-9]\d*(\.\d+)?\s*$/ } } });
   if (query.availability) {
     const requestedStatuses = String(query.availability).split(',').filter(Boolean);
-    if (requestedStatuses.length) extraFilters.push({ stockStatus: { $in: requestedStatuses } });
+    if (requestedStatuses.length && requestedStatuses.length < 4) extraFilters.push({ stockStatus: { $in: requestedStatuses } });
   }
   if (query.minPrice !== undefined || query.maxPrice !== undefined) {
     extraFilters.push({ applicablePrice: {
@@ -345,7 +345,7 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
       { $group: { _id: { key: '$specifications.key', value: '$specifications.value' }, count: { $sum: 1 } } },
       { $sort: { '_id.key': 1, '_id.value': 1 } },
     ];
-    resultFacets.availability = [...facetFilters, { $group: { _id: '$stockStatus', count: { $sum: 1 } } }];
+    resultFacets.availability = [{ $group: { _id: '$stockStatus', count: { $sum: 1 } } }];
   }
   const categoryFacetMatch = { ...match, categoryId: { $in: categories.map((category) => category._id) } };
   const categoryFacetPipeline = [
@@ -395,6 +395,14 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   const products = result.products.map((product) => {
     if (approvedDealer) product.dealerPrice = product.applicablePrice;
     else delete product.dealerPrice;
+    const specStockRaw = product.specifications?.find((specification) => /^(stock|inventory)$/i.test(specification.key || ''))?.value;
+    const specStock = specStockRaw !== undefined && !isNaN(Number(specStockRaw)) ? Number(specStockRaw) : null;
+    const resolvedStock = (product.stockQuantity !== undefined && product.stockQuantity !== null && product.stockQuantity > 0)
+      ? product.stockQuantity
+      : (specStock !== null ? specStock : (product.stockQuantity || 0));
+    const resolvedStatus = (product.stockStatus && product.stockStatus !== 'out-of-stock')
+      ? product.stockStatus
+      : (resolvedStock === 0 ? 'out-of-stock' : (resolvedStock < 5 ? 'low-stock' : 'in-stock'));
     return {
       ...product,
       modelNumber: product.modelNumber || `VNX-${String(product._id).slice(-8).toUpperCase()}`,
@@ -402,9 +410,9 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
       productUrl: product.productUrl || '',
       variant: product.variant || '',
       warranty: product.warranty || '1 Year ON-SITE / Direct Replacement Warranty',
-      availableStock: product.stockQuantity,
-      stockQuantity: product.stockQuantity,
-      stockStatus: product.stockStatus || 'on-order',
+      availableStock: resolvedStock,
+      stockQuantity: resolvedStock,
+      stockStatus: resolvedStatus,
       categoryPath: categoryPathFor(product.categoryId),
       brandId: brandById.get(String(product.brandId)) || product.brandId,
       categoryId: byId.get(String(product.categoryId)),

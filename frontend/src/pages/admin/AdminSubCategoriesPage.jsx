@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import adminService from '../../services/adminService';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import Table from '../../components/ui/Table';
@@ -24,6 +24,7 @@ import CategoryFilterBuilder from '../../components/admin/CategoryFilterBuilder'
  * Under Main Categories
  */
 const AdminSubCategoriesPage = () => {
+  const nameInputRef = useRef(null);
   const [allCategories, setAllCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -168,6 +169,9 @@ const AdminSubCategoriesPage = () => {
     });
     setFormError('');
     setIsModalOpen(true);
+    setTimeout(() => {
+      nameInputRef.current?.focus();
+    }, 120);
   };
 
   const handleOpenEdit = (category) => {
@@ -185,16 +189,22 @@ const AdminSubCategoriesPage = () => {
     });
     setFormError('');
     setIsModalOpen(true);
+    setTimeout(() => {
+      nameInputRef.current?.focus();
+    }, 120);
   };
 
   const handleFormSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.name.trim()) {
-      setFormError('Category name is required');
+    if (e && e.preventDefault) e.preventDefault();
+    if (!formData.parentId) {
+      setFormError('Please select a parent Main Category for this Subcategory');
+      setToast({ message: 'Please select a parent Main Category.', type: 'error' });
       return;
     }
-    if (!formData.parentId) {
-      setFormError('Please select a parent Main Category for this Sub Category');
+    if (!formData.name.trim()) {
+      setFormError('Subcategory name is required');
+      setToast({ message: 'Please enter a Subcategory Name.', type: 'error' });
+      nameInputRef.current?.focus();
       return;
     }
 
@@ -212,22 +222,24 @@ const AdminSubCategoriesPage = () => {
         description: formData.description.trim() || undefined,
         isActive: formData.isActive,
         sortOrder: Number(formData.sortOrder) || 0,
-        filterDefinitions: formData.filterDefinitions,
+        filterDefinitions: formData.filterDefinitions || [],
       };
 
       if (editingCategory) {
         await adminService.updateCategory(editingCategory._id, payload);
-        setToast({ message: `Sub category "${formData.name}" updated successfully!`, type: 'success' });
+        setToast({ message: `Subcategory "${formData.name}" updated successfully!`, type: 'success' });
       } else {
         await adminService.createCategory(payload);
-        setToast({ message: `Sub category "${formData.name}" created successfully!`, type: 'success' });
+        setToast({ message: `Subcategory "${formData.name}" created successfully!`, type: 'success' });
       }
 
       setIsModalOpen(false);
       fetchCategories();
     } catch (err) {
       console.error('Sub category save error:', err);
-      setFormError(err.response?.data?.message || 'Failed to save sub category');
+      const msg = err.response?.data?.message || err.message || 'Failed to save subcategory';
+      setFormError(msg);
+      setToast({ message: msg, type: 'error' });
     } finally {
       setFormSubmitting(false);
     }
@@ -474,69 +486,127 @@ const AdminSubCategoriesPage = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingCategory ? 'Edit Sub Category' : 'Create Sub Category'}
+        title={editingCategory ? 'Edit Subcategory' : 'Create New Subcategory'}
+        description="Detailed sub-divisions placed inside a Main Category (e.g. CCTV Cameras > Dome Cameras, Bullet Cameras)."
+        size="xl"
+        className="max-w-3xl sm:max-w-4xl"
+        footer={
+          <div className="flex items-center justify-end gap-3 w-full">
+            <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              type="button"
+              onClick={handleFormSubmit}
+              isLoading={formSubmitting}
+            >
+              {editingCategory ? 'Save Changes' : 'Create Subcategory'}
+            </Button>
+          </div>
+        }
       >
-        <form onSubmit={handleFormSubmit} className="space-y-4">
+        <form id="sub-category-form" noValidate onSubmit={handleFormSubmit} className="space-y-4 pt-1">
           <FormError message={formError} />
 
-          <FormField label="Main Category (Parent)" required hint="Choose the Main Category this Sub Category belongs to">
+          <FormField
+            label="Main Category (Parent)"
+            required
+            error={formError && !formData.parentId ? 'Please select a parent Main Category' : undefined}
+            helperText="Choose the Main Category this subcategory belongs inside."
+          >
             <Select
               value={formData.parentId}
-              onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
-              placeholder="Select a Main Category"
+              onChange={(e) => {
+                setFormData({ ...formData, parentId: e.target.value });
+                if (formError) setFormError('');
+              }}
+              placeholder="Select a Main Category..."
               options={mainCategories.map((m) => {
                 const root = headerCategories.find((h) => h._id === (m.parentId?._id || m.parentId));
                 return {
                   value: m._id,
-                  label: `${m.name} (under ${root?.name || 'Header'})`,
+                  label: `${m.name} (under ${root?.name || 'Department'})`,
                 };
               })}
-              required
             />
           </FormField>
 
-          <FormField label="Sub Category Name" required>
-            <Input
+          <FormField
+            label="Subcategory Name"
+            required
+            error={formError && !formData.name.trim() ? 'Subcategory name is required' : undefined}
+            helperText="The specific subgroup name (e.g. Dome Cameras, Bullet Cameras, PTZ Cameras)."
+          >
+            <input
+              ref={nameInputRef}
+              type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="e.g. Touchscreen Series, Intel Core i7 Series..."
-              required
+              onChange={(e) => {
+                setFormData({ ...formData, name: e.target.value });
+                if (formError) setFormError('');
+              }}
+              placeholder="e.g. Dome Cameras, Bullet Cameras, PTZ Cameras"
+              className={`w-full bg-card border ${
+                formError && !formData.name.trim()
+                  ? 'border-rose-500 ring-1 ring-rose-500'
+                  : 'border-border focus:border-primary focus:ring-1 focus:ring-primary/20'
+              } rounded-xl px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground/70 transition-all`}
             />
           </FormField>
 
-          <FormField label="URL Slug (Optional)" hint="Leave blank to auto-generate from name">
+          <FormField
+            label="Web Address Link (URL Slug)"
+            hint="Optional — leave blank to automatically create a clean web link from the name"
+          >
             <Input
               value={formData.slug}
               onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-              placeholder="e.g. touchscreen-series"
+              placeholder="e.g. dome-cameras (or leave empty)"
             />
           </FormField>
 
-          <FormField label="Category Image">
-            <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={(e) => setCategoryImageFile(e.target.files?.[0] || null)} className="mb-2 block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-muted file:px-3 file:py-2 file:text-xs file:font-semibold" />
-            <Input
-              value={formData.image}
-              onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-              placeholder="Existing image URL or optional external URL"
-            />
+          <FormField
+            label="Subcategory Photo or Banner (Optional)"
+            helperText="Upload an image (PNG, JPG, WebP) or enter an external image URL."
+          >
+            <div className="space-y-2">
+              <input
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                onChange={(e) => setCategoryImageFile(e.target.files?.[0] || null)}
+                className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-gray-700 hover:file:bg-gray-200 cursor-pointer"
+              />
+              <Input
+                value={formData.image}
+                onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                placeholder="Or paste external image URL (e.g. https://...)"
+              />
+            </div>
           </FormField>
 
-          <FormField label="Description (Optional)">
+          <FormField
+            label="Subcategory Description (Optional)"
+            helperText="A brief overview of the products in this subcategory."
+          >
             <Textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Brief overview of this sub category..."
+              placeholder="Brief overview of products in this subcategory..."
               rows={3}
             />
           </FormField>
 
           <CategoryFilterBuilder
-            value={formData.filterDefinitions}
+            value={formData.filterDefinitions || []}
             onChange={(filterDefinitions) => setFormData({ ...formData, filterDefinitions })}
           />
 
-          <div className="grid grid-cols-2 gap-4">
-            <FormField label="Sort Order Position">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              label="Sort Order Position"
+              helperText="Lower numbers appear first within the main category."
+            >
               <Input
                 type="number"
                 min="0"
@@ -545,25 +615,19 @@ const AdminSubCategoriesPage = () => {
               />
             </FormField>
 
-            <FormField label="Active Status">
+            <FormField
+              label="Website Visibility"
+              helperText="Control whether this category is active and visible to shoppers."
+            >
               <Select
                 value={formData.isActive ? 'true' : 'false'}
                 onChange={(e) => setFormData({ ...formData, isActive: e.target.value === 'true' })}
                 options={[
-                  { value: 'true', label: 'Active' },
-                  { value: 'false', label: 'Inactive' },
+                  { value: 'true', label: 'Visible on Website' },
+                  { value: 'false', label: 'Hidden (Draft)' },
                 ]}
               />
             </FormField>
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4 border-t border-border">
-            <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" isLoading={formSubmitting}>
-              {editingCategory ? 'Save Changes' : 'Create Sub Category'}
-            </Button>
           </div>
         </form>
       </Modal>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import adminService from '../../services/adminService';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import Table from '../../components/ui/Table';
@@ -24,6 +24,7 @@ import CategoryFilterBuilder from '../../components/admin/CategoryFilterBuilder'
  * Dedicated Header Category Management Page (Tier 1 Root Categories)
  */
 const AdminHeaderCategoriesPage = () => {
+  const nameInputRef = useRef(null);
   const [categories, setCategories] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -130,6 +131,9 @@ const AdminHeaderCategoriesPage = () => {
     });
     setFormError('');
     setIsModalOpen(true);
+    setTimeout(() => {
+      nameInputRef.current?.focus();
+    }, 120);
   };
 
   const handleOpenEdit = (category) => {
@@ -146,12 +150,17 @@ const AdminHeaderCategoriesPage = () => {
     });
     setFormError('');
     setIsModalOpen(true);
+    setTimeout(() => {
+      nameInputRef.current?.focus();
+    }, 120);
   };
 
   const handleFormSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!formData.name.trim()) {
-      setFormError('Category name is required');
+      setFormError('Department name is required');
+      setToast({ message: 'Please enter a Department Name.', type: 'error' });
+      nameInputRef.current?.focus();
       return;
     }
 
@@ -184,7 +193,9 @@ const AdminHeaderCategoriesPage = () => {
       fetchCategories();
     } catch (err) {
       console.error('Header category save error:', err);
-      setFormError(err.response?.data?.message || 'Failed to save category');
+      const msg = err.response?.data?.message || err.message || 'Failed to save category';
+      setFormError(msg);
+      setToast({ message: msg, type: 'error' });
     } finally {
       setFormSubmitting(false);
     }
@@ -391,25 +402,40 @@ const AdminHeaderCategoriesPage = () => {
             <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit" form="header-category-form" isLoading={formSubmitting}>
+            <Button
+              variant="primary"
+              type="button"
+              onClick={handleFormSubmit}
+              isLoading={formSubmitting}
+            >
               {editingCategory ? 'Save Changes' : 'Create Header Category'}
             </Button>
           </div>
         }
       >
-        <form id="header-category-form" onSubmit={handleFormSubmit} className="space-y-4 pt-1">
+        <form id="header-category-form" noValidate onSubmit={handleFormSubmit} className="space-y-4 pt-1">
           <FormError message={formError} />
 
           <FormField
             label="Department / Category Name"
             required
+            error={formError && !formData.name.trim() ? formError : undefined}
             helperText="The primary name displayed in the top navigation bar (e.g. Laptops, Storage, CCTV Security)."
           >
-            <Input
+            <input
+              ref={nameInputRef}
+              type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, name: e.target.value });
+                if (formError) setFormError('');
+              }}
               placeholder="e.g. Desktop Computers, Laptops, Security Systems"
-              required
+              className={`w-full bg-card border ${
+                formError && !formData.name.trim()
+                  ? 'border-rose-500 ring-1 ring-rose-500'
+                  : 'border-border focus:border-primary focus:ring-1 focus:ring-primary/20'
+              } rounded-xl px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground/70 transition-all`}
             />
           </FormField>
 

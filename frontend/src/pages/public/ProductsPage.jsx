@@ -43,7 +43,7 @@ const SORT_OPTIONS = [
   { value: 'price_desc', label: 'Price (High > Low)' },
 ];
 
-const DEFAULT_AVAILABILITY = ['in-stock', 'low-stock', 'on-order'];
+const DEFAULT_AVAILABILITY = ['in-stock', 'low-stock', 'on-order', 'out-of-stock'];
 
 export const ProductsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -193,7 +193,9 @@ export const ProductsPage = () => {
 
       if (brandSlug && !initialBrand) query.brandSlug = brandSlug;
       else if (initialBrand) query.brand = initialBrand;
-      if (selectedAvailability.length) query.availability = selectedAvailability.join(',');
+      if (selectedAvailability.length && selectedAvailability.length < 4) {
+        query.availability = selectedAvailability.join(',');
+      }
       if (Object.values(selectedSpecs).some((values) => values.length)) query.specs = JSON.stringify(selectedSpecs);
       // Facets depend on the filters, not the page. When only the page (or a
       // user-driven refetch) changes, reuse the facets already on screen.

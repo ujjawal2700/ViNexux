@@ -105,9 +105,11 @@ const stockStatusFor = (stock) => {
 export const computeCatalogFields = (product) => {
   const specifications = Array.isArray(product.specifications) ? product.specifications : [];
   const brandValue = firstSpecValue(specifications, BRAND_KEYS);
-  const stockLevel = product.stockQuantity !== undefined && product.stockQuantity !== null
-    ? product.stockQuantity
-    : toStockNumber(firstSpecValue(specifications, STOCK_KEYS));
+  const specStock = toStockNumber(firstSpecValue(specifications, STOCK_KEYS));
+  const rawStock = product.stockQuantity !== undefined && product.stockQuantity !== null ? product.stockQuantity : null;
+  const stockLevel = (rawStock !== null && rawStock > 0)
+    ? rawStock
+    : (specStock !== null ? specStock : (rawStock ?? 0));
   const brandTexts = specifications
     .filter((specification) => BRAND_KEY_PATTERN.test(String(specification?.key ?? '')))
     .map((specification) => specification.value);
