@@ -31,6 +31,7 @@ import {
 } from "../../components/ui/DropdownMenu";
 import NotFoundPage from "./NotFoundPage";
 import useAuth from "../../hooks/useAuth";
+import usePageSeo from "../../hooks/usePageSeo";
 import {
   buildCategoryPath,
   buildCategoryTrail,
@@ -601,6 +602,48 @@ export const ProductsPage = () => {
     }
     return "All Products";
   }, [isAllProductsRoute, activeCategory, brandSlug, routeBrand, searchTerm]);
+
+  // Dynamic SEO metadata targeting Networking & IT Search Ranking
+  const seoTitle = useMemo(() => {
+    if (headerSlug === "networking" || activeCategory?.slug === "networking") {
+      return "Networking Products, Enterprise PoE Switches, Routers & Racks | Vinexus";
+    }
+    if (headerSlug === "security" || activeCategory?.slug === "security") {
+      return "CCTV Cameras, DVRs, NVRs & Security Systems | Vinexus";
+    }
+    if (brandSlug) {
+      const bName = routeBrand || brandSlug.replace(/-/g, " ").toUpperCase();
+      return `${bName} Networking & IT Products | Buy at Best Price - Vinexus`;
+    }
+    if (activeCategory?.name) {
+      return `${activeCategory.name} — Buy Online at Best Price | Vinexus`;
+    }
+    if (searchTerm) {
+      return `Search: "${searchTerm}" — Products | Vinexus`;
+    }
+    return "All Products — Enterprise Networking, CCTV & IT Hardware | Vinexus";
+  }, [headerSlug, activeCategory, brandSlug, routeBrand, searchTerm]);
+
+  const seoDescription = useMemo(() => {
+    if (headerSlug === "networking" || activeCategory?.slug === "networking") {
+      return "Explore high-performance enterprise networking products, managed PoE switches, routers, optical transceivers, and patch panels at wholesale dealer prices in India on Vinexus.";
+    }
+    if (headerSlug === "security" || activeCategory?.slug === "security") {
+      return "Buy high-definition CCTV cameras, NVRs, DVRs, surveillance systems, and security equipment at wholesale dealer rates on Vinexus. Official warranty & GST invoices.";
+    }
+    if (brandSlug) {
+      const bName = routeBrand || brandSlug.replace(/-/g, " ").toUpperCase();
+      return `Shop authentic ${bName} networking, surveillance, and computing products on Vinexus. Bulk dealer discounts, GST billing, and express shipping across India.`;
+    }
+    return "Browse India's top B2B catalog of enterprise networking products, CCTV cameras, servers, laptops, and IT hardware on Vinexus.";
+  }, [headerSlug, activeCategory, brandSlug, routeBrand]);
+
+  usePageSeo({
+    title: seoTitle,
+    description: seoDescription,
+    keywords:
+      "networking products, enterprise switches, managed PoE switch, WiFi 6 router, Cat6 cable, CCTV cameras India, Vinexus Kota",
+  });
 
 
   // Sidebar Filter Content (used in both desktop sidebar & mobile drawer)

@@ -5,8 +5,8 @@ import { WebsiteSettingsContext } from './websiteSettingsStore';
 
 const defaultSettings = {
   websiteName: 'Vinexus',
-  metaTitle: 'Vinexus | IT, Laptop, CCTV & Networking Products',
-  metaDescription: 'Browse laptops, computers, CCTV, networking and IT products on Vinexus. Explore product details and send an enquiry to our team.',
+  metaTitle: "Vinexus | India's #1 Networking Products, Enterprise Switches, CCTV & IT Hardware Distributor",
+  metaDescription: 'Buy high-performance networking products, managed PoE switches, WiFi 6 routers, patch panels, Cat6 cables, server racks, CCTV cameras & IT hardware at wholesale dealer prices in India on Vinexus.',
   favicon: { url: '/favicon.jpeg', publicId: '' },
   logo: { url: '/logo.png', publicId: '' },
   ogImage: { url: '/social-preview.png', publicId: '' },

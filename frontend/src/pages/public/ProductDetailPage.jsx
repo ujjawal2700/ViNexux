@@ -7,6 +7,7 @@ import guestCartService from '../../services/guestCartService';
 import wishlistService from '../../services/wishlistService';
 import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
+import usePageSeo from '../../hooks/usePageSeo';
 import ProductCard from '../../components/products/ProductCard';
 import { extractProductId, buildCategoryPath, buildCategoryTrail, buildBrandUrl } from '../../utils/categoryUrls';
 import { Image } from '../../components/ui/Image';
@@ -242,6 +243,43 @@ export const ProductDetailPage = () => {
   const isInStock = product?.stockStatus === 'out-of-stock' || availableStock === 0
     ? false
     : ['in-stock', 'low-stock'].includes(product?.stockStatus) || (availableStock !== null && availableStock > 0) || Boolean(product?.isActive);
+
+  // Dynamic SEO metadata & Google Product Structured Data (JSON-LD)
+  usePageSeo({
+    title: product?.name ? `${product.name} | Buy Online at Best Price - Vinexus` : 'Product Details | Vinexus',
+    description: product?.shortDescription
+      ? `${product.name} - ${product.shortDescription}. Buy networking & IT equipment with official warranty, GST invoice & nationwide express shipping on Vinexus.`
+      : product?.name
+      ? `Buy ${product.name} at wholesale dealer prices on Vinexus. Official warranty, GST commercial invoice, and fast delivery in India.`
+      : undefined,
+    keywords: product?.name
+      ? `${product.name}, ${brandName || ''}, networking products, CCTV camera, enterprise switches, IT hardware India, Vinexus Kota`
+      : undefined,
+    image: product?.images?.[0]?.url || product?.imageUrl,
+    type: 'product',
+    jsonLd: product?.name
+      ? {
+          '@context': 'https://schema.org/',
+          '@type': 'Product',
+          name: product.name,
+          image: product.images?.map((i) => i.url) || [product.imageUrl],
+          description: product.description || product.shortDescription || product.name,
+          sku: product.sku || product._id,
+          brand: {
+            '@type': 'Brand',
+            name: brandName || 'Vinexus',
+          },
+          offers: {
+            '@type': 'Offer',
+            url: typeof window !== 'undefined' ? window.location.href : 'https://vinexus.in',
+            priceCurrency: 'INR',
+            price: displayPrice || standardPrice || 0,
+            availability: isInStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+            itemCondition: 'https://schema.org/NewCondition',
+          },
+        }
+      : null,
+  });
 
   // Stepper handlers & disabled state (matches user request: + disables at stock limit, - re-enables it)
   const isIncrementDisabled = !isInStock || (availableStock !== null && quantity >= availableStock);

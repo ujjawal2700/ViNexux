@@ -1,9 +1,75 @@
+# Vinexus Robots.txt — https://vinexus.in
+# India's Leading B2B IT, Networking & CCTV Security Equipment Distributor
+
 User-agent: *
+Allow: /
+Allow: /products
+Allow: /categories
+Allow: /brands
+Allow: /networking
+Allow: /security
+Allow: /cables
+Allow: /accessories-cctv-networking
+Allow: /connector-converter
+Allow: /desktop
+Allow: /laptop
+Allow: /storage
+Allow: /display
+Allow: /peripherals
+Allow: /printers-and-scanners
+Allow: /software
+Allow: /mobility
+Allow: /telecom
+Allow: /privacy
+Allow: /terms
+Allow: /assets/
+Allow: /*.js$
+Allow: /*.css$
+Allow: /*.png$
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.webp$
+Allow: /*.svg$
+Allow: /*.ico$
+
+# Disallow private administrative, authenticated, and checkout endpoints
+Disallow: /admin/
+Disallow: /admin
+Disallow: /account/
+Disallow: /account
+Disallow: /customer/
+Disallow: /dealer/
+Disallow: /checkout
+Disallow: /cart
+Disallow: /auth/
+Disallow: /api/
+
+# Explicit search crawler directives
+User-agent: Googlebot
 Allow: /
 Disallow: /admin/
 Disallow: /account/
-Disallow: /customer/
-Disallow: /dealer/
+Disallow: /cart
+Disallow: /checkout
 Disallow: /api/
 
-Sitemap: https://vi-nexux.vercel.app/sitemap.xml
+User-agent: Googlebot-Image
+Allow: /
+Allow: /assets/
+Allow: /*.png$
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.webp$
+Allow: /*.svg$
+
+User-agent: Bingbot
+Allow: /
+Disallow: /admin/
+Disallow: /account/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /api/
+
+# Canonical Sitemaps
+Sitemap: https://vinexus.in/sitemap.xml
+Sitemap: https://www.vinexus.in/sitemap.xml
