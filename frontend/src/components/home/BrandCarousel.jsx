@@ -271,9 +271,8 @@ export const BrandCarousel = () => {
   const { brands, loading, error, reload } = useCatalogBrands();
   const scrollRef = useRef(null);
   const [isPaused, setIsPaused] = useState(false);
-  const [canScroll, setCanScroll] = useState(false);
 
-  // Deduplicate brands so each brand appears exactly once
+  // Deduplicate brands so each brand appears exactly once in the base set
   const uniqueBrands = React.useMemo(() => {
     const seen = new Set();
     return brands.filter((brand) => {
@@ -284,47 +283,34 @@ export const BrandCarousel = () => {
     });
   }, [brands]);
 
-  // Check if content overflows and requires scrolling
-  useEffect(() => {
-    const checkOverflow = () => {
-      const el = scrollRef.current;
-      if (el) {
-        setCanScroll(el.scrollWidth > el.clientWidth + 4);
-      }
-    };
-    checkOverflow();
-    window.addEventListener('resize', checkOverflow);
-    return () => window.removeEventListener('resize', checkOverflow);
+  // Create an infinite loop track by repeating uniqueBrands so there are enough items
+  // to comfortably exceed any screen width (> 2500px), split into two identical halves.
+  const displayBrands = React.useMemo(() => {
+    if (!uniqueBrands.length) return [];
+    let base = [...uniqueBrands];
+    while (base.length < 12) {
+      base = [...base, ...uniqueBrands];
+    }
+    // Duplicate the base set to form two identical halves for a seamless loop
+    return [...base, ...base];
   }, [uniqueBrands]);
 
-  // Auto-scroll continuously from right to left only when content overflows
+  // Smooth continuous right-to-left marquee auto-scroll
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el || !canScroll) return;
+    if (!el || !displayBrands.length) return;
 
     let animId;
-    let forward = true;
-    let pauseUntil = 0;
 
-    const step = (timestamp) => {
+    const step = () => {
       if (!isPaused && el) {
-        if (timestamp >= pauseUntil) {
-          const maxScroll = el.scrollWidth - el.clientWidth;
-          if (forward) {
-            if (el.scrollLeft >= maxScroll - 2) {
-              forward = false;
-              pauseUntil = timestamp + 1500;
-            } else {
-              el.scrollLeft += 0.75;
-            }
-          } else {
-            if (el.scrollLeft <= 2) {
-              forward = true;
-              pauseUntil = timestamp + 1500;
-            } else {
-              el.scrollLeft -= 0.75;
-            }
-          }
+        // Increment scroll position (items move from right to left)
+        el.scrollLeft += 0.75;
+
+        // When we have scrolled past exactly half the track, wrap back seamlessly
+        const halfScroll = el.scrollWidth / 2;
+        if (el.scrollLeft >= halfScroll) {
+          el.scrollLeft -= halfScroll;
         }
       }
       animId = requestAnimationFrame(step);
@@ -332,15 +318,25 @@ export const BrandCarousel = () => {
 
     animId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(animId);
-  }, [isPaused, canScroll, uniqueBrands]);
+  }, [isPaused, displayBrands]);
 
   const scrollManual = (direction) => {
-    if (scrollRef.current) {
+    const el = scrollRef.current;
+    if (el) {
       const scrollAmount = 300;
-      scrollRef.current.scrollBy({
+      el.scrollBy({
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth',
       });
+      setTimeout(() => {
+        if (!el) return;
+        const halfScroll = el.scrollWidth / 2;
+        if (el.scrollLeft >= halfScroll) {
+          el.scrollLeft -= halfScroll;
+        } else if (el.scrollLeft <= 0) {
+          el.scrollLeft += halfScroll;
+        }
+      }, 350);
     }
   };
 
@@ -350,21 +346,21 @@ export const BrandCarousel = () => {
 
   return (
     <div
-      className="relative storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 my-3 overflow-hidden min-w-0 max-w-full"
+      className="relative storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 my-3 overflow-hidden min-w-0 max-w-full group"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
+      onTouchStart={() => setIsPaused(true)}
+      onTouchEnd={() => setIsPaused(false)}
     >
-      {/* Left Navigation Arrow (shown only when content overflows) */}
-      {canScroll && (
-        <button
-          type="button"
-          onClick={() => scrollManual('left')}
-          className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white border border-gray-300 shadow-md flex items-center justify-center text-gray-700 hover:text-primary hover:border-primary transition-all opacity-90 hover:opacity-100 cursor-pointer"
-          aria-label="Scroll brands left"
-        >
-          <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-        </button>
-      )}
+      {/* Left Navigation Arrow */}
+      <button
+        type="button"
+        onClick={() => scrollManual('left')}
+        className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white border border-gray-300 shadow-md flex items-center justify-center text-gray-700 hover:text-primary hover:border-primary transition-all opacity-85 hover:opacity-100 cursor-pointer"
+        aria-label="Scroll brands left"
+      >
+        <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+      </button>
 
       {/* Brands Track (Clean SQUARE shape cards) */}
       <div
@@ -372,14 +368,14 @@ export const BrandCarousel = () => {
         className="flex items-center gap-2.5 sm:gap-3.5 overflow-x-auto scrollbar-none py-3 sm:py-4 px-2 sm:px-10 min-w-0 max-w-full"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        {uniqueBrands.map((brand) => (
-          <div key={brand._id || brand.slug || brand.name} className="relative group shrink-0">
+        {displayBrands.map((brand, index) => (
+          <div key={`${brand._id || brand.slug || brand.name}-${index}`} className="relative group/brand shrink-0">
             <Link
               to={buildBrandUrl(brand.name)}
-              className="flex flex-col items-center justify-center w-[clamp(64px,20vw,76px)] h-[clamp(64px,20vw,76px)] sm:w-[98px] sm:h-[98px] md:w-[110px] md:h-[110px] aspect-square p-2 bg-white border border-gray-200 rounded-lg transition-all duration-200 ease-out hover:border-[#800020] hover:shadow-md select-none relative group"
+              className="flex flex-col items-center justify-center w-[clamp(64px,20vw,76px)] h-[clamp(64px,20vw,76px)] sm:w-[98px] sm:h-[98px] md:w-[110px] md:h-[110px] aspect-square p-2 bg-white border border-gray-200 rounded-lg transition-all duration-200 ease-out hover:border-[#800020] hover:shadow-md select-none relative"
             >
               {/* Brand Logo Display */}
-              <div className="flex items-center justify-center w-full h-full p-1 transition-transform duration-200 group-hover:scale-105">
+              <div className="flex items-center justify-center w-full h-full p-1 transition-transform duration-200 group-hover/brand:scale-105">
                 <BrandLogo brand={brand} />
               </div>
             </Link>
@@ -387,17 +383,15 @@ export const BrandCarousel = () => {
         ))}
       </div>
 
-      {/* Right Navigation Arrow (shown only when content overflows) */}
-      {canScroll && (
-        <button
-          type="button"
-          onClick={() => scrollManual('right')}
-          className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white border border-gray-300 shadow-md flex items-center justify-center text-gray-700 hover:text-primary hover:border-primary transition-all opacity-90 hover:opacity-100 cursor-pointer"
-          aria-label="Scroll brands right"
-        >
-          <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-        </button>
-      )}
+      {/* Right Navigation Arrow */}
+      <button
+        type="button"
+        onClick={() => scrollManual('right')}
+        className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white border border-gray-300 shadow-md flex items-center justify-center text-gray-700 hover:text-primary hover:border-primary transition-all opacity-85 hover:opacity-100 cursor-pointer"
+        aria-label="Scroll brands right"
+      >
+        <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+      </button>
     </div>
   );
 };

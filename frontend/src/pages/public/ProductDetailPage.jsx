@@ -8,7 +8,7 @@ import wishlistService from '../../services/wishlistService';
 import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
 import ProductCard from '../../components/products/ProductCard';
-import { extractProductId, buildCategoryPath, buildCategoryTrail } from '../../utils/categoryUrls';
+import { extractProductId, buildCategoryPath, buildCategoryTrail, buildBrandUrl } from '../../utils/categoryUrls';
 import { Image } from '../../components/ui/Image';
 import { Skeleton } from '../../components/ui/Skeleton';
 import NotFoundPage from './NotFoundPage';
@@ -139,14 +139,41 @@ export const ProductDetailPage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [fetchProduct]);
 
+  // Extracted Brand info
+  const brandName = useMemo(() => {
+    if (product?.brandId?.name) return product.brandId.name;
+    const fromSpec = product?.specifications?.find((s) => s.key.toLowerCase() === 'brand')?.value;
+    if (fromSpec) return fromSpec;
+    if (product?.brand) return product.brand;
+    const firstWord = product?.name?.split(' ')[0];
+    return firstWord || 'ViNexus';
+  }, [product]);
+
+  const brandUrl = useMemo(() => {
+    if (product?.brandId?.slug || product?.brandId?.name) {
+      return buildBrandUrl(product.brandId);
+    }
+    const fromSpec = product?.specifications?.find((s) => s.key?.toLowerCase() === 'brand')?.value;
+    if (fromSpec) {
+      return buildBrandUrl(fromSpec);
+    }
+    if (product?.brand) {
+      return buildBrandUrl(product.brand);
+    }
+    if (brandName && brandName.toLowerCase() !== 'vinexus') {
+      return buildBrandUrl(brandName);
+    }
+    return null;
+  }, [product, brandName]);
+
   // Compute Breadcrumb Trail
   const breadcrumbTrail = useMemo(() => {
     if (brandSlug) {
-      const brandName = brandSlug.replace(/-/g, ' ').toUpperCase();
+      const brandDisplayName = brandSlug.replace(/-/g, ' ').toUpperCase();
       return [
         { label: 'Home', path: '/' },
         { label: 'Brands', path: '/brands' },
-        { label: brandName, path: `/brands/${brandSlug}` },
+        { label: brandDisplayName, path: `/brands/${brandSlug}` },
         { label: product?.name || 'Product Details', path: null },
       ];
     }
@@ -162,12 +189,20 @@ export const ProductDetailPage = () => {
       ];
     }
 
+    if (brandUrl && brandName && brandName.toLowerCase() !== 'vinexus') {
+      return [
+        { label: 'Home', path: '/' },
+        { label: 'Brands', path: '/brands' },
+        { label: brandName, path: brandUrl },
+        { label: product?.name || 'Product Details', path: null },
+      ];
+    }
+
     return [
-      { label: 'Home', path: '/' },
       { label: 'Home', path: '/' },
       { label: product?.name || 'Product Details', path: null },
     ];
-  }, [brandSlug, product, categories]);
+  }, [brandSlug, product, categories, brandUrl, brandName]);
 
   // Category Path & Name for "See all in [Category] ->"
   const categoryPath = useMemo(() => {
@@ -306,15 +341,6 @@ export const ProductDetailPage = () => {
     setTimeout(() => setHasNameCopied(false), 2000);
   };
 
-  // Extracted Brand info
-  const brandName = useMemo(() => {
-    if (product?.brandId?.name) return product.brandId.name;
-    const fromSpec = product?.specifications?.find((s) => s.key.toLowerCase() === 'brand')?.value;
-    if (fromSpec) return fromSpec;
-    if (product?.brand) return product.brand;
-    const firstWord = product?.name?.split(' ')[0];
-    return firstWord || 'ViNexus';
-  }, [product]);
 
   const modelNumber = product?.modelNumber || `VNX-${String(product?._id || '').slice(-8).toUpperCase()}`;
   const modelName = product?.model || product?.specifications?.find(
@@ -536,15 +562,35 @@ export const ProductDetailPage = () => {
               </div>
             </div>
 
-            {/* Brand Logo / Box (Matching Given Image: White rectangular box with border) */}
-            <div
-              className="border border-gray-200 rounded-lg px-3 py-1.5 min-w-[70px] text-center font-black text-sm text-[#800020] bg-white shadow-2xs shrink-0 flex items-center justify-center uppercase tracking-wider"
-              title={`Brand: ${brandName}`}
-            >
-              {product?.brandId?.logo?.url
-                ? <img src={product.brandId.logo.url} alt={brandName} className="max-h-12 max-w-24 object-contain" />
-                : brandName}
-            </div>
+            {/* Brand Logo / Box (Clickable link to specific brand page) */}
+            {brandUrl ? (
+              <Link
+                to={brandUrl}
+                className="border border-gray-200 hover:border-[#800020] rounded-lg px-3 py-1.5 min-w-[70px] text-center font-black text-sm text-[#800020] bg-white hover:bg-gray-50/80 shadow-2xs hover:shadow-sm shrink-0 flex items-center justify-center uppercase tracking-wider transition-all group/brand cursor-pointer"
+                title={`View all products from ${brandName}`}
+              >
+                {product?.brandId?.logo?.url ? (
+                  <img
+                    src={product.brandId.logo.url}
+                    alt={brandName}
+                    className="max-h-12 max-w-24 object-contain transition-transform group-hover/brand:scale-105"
+                  />
+                ) : (
+                  <span className="group-hover/brand:underline">{brandName}</span>
+                )}
+              </Link>
+            ) : (
+              <div
+                className="border border-gray-200 rounded-lg px-3 py-1.5 min-w-[70px] text-center font-black text-sm text-[#800020] bg-white shadow-2xs shrink-0 flex items-center justify-center uppercase tracking-wider"
+                title={`Brand: ${brandName}`}
+              >
+                {product?.brandId?.logo?.url ? (
+                  <img src={product.brandId.logo.url} alt={brandName} className="max-h-12 max-w-24 object-contain" />
+                ) : (
+                  brandName
+                )}
+              </div>
+            )}
           </div>
 
           {/* Product Overview Specs Table (Matching Given Image) */}
@@ -729,6 +775,10 @@ export const ProductDetailPage = () => {
                       <a href={spec.value} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[#800020] underline underline-offset-2 hover:text-[#650019]">
                         View Product <ExternalLink className="w-3 h-3" />
                       </a>
+                    ) : spec.key === 'Brand' && brandUrl ? (
+                      <Link to={brandUrl} className="inline-flex items-center text-[#800020] hover:underline font-bold font-sans">
+                        {spec.value}
+                      </Link>
                     ) : spec.key === 'Key Features' ? (
                       <div className="whitespace-pre-line font-sans font-normal text-gray-800 text-xs sm:text-sm leading-relaxed">
                         {spec.value}

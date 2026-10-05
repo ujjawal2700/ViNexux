@@ -230,7 +230,14 @@ export const deleteCmsPage = async (id) => {
 };
 
 export const getPublicCmsPageBySlug = async (slug) => {
-  const cmsPage = await CmsPage.findOne({ slug: slug.toLowerCase().trim(), isPublished: true }).lean();
+  const normalized = (slug || '').toLowerCase().trim();
+  const candidates = [normalized];
+  if (normalized === 'privacy') candidates.push('privacy-policy');
+  if (normalized === 'privacy-policy') candidates.push('privacy');
+  if (normalized === 'terms') candidates.push('terms-and-conditions');
+  if (normalized === 'terms-and-conditions') candidates.push('terms');
+
+  const cmsPage = await CmsPage.findOne({ slug: { $in: candidates }, isPublished: true }).lean();
   if (!cmsPage) {
     throw new AppError('Page not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
   }
@@ -305,7 +312,7 @@ export const getPublicActiveTrustBadges = async () => {
 // ==========================================
 
 export const getFooterContent = async () => {
-  let footer = await FooterContent.findOne({}).lean();
+  let footer = await FooterContent.findOne({}).sort({ updatedAt: -1 }).lean();
   if (!footer) {
     footer = await FooterContent.create({ companyName: 'Vinexus', isActive: true });
   }
@@ -313,11 +320,11 @@ export const getFooterContent = async () => {
 };
 
 export const updateFooterContent = async (payload) => {
-  let footer = await FooterContent.findOne({});
+  let footer = await FooterContent.findOne({}).sort({ updatedAt: -1 });
   if (!footer) {
-    footer = await FooterContent.create(payload);
+    footer = await FooterContent.create({ ...payload, isActive: payload.isActive !== false });
   } else {
-    footer = await FooterContent.findByIdAndUpdate(footer._id, payload, {
+    footer = await FooterContent.findByIdAndUpdate(footer._id, { ...payload, isActive: payload.isActive !== false }, {
       new: true,
       runValidators: true,
     });
@@ -326,7 +333,10 @@ export const updateFooterContent = async (payload) => {
 };
 
 export const getPublicFooterContent = async () => {
-  const footer = await FooterContent.findOne({ isActive: true }).lean();
+  let footer = await FooterContent.findOne({ isActive: true }).sort({ updatedAt: -1 }).lean();
+  if (!footer) {
+    footer = await FooterContent.findOne({}).sort({ updatedAt: -1 }).lean();
+  }
   return footer || null;
 };
 

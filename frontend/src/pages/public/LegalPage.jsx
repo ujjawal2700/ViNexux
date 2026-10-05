@@ -16,6 +16,7 @@ const LegalPage = ({ type }) => {
   const privacy = type === 'privacy';
   const legalSlug = privacy ? 'privacy-policy' : 'terms-and-conditions';
   const [managedContent, setManagedContent] = useState({ slug: '', page: null });
+  const [footer, setFooter] = useState(null);
   const managedPage = managedContent.slug === legalSlug ? managedContent.page : null;
 
   useEffect(() => {
@@ -26,16 +27,36 @@ const LegalPage = ({ type }) => {
 
   useEffect(() => {
     let active = true;
+    contentService.getFooterContent()
+      .then((res) => {
+        const data = res?.data?.footer || res?.footer || res?.data || res;
+        if (active && data) setFooter(data);
+      })
+      .catch(() => {});
+
     contentService.getCmsPageBySlug(legalSlug)
       .then((response) => {
         const page = response.data?.page || response.page || null;
         if (active && page) setManagedContent({ slug: legalSlug, page });
       })
       .catch(() => {
-        // Keep the built-in legal copy as a reliable fallback until an admin publishes a replacement.
+        // Try short slug as fallback
+        const shortSlug = privacy ? 'privacy' : 'terms';
+        contentService.getCmsPageBySlug(shortSlug)
+          .then((response) => {
+            const page = response.data?.page || response.page || null;
+            if (active && page) setManagedContent({ slug: legalSlug, page });
+          })
+          .catch(() => {
+            // Keep the built-in legal copy as a reliable fallback until an admin publishes a replacement.
+          });
       });
     return () => { active = false; };
-  }, [legalSlug]);
+  }, [legalSlug, privacy]);
+  const contactEmail = footer?.email || 'vinexus2024@gmail.com';
+  const contactPhone = footer?.phone || '8003923316';
+  const contactPhoneLink = contactPhone.startsWith('+') ? contactPhone : `+91${contactPhone.replace(/\D/g, '').slice(-10)}`;
+
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
       <nav className="mb-6 text-sm text-[#800020]" aria-label="Breadcrumb">
@@ -54,7 +75,7 @@ const LegalPage = ({ type }) => {
       ) : privacy ? (
         <div className="space-y-9 text-sm sm:text-base">
           <Section title="Who we are and what this covers">
-            <p>Vinexus - Lead Generation &amp; Product Catalog Platform operates this online product catalogue, customer accounts, dealer registration and product enquiry service. This notice explains how we handle personal information you give us or that is generated while using the website. For privacy questions or requests, email <a href="mailto:vinexus@gmail.com" className="text-[#800020] underline">vinexus@gmail.com</a> or call <a href="tel:+918209224481" className="text-[#800020] underline">+91 82092 24481</a>.</p>
+            <p>Vinexus - Lead Generation &amp; Product Catalog Platform operates this online product catalogue, customer accounts, dealer registration and product enquiry service. This notice explains how we handle personal information you give us or that is generated while using the website. For privacy questions or requests, email <a href={`mailto:${contactEmail}`} className="text-[#800020] underline">{contactEmail}</a> or call <a href={`tel:${contactPhoneLink}`} className="text-[#800020] underline">{contactPhone}</a>.</p>
           </Section>
           <Section title="Information we collect and why">
             <ul className="list-disc space-y-2 pl-6">
@@ -76,7 +97,7 @@ const LegalPage = ({ type }) => {
             <p>We keep account and enquiry records while needed to provide the service, resolve requests or meet applicable record-keeping requirements. We delete or de-identify data when it is no longer needed, subject to legal obligations and backup cycles. Login tokens expire or are revoked according to the session rules. We use access controls and technical safeguards, but no internet system can promise absolute security.</p>
           </Section>
           <Section title="Your choices and requests">
-            <p>You can update some account details in your profile, change optional storage choices in the footer, or email <a href="mailto:vinexus@gmail.com" className="text-[#800020] underline">vinexus@gmail.com</a> to request access, correction, deletion, withdrawal of consent or help with a privacy complaint. Withdrawal may mean we cannot continue features that need the relevant information; it does not undo processing already completed or records we must keep by law. We will verify a request before changing account information.</p>
+            <p>You can update some account details in your profile, change optional storage choices in the footer, or email <a href={`mailto:${contactEmail}`} className="text-[#800020] underline">{contactEmail}</a> to request access, correction, deletion, withdrawal of consent or help with a privacy complaint. Withdrawal may mean we cannot continue features that need the relevant information; it does not undo processing already completed or records we must keep by law. We will verify a request before changing account information.</p>
           </Section>
           <Section title="Children and changes to this notice">
             <p>This website and dealer services are intended for adults. If you believe a child has submitted personal information, contact us so we can review it. We may update this notice as the service changes and will show the new date here. Material changes will be brought to users’ attention where appropriate.</p>
@@ -104,7 +125,7 @@ const LegalPage = ({ type }) => {
             <p>We may update or temporarily interrupt the website for maintenance or security. We work to keep catalogue information accurate, but errors can occur; please confirm important details before placing an order. Any limitation of responsibility applies only to the extent permitted by applicable law. These terms do not exclude rights or remedies that cannot legally be excluded.</p>
           </Section>
           <Section title="Questions and updates">
-            <p>For questions or a dispute, email <a href="mailto:vinexus@gmail.com" className="text-[#800020] underline">vinexus@gmail.com</a> or call <a href="tel:+918209224481" className="text-[#800020] underline">+91 82092 24481</a>. We may revise these terms and will update the date above. Continued use after a material change may require a new acknowledgement where appropriate.</p>
+            <p>For questions or a dispute, email <a href={`mailto:${contactEmail}`} className="text-[#800020] underline">{contactEmail}</a> or call <a href={`tel:${contactPhoneLink}`} className="text-[#800020] underline">{contactPhone}</a>. We may revise these terms and will update the date above. Continued use after a material change may require a new acknowledgement where appropriate.</p>
           </Section>
         </div>
       )}

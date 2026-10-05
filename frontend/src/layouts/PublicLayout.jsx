@@ -53,6 +53,7 @@ import {
   Smartphone,
   MapPin,
   Mail,
+  MessageCircle,
 } from 'lucide-react';
 
 const STORE_MAP_URL = 'https://maps.app.goo.gl/QSuzGqkbp2HxMHLp6';
@@ -120,6 +121,17 @@ const PublicLayout = () => {
 
   // CMS Footer state
   const [footerData, setFooterData] = useState(null);
+
+  const activePhoneDisplay = footerData?.phone || CONTACT_PHONE_DISPLAY;
+  const activePhoneLink = footerData?.phone
+    ? (footerData.phone.startsWith('+') ? footerData.phone : `+91${footerData.phone.replace(/\D/g, '').slice(-10)}`)
+    : CONTACT_PHONE_LINK;
+  const activeWhatsappNumber = footerData?.whatsappNumber
+    ? (footerData.whatsappNumber.replace(/\D/g, '').length === 10
+      ? `91${footerData.whatsappNumber.replace(/\D/g, '')}`
+      : footerData.whatsappNumber.replace(/\D/g, ''))
+    : WHATSAPP_NUMBER;
+  const activeMapUrl = footerData?.mapUrl || STORE_MAP_URL;
 
   // Category Mega Menu & Navigation State
   const [allCategories, setAllCategories] = useState([]);
@@ -525,13 +537,13 @@ const PublicLayout = () => {
 
   // Fetch CMS Footer Content
   useEffect(() => {
+    let active = true;
     const fetchFooter = async () => {
       try {
         const response = await contentService.getFooterContent();
-        if (response.success && response.data?.footer) {
-          setFooterData(response.data.footer);
-        } else if (response.footer) {
-          setFooterData(response.footer);
+        const resolved = response?.data?.footer || response?.footer || response?.data || response;
+        if (active && resolved && typeof resolved === 'object' && (resolved._id || resolved.companyName)) {
+          setFooterData(resolved);
         }
       } catch (err) {
         console.warn('Failed to load CMS footer content:', err);
@@ -539,6 +551,11 @@ const PublicLayout = () => {
     };
 
     fetchFooter();
+    window.addEventListener('focus', fetchFooter);
+    return () => {
+      active = false;
+      window.removeEventListener('focus', fetchFooter);
+    };
   }, []);
 
   const searchCategory = useMemo(() => {
@@ -833,16 +850,16 @@ const PublicLayout = () => {
             {/* Right: Phone | WhatsApp | Account | Cart with badge */}
             <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
               <a
-                href={`tel:${CONTACT_PHONE_LINK}`}
+                href={`tel:${activePhoneLink}`}
                 className="flex items-center justify-center p-1.5 text-white hover:text-white/80 transition-colors"
-                title={`Call ${CONTACT_PHONE_DISPLAY}`}
+                title={`Call ${activePhoneDisplay}`}
                 aria-label="Call store"
               >
                 <Phone className="w-5 h-5 stroke-[2.2]" />
               </a>
 
               <a
-                href={`https://wa.me/${WHATSAPP_NUMBER}`}
+                href={`https://wa.me/${activeWhatsappNumber}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center p-1.5 text-white hover:text-white/80 transition-colors"
@@ -1007,20 +1024,20 @@ const PublicLayout = () => {
             <div className="flex items-center gap-1.5 lg:gap-2 xl:gap-3 2xl:gap-4 shrink-0">
               {/* 1. Phone / Call (Icon only at 100% zoom; 2-line text reveals at 90% zoom / >= 1600px) */}
               <a
-                href={`tel:${CONTACT_PHONE_LINK}`}
+                href={`tel:${activePhoneLink}`}
                 className="flex items-center gap-1.5 text-gray-700 hover:text-primary transition-colors p-1.5 lg:p-2 rounded-lg hover:bg-gray-50 group shrink-0"
-                title={`Call ${CONTACT_PHONE_DISPLAY}`}
+                title={`Call ${activePhoneDisplay}`}
               >
                 <Phone className="w-6 h-6 min-[1600px]:w-5 min-[1600px]:h-5 text-[#800020] group-hover:scale-105 transition-all shrink-0" />
                 <div className="hidden min-[1600px]:flex flex-col text-left leading-tight">
-                  <span className="text-xs font-bold text-gray-900 whitespace-nowrap">{CONTACT_PHONE_DISPLAY}</span>
+                  <span className="text-xs font-bold text-gray-900 whitespace-nowrap">{activePhoneDisplay}</span>
                   <span className="text-[10px] text-gray-500 whitespace-nowrap">Call us</span>
                 </div>
               </a>
 
               {/* 2. Store Location / Address (Icon only at 100% zoom; 2-line text reveals at 90% zoom / >= 1600px) */}
               <a
-                href={STORE_MAP_URL}
+                href={activeMapUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-gray-700 hover:text-primary transition-colors p-1.5 lg:p-2 rounded-lg hover:bg-gray-50 group shrink-0"
@@ -1035,7 +1052,7 @@ const PublicLayout = () => {
 
               {/* 3. WhatsApp / Chat With Us (Icon only at 100% zoom; 2-line text reveals at 90% zoom / >= 1600px) */}
               <a
-                href={`https://wa.me/${WHATSAPP_NUMBER}`}
+                href={`https://wa.me/${activeWhatsappNumber}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-gray-700 hover:text-primary transition-colors p-1.5 lg:p-2 rounded-lg hover:bg-gray-50 group shrink-0"
@@ -1512,8 +1529,8 @@ const PublicLayout = () => {
         className="!max-w-[min(88vw,380px)]"
         contentClassName="!p-0 !space-y-0"
         footer={<div className="grid w-full grid-cols-2 gap-2">
-          <a href={`tel:${CONTACT_PHONE_LINK}`} className="flex items-center justify-center gap-2 rounded-full border border-[#800020]/20 bg-[#800020]/5 px-3 py-2.5 text-xs font-semibold text-[#800020]"><Phone className="h-4 w-4" /> Call us</a>
-          <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-semibold text-emerald-800">WhatsApp</a>
+          <a href={`tel:${activePhoneLink}`} className="flex items-center justify-center gap-2 rounded-full border border-[#800020]/20 bg-[#800020]/5 px-3 py-2.5 text-xs font-semibold text-[#800020]"><Phone className="h-4 w-4" /> Call us</a>
+          <a href={`https://wa.me/${activeWhatsappNumber}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-semibold text-emerald-800">WhatsApp</a>
         </div>}
       >
         <div className="text-left" onClick={(event) => { if (event.target.closest('a')) setIsMobileMenuOpen(false); }}>
@@ -1635,7 +1652,10 @@ const PublicLayout = () => {
         <div className="storefront-container grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-16 pb-9">
           <div className="space-y-3">
             <h4 className="font-bold text-xl">{footerData.aboutHeading || 'About'}</h4>
-            {footerData.companyDescription && <p className="text-[15px] text-white/90 leading-7">{footerData.companyDescription}</p>}
+            <p className="text-[15px] text-white/90 leading-7">
+              {footerData.companyDescription ||
+                `${footerData.companyName || 'Vinexus'} is India's leading technology hardware provider, specializing in CCTV surveillance systems, laptops, enterprise networking, IT spare parts, and security equipment.`}
+            </p>
             {(footerData.socialLinks || []).length > 0 && <div className="flex flex-wrap gap-2 pt-2">
               {[...(footerData.socialLinks || [])].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)).map((link, index) => (
                 <a key={`${link.label}-${index}`} href={link.url} target="_blank" rel="noopener noreferrer" className="rounded-md border border-white/20 px-2.5 py-1.5 text-xs text-gray-200 hover:border-white/50 hover:text-white">{link.label}</a>
@@ -1669,9 +1689,30 @@ const PublicLayout = () => {
           </div>
           <div className="space-y-3 text-[15px] text-white/90">
             <h4 className="font-bold text-xl text-white mb-4">{footerData.contactHeading || 'Contact Details'}</h4>
-            {footerData.address && <a className="flex items-start gap-2 hover:text-white hover:underline leading-6" href={footerData.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(footerData.address)}`} target="_blank" rel="noopener noreferrer"><MapPin className="w-4 h-4 mt-1 shrink-0" /> <span>{footerData.address}</span></a>}
-            {footerData.phone && <a className="flex items-center gap-2 hover:text-white hover:underline" href={`tel:${footerData.phone.replace(/[^+\d]/g, '')}`}><Phone className="w-4 h-4 shrink-0" /> {footerData.phone}</a>}
-            {footerData.email && <a className="flex items-center gap-2 hover:text-white hover:underline" href={`mailto:${footerData.email}`}><Mail className="w-4 h-4 shrink-0" /> {footerData.email}</a>}
+            {footerData.address && (
+              <a className="flex items-start gap-2 hover:text-white hover:underline leading-6" href={activeMapUrl} target="_blank" rel="noopener noreferrer">
+                <MapPin className="w-4 h-4 mt-1 shrink-0 text-rose-400" />
+                <span>{footerData.address}</span>
+              </a>
+            )}
+            {footerData.phone && (
+              <a className="flex items-center gap-2 hover:text-white hover:underline" href={`tel:${activePhoneLink}`}>
+                <Phone className="w-4 h-4 shrink-0 text-primary" />
+                <span>{footerData.phone}</span>
+              </a>
+            )}
+            {footerData.whatsappNumber && (
+              <a className="flex items-center gap-2 hover:text-white hover:underline text-emerald-400" href={`https://wa.me/${activeWhatsappNumber}`} target="_blank" rel="noopener noreferrer">
+                <MessageCircle className="w-4 h-4 shrink-0 text-emerald-400" />
+                <span>+91 {footerData.whatsappNumber.replace(/\D/g, '').slice(-10)} (WhatsApp)</span>
+              </a>
+            )}
+            {footerData.email && (
+              <a className="flex items-center gap-2 hover:text-white hover:underline" href={`mailto:${footerData.email}`}>
+                <Mail className="w-4 h-4 shrink-0 text-blue-400" />
+                <span>{footerData.email}</span>
+              </a>
+            )}
           </div>
         </div>
         <p className="storefront-container border-t border-white/15 py-5 text-center text-sm text-white/90">

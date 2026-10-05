@@ -170,11 +170,17 @@ const formatPopulatedCart = async (cart, userId) => {
 
   await cart.populate({
     path: 'items.productId',
-    select: 'sku name categoryId description images specifications isFeatured isActive standardPrice',
-    populate: {
-      path: 'categoryId',
-      select: 'name slug isActive',
-    },
+    select: 'sku name categoryId brandId description images specifications isFeatured isActive standardPrice dealerPrice stockQuantity stockStatus modelNumber',
+    populate: [
+      {
+        path: 'categoryId',
+        select: 'name slug parentId isActive',
+      },
+      {
+        path: 'brandId',
+        select: 'name slug logo',
+      },
+    ],
   });
 
   // Filter valid items where the product actually exists in database

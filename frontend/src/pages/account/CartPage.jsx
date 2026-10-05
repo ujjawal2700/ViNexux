@@ -5,6 +5,7 @@ import cartService from '../../services/cartService';
 import guestCartService from '../../services/guestCartService';
 import productService from '../../services/productService';
 import contentService from '../../services/contentService';
+import categoryService from '../../services/categoryService';
 import useToast from '../../hooks/useToast';
 import ProductCard from '../../components/products/ProductCard';
 import { buildProductPath } from '../../utils/categoryUrls';
@@ -36,6 +37,10 @@ export const CartPage = () => {
   const [cart, setCart] = useState(null);
   const [selectedItemIds, setSelectedItemIds] = useState(new Set());
   const [recentlyViewed, setRecentlyViewed] = useState([]);
+  const [similarProducts, setSimilarProducts] = useState([]);
+  const [similarLoading, setSimilarLoading] = useState(false);
+  const [primaryHeaderCategory, setPrimaryHeaderCategory] = useState(null);
+  const [allCategories, setAllCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [updatingItemId, setUpdatingItemId] = useState(null);
   const [supportPhone, setSupportPhone] = useState('918769959424');
@@ -123,7 +128,171 @@ export const CartPage = () => {
     };
   }, []);
 
-  // 3. Fetch CMS Footer WhatsApp settings
+  // 3. Load Category Tree to map categories across levels (Header -> Main -> Sub)
+  useEffect(() => {
+    let active = true;
+    categoryService.getCategoryTree()
+      .then((res) => {
+        if (active) {
+          setAllCategories(res.data?.categories || res.categories || []);
+        }
+      })
+      .catch((err) => console.warn('Could not load categories for cart recommendations:', err));
+    return () => { active = false; };
+  }, []);
+
+  // 4. Fetch Similar Products based on Header, Main, and Sub categories of cart items (Max 10)
+  useEffect(() => {
+    if (!items.length) {
+      setSimilarProducts([]);
+      setPrimaryHeaderCategory(null);
+      return;
+    }
+
+    let active = true;
+    setSimilarLoading(true);
+
+    const loadSimilarProducts = async () => {
+      try {
+        const cartProductIds = new Set(
+          items.map((i) => String(i.productId?._id || i.productId || i._id))
+        );
+
+        const cartCatIds = new Set();
+        items.forEach((item) => {
+          const p = item.productId || {};
+          const cId = p.categoryId?._id || p.categoryId;
+          if (cId) cartCatIds.add(String(cId));
+        });
+
+        const subCatIds = new Set();
+        const mainCatIds = new Set();
+        const rootCatMap = new Map();
+
+        cartCatIds.forEach((cId) => {
+          const cat = allCategories.find((c) => String(c._id) === cId);
+          if (!cat) return;
+
+          let curr = cat;
+          const path = [curr];
+          const visited = new Set([String(curr._id)]);
+
+          while (curr.parentId) {
+            const pId = String(curr.parentId?._id || curr.parentId);
+            if (visited.has(pId)) break;
+            visited.add(pId);
+            const parent = allCategories.find((c) => String(c._id) === pId);
+            if (parent) {
+              path.unshift(parent);
+              curr = parent;
+            } else {
+              break;
+            }
+          }
+
+          const root = path[0];
+          if (root) {
+            rootCatMap.set(String(root._id), root);
+          }
+
+          if (path.length >= 3) {
+            // [Header/Root, Main, Sub]
+            subCatIds.add(String(path[2]._id));
+            mainCatIds.add(String(path[1]._id));
+          } else if (path.length === 2) {
+            // [Header/Root, Main]
+            mainCatIds.add(String(path[1]._id));
+          }
+        });
+
+        // Resolve primary header category (from first cart item, or first resolved root)
+        const firstCartItem = items[0]?.productId || {};
+        const firstCId = String(firstCartItem.categoryId?._id || firstCartItem.categoryId || '');
+        let targetRoot = null;
+
+        if (firstCId) {
+          let curr = allCategories.find((c) => String(c._id) === firstCId);
+          const visited = new Set();
+          while (curr && curr.parentId && !visited.has(String(curr._id))) {
+            visited.add(String(curr._id));
+            const pId = String(curr.parentId?._id || curr.parentId);
+            curr = allCategories.find((c) => String(c._id) === pId);
+          }
+          if (curr) targetRoot = curr;
+        }
+
+        if (!targetRoot && rootCatMap.size > 0) {
+          targetRoot = Array.from(rootCatMap.values())[0];
+        }
+
+        if (active) {
+          setPrimaryHeaderCategory(targetRoot || null);
+        }
+
+        // Fetch candidate products from backend for root categories
+        const rootIds = Array.from(rootCatMap.keys());
+        const targetIds = rootIds.length > 0 ? rootIds.slice(0, 2) : (targetRoot?._id ? [targetRoot._id] : []);
+
+        let candidateList = [];
+        if (targetIds.length > 0) {
+          const fetchPromises = targetIds.map((id) =>
+            productService.getProducts({ categoryId: id, limit: 25, isActive: true, includeFacets: false })
+              .then((res) => res.data?.products || res.products || [])
+              .catch(() => [])
+          );
+          const results = await Promise.all(fetchPromises);
+          const merged = [];
+          const seen = new Set();
+          results.flat().forEach((p) => {
+            if (p?._id && !seen.has(String(p._id))) {
+              seen.add(String(p._id));
+              merged.push(p);
+            }
+          });
+          candidateList = merged;
+        } else {
+          const res = await productService.getProducts({ limit: 25, isActive: true, includeFacets: false });
+          candidateList = res.data?.products || res.products || [];
+        }
+
+        // Score products: subcategory match (+30), main category match (+20), header category match (+10)
+        const scored = candidateList
+          .filter((p) => !cartProductIds.has(String(p._id)))
+          .map((p) => {
+            const pCatId = String(p.categoryId?._id || p.categoryId || '');
+            let score = 10;
+            if (subCatIds.has(pCatId)) {
+              score = 30; // exact same subcategory
+            } else if (mainCatIds.has(pCatId)) {
+              score = 20; // same main category
+            }
+            return { product: p, score };
+          });
+
+        scored.sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score;
+          return new Date(b.product.createdAt || 0) - new Date(a.product.createdAt || 0);
+        });
+
+        // Limit strictly to max 10 products
+        const top10 = scored.slice(0, 10).map((s) => s.product);
+
+        if (active) {
+          setSimilarProducts(top10);
+        }
+      } catch (err) {
+        console.warn('Failed to load similar products for cart:', err);
+        if (active) setSimilarProducts([]);
+      } finally {
+        if (active) setSimilarLoading(false);
+      }
+    };
+
+    loadSimilarProducts();
+    return () => { active = false; };
+  }, [items, allCategories]);
+
+  // 5. Fetch CMS Footer WhatsApp settings
   useEffect(() => {
     const fetchFooterPhone = async () => {
       try {
@@ -757,6 +926,50 @@ export const CartPage = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          SIMILAR PRODUCTS SECTION (Same Header, Main & Sub Category - Max 10)
+         ======================================================== */}
+      {items.length > 0 && (similarLoading || similarProducts.length > 0) && (
+        <div className="space-y-4 pt-10 border-t border-gray-200 text-left">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-[#420b45] tracking-tight">
+                Similar Products{primaryHeaderCategory?.name ? ` in ${primaryHeaderCategory.name}` : ''}
+              </h2>
+              <p className="text-xs text-gray-500">
+                Products from the same category you can add directly to your order
+              </p>
+            </div>
+            <Link
+              to={primaryHeaderCategory?.slug ? `/${primaryHeaderCategory.slug}` : '/products'}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-[#800020] bg-white text-xs sm:text-sm font-semibold text-[#800020] hover:bg-[#800020] hover:text-white shadow-2xs transition-all cursor-pointer"
+            >
+              <span>View All Products</span>
+              <ChevronRight className="w-4 h-4" />
+            </Link>
+          </div>
+
+          {similarLoading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-64 rounded-md" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+              {similarProducts.map((prod) => (
+                <ProductCard
+                  key={prod._id}
+                  product={prod}
+                  onCartUpdated={fetchCartData}
+                  className="bg-white border-gray-200 shadow-2xs hover:shadow-md transition-shadow"
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
