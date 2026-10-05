@@ -104,15 +104,6 @@ export const ProductsPage = () => {
     specs: true,
   });
 
-  // Synchronized scrolling refs
-  const catalogContainerRef = useRef(null);
-  const asideRef = useRef(null);
-  const sidebarInnerRef = useRef(null);
-  const sidebarContentRef = useRef(null);
-  const productsRef = useRef(null);
-  const lastScrollYRef = useRef(0);
-  const sidebarTopRef = useRef(0);
-
   // Data states
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -611,134 +602,6 @@ export const ProductsPage = () => {
     return "All Products";
   }, [isAllProductsRoute, activeCategory, brandSlug, routeBrand, searchTerm]);
 
-  // ---------------------------------------------------------------------------
-  // Synchronized Proportional Scrolling: Left Filters <-> Right Products
-  //
-  // Rules:
-  //  1. Hovering over filters must NOT cause independent scrolling.
-  //  2. Few products (≤12): filters pinned at top, no sync needed.
-  //  3. Many products, products > filters: filter card translates down
-  //     proportionally so filters and products reach the footer together.
-  //  4. Many products, filters > products: filter card is clipped to products
-  //     height and filter content scrolls internally.
-  //  5. Products fit in viewport: no page scroll to sync, pin at top.
-  // ---------------------------------------------------------------------------
-  const syncScroll = useCallback(() => {
-    if (typeof window === "undefined") return;
-
-    const container = catalogContainerRef.current;
-    const inner = sidebarInnerRef.current;
-    const content = sidebarContentRef.current;
-    const productsEl = productsRef.current;
-
-    if (!container || !inner || !content || !productsEl) return;
-
-    // Reset styles on mobile & tablet (< 1024px)
-    if (window.innerWidth < 1024) {
-      inner.style.transform = "";
-      inner.style.maxHeight = "";
-      inner.style.overflow = "";
-      content.style.transform = "";
-      return;
-    }
-
-    const viewportHeight = window.innerHeight;
-    const topOffset = 110; // clearance below sticky header
-    const bottomOffset = 24;
-    const visibleHeight = Math.max(
-      200,
-      viewportHeight - topOffset - bottomOffset,
-    );
-
-    const productsHeight = productsEl.offsetHeight;
-    const filterNaturalHeight = content.scrollHeight + 32; // +32 for padding
-
-    // ── PIN AT TOP: few products OR products fit in viewport ──────────────
-    if (!hasMultipleRows || productsHeight <= visibleHeight) {
-      inner.style.transform = "translate3d(0, 0, 0)";
-      inner.style.maxHeight = "none";
-      inner.style.overflow = "visible";
-      content.style.transform = "none";
-      return;
-    }
-
-    // ── MANY PRODUCTS & page scrolls ─────────────────────────────────────
-    const containerRect = container.getBoundingClientRect();
-    const scrollableProductDistance = productsHeight - visibleHeight; // always > 0 here
-    const currentScrolled = Math.max(0, topOffset - containerRect.top);
-    const progress = Math.max(
-      0,
-      Math.min(1, currentScrolled / scrollableProductDistance),
-    );
-
-    if (productsHeight >= filterNaturalHeight) {
-      // CASE A — Products taller than filters:
-      //   Translate the whole filter card down so it ends flush with products.
-      inner.style.maxHeight = "none";
-      inner.style.overflow = "visible";
-      content.style.transform = "none";
-
-      const maxFilterTravel = productsHeight - filterNaturalHeight;
-      inner.style.transform = `translate3d(0, ${Math.round(progress * maxFilterTravel)}px, 0)`;
-    } else {
-      // CASE B — Filters taller than products:
-      //   Clip filter card to products height & scroll content internally.
-      const cardHeight = Math.max(300, productsHeight);
-      inner.style.maxHeight = `${cardHeight}px`;
-      inner.style.overflow = "hidden";
-      inner.style.transform = "translate3d(0, 0, 0)";
-
-      const filterOverflow = filterNaturalHeight - cardHeight;
-      if (filterOverflow > 0) {
-        content.style.transform = `translate3d(0, ${Math.round(-progress * filterOverflow)}px, 0)`;
-      } else {
-        content.style.transform = "none";
-      }
-    }
-  }, [hasMultipleRows]);
-
-  useEffect(() => {
-    let rafId = null;
-
-    const onScroll = () => {
-      if (rafId !== null) return;
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        syncScroll();
-      });
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", syncScroll, { passive: true });
-
-    // Block independent wheel scroll on desktop sidebar
-    const asideElement = asideRef.current;
-    const blockWheel = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-    if (asideElement) {
-      asideElement.addEventListener("wheel", blockWheel, { passive: false });
-    }
-
-    // Observe content / products size changes → re-sync
-    let ro;
-    if (typeof ResizeObserver !== "undefined") {
-      ro = new ResizeObserver(() => syncScroll());
-      if (sidebarContentRef.current) ro.observe(sidebarContentRef.current);
-      if (productsRef.current) ro.observe(productsRef.current);
-    }
-
-    syncScroll();
-
-    return () => {
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", syncScroll);
-      if (asideElement) asideElement.removeEventListener("wheel", blockWheel);
-      if (ro) ro.disconnect();
-    };
-  }, [syncScroll, displayedProducts.length, openSections]);
 
   // Sidebar Filter Content (used in both desktop sidebar & mobile drawer)
   const renderSidebarFilters = () => (
@@ -1179,30 +1042,26 @@ export const ProductsPage = () => {
         </div>
 
         {/* 2. TWO-COLUMN LAYOUT: SIDEBAR (lg:col-span-3) + PRODUCT GRID (lg:col-span-9) */}
-        <div
-          ref={catalogContainerRef}
-          className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start relative">
-          {/* DESKTOP SIDEBAR FILTERS (matching Screenshot) */}
-          <aside
-            ref={asideRef}
-            className="hidden lg:block lg:col-span-3 xl:col-span-3 2xl:col-span-2 relative select-none">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start relative">
+          {/* DESKTOP SIDEBAR FILTERS (Sticky & Independently Scrollable) */}
+          <aside className="hidden lg:block lg:col-span-3 xl:col-span-3 2xl:col-span-2 sticky top-[148px] self-start select-none">
             <div
-              ref={sidebarInnerRef}
-              className="bg-white rounded-lg border border-gray-200 p-4 shadow-2xs will-change-transform">
-              <div ref={sidebarContentRef} className="will-change-transform">
-                {isLoading && displayedProducts.length === 0 ? (
-                  <FilterSidebarSkeleton />
-                ) : (
-                  renderSidebarFilters()
-                )}
-              </div>
+              className="bg-white rounded-lg border border-gray-200 p-4 shadow-2xs max-h-[calc(100vh-165px)] overflow-y-auto overscroll-contain [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400"
+              style={{
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#cbd5e1 transparent',
+              }}
+            >
+              {isLoading && displayedProducts.length === 0 ? (
+                <FilterSidebarSkeleton />
+              ) : (
+                renderSidebarFilters()
+              )}
             </div>
           </aside>
 
           {/* MAIN PRODUCT CATALOG CONTENT */}
-          <main
-            ref={productsRef}
-            className="relative lg:col-span-9 xl:col-span-9 2xl:col-span-10 space-y-4 min-h-80">
+          <main className="relative lg:col-span-9 xl:col-span-9 2xl:col-span-10 space-y-4 min-h-80">
             {/* PRODUCT CARDS HIGH-DENSITY GRID (matching Screenshot: 4-5 cards per row on large displays) */}
             {isLoading && displayedProducts.length === 0 ? (
               <div className="storefront-product-grid gap-3 sm:gap-3.5">
