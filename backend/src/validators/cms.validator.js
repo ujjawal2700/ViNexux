@@ -161,6 +161,7 @@ export const footerContentSchema = {
         z.object({
           label: z.string().trim().min(1),
           url: z.string().trim().min(1),
+          iconUrl: z.string().trim().max(1000).optional().or(z.literal('')),
           sortOrder: z.number().int().min(0).optional().default(0),
         })
       )
@@ -170,6 +171,7 @@ export const footerContentSchema = {
         z.object({
           label: z.string().trim().min(1),
           url: z.string().trim().min(1),
+          iconUrl: z.string().trim().max(1000).optional().or(z.literal('')),
           sortOrder: z.number().int().min(0).optional().default(0),
         })
       )
@@ -179,6 +181,7 @@ export const footerContentSchema = {
         z.object({
           label: z.string().trim().min(1),
           url: z.string().trim().min(1),
+          iconUrl: z.string().trim().max(1000).optional().or(z.literal('')),
           sortOrder: z.number().int().min(0).optional().default(0),
         })
       )

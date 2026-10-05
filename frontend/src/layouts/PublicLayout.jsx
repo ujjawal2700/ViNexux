@@ -1656,11 +1656,34 @@ const PublicLayout = () => {
               {footerData.companyDescription ||
                 `${footerData.companyName || 'Vinexus'} is India's leading technology hardware provider, specializing in CCTV surveillance systems, laptops, enterprise networking, IT spare parts, and security equipment.`}
             </p>
-            {(footerData.socialLinks || []).length > 0 && <div className="flex flex-wrap gap-2 pt-2">
-              {[...(footerData.socialLinks || [])].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)).map((link, index) => (
-                <a key={`${link.label}-${index}`} href={link.url} target="_blank" rel="noopener noreferrer" className="rounded-md border border-white/20 px-2.5 py-1.5 text-xs text-gray-200 hover:border-white/50 hover:text-white">{link.label}</a>
-              ))}
-            </div>}
+            {(footerData.socialLinks || []).length > 0 && (
+              <div className="flex flex-wrap gap-2.5 pt-2">
+                {[...(footerData.socialLinks || [])]
+                  .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+                  .map((link, index) => (
+                    <a
+                      key={`${link.label}-${index}`}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-md border border-white/20 bg-white/5 px-2.5 py-1.5 text-xs font-medium text-gray-200 hover:border-white/50 hover:bg-white/10 hover:text-white transition-all shadow-2xs"
+                      title={link.label}
+                    >
+                      {link.iconUrl && (
+                        <img
+                          src={link.iconUrl}
+                          alt={link.label || 'Social icon'}
+                          className="w-4 h-4 object-contain rounded-xs shrink-0"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      )}
+                      <span>{link.label}</span>
+                    </a>
+                  ))}
+              </div>
+            )}
           </div>
           <div className="text-[15px]">
             <h4 className="font-bold text-xl text-white mb-4">{footerData.quickLinksHeading || 'Information'}</h4>

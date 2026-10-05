@@ -12,6 +12,11 @@ const footerLinkSchema = new mongoose.Schema(
       required: [true, 'Link URL is required'],
       trim: true,
     },
+    iconUrl: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     sortOrder: {
       type: Number,
       default: 0,

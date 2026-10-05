@@ -1,4 +1,4 @@
-import api from './api';
+import api from '../api/axios';
 
 /**
  * Service for uploading images to Cloudinary via backend API

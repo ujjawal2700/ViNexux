@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import adminService from '../../services/adminService';
+import { uploadService } from '../../services/uploadService';
+import useToast from '../../hooks/useToast';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -10,6 +12,7 @@ import Skeleton from '../../components/ui/Skeleton';
 import ErrorState from '../../components/ui/ErrorState';
 import FormField from '../../components/ui/FormField';
 import FormError from '../../components/ui/FormError';
+import { UploadCloud, X, CheckCircle2, Loader2, Image as ImageIcon } from 'lucide-react';
 
 /**
  * AdminCmsFooterPage Component
@@ -17,10 +20,13 @@ import FormError from '../../components/ui/FormError';
  * Single configuration editor for corporate footer info, quick links, and legal links.
  */
 const AdminCmsFooterPage = () => {
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
+  const [justSaved, setJustSaved] = useState(false);
+  const [uploadingSocialIndex, setUploadingSocialIndex] = useState(null);
 
   const [formData, setFormData] = useState({
     companyName: '',
@@ -71,7 +77,11 @@ const AdminCmsFooterPage = () => {
         ],
         legalLinks: [],
         socialLinks: Array.isArray(data.socialLinks)
-          ? data.socialLinks.map((link) => ({ label: link.label || '', url: link.url || '' }))
+          ? data.socialLinks.map((link) => ({
+              label: link.label || '',
+              url: link.url || '',
+              iconUrl: link.iconUrl || '',
+            }))
           : [],
         copyrightText: data.copyrightText || '© {year} {company}. All Rights Reserved.',
         isActive: data.isActive !== undefined ? data.isActive : true,
@@ -117,13 +127,41 @@ const AdminCmsFooterPage = () => {
 
   const handleAddSocialLink = () => setFormData({
     ...formData,
-    socialLinks: [...formData.socialLinks, { label: '', url: '' }],
+    socialLinks: [...formData.socialLinks, { label: '', url: '', iconUrl: '' }],
   });
 
   const handleRemoveSocialLink = (index) => setFormData({
     ...formData,
     socialLinks: formData.socialLinks.filter((_, i) => i !== index),
   });
+
+  const handleUploadSocialIcon = async (index, file) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload a valid image file (PNG, JPG, WEBP, SVG).');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Logo file size must be less than 2MB.');
+      return;
+    }
+
+    try {
+      setUploadingSocialIndex(index);
+      const res = await uploadService.uploadImage(file, 'vinexus/social');
+      if (res.success && res.data?.url) {
+        handleSocialLinkChange(index, 'iconUrl', res.data.url);
+        toast.success('Social logo uploaded successfully!');
+      } else {
+        toast.error(res.message || 'Failed to upload logo.');
+      }
+    } catch (err) {
+      console.error('Error uploading social logo:', err);
+      toast.error(err.response?.data?.message || 'Error uploading social logo.');
+    } finally {
+      setUploadingSocialIndex(null);
+    }
+  };
 
   const validateForm = () => {
     const errors = {};
@@ -157,7 +195,10 @@ const AdminCmsFooterPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSuccessMessage('');
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      toast.error('Please resolve form errors before saving.');
+      return;
+    }
 
     try {
       setSaving(true);
@@ -170,7 +211,12 @@ const AdminCmsFooterPage = () => {
 
       const cleanedSocialLinks = formData.socialLinks
         .filter((l) => l.label.trim() && l.url.trim())
-        .map((l, index) => ({ label: l.label.trim(), url: l.url.trim(), sortOrder: index }));
+        .map((l, index) => ({
+          label: l.label.trim(),
+          url: l.url.trim(),
+          iconUrl: (l.iconUrl || '').trim(),
+          sortOrder: index,
+        }));
 
       const payload = {
         companyName: formData.companyName.trim(),
@@ -194,6 +240,9 @@ const AdminCmsFooterPage = () => {
 
       const res = await adminService.updateFooterContentAdmin(payload);
       setSuccessMessage('Footer configuration saved successfully!');
+      toast.success('Footer configuration saved successfully!');
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 4500);
 
       // Update state with returned payload or cleaned local data
       const updated = res?.data?.footer || res?.footer || res?.data || payload;
@@ -212,13 +261,21 @@ const AdminCmsFooterPage = () => {
         contactHeading: updated.contactHeading || 'Contact Us',
         quickLinks: Array.isArray(updated.quickLinks) ? updated.quickLinks : cleanedQuickLinks,
         legalLinks: [],
-        socialLinks: Array.isArray(updated.socialLinks) ? updated.socialLinks : cleanedSocialLinks,
+        socialLinks: Array.isArray(updated.socialLinks)
+          ? updated.socialLinks.map((s) => ({
+              label: s.label || '',
+              url: s.url || '',
+              iconUrl: s.iconUrl || '',
+            }))
+          : cleanedSocialLinks,
         copyrightText: updated.copyrightText || '© {year} {company}. All Rights Reserved.',
         isActive: updated.isActive !== undefined ? updated.isActive : true,
       });
     } catch (err) {
       console.error('Error saving footer configuration:', err);
-      setFormErrors({ submit: err.response?.data?.message || err.message || 'Failed to save footer settings.' });
+      const errMsg = err.response?.data?.message || err.message || 'Failed to save footer settings.';
+      setFormErrors({ submit: errMsg });
+      toast.error(errMsg);
     } finally {
       setSaving(false);
     }
@@ -337,12 +394,15 @@ const AdminCmsFooterPage = () => {
                 />
               </FormField>
 
-              <FormField label="WhatsApp Enquiry Closing Note">
-                <Input
-                  type="text"
+              <FormField
+                label="WhatsApp Enquiry Closing Note"
+                helperText="Custom closing message automatically attached at the end of the pre-filled enquiry message when customers click 'Enquire on WhatsApp' in the Shopping Cart (/cart)."
+              >
+                <Textarea
                   value={formData.whatsappMessageNote}
                   onChange={(e) => setFormData({ ...formData, whatsappMessageNote: e.target.value })}
                   placeholder="Please confirm live stock availability, delivery timeline & share official GST commercial invoice."
+                  rows={2}
                 />
               </FormField>
             </div>
@@ -430,15 +490,104 @@ const AdminCmsFooterPage = () => {
 
             {formErrors.socialLinks && <FormError message={formErrors.socialLinks} />}
             {formData.socialLinks.length === 0 ? (
-              <p className="text-xs text-gray-400 italic">No social links configured.</p>
+              <p className="text-xs text-gray-400 italic">No social links configured. Click &quot;+ Add Social Link&quot; to add one.</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {formData.socialLinks.map((link, idx) => (
-                  <div key={idx} className="flex items-center space-x-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                    <span className="text-xs font-bold text-gray-400 w-6">#{idx + 1}</span>
-                    <Input placeholder="Platform (e.g. Instagram)" value={link.label} onChange={(e) => handleSocialLinkChange(idx, 'label', e.target.value)} className="flex-1" />
-                    <Input placeholder="Profile URL" value={link.url} onChange={(e) => handleSocialLinkChange(idx, 'url', e.target.value)} className="flex-1" />
-                    <Button type="button" variant="danger" size="sm" onClick={() => handleRemoveSocialLink(idx)}>Remove</Button>
+                  <div key={idx} className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Social Platform #{idx + 1}</span>
+                      <Button
+                        type="button"
+                        variant="danger"
+                        size="sm"
+                        onClick={() => handleRemoveSocialLink(idx)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Platform Name</label>
+                        <Input
+                          placeholder="e.g. Instagram, Facebook, YouTube"
+                          value={link.label}
+                          onChange={(e) => handleSocialLinkChange(idx, 'label', e.target.value)}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Profile URL</label>
+                        <Input
+                          placeholder="https://www.instagram.com/your-brand"
+                          value={link.url}
+                          onChange={(e) => handleSocialLinkChange(idx, 'url', e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Platform Logo / Icon Upload */}
+                    <div className="pt-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                        Platform Logo / Icon <span className="text-gray-400 font-normal">(Optional — upload image or SVG)</span>
+                      </label>
+                      <div className="flex flex-wrap items-center gap-3">
+                        {link.iconUrl ? (
+                          <div className="flex items-center gap-2.5 bg-white px-3 py-1.5 rounded-md border border-gray-200 shadow-2xs">
+                            <img
+                              src={link.iconUrl}
+                              alt={link.label || 'Social icon'}
+                              className="w-6 h-6 object-contain rounded-xs"
+                            />
+                            <span className="text-xs text-gray-500 max-w-[200px] truncate">{link.iconUrl}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleSocialLinkChange(idx, 'iconUrl', '')}
+                              className="text-red-500 hover:text-red-700 p-0.5 rounded cursor-pointer"
+                              title="Remove logo"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer transition shadow-2xs">
+                              {uploadingSocialIndex === idx ? (
+                                <>
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin text-wine-600" />
+                                  <span>Uploading...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <UploadCloud className="w-3.5 h-3.5 text-gray-500" />
+                                  <span>Upload Logo Image</span>
+                                </>
+                              )}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                disabled={uploadingSocialIndex === idx}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleUploadSocialIcon(idx, file);
+                                  e.target.value = '';
+                                }}
+                              />
+                            </label>
+                            <span className="text-xs text-gray-400">or</span>
+                            <input
+                              type="text"
+                              placeholder="Paste image URL directly"
+                              value={link.iconUrl || ''}
+                              onChange={(e) => handleSocialLinkChange(idx, 'iconUrl', e.target.value)}
+                              className="text-xs px-2.5 py-1.5 bg-white border border-gray-300 rounded-md w-60 focus:ring-wine-500 focus:border-wine-500"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -450,18 +599,33 @@ const AdminCmsFooterPage = () => {
           </Card>
 
           {/* Submit bar */}
-          <div className="flex justify-end space-x-4 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={fetchFooterContent}
-              disabled={saving}
-            >
-              Reset Changes
-            </Button>
-            <Button type="submit" isLoading={saving} size="lg">
-              Save Footer Settings
-            </Button>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+            <div>
+              {justSaved && (
+                <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700 bg-emerald-50 px-3.5 py-2 rounded-lg border border-emerald-200">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Footer settings saved successfully!</span>
+                </div>
+              )}
+              {formErrors.submit && (
+                <span className="text-sm font-medium text-red-600">
+                  {formErrors.submit}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center space-x-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={fetchFooterContent}
+                disabled={saving}
+              >
+                Reset Changes
+              </Button>
+              <Button type="submit" isLoading={saving} size="lg">
+                Save Footer Settings
+              </Button>
+            </div>
           </div>
         </form>
       )}

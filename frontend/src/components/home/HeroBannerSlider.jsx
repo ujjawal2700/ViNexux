@@ -92,31 +92,34 @@ const HeroBannerSlider = ({ slides = [], autoPlayInterval = 5000 }) => {
         ))}
       </div>
 
-      {/* Navigation: Right Side Circular Arrow Button */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.preventDefault();
-          goToNext();
-        }}
-        className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/45 hover:bg-black/80 text-white flex items-center justify-center transition-all duration-200 shadow-xl backdrop-blur-xs cursor-pointer hover:scale-105 active:scale-95 border border-white/20 focus:outline-none"
-        aria-label="Next banner"
-      >
-        <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
-      </button>
+      {/* Navigation: Circular Arrow Buttons (only shown when there are multiple slides) */}
+      {totalSlides > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              goToNext();
+            }}
+            className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/45 hover:bg-black/80 text-white flex items-center justify-center transition-all duration-200 shadow-xl backdrop-blur-xs cursor-pointer hover:scale-105 active:scale-95 border border-white/20 focus:outline-none opacity-0 group-hover:opacity-100"
+            aria-label="Next banner"
+          >
+            <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
+          </button>
 
-      {/* Navigation: Left Side Circular Arrow Button */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.preventDefault();
-          goToPrev();
-        }}
-        className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/45 hover:bg-black/80 text-white flex items-center justify-center transition-all duration-200 shadow-xl backdrop-blur-xs cursor-pointer hover:scale-105 active:scale-95 border border-white/20 focus:outline-none opacity-0 group-hover:opacity-100 transition-opacity"
-        aria-label="Previous banner"
-      >
-        <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
-      </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              goToPrev();
+            }}
+            className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/45 hover:bg-black/80 text-white flex items-center justify-center transition-all duration-200 shadow-xl backdrop-blur-xs cursor-pointer hover:scale-105 active:scale-95 border border-white/20 focus:outline-none opacity-0 group-hover:opacity-100"
+            aria-label="Previous banner"
+          >
+            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
+          </button>
+        </>
+      )}
     </div>
   );
 };
