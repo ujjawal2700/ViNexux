@@ -49,6 +49,7 @@ router.use('/admin/sessions', adminSessionRoutes);
 router.use('/admin/reports', adminReportRoutes);
 router.use('/admin/cms', adminCmsRoutes);
 router.use('/admin/upload', authenticate, authorize('admin'), uploadRoutes);
+router.use('/upload', authenticate, authorize('admin'), uploadRoutes);
 
 // Mount dealer module
 router.use('/dealers', dealerRoutes);

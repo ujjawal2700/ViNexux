@@ -5,21 +5,46 @@ import { ApiResponse } from '../utils/ApiResponse.js';
 import { AppError } from '../utils/AppError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
-const slugify = (value) => value.toLowerCase().trim().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+const slugify = (value = '') => {
+  if (!value) return '';
+  return value
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/^https?:\/\/(www\.)?/i, '')
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+};
+
+const sanitizeSlug = (name = '', slug = '') => {
+  const raw = (slug || '').toString().trim();
+  if (!raw || /https?:|\/|www\./i.test(raw)) {
+    return slugify(name);
+  }
+  return slugify(raw) || slugify(name);
+};
 
 export const listBrands = asyncHandler(async (_req, res) => {
-  const brands = await Brand.find().sort({ sortOrder: 1, name: 1 }).lean();
+  const rawBrands = await Brand.find().sort({ sortOrder: 1, name: 1 }).lean();
+  const brands = rawBrands.map((brand) => ({
+    ...brand,
+    slug: sanitizeSlug(brand.name, brand.slug),
+  }));
   ApiResponse.success(res, 'Brands retrieved', { brands });
 });
 
 export const createBrand = asyncHandler(async (req, res) => {
-  const brand = await Brand.create({ ...req.body, slug: req.body.slug || slugify(req.body.name) });
+  const slug = sanitizeSlug(req.body.name, req.body.slug);
+  const brand = await Brand.create({ ...req.body, slug });
   ApiResponse.success(res, 'Brand created', { brand }, 201);
 });
 
 export const updateBrand = asyncHandler(async (req, res) => {
   const payload = { ...req.body };
-  if (payload.name && !payload.slug) payload.slug = slugify(payload.name);
+  if (payload.name || payload.slug) {
+    payload.slug = sanitizeSlug(payload.name, payload.slug);
+  }
   const previous = await Brand.findById(req.params.id).lean();
   const brand = await Brand.findByIdAndUpdate(req.params.id, payload, { new: true, runValidators: true });
   if (!brand) throw new AppError('Brand not found', 404, 'NOT_FOUND');

@@ -9,7 +9,7 @@ import { getCachedCategories } from '../utils/categoryCache.js';
 import { allowedTypos, editDistance, requiredSearchTokens, searchWords, toBrandKey } from '../utils/productCatalogFields.js';
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const slugify = (value) => value.toLowerCase().trim().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+const slugify = (value = '') => (value || '').toString().toLowerCase().trim().replace(/^https?:\/\/(www\.)?/i, '').replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
 // Only nodes reachable from an active root belong in the public catalog.
 // A disabled/missing parent must hide its whole branch, even if a child is active.
@@ -173,6 +173,7 @@ export const getPublicBrands = async () => {
   const allActiveBrands = [
     ...managed.map((brand) => ({
       ...brand,
+      slug: (/https?:|\/|www\./i.test(brand.slug) || !brand.slug) ? slugify(brand.name) : slugify(brand.slug),
       count: Math.max(countById.get(String(brand._id)) || 0, legacyCountByName.get(brand.name.toLowerCase()) || 0),
     })),
     ...legacy.filter((brand) => !managedNames.has(brand._id.toLowerCase()))
@@ -225,7 +226,11 @@ const buildBrandMatch = (brand, managedBrandId) => (managedBrandId ? {
 // Resolve a brand slug with one indexed lookup; only legacy specification-only
 // brands (no Brand document) need the full brand aggregation.
 const resolveBrandSlug = async (brandSlug) => {
-  const managed = await Brand.findOne({ slug: brandSlug, isActive: true }).select('_id name').lean();
+  let managed = await Brand.findOne({ slug: brandSlug, isActive: true }).select('_id name').lean();
+  if (!managed) {
+    const all = await Brand.find({ isActive: true }).select('_id name slug').lean();
+    managed = all.find((item) => slugify(item.name) === brandSlug || slugify(item.slug) === brandSlug);
+  }
   if (managed) return { brand: managed.name, managedBrandId: managed._id };
   const legacy = (await getPublicBrands()).find((item) => item.slug === brandSlug);
   return { brand: legacy?.name || '__unknown_brand__', managedBrandId: legacy?._id || null };

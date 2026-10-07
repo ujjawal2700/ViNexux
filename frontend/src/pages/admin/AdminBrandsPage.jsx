@@ -8,7 +8,9 @@ import {
   UploadCloud,
   X,
   Sparkles,
+  Lock,
 } from 'lucide-react';
+import { slugify } from '../../utils/categoryUrls';
 import adminService from '../../services/adminService';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import FilterBar from '../../components/admin/FilterBar';
@@ -32,6 +34,15 @@ const emptyForm = {
   description: '',
   isActive: true,
   sortOrder: 0,
+};
+
+const cleanBrandSlug = (brand) => {
+  if (!brand) return '';
+  const raw = (brand.slug || '').toString().trim();
+  if (!raw || /https?:|\/|www\./i.test(raw)) {
+    return slugify(brand.name || '');
+  }
+  return slugify(raw) || slugify(brand.name || '');
 };
 
 export default function AdminBrandsPage() {
@@ -96,7 +107,7 @@ export default function AdminBrandsPage() {
     if (brand) {
       setForm({
         name: brand.name || '',
-        slug: brand.slug || '',
+        slug: cleanBrandSlug(brand),
         description: brand.description || '',
         isActive: brand.isActive !== undefined ? brand.isActive : true,
         sortOrder: brand.sortOrder !== undefined ? brand.sortOrder : 0,
@@ -164,9 +175,10 @@ export default function AdminBrandsPage() {
         logoPayload = null;
       }
 
+      const computedSlug = slugify(form.name) || cleanBrandSlug({ name: form.name, slug: form.slug });
       const payload = {
         name: form.name.trim(),
-        slug: form.slug.trim() || undefined,
+        slug: computedSlug,
         description: form.description.trim() || '',
         isActive: Boolean(form.isActive),
         sortOrder: Number(form.sortOrder) || 0,
@@ -395,7 +407,7 @@ export default function AdminBrandsPage() {
                   {/* URL Slug */}
                   <Table.Cell>
                     <span className="font-mono text-xs text-primary font-semibold bg-primary/5 px-2 py-0.5 rounded border border-primary/20">
-                      /{brand.slug}
+                      /{cleanBrandSlug(brand)}
                     </span>
                   </Table.Cell>
 
@@ -472,7 +484,7 @@ export default function AdminBrandsPage() {
                 setForm((prev) => ({
                   ...prev,
                   name: newName,
-                  slug: editing ? prev.slug : newName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
+                  slug: slugify(newName),
                 }));
               }}
               placeholder="Enter brand name"
@@ -480,14 +492,31 @@ export default function AdminBrandsPage() {
             />
           </FormField>
 
-          {/* URL Slug */}
-          <FormField label="URL Slug" hint="Used in storefront filtering URLs (e.g. /search?brand=asus)">
-            <Input
-              value={form.slug}
-              onChange={(e) => setForm({ ...form, slug: e.target.value })}
-              placeholder="e.g. asus"
-              className="font-mono text-xs"
-            />
+          {/* URL Slug (Auto-Generated & Locked) */}
+          <FormField
+            label="URL Slug (Auto-Generated)"
+            hint={
+              form.slug
+                ? `Storefront URL: /brands/${form.slug}`
+                : 'Automatically generated from brand name'
+            }
+          >
+            <div className="relative">
+              <Input
+                value={form.slug}
+                readOnly
+                disabled
+                placeholder="auto-generated-slug"
+                className="font-mono text-xs bg-muted/60 text-muted-foreground cursor-not-allowed select-none pr-9"
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/70 pointer-events-none">
+                <Lock className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground/80 mt-1 flex items-center gap-1">
+              <Lock className="w-3 h-3 text-muted-foreground/60 inline shrink-0" />
+              <span>Slug is locked and automatically updated from Brand Name to prevent broken URLs.</span>
+            </p>
           </FormField>
 
           {/* BRAND LOGO IMAGE SELECTION SECTION */}
