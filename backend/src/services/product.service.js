@@ -62,6 +62,7 @@ export const productService = {
     informationPhone,
     productUrl,
     categoryId,
+    categoryIds = [],
     brandId,
     description,
     images = [],
@@ -82,12 +83,24 @@ export const productService = {
       );
     }
 
+    const cleanCategoryIds = Array.isArray(categoryIds)
+      ? categoryIds.filter((cid) => mongoose.Types.ObjectId.isValid(cid)).map(String)
+      : [];
+
+    let primaryCategoryId = categoryId;
+    if (!primaryCategoryId && cleanCategoryIds.length > 0) {
+      primaryCategoryId = cleanCategoryIds[0];
+    }
+    if (primaryCategoryId && !cleanCategoryIds.includes(String(primaryCategoryId))) {
+      cleanCategoryIds.unshift(String(primaryCategoryId));
+    }
+
     // Verify referenced category exists and is active
-    if (!mongoose.Types.ObjectId.isValid(categoryId)) {
+    if (!primaryCategoryId || !mongoose.Types.ObjectId.isValid(primaryCategoryId)) {
       throw new AppError('Invalid categoryId format.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
     }
 
-    const category = await Category.findById(categoryId);
+    const category = await Category.findById(primaryCategoryId);
     if (!category) {
       throw new AppError('Referenced category does not exist.', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
     }
@@ -98,7 +111,7 @@ export const productService = {
         ERROR_CODES.BAD_REQUEST
       );
     }
-    await validateCategorySpecifications(categoryId, specifications);
+    await validateCategorySpecifications(primaryCategoryId, specifications);
     const brand = brandId && await Brand.findOne({ _id: brandId, isActive: true });
     if (!brand) throw new AppError('Please select an active managed brand.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
     if (!modelNumber?.trim()) throw new AppError('Model number is required.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
@@ -123,7 +136,8 @@ export const productService = {
       warranty: warranty?.trim() || '1 Year ON-SITE / Direct Replacement Warranty',
       informationPhone: informationPhone?.trim() || undefined,
       productUrl: productUrl?.trim() || '',
-      categoryId,
+      categoryId: primaryCategoryId,
+      categoryIds: cleanCategoryIds,
       brandId,
       description: description ? description.trim() : undefined,
       images,
@@ -206,14 +220,22 @@ isActive,
       if (!mongoose.Types.ObjectId.isValid(categoryId)) {
         throw new AppError('Invalid categoryId query filter format.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
       }
-      filter.categoryId = { $in: await findCategoryAndDescendantIds([categoryId]) };
+      const catIds = await findCategoryAndDescendantIds([categoryId]);
+      filter.$or = [
+        { categoryId: { $in: catIds } },
+        { categoryIds: { $in: catIds } },
+      ];
     } else if (categorySlug && categorySlug.trim()) {
       const trimmedSlug = categorySlug.trim().toLowerCase();
       const foundCategory = await Category.findOne({
         $or: [{ slug: trimmedSlug }, { name: new RegExp(`^${escapeRegex(trimmedSlug)}$`, 'i') }],
       }).select('_id').lean();
       if (foundCategory) {
-        filter.categoryId = { $in: await findCategoryAndDescendantIds([foundCategory._id]) };
+        const catIds = await findCategoryAndDescendantIds([foundCategory._id]);
+        filter.$or = [
+          { categoryId: { $in: catIds } },
+          { categoryIds: { $in: catIds } },
+        ];
       }
     }
 
@@ -266,6 +288,7 @@ isActive,
 
     const product = await Product.findById(id)
       .populate('categoryId', 'name slug parentId')
+      .populate('categoryIds', 'name slug parentId')
       .populate('brandId', 'name slug logo isActive')
       .select('-__v');
 
@@ -305,7 +328,17 @@ isActive,
       }
     }
 
-    // Validate category existence and active status if categoryId is updated
+    // Validate category existence and active status if categoryId or categoryIds is updated
+    if (updateData.categoryIds !== undefined) {
+      const cleanCategoryIds = Array.isArray(updateData.categoryIds)
+        ? updateData.categoryIds.filter((cid) => mongoose.Types.ObjectId.isValid(cid)).map(String)
+        : [];
+      product.categoryIds = cleanCategoryIds;
+      if (cleanCategoryIds.length > 0 && !updateData.categoryId && !product.categoryId) {
+        product.categoryId = cleanCategoryIds[0];
+      }
+    }
+
     if (updateData.categoryId) {
       if (!mongoose.Types.ObjectId.isValid(updateData.categoryId)) {
         throw new AppError('Invalid categoryId format.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
@@ -323,6 +356,9 @@ isActive,
         );
       }
       product.categoryId = updateData.categoryId;
+      if (product.categoryIds && !product.categoryIds.map(String).includes(String(updateData.categoryId))) {
+        product.categoryIds.unshift(updateData.categoryId);
+      }
     }
 
     // Preserve existing fields that were not supplied

@@ -65,6 +65,10 @@ const productSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Category',
     },
+    categoryIds: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Category',
+    }],
     modelNumber: {
       type: String,
       required: [true, 'Model number is required'],
@@ -150,6 +154,7 @@ const productSchema = new mongoose.Schema(
 
 // Compound index for querying active products by category
 productSchema.index({ categoryId: 1, isActive: 1 });
+productSchema.index({ categoryIds: 1, isActive: 1 });
 // Admin listing (default sort newest first) and newest-per-category lookups.
 productSchema.index({ isActive: 1, createdAt: -1 });
 productSchema.index({ categoryId: 1, createdAt: -1 });

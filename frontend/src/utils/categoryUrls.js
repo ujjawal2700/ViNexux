@@ -49,6 +49,21 @@ export const slugify = (text = '') => {
 };
 
 /**
+ * Clean category slug by stripping URLs, path separators, and fallback to name slug
+ */
+export const cleanCategorySlug = (cat) => {
+  if (!cat) return '';
+  const raw = typeof cat === 'string' ? cat.trim() : (cat.slug || '').toString().trim();
+  const name = typeof cat === 'string' ? '' : (cat.name || '');
+  if (!raw || /https?:|\/|www\./i.test(raw)) {
+    const cleaned = raw.replace(/^https?:\/\/[^/]+/i, '').replace(/^[/\s]+|[/\s]+$/g, '');
+    const lastSegment = cleaned.split('/').filter(Boolean).pop();
+    return slugify(lastSegment || name);
+  }
+  return slugify(raw) || slugify(name);
+};
+
+/**
  * Get category slug safely
  */
 export const getCategorySlug = (category) => {

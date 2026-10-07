@@ -42,6 +42,7 @@ export const createProductSchema = {
       .string({ required_error: 'Category ID is required' })
       .refine(isValidObjectId, { message: 'Invalid categoryId format. Must be a valid MongoDB ObjectId' })
       .optional(),
+    categoryIds: z.array(z.string().refine(isValidObjectId, { message: 'Invalid categoryId format. Must be a valid MongoDB ObjectId' })).optional(),
     brandId: z.string({ required_error: 'Brand is required' }).refine(isValidObjectId, { message: 'Invalid brandId format' }),
     description: z
       .string()
@@ -86,6 +87,7 @@ export const updateProductSchema = {
       .string()
       .refine(isValidObjectId, { message: 'Invalid categoryId format. Must be a valid MongoDB ObjectId' })
       .optional(),
+    categoryIds: z.array(z.string().refine(isValidObjectId, { message: 'Invalid categoryId format. Must be a valid MongoDB ObjectId' })).optional(),
     modelNumber: z.string().trim().min(1).max(100).optional(),
     model: z.string().trim().max(100).optional(),
     stockQuantity: z.coerce.number().min(0, { message: 'Stock quantity cannot be negative' }).optional(),

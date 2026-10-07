@@ -24,3 +24,4 @@ describe('brand slug generation and sanitization', () => {
     expect(slugify(undefined)).toBe('');
   });
 });
+

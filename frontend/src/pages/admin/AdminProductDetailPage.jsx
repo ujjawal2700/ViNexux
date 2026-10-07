@@ -30,6 +30,7 @@ import {
   FileText,
   ChevronRight,
   UploadCloud,
+  Check,
 } from "lucide-react";
 
 const TABS = [
@@ -106,8 +107,8 @@ const AdminProductDetailPage = () => {
 
   // Groups (Category Hierarchy)
   const [selectedHeaderId, setSelectedHeaderId] = useState("");
-  const [selectedMainId, setSelectedMainId] = useState("");
-  const [selectedSubId, setSelectedSubId] = useState("");
+  const [selectedMainIds, setSelectedMainIds] = useState([]);
+  const [selectedSubIds, setSelectedSubIds] = useState([]);
 
   // Status & Visibility
   const [status, setStatus] = useState("published"); // 'published' | 'draft'
@@ -156,23 +157,32 @@ const AdminProductDetailPage = () => {
   }, [categoriesList, selectedHeaderId]);
 
   const subCategories = useMemo(() => {
-    if (!selectedMainId) return [];
+    if (!selectedMainIds.length) return [];
+    const mainIdSet = new Set(selectedMainIds.map(String));
     return categoriesList.filter((c) => {
       const pId = c.parentId?._id || c.parentId;
-      return pId && String(pId) === String(selectedMainId);
+      return pId && mainIdSet.has(String(pId));
     });
-  }, [categoriesList, selectedMainId]);
+  }, [categoriesList, selectedMainIds]);
 
   const selectedEffectiveCategoryId =
-    selectedSubId || selectedMainId || selectedHeaderId;
-  const categoryFilterDefinitions = useMemo(
-    () =>
-      getEffectiveFilterDefinitions(
-        categoriesList,
-        selectedEffectiveCategoryId,
-      ),
-    [categoriesList, selectedEffectiveCategoryId],
-  );
+    selectedSubIds[0] || selectedMainIds[0] || selectedHeaderId;
+  const categoryFilterDefinitions = useMemo(() => {
+    const allSelectedIds = [selectedHeaderId, ...selectedMainIds, ...selectedSubIds].filter(Boolean);
+    const seenKeys = new Set();
+    const merged = [];
+    allSelectedIds.forEach((catId) => {
+      const defs = getEffectiveFilterDefinitions(categoriesList, catId);
+      defs.forEach((d) => {
+        const k = d.key.toLowerCase();
+        if (!seenKeys.has(k)) {
+          seenKeys.add(k);
+          merged.push(d);
+        }
+      });
+    });
+    return merged;
+  }, [categoriesList, selectedHeaderId, selectedMainIds, selectedSubIds]);
   const configuredFilterKeys = useMemo(
     () =>
       new Set(
@@ -292,37 +302,97 @@ const AdminProductDetailPage = () => {
   useEffect(() => {
     if (!product || categoriesList.length === 0) return;
 
-    const currentCatId = String(
-      product.categoryId?._id || product.categoryId || "",
-    );
-    if (!currentCatId) return;
-
-    const currentCat = categoriesList.find(
-      (c) => String(c._id) === currentCatId,
-    );
-    if (!currentCat) return;
-
-    const pId = currentCat.parentId?._id || currentCat.parentId;
-    if (!pId) {
-      setSelectedHeaderId(String(currentCat._id));
-      setSelectedMainId("");
-      setSelectedSubId("");
-    } else {
-      const parentCat = categoriesList.find(
-        (c) => String(c._id) === String(pId),
-      );
-      const grandParentId = parentCat?.parentId?._id || parentCat?.parentId;
-      if (grandParentId) {
-        setSelectedSubId(String(currentCat._id));
-        setSelectedMainId(String(parentCat._id));
-        setSelectedHeaderId(String(grandParentId));
-      } else {
-        setSelectedSubId("");
-        setSelectedMainId(String(currentCat._id));
-        setSelectedHeaderId(String(parentCat._id));
-      }
+    const rawIds = [];
+    if (Array.isArray(product.categoryIds) && product.categoryIds.length > 0) {
+      product.categoryIds.forEach((c) => {
+        const cid = String(c?._id || c || "");
+        if (cid && !rawIds.includes(cid)) rawIds.push(cid);
+      });
     }
+    const primaryId = String(product.categoryId?._id || product.categoryId || "");
+    if (primaryId && !rawIds.includes(primaryId)) {
+      rawIds.push(primaryId);
+    }
+    if (rawIds.length === 0) return;
+
+    let foundHeaderId = "";
+    const foundMainIds = new Set();
+    const foundSubIds = new Set();
+
+    rawIds.forEach((id) => {
+      const cat = categoriesList.find((c) => String(c._id) === id);
+      if (!cat) return;
+      const pId = cat.parentId?._id || cat.parentId;
+      if (!pId) {
+        if (!foundHeaderId) foundHeaderId = String(cat._id);
+      } else {
+        const parentCat = categoriesList.find((c) => String(c._id) === String(pId));
+        const grandParentId = parentCat?.parentId?._id || parentCat?.parentId;
+        if (grandParentId) {
+          foundSubIds.add(String(cat._id));
+          foundMainIds.add(String(parentCat._id));
+          if (!foundHeaderId) foundHeaderId = String(grandParentId);
+        } else {
+          foundMainIds.add(String(cat._id));
+          if (!foundHeaderId) foundHeaderId = String(parentCat?._id || pId);
+        }
+      }
+    });
+
+    if (foundHeaderId) setSelectedHeaderId(foundHeaderId);
+    setSelectedMainIds(Array.from(foundMainIds));
+    setSelectedSubIds(Array.from(foundSubIds));
   }, [product, categoriesList]);
+
+  // Category selection helpers
+  const handleToggleMainCategory = (mainCatId) => {
+    setSelectedMainIds((prev) => {
+      const exists = prev.includes(mainCatId);
+      if (exists) {
+        const next = prev.filter((id) => id !== mainCatId);
+        // Prune orphan sub-categories belonging to this main category
+        const orphanSubIds = new Set(
+          categoriesList
+            .filter((c) => {
+              const pId = c.parentId?._id || c.parentId;
+              return pId && String(pId) === String(mainCatId);
+            })
+            .map((c) => String(c._id)),
+        );
+        setSelectedSubIds((prevSubs) =>
+          prevSubs.filter((sid) => !orphanSubIds.has(String(sid))),
+        );
+        return next;
+      } else {
+        return [...prev, mainCatId];
+      }
+    });
+  };
+
+  const handleToggleSubCategory = (subCatId) => {
+    setSelectedSubIds((prev) =>
+      prev.includes(subCatId)
+        ? prev.filter((id) => id !== subCatId)
+        : [...prev, subCatId],
+    );
+  };
+
+  const handleSelectAllMain = () => {
+    setSelectedMainIds(mainCategories.map((m) => String(m._id)));
+  };
+
+  const handleClearAllMain = () => {
+    setSelectedMainIds([]);
+    setSelectedSubIds([]);
+  };
+
+  const handleSelectAllSub = () => {
+    setSelectedSubIds(subCategories.map((s) => String(s._id)));
+  };
+
+  const handleClearAllSub = () => {
+    setSelectedSubIds([]);
+  };
 
   // Auto-generate SKU helper
   const handleAutoGenerateSku = () => {
@@ -472,8 +542,7 @@ const AdminProductDetailPage = () => {
     }
 
     // 2. Validate Category Hierarchy
-    const effectiveCategoryId = selectedEffectiveCategoryId;
-    if (isCreateMode && !effectiveCategoryId) {
+    if (isCreateMode && !selectedHeaderId) {
       setFormError("Please select a Header Category in the Groups card.");
       setActiveTab("groups");
       return;
@@ -527,6 +596,13 @@ const AdminProductDetailPage = () => {
         }))
         .filter((s) => s.key && s.value);
 
+      const allCategoryIds = [
+        selectedHeaderId,
+        ...selectedMainIds,
+        ...selectedSubIds,
+      ].filter(Boolean);
+      const primaryCategoryId = selectedSubIds[0] || selectedMainIds[0] || selectedHeaderId || undefined;
+
       const payload = {
         name: name.trim(),
         modelNumber: modelNumber.trim(),
@@ -536,7 +612,8 @@ const AdminProductDetailPage = () => {
         warranty: warranty.trim(),
         productUrl: productUrl.trim(),
         sku: sku.trim().toUpperCase(),
-        ...(effectiveCategoryId ? { categoryId: effectiveCategoryId } : {}),
+        ...(primaryCategoryId ? { categoryId: primaryCategoryId } : {}),
+        categoryIds: allCategoryIds,
         brandId: selectedBrandId || undefined,
         description: description.trim() || undefined,
         standardPrice: sPrice,
@@ -1123,137 +1200,270 @@ const AdminProductDetailPage = () => {
               </div>
 
               {/* 3-tier selection */}
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  {/* MAIN GROUP (Header Category) */}
-                  <FormField
-                    label={
-                      isCreateMode
-                        ? "HEADER CATEGORY *"
-                        : "HEADER CATEGORY (OPTIONAL)"
-                    }
-                    required={isCreateMode}
-                    hint={
-                      isCreateMode
-                        ? "Top-level parent category (e.g. Laptop, Desktop, Storage)"
-                        : "Leave unassigned until this product is ready for catalog placement."
-                    }>
-                    <Select
-                      value={selectedHeaderId}
-                      onChange={(e) => {
-                        setSelectedHeaderId(e.target.value);
-                        setSelectedMainId("");
-                        setSelectedSubId("");
-                      }}
-                      placeholder="Select Header Category"
-                      options={headerCategories.map((h) => ({
+              <div className="space-y-6">
+                {/* 1. HEADER CATEGORY (Strictly Single-Select) */}
+                <div className="bg-[#fdf9f9] border border-[#f5d6dc] rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-gray-800">
+                      {isCreateMode ? "1. HEADER CATEGORY *" : "1. HEADER CATEGORY (OPTIONAL)"}
+                    </label>
+                    <span className="text-[11px] font-semibold text-[#800020] bg-white px-2 py-0.5 rounded-full border border-[#f5d6dc]">
+                      Strictly 1 Category
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mb-3">
+                    {isCreateMode
+                      ? "Top-level parent category (e.g. Laptop, Desktop, Storage). Products can only belong to one header category."
+                      : "Leave unassigned until this product is ready for catalog placement."}
+                  </p>
+                  <Select
+                    value={selectedHeaderId}
+                    onChange={(e) => {
+                      setSelectedHeaderId(e.target.value);
+                      setSelectedMainIds([]);
+                      setSelectedSubIds([]);
+                    }}
+                    placeholder="Select Header Category"
+                    options={[
+                      {
+                        value: "",
+                        label: isCreateMode ? "Select Header Category" : "None / Unassigned",
+                      },
+                      ...headerCategories.map((h) => ({
                         value: h._id,
                         label: `${h.name} (Header)`,
-                      }))}
-                      required={isCreateMode}
-                      className="font-semibold text-xs"
-                    />
-                  </FormField>
-
-                  {/* SPECIFIC CATEGORY (Main Category) */}
-                  <FormField
-                    label="MAIN CATEGORY (OPTIONAL)"
-                    hint="Leave empty to assign the product directly to the Header Category.">
-                    <Select
-                      value={selectedMainId}
-                      onChange={(e) => {
-                        setSelectedMainId(e.target.value);
-                        setSelectedSubId("");
-                      }}
-                      placeholder={
-                        selectedHeaderId
-                          ? "Use Header Category directly"
-                          : "Select Header Category First"
-                      }
-                      isDisabled={
-                        !selectedHeaderId || mainCategories.length === 0
-                      }
-                      options={[
-                        {
-                          value: "",
-                          label: "Assign directly to Header Category",
-                        },
-                        ...mainCategories.map((m) => ({
-                          value: m._id,
-                          label: m.name,
-                        })),
-                      ]}
-                      className="font-semibold text-xs"
-                    />
-                  </FormField>
+                      })),
+                    ]}
+                    required={isCreateMode}
+                    className="font-semibold text-xs"
+                  />
                 </div>
 
-                {/* SUB-CATEGORY (OPTIONAL) */}
-                <div className="pt-2">
-                  <FormField
-                    label="SUB-CATEGORY (OPTIONAL)"
-                    hint="Optional sub-series. Leave unselected to assign directly to Main Category.">
-                    <Select
-                      value={selectedSubId}
-                      onChange={(e) => setSelectedSubId(e.target.value)}
-                      placeholder={
-                        !selectedMainId
-                          ? "Select Specific Category First"
-                          : subCategories.length === 0
-                            ? "No sub-categories available (Product will belong directly to Main Category)"
-                            : "Select Sub-Category (Optional)"
-                      }
-                      isDisabled={!selectedMainId || subCategories.length === 0}
-                      options={[
-                        {
-                          value: "",
-                          label: "Assign directly to Main Category",
-                        },
-                        ...subCategories.map((s) => ({
-                          value: s._id,
-                          label: s.name,
-                        })),
-                      ]}
-                      className="font-semibold text-xs"
-                    />
-                  </FormField>
+                {/* 2. MAIN CATEGORIES (Multi-Select) */}
+                <div className="bg-gray-50/70 border border-gray-200 rounded-xl p-4 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-wider text-gray-800 flex items-center gap-2">
+                        <span>2. MAIN CATEGORIES</span>
+                        <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                          Multi-Select Allowed
+                        </span>
+                      </label>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Choose one or more main categories under this header. Leave unselected to assign directly to Header Category.
+                      </p>
+                    </div>
+
+                    {selectedHeaderId && mainCategories.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-600 bg-white px-2 py-1 rounded border border-gray-200">
+                          {selectedMainIds.length} of {mainCategories.length} selected
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleSelectAllMain}
+                          className="text-xs text-[#800020] hover:underline font-semibold px-1 py-0.5">
+                          Select All
+                        </button>
+                        <span className="text-gray-300">|</span>
+                        <button
+                          type="button"
+                          onClick={handleClearAllMain}
+                          className="text-xs text-gray-500 hover:underline font-semibold px-1 py-0.5">
+                          Clear
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {!selectedHeaderId ? (
+                    <div className="p-3 bg-white rounded-lg border border-dashed border-gray-300 text-xs text-gray-400 italic">
+                      Please select a Header Category above to view and assign Main Categories.
+                    </div>
+                  ) : mainCategories.length === 0 ? (
+                    <div className="p-3 bg-white rounded-lg border border-dashed border-gray-300 text-xs text-gray-500">
+                      No main categories found under this header category. The product will belong directly to the Header Category.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1">
+                      {mainCategories.map((m) => {
+                        const isChecked = selectedMainIds.includes(String(m._id));
+                        return (
+                          <button
+                            key={m._id}
+                            type="button"
+                            onClick={() => handleToggleMainCategory(String(m._id))}
+                            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold border transition-all text-left ${
+                              isChecked
+                                ? "bg-[#800020] text-white border-[#800020] shadow-xs"
+                                : "bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                            }`}>
+                            <div
+                              className={`w-4 h-4 rounded flex items-center justify-center shrink-0 border ${
+                                isChecked
+                                  ? "bg-white text-[#800020] border-white"
+                                  : "bg-white border-gray-300 text-transparent"
+                              }`}>
+                              {isChecked ? <Check className="w-3 h-3 stroke-[3]" /> : null}
+                            </div>
+                            <span className="truncate">{m.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. SUB CATEGORIES (Multi-Select) */}
+                <div className="bg-gray-50/70 border border-gray-200 rounded-xl p-4 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-wider text-gray-800 flex items-center gap-2">
+                        <span>3. SUB CATEGORIES (OPTIONAL)</span>
+                        <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          Multi-Select Allowed
+                        </span>
+                      </label>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Choose sub-categories belonging to your chosen main categories. Leave unselected to assign directly to Main Category.
+                      </p>
+                    </div>
+
+                    {selectedMainIds.length > 0 && subCategories.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-600 bg-white px-2 py-1 rounded border border-gray-200">
+                          {selectedSubIds.length} of {subCategories.length} selected
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleSelectAllSub}
+                          className="text-xs text-[#800020] hover:underline font-semibold px-1 py-0.5">
+                          Select All
+                        </button>
+                        <span className="text-gray-300">|</span>
+                        <button
+                          type="button"
+                          onClick={handleClearAllSub}
+                          className="text-xs text-gray-500 hover:underline font-semibold px-1 py-0.5">
+                          Clear
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedMainIds.length === 0 ? (
+                    <div className="p-3 bg-white rounded-lg border border-dashed border-gray-300 text-xs text-gray-400 italic">
+                      Select at least one Main Category above to view available Sub-Categories.
+                    </div>
+                  ) : subCategories.length === 0 ? (
+                    <div className="p-3 bg-white rounded-lg border border-dashed border-gray-300 text-xs text-gray-500">
+                      No sub-categories available under the selected Main Categories. The product will belong directly to the selected Main Categories.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1">
+                      {subCategories.map((s) => {
+                        const isChecked = selectedSubIds.includes(String(s._id));
+                        const parentMainCat = categoriesList.find(
+                          (c) => String(c._id) === String(s.parentId?._id || s.parentId),
+                        );
+                        return (
+                          <button
+                            key={s._id}
+                            type="button"
+                            onClick={() => handleToggleSubCategory(String(s._id))}
+                            className={`flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-semibold border transition-all text-left ${
+                              isChecked
+                                ? "bg-[#800020] text-white border-[#800020] shadow-xs"
+                                : "bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                            }`}>
+                            <div className="flex items-center gap-2.5 truncate">
+                              <div
+                                className={`w-4 h-4 rounded flex items-center justify-center shrink-0 border ${
+                                  isChecked
+                                    ? "bg-white text-[#800020] border-white"
+                                    : "bg-white border-gray-300 text-transparent"
+                                }`}>
+                                {isChecked ? <Check className="w-3 h-3 stroke-[3]" /> : null}
+                              </div>
+                              <span className="truncate">{s.name}</span>
+                            </div>
+                            {parentMainCat && selectedMainIds.length > 1 && (
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${
+                                  isChecked
+                                    ? "bg-white/20 text-white"
+                                    : "bg-gray-100 text-gray-500"
+                                }`}>
+                                {parentMainCat.name}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Visual Placement Feedback */}
-                <div className="mt-4 p-3.5 bg-gray-50 rounded-xl border border-gray-200 text-xs">
-                  <span className="font-bold text-gray-700 block mb-1">
-                    Catalog Placement Preview:
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-xs space-y-2">
+                  <span className="font-bold text-gray-700 block">
+                    Catalog Placement Summary:
                   </span>
                   {selectedEffectiveCategoryId ? (
-                    <div className="flex items-center gap-1.5 font-semibold text-[#800020]">
-                      <span>
-                        {headerCategories.find(
-                          (h) => String(h._id) === String(selectedHeaderId),
-                        )?.name || "Header"}
-                      </span>
-                      {selectedMainId && (
-                        <>
-                          <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
-                          <span>
-                            {mainCategories.find(
-                              (m) => String(m._id) === String(selectedMainId),
-                            )?.name || "Main"}
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
+                          Header:
+                        </span>
+                        <span className="bg-[#800020] text-white px-2.5 py-1 rounded-md font-semibold text-xs shadow-xs">
+                          {headerCategories.find(
+                            (h) => String(h._id) === String(selectedHeaderId),
+                          )?.name || "Header"}
+                        </span>
+                      </div>
+
+                      {selectedMainIds.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                          <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
+                            Main ({selectedMainIds.length}):
                           </span>
-                        </>
+                          {selectedMainIds.map((mid) => {
+                            const mCat = mainCategories.find(
+                              (m) => String(m._id) === String(mid),
+                            );
+                            return (
+                              <span
+                                key={mid}
+                                className="bg-blue-50 text-blue-800 border border-blue-200 px-2 py-0.5 rounded text-xs font-semibold">
+                                {mCat?.name || mid}
+                              </span>
+                            );
+                          })}
+                        </div>
                       )}
-                      {selectedSubId && (
-                        <>
-                          <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
-                          <span className="bg-[#fdf2f4] px-1.5 py-0.5 rounded border border-[#f5d6dc]">
-                            {subCategories.find(
-                              (s) => String(s._id) === String(selectedSubId),
-                            )?.name || "Sub"}
+
+                      {selectedSubIds.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                          <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
+                            Sub ({selectedSubIds.length}):
                           </span>
-                        </>
+                          {selectedSubIds.map((sid) => {
+                            const sCat = subCategories.find(
+                              (s) => String(s._id) === String(sid),
+                            );
+                            return (
+                              <span
+                                key={sid}
+                                className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded text-xs font-semibold">
+                                {sCat?.name || sid}
+                              </span>
+                            );
+                          })}
+                        </div>
                       )}
                     </div>
                   ) : (
-                    <span className="text-gray-500 text-xs italic">
+                    <span className="text-gray-500 text-xs italic block">
                       {isCreateMode
                         ? "Please select a Header Category to establish catalog placement."
                         : "No category assigned. You can add one later."}

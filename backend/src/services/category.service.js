@@ -6,18 +6,24 @@ import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../constants/errorCodes.js';
 import { descendantIds } from './catalog.service.js';
 
-/**
- * Generate URL-friendly slug from string name.
- * @param {string} text
- * @returns {string}
- */
-const slugify = (text) => {
+const slugify = (text = '') => {
+  if (!text) return '';
   return text
     .toString()
     .toLowerCase()
     .trim()
-    .replace(/[\s\W_]+(?:-+[\s\W_]*)*/g, '-')
+    .replace(/^https?:\/\/(www\.)?/i, '')
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+};
+
+export const sanitizeCategorySlug = (name = '', slug = '') => {
+  const raw = (slug || '').toString().trim();
+  if (!raw || /https?:|\/|www\./i.test(raw)) {
+    return slugify(name);
+  }
+  return slugify(raw) || slugify(name);
 };
 
 // All categories (active or not) as a light id/parent list for tree walks.
@@ -53,7 +59,7 @@ export const categoryService = {
    * Create a new category.
    */
   async createCategory({ name, slug, parentId, image, description, isActive = true, sortOrder = 0, filterDefinitions = [] }) {
-    const finalSlug = slug ? slug.trim().toLowerCase() : slugify(name);
+    const finalSlug = sanitizeCategorySlug(name, slug);
 
     // Check for duplicate slug
     const existingCategory = await Category.findOne({ slug: finalSlug });
@@ -152,8 +158,13 @@ export const categoryService = {
 
     const totalPages = Math.ceil(total / parsedLimit);
 
+    const sanitizedCategories = categories.map((cat) => ({
+      ...cat,
+      slug: sanitizeCategorySlug(cat.name, cat.slug),
+    }));
+
     return {
-      categories,
+      categories: sanitizedCategories,
       pagination: {
         page: parsedPage,
         limit: parsedLimit,
@@ -197,9 +208,7 @@ export const categoryService = {
 
     // Slug calculation & duplicate check
     if (updateData.slug || updateData.name) {
-      const targetSlug = updateData.slug
-        ? updateData.slug.trim().toLowerCase()
-        : slugify(updateData.name);
+      const targetSlug = sanitizeCategorySlug(updateData.name || category.name, updateData.slug);
 
       if (targetSlug !== category.slug) {
         const duplicate = await Category.findOne({ slug: targetSlug, _id: { $ne: id } });

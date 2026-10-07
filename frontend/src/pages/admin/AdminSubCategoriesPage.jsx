@@ -16,7 +16,8 @@ import EmptyState from '../../components/ui/EmptyState';
 import ErrorState from '../../components/ui/ErrorState';
 import Toast from '../../components/ui/Toast';
 import Pagination from '../../components/ui/Pagination';
-import { Plus, Edit2, Trash2, GitBranch, Search, Layers, FolderTree, Info } from 'lucide-react';
+import { Plus, Edit2, Trash2, GitBranch, Search, Layers, FolderTree, Info, Lock } from 'lucide-react';
+import { slugify, cleanCategorySlug } from '../../utils/categoryUrls';
 import CategoryFilterBuilder from '../../components/admin/CategoryFilterBuilder';
 
 /**
@@ -179,7 +180,7 @@ const AdminSubCategoriesPage = () => {
     setEditingCategory(category);
     setFormData({
       name: category.name || '',
-      slug: category.slug || '',
+      slug: cleanCategorySlug(category),
       parentId: category.parentId?._id || category.parentId || '',
       image: category.image || '',
       description: category.description || '',
@@ -214,9 +215,10 @@ const AdminSubCategoriesPage = () => {
       const uploadedImage = categoryImageFile
         ? await adminService.uploadCmsImage(categoryImageFile, 'vinexus/categories')
         : null;
+      const computedSlug = slugify(formData.name) || cleanCategorySlug(formData);
       const payload = {
         name: formData.name.trim(),
-        slug: formData.slug.trim() || undefined,
+        slug: computedSlug,
         parentId: formData.parentId,
         image: uploadedImage?.data?.url || formData.image.trim() || undefined,
         description: formData.description.trim() || undefined,
@@ -417,8 +419,10 @@ const AdminSubCategoriesPage = () => {
                       </div>
                     </div>
                   </Table.Cell>
-                  <Table.Cell className="font-mono text-[11px] text-muted-foreground">
-                    {cat.slug}
+                  <Table.Cell>
+                    <span className="font-mono text-xs text-primary font-semibold bg-primary/5 px-2 py-0.5 rounded border border-primary/20">
+                      /{cleanCategorySlug(cat)}
+                    </span>
                   </Table.Cell>
                   <Table.Cell>
                     {parentMain ? (
@@ -543,7 +547,12 @@ const AdminSubCategoriesPage = () => {
               type="text"
               value={formData.name}
               onChange={(e) => {
-                setFormData({ ...formData, name: e.target.value });
+                const newName = e.target.value;
+                setFormData((prev) => ({
+                  ...prev,
+                  name: newName,
+                  slug: slugify(newName),
+                }));
                 if (formError) setFormError('');
               }}
               placeholder="e.g. Dome Cameras, Bullet Cameras, PTZ Cameras"
@@ -555,15 +564,31 @@ const AdminSubCategoriesPage = () => {
             />
           </FormField>
 
+          {/* Web Address Link (URL Slug - Auto-Generated & Locked) */}
           <FormField
-            label="Web Address Link (URL Slug)"
-            hint="Optional — leave blank to automatically create a clean web link from the name"
+            label="Web Address Link (URL Slug - Auto-Generated)"
+            hint={
+              formData.slug
+                ? `Storefront URL: /categories/${formData.slug}`
+                : 'Automatically generated from subcategory name'
+            }
           >
-            <Input
-              value={formData.slug}
-              onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-              placeholder="e.g. dome-cameras (or leave empty)"
-            />
+            <div className="relative">
+              <Input
+                value={formData.slug}
+                readOnly
+                disabled
+                placeholder="auto-generated-slug"
+                className="font-mono text-xs bg-muted/60 text-muted-foreground cursor-not-allowed select-none pr-9"
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/70 pointer-events-none">
+                <Lock className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground/80 mt-1 flex items-center gap-1">
+              <Lock className="w-3 h-3 text-muted-foreground/60 inline shrink-0" />
+              <span>Slug is locked and automatically managed from Subcategory Name to prevent broken URLs.</span>
+            </p>
           </FormField>
 
           <FormField

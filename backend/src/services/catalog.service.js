@@ -263,10 +263,14 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   }
   const match = { isActive: true };
   if (requestedCategory) {
-    match.categoryId = { $in: allowedIds };
+    match.$or = [
+      { categoryId: { $in: allowedIds } },
+      { categoryIds: { $in: allowedIds } },
+    ];
   } else if (allowedIds.length > 0) {
     match.$or = [
       { categoryId: { $in: allowedIds } },
+      { categoryIds: { $in: allowedIds } },
       { categoryId: null },
       { categoryId: { $exists: false } },
     ];
