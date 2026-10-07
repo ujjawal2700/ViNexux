@@ -942,25 +942,14 @@ const PublicLayout = () => {
                 </div>
               </a>
 
-              {isAuthenticated ? (
-                <Link
-                  to={getProfileLink() || '/account/profile'}
-                  className="flex items-center justify-center p-1.5 text-white hover:text-white/80 transition-colors"
-                  title="My Account"
-                  aria-label="Account"
-                >
-                  <User className="w-5 h-5 stroke-[2.2]" />
-                </Link>
-              ) : (
-                <Link
-                  to="/login"
-                  className="flex items-center justify-center p-1.5 text-white hover:text-white/80 transition-colors"
-                  title="Login"
-                  aria-label="Login"
-                >
-                  <LogIn className="w-5 h-5 stroke-[2.2]" />
-                </Link>
-              )}
+              <Link
+                to={isAuthenticated ? (getProfileLink() || '/account/profile') : '/login'}
+                className="flex items-center justify-center p-1.5 text-white hover:text-white/80 transition-colors"
+                title={isAuthenticated ? 'My Account' : 'Login'}
+                aria-label={isAuthenticated ? 'Account' : 'Login'}
+              >
+                <User className="w-5 h-5 stroke-[2.2]" />
+              </Link>
 
               <Link
                 to="/cart"
