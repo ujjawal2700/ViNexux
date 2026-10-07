@@ -24,6 +24,7 @@ import {
   ChevronLeft,
   Heart,
   Copy,
+  Link2,
   Check,
   ListFilter,
   Minus,
@@ -582,8 +583,8 @@ export const ProductDetailPage = () => {
                 <button
                   type="button"
                   onClick={handleCopyName}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:text-[#800020]"
-                  title="Copy Product Name"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:text-[#800020] hover:border-[#800020]/40 hover:bg-[#800020]/5 transition-colors cursor-pointer"
+                  title={hasNameCopied ? "Product Name Copied!" : "Copy Product Name"}
                   aria-label="Copy Product Name"
                 >
                   {hasNameCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
@@ -592,11 +593,11 @@ export const ProductDetailPage = () => {
                 <button
                   type="button"
                   onClick={handleCopyLink}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:text-[#800020]"
-                  title="Copy Product Link"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:text-[#800020] hover:border-[#800020]/40 hover:bg-[#800020]/5 transition-colors cursor-pointer"
+                  title={hasCopied ? "Product Link Copied!" : "Copy Product Link"}
                   aria-label="Copy Product Link"
                 >
-                  {hasCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                  {hasCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Link2 className="w-4 h-4" />}
                 </button>
               </div>
             </div>
