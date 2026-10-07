@@ -187,6 +187,50 @@ export const footerContentSchema = {
       )
       .max(20)
       .optional(),
+    phoneNumbers: z
+      .array(
+        z.object({
+          number: z.string().trim().min(1, 'Phone number cannot be empty').max(50),
+          label: z.string().trim().max(100).optional().default(''),
+        })
+      )
+      .max(15)
+      .optional(),
+    whatsappNumbers: z
+      .array(
+        z.object({
+          number: z.string().trim().min(1, 'WhatsApp number cannot be empty').max(50),
+          label: z.string().trim().max(100).optional().default(''),
+        })
+      )
+      .max(15)
+      .optional(),
+    emails: z
+      .array(
+        z.object({
+          email: z.string().trim().email({ message: 'Invalid email address format' }).max(150),
+          label: z.string().trim().max(100).optional().default(''),
+        })
+      )
+      .max(15)
+      .optional(),
+    bankDetailsHeading: z.string().trim().max(80).optional(),
+    showBankDetails: z.boolean().optional().default(true),
+    bankAccounts: z
+      .array(
+        z.object({
+          accountName: z.string().trim().max(150).optional().default(''),
+          bankName: z.string().trim().max(150).optional().default(''),
+          accountNumber: z.string().trim().max(50).optional().default(''),
+          ifscCode: z.string().trim().max(30).optional().default(''),
+          branch: z.string().trim().max(150).optional().default(''),
+          accountType: z.string().trim().max(50).optional().default('Current Account'),
+          upiId: z.string().trim().max(100).optional().default(''),
+          qrCodeUrl: z.string().trim().max(1000).optional().or(z.literal('')).default(''),
+        })
+      )
+      .max(10)
+      .optional(),
     copyrightText: z.string().trim().max(250).optional(),
     isActive: z.boolean().optional().default(true),
   }),

@@ -54,12 +54,50 @@ import {
   MapPin,
   Mail,
   MessageCircle,
+  Building2,
+  Copy,
 } from 'lucide-react';
 
 const STORE_MAP_URL = 'https://maps.app.goo.gl/QSuzGqkbp2HxMHLp6';
 const CONTACT_PHONE_DISPLAY = '8209224481';
 const CONTACT_PHONE_LINK = '+918209224481';
 const WHATSAPP_NUMBER = '918209224481';
+
+const CopyButton = ({ textToCopy, label = 'Copy' }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!textToCopy) return;
+    try {
+      navigator.clipboard?.writeText(textToCopy);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // ignore
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-white/10 hover:bg-white/20 text-gray-200 hover:text-white transition cursor-pointer shrink-0"
+      title={`Copy ${label}`}
+    >
+      {copied ? (
+        <>
+          <Check className="w-3 h-3 text-emerald-400" />
+          <span className="text-emerald-400 font-medium">Copied</span>
+        </>
+      ) : (
+        <>
+          <Copy className="w-3 h-3 text-gray-400" />
+          <span>Copy</span>
+        </>
+      )}
+    </button>
+  );
+};
 
 const getHeaderCategoryIcon = (name = '', slug = '') => {
   const s = (slug + ' ' + name).toLowerCase();
@@ -132,6 +170,37 @@ const PublicLayout = () => {
       : footerData.whatsappNumber.replace(/\D/g, ''))
     : WHATSAPP_NUMBER;
   const activeMapUrl = footerData?.mapUrl || STORE_MAP_URL;
+
+  const phoneList = useMemo(() => {
+    if (Array.isArray(footerData?.phoneNumbers) && footerData.phoneNumbers.length > 0) {
+      return footerData.phoneNumbers.filter((p) => p && p.number);
+    }
+    return footerData?.phone ? [{ number: footerData.phone, label: '' }] : [];
+  }, [footerData]);
+
+  const whatsappList = useMemo(() => {
+    if (Array.isArray(footerData?.whatsappNumbers) && footerData.whatsappNumbers.length > 0) {
+      return footerData.whatsappNumbers.filter((w) => w && w.number);
+    }
+    return footerData?.whatsappNumber ? [{ number: footerData.whatsappNumber, label: 'WhatsApp' }] : [];
+  }, [footerData]);
+
+  const emailList = useMemo(() => {
+    if (Array.isArray(footerData?.emails) && footerData.emails.length > 0) {
+      return footerData.emails.filter((e) => e && e.email);
+    }
+    return footerData?.email ? [{ email: footerData.email, label: '' }] : [];
+  }, [footerData]);
+
+  const bankAccountList = useMemo(() => {
+    if (footerData?.showBankDetails === false) return [];
+    if (!Array.isArray(footerData?.bankAccounts)) return [];
+    return footerData.bankAccounts.filter(
+      (b) => b && (b.accountNumber || b.bankName || b.accountName || b.upiId)
+    );
+  }, [footerData]);
+
+  const hasBankDetails = bankAccountList.length > 0;
 
   // Category Mega Menu & Navigation State
   const [allCategories, setAllCategories] = useState([]);
@@ -1649,7 +1718,7 @@ const PublicLayout = () => {
       </main>
 
       {footerData && <footer className="w-full bg-[#111111] text-white px-6 pt-10 text-left">
-        <div className="storefront-container grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-16 pb-9">
+        <div className={`storefront-container grid grid-cols-1 md:grid-cols-2 ${hasBankDetails ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-8 md:gap-10 pb-9`}>
           <div className="space-y-3">
             <h4 className="font-bold text-xl">{footerData.aboutHeading || 'About'}</h4>
             <p className="text-[15px] text-white/90 leading-7">
@@ -1710,7 +1779,7 @@ const PublicLayout = () => {
               );
             })()}
           </div>
-          <div className="space-y-3 text-[15px] text-white/90">
+          <div className="space-y-3.5 text-[15px] text-white/90">
             <h4 className="font-bold text-xl text-white mb-4">{footerData.contactHeading || 'Contact Details'}</h4>
             {footerData.address && (
               <a className="flex items-start gap-2 hover:text-white hover:underline leading-6" href={activeMapUrl} target="_blank" rel="noopener noreferrer">
@@ -1718,25 +1787,141 @@ const PublicLayout = () => {
                 <span>{footerData.address}</span>
               </a>
             )}
-            {footerData.phone && (
-              <a className="flex items-center gap-2 hover:text-white hover:underline" href={`tel:${activePhoneLink}`}>
-                <Phone className="w-4 h-4 shrink-0 text-primary" />
-                <span>{footerData.phone}</span>
-              </a>
-            )}
-            {footerData.whatsappNumber && (
-              <a className="flex items-center gap-2 hover:text-white hover:underline text-emerald-400" href={`https://wa.me/${activeWhatsappNumber}`} target="_blank" rel="noopener noreferrer">
-                <MessageCircle className="w-4 h-4 shrink-0 text-emerald-400" />
-                <span>+91 {footerData.whatsappNumber.replace(/\D/g, '').slice(-10)} (WhatsApp)</span>
-              </a>
-            )}
-            {footerData.email && (
-              <a className="flex items-center gap-2 hover:text-white hover:underline" href={`mailto:${footerData.email}`}>
-                <Mail className="w-4 h-4 shrink-0 text-blue-400" />
-                <span>{footerData.email}</span>
-              </a>
-            )}
+            {phoneList.map((item, idx) => {
+              const raw = item.number || '';
+              const link = raw.startsWith('+') ? raw : `+91${raw.replace(/\D/g, '').slice(-10)}`;
+              return (
+                <a key={`phone-${idx}`} className="flex items-center gap-2 hover:text-white hover:underline" href={`tel:${link}`}>
+                  <Phone className="w-4 h-4 shrink-0 text-primary" />
+                  <span>
+                    {raw}
+                    {item.label && <span className="text-xs text-gray-400 ml-1.5 font-normal">({item.label})</span>}
+                  </span>
+                </a>
+              );
+            })}
+            {whatsappList.map((item, idx) => {
+              const raw = item.number || '';
+              const cleaned = raw.replace(/\D/g, '');
+              const waLink = cleaned.length === 10 ? `91${cleaned}` : cleaned;
+              const displayNum = cleaned.length >= 10 ? `+91 ${cleaned.slice(-10)}` : raw;
+              return (
+                <a
+                  key={`wa-${idx}`}
+                  className="flex items-center gap-2 hover:text-white hover:underline text-emerald-400"
+                  href={`https://wa.me/${waLink}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <MessageCircle className="w-4 h-4 shrink-0 text-emerald-400" />
+                  <span>
+                    {displayNum}
+                    <span className="text-xs text-emerald-300/80 ml-1.5 font-normal">
+                      ({item.label || 'WhatsApp'})
+                    </span>
+                  </span>
+                </a>
+              );
+            })}
+            {emailList.map((item, idx) => {
+              const raw = item.email || '';
+              return (
+                <a key={`email-${idx}`} className="flex items-center gap-2 hover:text-white hover:underline" href={`mailto:${raw}`}>
+                  <Mail className="w-4 h-4 shrink-0 text-blue-400" />
+                  <span className="break-all">
+                    {raw}
+                    {item.label && <span className="text-xs text-gray-400 ml-1.5 font-normal">({item.label})</span>}
+                  </span>
+                </a>
+              );
+            })}
           </div>
+
+          {hasBankDetails && (
+            <div className="space-y-4 text-[14px]">
+              <h4 className="font-bold text-xl text-white mb-4 flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-amber-400 shrink-0" />
+                <span>{footerData.bankDetailsHeading || 'Bank Details'}</span>
+              </h4>
+              <div className="space-y-3">
+                {bankAccountList.map((bank, index) => (
+                  <div
+                    key={`bank-${index}`}
+                    className="rounded-lg border border-white/15 bg-white/[0.04] p-3.5 space-y-2 backdrop-blur-xs text-xs text-gray-300 hover:border-white/30 transition-colors shadow-2xs"
+                  >
+                    {bank.bankName && (
+                      <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-1.5">
+                        <span className="font-semibold text-white text-[13px]">{bank.bankName}</span>
+                        {bank.accountType && (
+                          <span className="text-[10px] font-medium tracking-wide uppercase px-1.5 py-0.5 rounded-sm bg-white/10 text-gray-200">
+                            {bank.accountType}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {bank.accountName && (
+                      <div className="flex flex-col">
+                        <span className="text-[10px] uppercase text-gray-400 tracking-wider">Beneficiary</span>
+                        <span className="font-medium text-gray-100">{bank.accountName}</span>
+                      </div>
+                    )}
+                    {bank.accountNumber && (
+                      <div className="flex items-center justify-between gap-2 bg-black/40 px-2.5 py-1.5 rounded-sm border border-white/10">
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[9px] uppercase text-gray-400 tracking-wider font-semibold">A/C Number</span>
+                          <span className="font-mono text-white text-[12px] font-medium tracking-wider truncate select-all">{bank.accountNumber}</span>
+                        </div>
+                        <CopyButton textToCopy={bank.accountNumber} label="A/C Number" />
+                      </div>
+                    )}
+                    {bank.ifscCode && (
+                      <div className="flex items-center justify-between gap-2 bg-black/40 px-2.5 py-1.5 rounded-sm border border-white/10">
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[9px] uppercase text-gray-400 tracking-wider font-semibold">IFSC Code</span>
+                          <span className="font-mono text-amber-300 text-[12px] font-medium tracking-wider truncate select-all">{bank.ifscCode}</span>
+                        </div>
+                        <CopyButton textToCopy={bank.ifscCode} label="IFSC Code" />
+                      </div>
+                    )}
+                    {bank.branch && (
+                      <div className="text-[11px] text-gray-400">
+                        <span className="text-gray-500">Branch: </span>{bank.branch}
+                      </div>
+                    )}
+                    {bank.upiId && (
+                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[9px] uppercase text-gray-400 tracking-wider font-semibold">UPI ID</span>
+                          <span className="font-mono text-emerald-400 text-[11px] truncate select-all">{bank.upiId}</span>
+                        </div>
+                        <CopyButton textToCopy={bank.upiId} label="UPI ID" />
+                      </div>
+                    )}
+                    {bank.qrCodeUrl && (
+                      <div className="pt-1.5 flex items-center gap-2.5">
+                        <a
+                          href={bank.qrCodeUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group relative inline-block rounded-md overflow-hidden border border-white/20 bg-white p-1 hover:border-amber-400 transition"
+                          title="Click to view QR code"
+                        >
+                          <img
+                            src={bank.qrCodeUrl}
+                            alt="Payment QR Code"
+                            className="w-10 h-10 object-contain"
+                          />
+                        </a>
+                        <span className="text-[11px] text-gray-300 leading-tight">
+                          Scan to pay via any UPI app
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         <p className="storefront-container border-t border-white/15 py-5 text-center text-sm text-white/90">
           {(footerData.copyrightText || '© {year} {company}. All Rights Reserved.').replace(/\{year\}/g, String(new Date().getFullYear())).replace(/\{company\}/g, footerData.companyName || '')}

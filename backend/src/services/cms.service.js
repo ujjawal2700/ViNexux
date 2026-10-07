@@ -311,25 +311,92 @@ export const getPublicActiveTrustBadges = async () => {
 // 5. FOOTER CONTENT SERVICE
 // ==========================================
 
+const normalizeFooter = (footer) => {
+  if (!footer) return null;
+  const doc = typeof footer.toObject === 'function' ? footer.toObject() : { ...footer };
+
+  // Backwards compatibility fallbacks
+  if ((!doc.phoneNumbers || doc.phoneNumbers.length === 0) && doc.phone) {
+    doc.phoneNumbers = [{ number: doc.phone, label: 'Primary' }];
+  } else if (!doc.phoneNumbers) {
+    doc.phoneNumbers = [];
+  }
+
+  if ((!doc.whatsappNumbers || doc.whatsappNumbers.length === 0) && doc.whatsappNumber) {
+    doc.whatsappNumbers = [{ number: doc.whatsappNumber, label: 'WhatsApp' }];
+  } else if (!doc.whatsappNumbers) {
+    doc.whatsappNumbers = [];
+  }
+
+  if ((!doc.emails || doc.emails.length === 0) && doc.email) {
+    doc.emails = [{ email: doc.email, label: 'Primary' }];
+  } else if (!doc.emails) {
+    doc.emails = [];
+  }
+
+  if (!doc.bankAccounts) {
+    doc.bankAccounts = [];
+  }
+  if (!doc.bankDetailsHeading) {
+    doc.bankDetailsHeading = 'Bank Details';
+  }
+  if (doc.showBankDetails === undefined) {
+    doc.showBankDetails = true;
+  }
+
+  return doc;
+};
+
 export const getFooterContent = async () => {
   let footer = await FooterContent.findOne({}).sort({ updatedAt: -1 }).lean();
   if (!footer) {
     footer = await FooterContent.create({ companyName: 'Vinexus', isActive: true });
+    footer = footer.toObject ? footer.toObject() : footer;
   }
-  return footer;
+  return normalizeFooter(footer);
 };
 
 export const updateFooterContent = async (payload) => {
+  const updateData = { ...payload };
+
+  // Sync primary phone, email, whatsapp with arrays if provided
+  if (Array.isArray(updateData.phoneNumbers) && updateData.phoneNumbers.length > 0) {
+    const firstPhone = updateData.phoneNumbers[0]?.number;
+    if (firstPhone && !updateData.phone) {
+      updateData.phone = firstPhone;
+    }
+  } else if (updateData.phone && (!updateData.phoneNumbers || updateData.phoneNumbers.length === 0)) {
+    updateData.phoneNumbers = [{ number: updateData.phone, label: 'Primary' }];
+  }
+
+  if (Array.isArray(updateData.whatsappNumbers) && updateData.whatsappNumbers.length > 0) {
+    const firstWa = updateData.whatsappNumbers[0]?.number;
+    if (firstWa && !updateData.whatsappNumber) {
+      updateData.whatsappNumber = firstWa;
+    }
+  } else if (updateData.whatsappNumber && (!updateData.whatsappNumbers || updateData.whatsappNumbers.length === 0)) {
+    updateData.whatsappNumbers = [{ number: updateData.whatsappNumber, label: 'WhatsApp' }];
+  }
+
+  if (Array.isArray(updateData.emails) && updateData.emails.length > 0) {
+    const firstEmail = updateData.emails[0]?.email;
+    if (firstEmail && !updateData.email) {
+      updateData.email = firstEmail;
+    }
+  } else if (updateData.email && (!updateData.emails || updateData.emails.length === 0)) {
+    updateData.emails = [{ email: updateData.email, label: 'Primary' }];
+  }
+
   let footer = await FooterContent.findOne({}).sort({ updatedAt: -1 });
   if (!footer) {
-    footer = await FooterContent.create({ ...payload, isActive: payload.isActive !== false });
+    footer = await FooterContent.create({ ...updateData, isActive: updateData.isActive !== false });
   } else {
-    footer = await FooterContent.findByIdAndUpdate(footer._id, { ...payload, isActive: payload.isActive !== false }, {
+    footer = await FooterContent.findByIdAndUpdate(footer._id, { ...updateData, isActive: updateData.isActive !== false }, {
       new: true,
       runValidators: true,
     });
   }
-  return footer;
+  return normalizeFooter(footer);
 };
 
 export const getPublicFooterContent = async () => {
@@ -337,7 +404,7 @@ export const getPublicFooterContent = async () => {
   if (!footer) {
     footer = await FooterContent.findOne({}).sort({ updatedAt: -1 }).lean();
   }
-  return footer || null;
+  return normalizeFooter(footer);
 };
 
 // ==========================================

@@ -305,7 +305,7 @@ export const CartPage = () => {
       try {
         const footerRes = await contentService.getFooterContent();
         const footer = footerRes?.data?.footer || footerRes?.footer || footerRes?.data;
-        const phoneRaw = footer?.whatsappNumber || '8769959424';
+        const phoneRaw = footer?.whatsappNumbers?.[0]?.number || footer?.whatsappNumber || '8769959424';
         const cleaned = phoneRaw.replace(/\D/g, '');
         if (cleaned.length >= 10) {
           setSupportPhone(cleaned.startsWith('91') ? cleaned : `91${cleaned.slice(-10)}`);

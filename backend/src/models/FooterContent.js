@@ -26,6 +26,101 @@ const footerLinkSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const phoneContactSchema = new mongoose.Schema(
+  {
+    number: {
+      type: String,
+      required: [true, 'Phone number is required'],
+      trim: true,
+    },
+    label: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+  },
+  { _id: false }
+);
+
+const whatsappContactSchema = new mongoose.Schema(
+  {
+    number: {
+      type: String,
+      required: [true, 'WhatsApp number is required'],
+      trim: true,
+    },
+    label: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+  },
+  { _id: false }
+);
+
+const emailContactSchema = new mongoose.Schema(
+  {
+    email: {
+      type: String,
+      required: [true, 'Email address is required'],
+      trim: true,
+      lowercase: true,
+    },
+    label: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+  },
+  { _id: false }
+);
+
+const bankAccountSchema = new mongoose.Schema(
+  {
+    accountName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    bankName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    accountNumber: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    ifscCode: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    branch: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    accountType: {
+      type: String,
+      trim: true,
+      default: 'Current Account',
+    },
+    upiId: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    qrCodeUrl: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+  },
+  { _id: false }
+);
+
 const footerContentSchema = new mongoose.Schema(
   {
     companyName: {
@@ -54,6 +149,15 @@ const footerContentSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: 'Please confirm live stock availability, delivery timeline & share official GST commercial invoice.',
+    },
+    phoneNumbers: [phoneContactSchema],
+    whatsappNumbers: [whatsappContactSchema],
+    emails: [emailContactSchema],
+    bankAccounts: [bankAccountSchema],
+    bankDetailsHeading: { type: String, trim: true, default: 'Bank Details' },
+    showBankDetails: {
+      type: Boolean,
+      default: true,
     },
     address: {
       type: String,

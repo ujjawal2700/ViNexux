@@ -53,8 +53,8 @@ const LegalPage = ({ type }) => {
       });
     return () => { active = false; };
   }, [legalSlug, privacy]);
-  const contactEmail = footer?.email || 'vinexus2024@gmail.com';
-  const contactPhone = footer?.phone || '8003923316';
+  const contactEmail = footer?.emails?.[0]?.email || footer?.email || 'vinexus2024@gmail.com';
+  const contactPhone = footer?.phoneNumbers?.[0]?.number || footer?.phone || '8003923316';
   const contactPhoneLink = contactPhone.startsWith('+') ? contactPhone : `+91${contactPhone.replace(/\D/g, '').slice(-10)}`;
 
   return (
