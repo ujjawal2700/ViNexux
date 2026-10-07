@@ -46,6 +46,13 @@ export const CartPage = () => {
   const [supportPhone, setSupportPhone] = useState('918769959424');
   const [whatsappNote, setWhatsappNote] = useState('Please confirm live stock availability, delivery timeline & share official GST commercial invoice.');
 
+  // Raw items array from cart
+  const rawItems = cart?.items || [];
+  // Filter valid items where product exists
+  const items = useMemo(() => {
+    return rawItems.filter((item) => item && (item.productId?._id || item.productId));
+  }, [rawItems]);
+
   // Format Currency (INR ₹)
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -329,13 +336,6 @@ export const CartPage = () => {
     window.addEventListener('cart-updated', handleCartUpdated);
     return () => window.removeEventListener('cart-updated', handleCartUpdated);
   }, [fetchCartData]);
-
-  // Raw items array from cart
-  const rawItems = cart?.items || [];
-  // Filter valid items where product exists
-  const items = useMemo(() => {
-    return rawItems.filter((item) => item && (item.productId?._id || item.productId));
-  }, [rawItems]);
 
   // Checkbox Selection Handlers
   const isAllSelected = items.length > 0 && items.every((i) => {
