@@ -6,6 +6,7 @@ import Modal from '../../components/ui/Modal';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import SearchInput from '../../components/ui/SearchInput';
 import Select from '../../components/ui/Select';
 import Textarea from '../../components/ui/Textarea';
 import FormField from '../../components/ui/FormField';
@@ -16,7 +17,7 @@ import EmptyState from '../../components/ui/EmptyState';
 import ErrorState from '../../components/ui/ErrorState';
 import Toast from '../../components/ui/Toast';
 import Pagination from '../../components/ui/Pagination';
-import { Plus, Edit2, Trash2, GitBranch, Search, Layers, FolderTree, Info, Lock } from 'lucide-react';
+import { Plus, Edit2, Trash2, GitBranch, Search, Layers, FolderTree, Info, Lock, RotateCcw } from 'lucide-react';
 import { slugify, cleanCategorySlug } from '../../utils/categoryUrls';
 import CategoryFilterBuilder from '../../components/admin/CategoryFilterBuilder';
 
@@ -294,61 +295,84 @@ const AdminSubCategoriesPage = () => {
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white border border-gray-200 rounded-xl p-3 flex flex-col md:flex-row items-center justify-between gap-3 shadow-xs">
-        <div className="relative w-full md:w-64">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search sub categories..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 focus:outline-none focus:border-primary"
-          />
-        </div>
+      <div className="bg-white border border-gray-200 rounded-2xl p-3 sm:p-4 shadow-2xs">
+        <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3">
+          {/* Search Input on the left */}
+          <div className="flex-1 min-w-[220px] max-w-md">
+            <SearchInput
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search sub categories by name or slug..."
+            />
+          </div>
 
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-          {/* Header Category Filter */}
-          <Select
-            value={headerFilter}
-            onChange={(e) => {
-              setHeaderFilter(e.target.value);
-              setMainFilter(''); // reset main filter when header changes
-            }}
-            options={[
-              { value: '', label: 'All Header Categories' },
-              ...headerCategories.map((h) => ({
-                value: h._id,
-                label: `Header: ${h.name}`,
-              })),
-            ]}
-            className="w-full sm:w-48 text-xs"
-          />
+          {/* Filter Dropdowns on the right */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full xl:w-auto">
+            {/* Header Category Filter */}
+            <div className="w-full sm:w-48 shrink-0">
+              <Select
+                value={headerFilter}
+                onChange={(e) => {
+                  setHeaderFilter(e.target.value);
+                  setMainFilter(''); // reset main filter when header changes
+                }}
+                options={[
+                  { value: '', label: 'All Header Categories' },
+                  ...headerCategories.map((h) => ({
+                    value: h._id,
+                    label: `Header: ${h.name}`,
+                  })),
+                ]}
+              />
+            </div>
 
-          {/* Main Category Filter */}
-          <Select
-            value={mainFilter}
-            onChange={(e) => setMainFilter(e.target.value)}
-            options={[
-              { value: '', label: 'All Main Categories' },
-              ...filteredMainOptions.map((m) => ({
-                value: m._id,
-                label: `Main: ${m.name}`,
-              })),
-            ]}
-            className="w-full sm:w-48 text-xs"
-          />
+            {/* Main Category Filter */}
+            <div className="w-full sm:w-48 shrink-0">
+              <Select
+                value={mainFilter}
+                onChange={(e) => setMainFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'All Main Categories' },
+                  ...filteredMainOptions.map((m) => ({
+                    value: m._id,
+                    label: `Main: ${m.name}`,
+                  })),
+                ]}
+              />
+            </div>
 
-          {/* Status Filter */}
-          <Select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            options={[
-              { value: '', label: 'All Statuses' },
-              { value: 'true', label: 'Active Only' },
-              { value: 'false', label: 'Inactive Only' },
-            ]}
-            className="w-full sm:w-36 text-xs"
-          />
+            {/* Status Filter */}
+            <div className="w-full sm:w-36 shrink-0">
+              <Select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'All Statuses' },
+                  { value: 'true', label: 'Active Only' },
+                  { value: 'false', label: 'Inactive Only' },
+                ]}
+              />
+            </div>
+
+            {/* Reset Button */}
+            {(searchTerm || headerFilter || mainFilter || statusFilter) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearchTerm('');
+                  setHeaderFilter('');
+                  setMainFilter('');
+                  setStatusFilter('');
+                }}
+                className="text-xs shrink-0 h-10 px-3 rounded-xl border-gray-200 text-gray-600 hover:text-[#800020] hover:border-[#800020]/30"
+                title="Reset all filters"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                Reset
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 

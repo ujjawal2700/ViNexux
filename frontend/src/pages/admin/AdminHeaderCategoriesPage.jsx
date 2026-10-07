@@ -6,6 +6,7 @@ import Modal from '../../components/ui/Modal';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import SearchInput from '../../components/ui/SearchInput';
 import Select from '../../components/ui/Select';
 import Textarea from '../../components/ui/Textarea';
 import FormField from '../../components/ui/FormField';
@@ -16,7 +17,7 @@ import EmptyState from '../../components/ui/EmptyState';
 import ErrorState from '../../components/ui/ErrorState';
 import Toast from '../../components/ui/Toast';
 import Pagination from '../../components/ui/Pagination';
-import { Plus, Edit2, Trash2, Layers, Search, ArrowUpDown, Lock } from 'lucide-react';
+import { Plus, Edit2, Trash2, Layers, Search, ArrowUpDown, Lock, RotateCcw } from 'lucide-react';
 import { slugify, cleanCategorySlug } from '../../utils/categoryUrls';
 import CategoryIcon from '../../components/ui/CategoryIcon';
 import CategoryFilterBuilder from '../../components/admin/CategoryFilterBuilder';
@@ -257,29 +258,48 @@ const AdminHeaderCategoriesPage = () => {
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="bg-white border border-gray-200 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search header categories..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 focus:outline-none focus:border-primary"
-          />
-        </div>
+      <div className="bg-white border border-gray-200 rounded-2xl p-3 sm:p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          {/* Search Input on the left */}
+          <div className="flex-1 min-w-[240px] max-w-md">
+            <SearchInput
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search header categories by name or slug..."
+            />
+          </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <Select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            options={[
-              { value: '', label: 'All Statuses' },
-              { value: 'true', label: 'Active Only' },
-              { value: 'false', label: 'Inactive Only' },
-            ]}
-            className="w-full sm:w-40 text-xs"
-          />
+          {/* Filter Dropdown on the right */}
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            <div className="w-full sm:w-40 shrink-0">
+              <Select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'All Statuses' },
+                  { value: 'true', label: 'Active Only' },
+                  { value: 'false', label: 'Inactive Only' },
+                ]}
+              />
+            </div>
+
+            {/* Reset Button */}
+            {(searchTerm || statusFilter) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearchTerm('');
+                  setStatusFilter('');
+                }}
+                className="text-xs shrink-0 h-10 px-3 rounded-xl border-gray-200 text-gray-600 hover:text-[#800020] hover:border-[#800020]/30"
+                title="Reset all filters"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                Reset
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 

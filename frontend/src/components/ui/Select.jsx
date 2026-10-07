@@ -14,6 +14,7 @@ export const Select = React.forwardRef(({
   options = [],
   placeholder = 'Select an option...',
   className = '',
+  containerClassName = '',
   id,
   children,
   value,
@@ -83,7 +84,7 @@ export const Select = React.forwardRef(({
   };
 
   const selectNode = (
-    <div className="relative w-full">
+    <div className={cn('relative w-full', containerClassName)}>
       <input
         type="hidden"
         name={props.name || selectId}
