@@ -20,8 +20,6 @@ import useCatalogBrands from '../hooks/useCatalogBrands';
 import { openStorageChoices } from '../utils/storageConsent';
 import {
   Search,
-  Mic,
-  Camera,
   Phone,
   Store,
   Heart,
@@ -968,13 +966,13 @@ const PublicLayout = () => {
             </div>
           </div>
 
-          {/* Row 2: Full-width Pill Search Bar with Mic, Camera & Autocomplete */}
+          {/* Row 2: Full-width Pill Search Bar with Autocomplete */}
           <div ref={mobileSearchRef} className="relative w-full">
             <form onSubmit={handleSearchSubmit} className="flex w-full items-center relative rounded-full bg-[#fdfbf7] shadow-inner border border-transparent overflow-visible">
               <button type="submit" className="pl-3.5 pr-1.5 text-gray-500 hover:text-primary transition-colors cursor-pointer" aria-label="Search products">
                 <Search className="h-4 w-4" />
               </button>
-              <div className="relative min-w-0 flex-1 flex items-center">
+              <div className="relative min-w-0 flex-1 flex items-center pr-3">
                 <input
                   type="text"
                   placeholder="Search laptops, printers, RAM, SSD..."
@@ -990,12 +988,6 @@ const PublicLayout = () => {
                 />
                 {renderSearchDropdown()}
               </div>
-              <button type="button" title="Voice Search" className="px-2 text-gray-500 hover:text-primary transition-colors">
-                <Mic className="h-4 w-4" />
-              </button>
-              <button type="button" title="Image Search" className="pl-1 pr-3 text-gray-500 hover:text-primary transition-colors">
-                <Camera className="h-4 w-4" />
-              </button>
             </form>
           </div>
         </div>
@@ -1027,7 +1019,7 @@ const PublicLayout = () => {
               </Link>
             )}
 
-            {/* Search Bar with Mic, Camera & Maroon Search Button (Expands cleanly to eliminate gap) */}
+            {/* Search Bar with Maroon Search Button (Expands cleanly to eliminate gap) */}
             <form
               ref={desktopSearchRef}
               onSubmit={handleSearchSubmit}
@@ -1045,26 +1037,8 @@ const PublicLayout = () => {
                     setHeaderSearch(e.target.value);
                     if (e.target.value.trim()) setIsSearchOpen(true);
                   }}
-                  className="w-full h-11 pl-4 pr-16 bg-gray-50 hover:bg-white focus:bg-white text-gray-900 placeholder-gray-400 text-sm rounded-l-md border border-r-0 border-gray-300 focus:border-primary focus:outline-none transition-all shadow-inner"
+                  className="w-full h-11 px-4 bg-gray-50 hover:bg-white focus:bg-white text-gray-900 placeholder-gray-400 text-sm rounded-l-md border border-r-0 border-gray-300 focus:border-primary focus:outline-none transition-all shadow-inner"
                 />
-
-                {/* Mic & Camera quick buttons */}
-                <div className="absolute right-2.5 flex items-center gap-1.5 text-gray-400">
-                  <button
-                    type="button"
-                    title="Voice Search"
-                    className="hover:text-primary transition-colors p-1"
-                  >
-                    <Mic className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    title="Search by Image"
-                    className="hover:text-primary transition-colors p-1"
-                  >
-                    <Camera className="w-4 h-4" />
-                  </button>
-                </div>
 
                 {renderSearchDropdown()}
               </div>
