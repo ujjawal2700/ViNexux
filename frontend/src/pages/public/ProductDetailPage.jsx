@@ -9,7 +9,7 @@ import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
 import usePageSeo from '../../hooks/usePageSeo';
 import ProductCard from '../../components/products/ProductCard';
-import { extractProductId, buildCategoryPath, buildCategoryTrail, buildBrandUrl } from '../../utils/categoryUrls';
+import { extractProductId, buildCategoryPath, buildCategoryTrail, buildBrandUrl, cleanBrandSlug } from '../../utils/categoryUrls';
 import { Image } from '../../components/ui/Image';
 import { Skeleton } from '../../components/ui/Skeleton';
 import NotFoundPage from './NotFoundPage';
@@ -170,11 +170,12 @@ export const ProductDetailPage = () => {
   // Compute Breadcrumb Trail
   const breadcrumbTrail = useMemo(() => {
     if (brandSlug) {
-      const brandDisplayName = brandSlug.replace(/-/g, ' ').toUpperCase();
+      const cleanSlug = cleanBrandSlug(brandSlug);
+      const brandDisplayName = cleanSlug.replace(/-/g, ' ').toUpperCase();
       return [
         { label: 'Home', path: '/' },
         { label: 'Brands', path: '/brands' },
-        { label: brandDisplayName, path: `/brands/${brandSlug}` },
+        { label: brandDisplayName, path: `/brands/${cleanSlug}` },
         { label: product?.name || 'Product Details', path: null },
       ];
     }

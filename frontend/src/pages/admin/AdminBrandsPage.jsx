@@ -10,7 +10,7 @@ import {
   Sparkles,
   Lock,
 } from 'lucide-react';
-import { slugify } from '../../utils/categoryUrls';
+import { slugify, cleanBrandSlug } from '../../utils/categoryUrls';
 import adminService from '../../services/adminService';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import FilterBar from '../../components/admin/FilterBar';
@@ -34,15 +34,6 @@ const emptyForm = {
   description: '',
   isActive: true,
   sortOrder: 0,
-};
-
-const cleanBrandSlug = (brand) => {
-  if (!brand) return '';
-  const raw = (brand.slug || '').toString().trim();
-  if (!raw || /https?:|\/|www\./i.test(raw)) {
-    return slugify(brand.name || '');
-  }
-  return slugify(raw) || slugify(brand.name || '');
 };
 
 export default function AdminBrandsPage() {

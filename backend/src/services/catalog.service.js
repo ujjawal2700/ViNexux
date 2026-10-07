@@ -226,13 +226,17 @@ const buildBrandMatch = (brand, managedBrandId) => (managedBrandId ? {
 // Resolve a brand slug with one indexed lookup; only legacy specification-only
 // brands (no Brand document) need the full brand aggregation.
 const resolveBrandSlug = async (brandSlug) => {
-  let managed = await Brand.findOne({ slug: brandSlug, isActive: true }).select('_id name').lean();
+  const normalizedSlug = slugify(brandSlug);
+  let managed = await Brand.findOne({ slug: normalizedSlug, isActive: true }).select('_id name').lean();
   if (!managed) {
     const all = await Brand.find({ isActive: true }).select('_id name slug').lean();
-    managed = all.find((item) => slugify(item.name) === brandSlug || slugify(item.slug) === brandSlug);
+    managed = all.find((item) => {
+      const cleanSlug = (/https?:|\/|www\./i.test(item.slug) || !item.slug) ? slugify(item.name) : slugify(item.slug);
+      return cleanSlug === normalizedSlug || slugify(item.name) === normalizedSlug || slugify(item.slug) === normalizedSlug;
+    });
   }
   if (managed) return { brand: managed.name, managedBrandId: managed._id };
-  const legacy = (await getPublicBrands()).find((item) => item.slug === brandSlug);
+  const legacy = (await getPublicBrands()).find((item) => item.slug === normalizedSlug);
   return { brand: legacy?.name || '__unknown_brand__', managedBrandId: legacy?._id || null };
 };
 
@@ -398,7 +402,16 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   const byId = new Map(categories.map((category) => [String(category._id), category]));
   const productBrandIds = result.products.map((product) => product.brandId).filter(Boolean);
   const productBrands = productBrandIds.length ? await Brand.find({ _id: { $in: productBrandIds }, isActive: true }).lean() : [];
-  const brandById = new Map(productBrands.map((brand) => [String(brand._id), brand]));
+  const cleanBrand = (brand) => {
+    if (!brand) return brand;
+    const raw = (brand.slug || '').toString().trim();
+    const cleanSlug = (!raw || /https?:|\/|www\./i.test(raw)) ? slugify(brand.name) : slugify(raw);
+    return {
+      ...brand,
+      slug: cleanSlug,
+    };
+  };
+  const brandById = new Map(productBrands.map((brand) => [String(brand._id), cleanBrand(brand)]));
   const categoryPathFor = (categoryId) => {
     const slugs = [];
     const visited = new Set();

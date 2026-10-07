@@ -9,6 +9,19 @@ import { ERROR_CODES } from '../constants/errorCodes.js';
 import { effectiveFilterDefinitions, getPublicCategories } from './catalog.service.js';
 import { findCategoryAndDescendantIds } from './category.service.js';
 
+const slugify = (value = '') => (value || '').toString().toLowerCase().trim().replace(/^https?:\/\/(www\.)?/i, '').replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+const sanitizeBrandSlug = (brand) => {
+  if (!brand || typeof brand !== 'object') return brand;
+  const raw = (brand.slug || '').toString().trim();
+  if (!raw || /https?:|\/|www\./i.test(raw)) {
+    brand.slug = slugify(brand.name || raw);
+  } else {
+    brand.slug = slugify(raw) || slugify(brand.name);
+  }
+  return brand;
+};
+
 const validateCategorySpecifications = async (categoryId, specifications = []) => {
   const categories = await getPublicCategories();
   const definitions = effectiveFilterDefinitions(categories, categoryId);
@@ -267,6 +280,14 @@ isActive,
 
     const totalPages = Math.ceil(total / parsedLimit);
 
+    if (products && products.length) {
+      products.forEach((p) => {
+        if (p.brandId) {
+          sanitizeBrandSlug(p.brandId);
+        }
+      });
+    }
+
     return {
       products,
       pagination: {
@@ -294,6 +315,10 @@ isActive,
 
     if (!product) {
       throw new AppError('Product not found.', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
+    }
+
+    if (product.brandId) {
+      sanitizeBrandSlug(product.brandId);
     }
 
     return product;

@@ -193,13 +193,35 @@ export const buildCategoryTrail = (category, allCategories = []) => {
 };
 
 /**
+ * Clean brand slug by stripping URLs, path separators, and fallback to name slug
+ */
+export const cleanBrandSlug = (brand) => {
+  if (!brand) return '';
+  const raw = typeof brand === 'object' ? (brand?.slug || '') : String(brand || '');
+  const name = typeof brand === 'object' ? (brand?.name || '') : '';
+  const rawStr = String(raw).trim();
+  if (!rawStr || /https?:|\/|www\./i.test(rawStr)) {
+    if (name) {
+      return slugify(name);
+    }
+    const stripped = rawStr
+      .replace(/^https?:\/\//i, '')
+      .replace(/^www\./i, '')
+      .replace(/\/+$/, '');
+    const firstSegment = stripped.split('/')[0];
+    const domainWithoutTld = firstSegment.split('.')[0];
+    return slugify(domainWithoutTld || stripped);
+  }
+  return slugify(rawStr) || slugify(name);
+};
+
+/**
  * Build brand URL
  */
 export const buildBrandUrl = (brand = '') => {
-  const brandSlug = typeof brand === 'object' ? brand?.slug : '';
-  const brandName = typeof brand === 'object' ? brand?.name : brand;
-  if (!brandSlug && !brandName) return '/brands';
-  return `/brands/${brandSlug || slugify(brandName)}`;
+  const slug = cleanBrandSlug(brand);
+  if (!slug) return '/brands';
+  return `/brands/${slug}`;
 };
 
 /**
