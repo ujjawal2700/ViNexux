@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import adminService from '../../services/adminService';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import FilterBar from '../../components/admin/FilterBar';
@@ -24,6 +24,7 @@ Image as ImageIcon,
 
 const AdminProductsPage = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [categoriesList, setCategoriesList] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, totalPages: 1, total: 0 });
@@ -43,7 +44,12 @@ const AdminProductsPage = () => {
   }, [search]);
   const [categoryIdFilter, setCategoryIdFilter] = useState('');
   const [isActiveFilter, setIsActiveFilter] = useState('');
-  const [page, setPage] = useState(1);
+
+  // Restore page from URL query param (?page=3) so navigating Back to Products restores the correct page
+  const [page, setPage] = useState(() => {
+    const p = parseInt(new URLSearchParams(window.location.search).get('page'), 10);
+    return p > 0 ? p : 1;
+  });
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('desc');
 
@@ -53,6 +59,22 @@ const AdminProductsPage = () => {
 
   // Toast Notifications
   const [toast, setToast] = useState(null);
+
+  // Keep URL in sync with page state so that "Back to Products" restores the correct page
+  useEffect(() => {
+    const current = parseInt(searchParams.get('page'), 10) || 1;
+    if (page !== current) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (page === 1) {
+          next.delete('page');
+        } else {
+          next.set('page', String(page));
+        }
+        return next;
+      }, { replace: true });
+    }
+  }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -125,7 +147,7 @@ const AdminProductsPage = () => {
           <Button variant="outline" size="sm" onClick={() => navigate('/admin/products/import')}>
             <FileSpreadsheet className="w-4 h-4 mr-1.5" /> Bulk Import
           </Button>
-          <Button variant="primary" size="sm" onClick={() => navigate('/admin/products/new')}>
+          <Button variant="primary" size="sm" onClick={() => navigate('/admin/products/new', { state: { returnPage: page } })}>
             <Plus className="w-4 h-4 mr-1.5" /> Add Product
           </Button>
         </div>}
@@ -246,7 +268,7 @@ const AdminProductsPage = () => {
                   <Table.Row
                     key={prod._id}
                     className="cursor-pointer"
-                    onClick={() => navigate(`/admin/products/${prod._id}`)}
+                    onClick={() => navigate(`/admin/products/${prod._id}`, { state: { returnPage: page } })}
                   >
                     <Table.Cell onClick={(e) => e.stopPropagation()}>
                       <div className="w-11 h-11 rounded-lg overflow-hidden border border-border bg-muted flex items-center justify-center">
@@ -281,7 +303,7 @@ const AdminProductsPage = () => {
                           variant="ghost"
                           size="sm"
                           iconOnly
-                          onClick={() => navigate(`/admin/products/${prod._id}`)}
+                          onClick={() => navigate(`/admin/products/${prod._id}`, { state: { returnPage: page } })}
                           title="Edit Product"
                           className="bg-muted/80 hover:bg-primary/20 text-foreground hover:text-primary border border-border hover:border-primary/40 transition-all shadow-xs"
                         >

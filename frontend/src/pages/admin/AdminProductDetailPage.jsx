@@ -5,7 +5,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import adminService from "../../services/adminService";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
@@ -79,7 +79,26 @@ const QUICK_SPEC_KEYS = [
 const AdminProductDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const isCreateMode = !id || id === "new";
+
+  // Retain return page from location.state or query params (?returnPage=3)
+  const returnPage = useMemo(() => {
+    const fromState = location.state?.returnPage;
+    if (fromState && Number(fromState) > 0) return Number(fromState);
+    const sp = new URLSearchParams(location.search);
+    const fromQuery = sp.get("returnPage") || sp.get("page");
+    if (fromQuery && Number(fromQuery) > 0) return Number(fromQuery);
+    return null;
+  }, [location.state, location.search]);
+
+  const handleBackToProducts = useCallback(() => {
+    if (returnPage && returnPage > 1) {
+      navigate(`/admin/products?page=${returnPage}`);
+    } else {
+      navigate("/admin/products");
+    }
+  }, [navigate, returnPage]);
 
   const [activeTab, setActiveTab] = useState("general");
   const [product, setProduct] = useState(null);
@@ -653,7 +672,7 @@ const AdminProductDetailPage = () => {
           type: "success",
         });
         setTimeout(() => {
-          navigate("/admin/products");
+          handleBackToProducts();
         }, 1200);
       } else {
         await adminService.updateProduct(id, payload);
@@ -699,7 +718,7 @@ const AdminProductDetailPage = () => {
       <div className="space-y-6">
         <Button
           variant="ghost"
-          onClick={() => navigate("/admin/products")}
+          onClick={handleBackToProducts}
           leftIcon={<ArrowLeft className="w-4 h-4" />}>
           Back to Products
         </Button>
@@ -727,8 +746,8 @@ const AdminProductDetailPage = () => {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate("/admin/products")}
-            className="inline-flex items-center gap-2 text-xs font-bold text-gray-600 hover:text-[#800020] transition-colors bg-gray-50 hover:bg-[#fdf2f4] px-3 py-2 rounded-xl border border-gray-200">
+            onClick={handleBackToProducts}
+            className="inline-flex items-center gap-2 text-xs font-bold text-gray-600 hover:text-[#800020] transition-colors bg-gray-50 hover:bg-[#fdf2f4] px-3 py-2 rounded-xl border border-gray-200 cursor-pointer">
             <ArrowLeft className="w-4 h-4 text-[#800020]" />
             <span>Back to Products</span>
           </button>
@@ -752,7 +771,7 @@ const AdminProductDetailPage = () => {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate("/admin/products")}
+            onClick={handleBackToProducts}
             disabled={formSubmitting}
             className="border-gray-300 text-gray-700 hover:bg-gray-100 font-semibold px-4 text-xs h-10">
             Cancel

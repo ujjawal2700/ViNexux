@@ -27,6 +27,7 @@ import {
   GitBranch,
   Tags,
   Settings2,
+  RefreshCw,
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -36,6 +37,12 @@ const AdminLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pendingKycCount, setPendingKycCount] = useState(0);
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefreshPanel = () => {
+    setIsRefreshing(true);
+    window.location.reload();
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -301,6 +308,18 @@ const AdminLayout = () => {
             </div>
           </div>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <button
+              type="button"
+              onClick={handleRefreshPanel}
+              disabled={isRefreshing}
+              title="Refresh admin panel"
+              aria-label="Refresh entire panel"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border bg-card hover:bg-muted/80 text-foreground hover:text-primary transition-all duration-200 shadow-2xs hover:shadow-xs cursor-pointer text-xs font-semibold select-none disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-primary ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+            <div className="h-4 w-px bg-border hidden sm:block" />
             <Link to="/admin/profile" className="hover:text-primary transition-colors">
               Admin: <strong className="text-foreground font-bold underline decoration-primary/30 underline-offset-4">{currentAdmin?.fullName || currentAdmin?.name || currentAdmin?.email || 'Administrator'}</strong>
             </Link>
