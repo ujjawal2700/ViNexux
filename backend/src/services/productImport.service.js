@@ -269,7 +269,7 @@ export const prepareProductImport = async (workbookBuffer, archiveBuffer) => {
     const category = sub || main || header;
     const brand = findOrPlanBrand(fields.Brand, errors);
     const imageNames = clean(fields['Image Files (Optional)'] ?? fields['Image Files']).split(',').map(clean).filter(Boolean);
-    if (imageNames.length > 5) errors.push('Maximum 5 images per product.');
+    if (imageNames.length > 7) errors.push('Maximum 7 images per product.');
     for (const name of imageNames) {
       const key = normalized(name);
       if (!images.has(key)) errors.push(`Image not found in ZIP: ${name}`);

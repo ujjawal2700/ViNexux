@@ -1093,15 +1093,19 @@ const AdminProductDetailPage = () => {
                       id="variant-file-input"
                       type="file"
                       accept="image/*"
+                      multiple
                       className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
+                      onChange={async (e) => {
+                        const files = Array.from(e.target.files || []);
+                        if (!files.length) return;
                         if (isCreateMode) {
-                          handleStageFile(file);
+                          files.forEach(handleStageFile);
                         } else {
-                          handleEditModeUpload(file);
+                          for (const file of files) {
+                            await handleEditModeUpload(file);
+                          }
                         }
+                        e.target.value = "";
                       }}
                     />
                     <Button
@@ -1119,8 +1123,8 @@ const AdminProductDetailPage = () => {
                   </div>
                 </div>
 
-                {/* 5-slot visual image gallery */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                {/* 7-slot visual image gallery */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3">
                   {[...imagesList, ...stagedImages].map((img, idx) => {
                     const src = img.previewUrl || img.url;
                     const isStaged = Boolean(img.file);
@@ -1155,7 +1159,7 @@ const AdminProductDetailPage = () => {
                               handleRemoveUrlImage(urlIndex);
                             }
                           }}
-                          className="absolute top-2 right-2 p-1.5 bg-rose-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                          className="absolute top-2 right-2 p-1.5 bg-rose-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-sm cursor-pointer"
                           title="Remove Image">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -1163,11 +1167,11 @@ const AdminProductDetailPage = () => {
                     );
                   })}
 
-                  {/* Empty Slot Placeholder Tiles (up to 5) */}
+                  {/* Empty Slot Placeholder Tiles (up to 7) */}
                   {Array.from({
                     length: Math.max(
                       0,
-                      5 - (imagesList.length + stagedImages.length),
+                      7 - (imagesList.length + stagedImages.length),
                     ),
                   }).map((_, slotIdx) => (
                     <button
@@ -1183,6 +1187,22 @@ const AdminProductDetailPage = () => {
                       </span>
                     </button>
                   ))}
+
+                  {/* Additional slot when at least 7 images are uploaded */}
+                  {imagesList.length + stagedImages.length >= 7 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        document.getElementById("variant-file-input")?.click()
+                      }
+                      className="rounded-xl border-2 border-dashed border-gray-300 hover:border-[#800020] hover:bg-[#fdf2f4]/30 transition-all aspect-square flex flex-col items-center justify-center p-3 text-center gap-1.5 group cursor-pointer"
+                      title="Add another photo">
+                      <ImagePlus className="w-6 h-6 text-gray-400 group-hover:text-[#800020] transition-colors" />
+                      <span className="text-[10px] font-bold text-gray-400 group-hover:text-[#800020]">
+                        Add More
+                      </span>
+                    </button>
+                  )}
                 </div>
               </div>
 
