@@ -64,6 +64,47 @@ export const cleanCategorySlug = (cat) => {
 };
 
 /**
+ * Automatically generate a unique category slug given the name, parentId, and existing categories list.
+ * If the base slug already exists, automatically disambiguates by appending the parent slug
+ * or a numerical counter so the admin never gets duplicate slug errors.
+ */
+export const generateUniqueCategorySlug = (name = '', parentId = null, allCategories = [], currentCategoryId = null) => {
+  const baseSlug = slugify(name);
+  if (!baseSlug) return '';
+
+  const existingSlugs = new Set(
+    allCategories
+      .filter((c) => String(c._id) !== String(currentCategoryId))
+      .map((c) => (c.slug || '').toLowerCase())
+  );
+
+  if (!existingSlugs.has(baseSlug)) {
+    return baseSlug;
+  }
+
+  // Base slug is taken. Try appending parent slug if available
+  if (parentId) {
+    const parent = allCategories.find((c) => String(c._id) === String(parentId));
+    if (parent) {
+      const parentSlug = slugify(parent.slug || parent.name);
+      if (parentSlug && !baseSlug.endsWith(`-${parentSlug}`)) {
+        const candidate = `${baseSlug}-${parentSlug}`;
+        if (!existingSlugs.has(candidate)) {
+          return candidate;
+        }
+      }
+    }
+  }
+
+  // If still taken, append numerical suffix (-2, -3, ...)
+  let counter = 2;
+  while (existingSlugs.has(`${baseSlug}-${counter}`)) {
+    counter += 1;
+  }
+  return `${baseSlug}-${counter}`;
+};
+
+/**
  * Get category slug safely
  */
 export const getCategorySlug = (category) => {

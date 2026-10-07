@@ -18,7 +18,7 @@ import ErrorState from '../../components/ui/ErrorState';
 import Toast from '../../components/ui/Toast';
 import Pagination from '../../components/ui/Pagination';
 import { Plus, Edit2, Trash2, FolderTree, Search, Layers, Lock, RotateCcw } from 'lucide-react';
-import { slugify, cleanCategorySlug } from '../../utils/categoryUrls';
+import { slugify, cleanCategorySlug, generateUniqueCategorySlug } from '../../utils/categoryUrls';
 import CategoryIcon from '../../components/ui/CategoryIcon';
 import CategoryFilterBuilder from '../../components/admin/CategoryFilterBuilder';
 
@@ -203,7 +203,12 @@ const AdminMainCategoriesPage = () => {
       const uploadedImage = categoryImageFile
         ? await adminService.uploadCmsImage(categoryImageFile, 'vinexus/categories')
         : null;
-      const computedSlug = slugify(formData.name) || cleanCategorySlug(formData);
+      const computedSlug = generateUniqueCategorySlug(
+        formData.name,
+        formData.parentId,
+        allCategories,
+        editingCategory?._id
+      ) || cleanCategorySlug(formData);
       const payload = {
         name: formData.name.trim(),
         slug: computedSlug,
@@ -521,7 +526,18 @@ const AdminMainCategoriesPage = () => {
             <Select
               value={formData.parentId}
               onChange={(e) => {
-                setFormData({ ...formData, parentId: e.target.value });
+                const newParentId = e.target.value;
+                const autoSlug = generateUniqueCategorySlug(
+                  formData.name,
+                  newParentId,
+                  allCategories,
+                  editingCategory?._id
+                );
+                setFormData((prev) => ({
+                  ...prev,
+                  parentId: newParentId,
+                  slug: autoSlug,
+                }));
                 if (formError) setFormError('');
               }}
               placeholder="Select a Header Department..."
@@ -544,10 +560,16 @@ const AdminMainCategoriesPage = () => {
               value={formData.name}
               onChange={(e) => {
                 const newName = e.target.value;
+                const autoSlug = generateUniqueCategorySlug(
+                  newName,
+                  formData.parentId,
+                  allCategories,
+                  editingCategory?._id
+                );
                 setFormData((prev) => ({
                   ...prev,
                   name: newName,
-                  slug: slugify(newName),
+                  slug: autoSlug,
                 }));
                 if (formError) setFormError('');
               }}

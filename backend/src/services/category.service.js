@@ -26,6 +26,55 @@ export const sanitizeCategorySlug = (name = '', slug = '') => {
   return slugify(raw) || slugify(name);
 };
 
+/**
+ * Resolves a unique slug for a category.
+ * If the base slug already exists, automatically disambiguates by appending the parent slug
+ * or a numeric counter (-2, -3, ...) so that categories with identical names under different
+ * parents never cause duplicate key collisions.
+ */
+export const resolveUniqueCategorySlug = async (name, slug, parentId = null, excludeId = null) => {
+  let baseSlug = sanitizeCategorySlug(name, slug);
+  if (!baseSlug) baseSlug = 'category';
+
+  // Check if baseSlug is available
+  const query = { slug: baseSlug };
+  if (excludeId) query._id = { $ne: excludeId };
+  const existing = await Category.findOne(query).select('_id').lean();
+  if (!existing) {
+    return baseSlug;
+  }
+
+  // Base slug is already taken. Try appending parent slug if available
+  if (parentId && mongoose.Types.ObjectId.isValid(parentId)) {
+    const parent = await Category.findById(parentId).select('slug name').lean();
+    if (parent) {
+      const parentSlug = sanitizeCategorySlug(parent.name, parent.slug);
+      if (parentSlug && !baseSlug.endsWith(`-${parentSlug}`)) {
+        const candidate = `${baseSlug}-${parentSlug}`;
+        const parentCandidateQuery = { slug: candidate };
+        if (excludeId) parentCandidateQuery._id = { $ne: excludeId };
+        const parentExisting = await Category.findOne(parentCandidateQuery).select('_id').lean();
+        if (!parentExisting) {
+          return candidate;
+        }
+      }
+    }
+  }
+
+  // If still taken or no parent, append numerical counter (-2, -3, ...)
+  let counter = 2;
+  while (true) {
+    const candidate = `${baseSlug}-${counter}`;
+    const candidateQuery = { slug: candidate };
+    if (excludeId) candidateQuery._id = { $ne: excludeId };
+    const found = await Category.findOne(candidateQuery).select('_id').lean();
+    if (!found) {
+      return candidate;
+    }
+    counter += 1;
+  }
+};
+
 // All categories (active or not) as a light id/parent list for tree walks.
 const loadCategoryLinks = () => Category.find().select('_id parentId').lean();
 
@@ -59,18 +108,6 @@ export const categoryService = {
    * Create a new category.
    */
   async createCategory({ name, slug, parentId, image, description, isActive = true, sortOrder = 0, filterDefinitions = [] }) {
-    const finalSlug = sanitizeCategorySlug(name, slug);
-
-    // Check for duplicate slug
-    const existingCategory = await Category.findOne({ slug: finalSlug });
-    if (existingCategory) {
-      throw new AppError(
-        `Category with slug '${finalSlug}' already exists.`,
-        HTTP_STATUS.BAD_REQUEST,
-        ERROR_CODES.BAD_REQUEST
-      );
-    }
-
     // Verify parent category if parentId is supplied
     if (parentId) {
       if (!mongoose.Types.ObjectId.isValid(parentId)) {
@@ -88,6 +125,8 @@ export const categoryService = {
         );
       }
     }
+
+    const finalSlug = await resolveUniqueCategorySlug(name, slug, parentId);
 
     const category = await Category.create({
       name: name.trim(),
@@ -206,21 +245,16 @@ export const categoryService = {
       throw new AppError('Category not found.', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
     }
 
-    // Slug calculation & duplicate check
+    // Slug calculation & auto-unique check
     if (updateData.slug || updateData.name) {
-      const targetSlug = sanitizeCategorySlug(updateData.name || category.name, updateData.slug);
-
-      if (targetSlug !== category.slug) {
-        const duplicate = await Category.findOne({ slug: targetSlug, _id: { $ne: id } });
-        if (duplicate) {
-          throw new AppError(
-            `Category with slug '${targetSlug}' already exists.`,
-            HTTP_STATUS.BAD_REQUEST,
-            ERROR_CODES.BAD_REQUEST
-          );
-        }
-        category.slug = targetSlug;
-      }
+      const parentIdForSlug = updateData.parentId !== undefined ? updateData.parentId : category.parentId;
+      const targetSlug = await resolveUniqueCategorySlug(
+        updateData.name || category.name,
+        updateData.slug,
+        parentIdForSlug,
+        id
+      );
+      category.slug = targetSlug;
     }
 
     // Parent ID validation & self/circular reference prevention

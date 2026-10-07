@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import { slugify, cleanCategorySlug } from '../../frontend/src/utils/categoryUrls.js';
+import { slugify, cleanCategorySlug, generateUniqueCategorySlug } from '../../frontend/src/utils/categoryUrls.js';
 import { sanitizeCategorySlug } from '../../backend/src/services/category.service.js';
 import { createProductSchema, updateProductSchema } from '../../backend/src/validators/product.validator.js';
 
@@ -24,6 +24,23 @@ describe('Category slug generation and cleaning', () => {
     expect(sanitizeCategorySlug('Servers', '/hardware/servers/')).toBe('servers');
     expect(sanitizeCategorySlug('', '')).toBe('');
     expect(sanitizeCategorySlug(null, null)).toBe('');
+  });
+
+  test('generateUniqueCategorySlug disambiguates when base slug already exists under another parent', () => {
+    const existing = [
+      { _id: 'cat-1', name: 'Mini PT', slug: 'mini-pt', parentId: 'parent-4g' },
+      { _id: 'parent-wifi', name: 'Wifi', slug: 'wifi', parentId: 'root-dept' },
+      { _id: 'parent-4g', name: '4G', slug: '4g', parentId: 'root-dept' },
+    ];
+
+    // Trying to create another "Mini PT" under "Wifi"
+    const uniqueSlug = generateUniqueCategorySlug('Mini PT', 'parent-wifi', existing);
+    expect(uniqueSlug).toBe('mini-pt-wifi');
+
+    // If both 'mini-pt' and 'mini-pt-wifi' exist, appends counter
+    existing.push({ _id: 'cat-2', name: 'Mini PT', slug: 'mini-pt-wifi', parentId: 'parent-wifi' });
+    const nextSlug = generateUniqueCategorySlug('Mini PT', 'parent-wifi', existing);
+    expect(nextSlug).toBe('mini-pt-2');
   });
 });
 
