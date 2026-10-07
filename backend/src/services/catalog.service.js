@@ -322,8 +322,15 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   for (const [key, values] of Object.entries(specs)) {
     if (values.length) extraFilters.push({ specifications: { $elemMatch: { key: new RegExp(`^${escapeRegex(key)}$`, 'i'), value: { $in: values } } } });
   }
-  if (query.inStock === 'true') extraFilters.push({ specifications: { $elemMatch: { key: /^(stock|inventory)$/i, value: /^\s*[1-9]\d*(\.\d+)?\s*$/ } } });
-  if (query.availability) {
+  if (query.lowStock === 'true' || query.lowStock === true || (query.availability && String(query.availability).split(',').includes('low-stock'))) {
+    extraFilters.push({
+      $or: [
+        { stockStatus: 'low-stock' },
+        { stockQuantity: { $gt: 0, $lt: 10 } },
+        { specifications: { $elemMatch: { key: /^(stock|inventory)$/i, value: /^\s*[1-9]\s*$/ } } },
+      ],
+    });
+  } else if (query.availability) {
     const requestedStatuses = String(query.availability).split(',').filter(Boolean);
     if (requestedStatuses.length && requestedStatuses.length < 4) extraFilters.push({ stockStatus: { $in: requestedStatuses } });
   }
@@ -431,9 +438,9 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
     const resolvedStock = (product.stockQuantity !== undefined && product.stockQuantity !== null && product.stockQuantity > 0)
       ? product.stockQuantity
       : (specStock !== null ? specStock : (product.stockQuantity || 0));
-    const resolvedStatus = (product.stockStatus && product.stockStatus !== 'out-of-stock')
-      ? product.stockStatus
-      : (resolvedStock === 0 ? 'out-of-stock' : (resolvedStock < 5 ? 'low-stock' : 'in-stock'));
+    const resolvedStatus = (resolvedStock === 0)
+      ? 'out-of-stock'
+      : (resolvedStock < 10 ? 'low-stock' : (product.stockStatus || 'in-stock'));
     return {
       ...product,
       modelNumber: product.modelNumber || `VNX-${String(product._id).slice(-8).toUpperCase()}`,

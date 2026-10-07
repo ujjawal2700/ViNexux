@@ -8,7 +8,7 @@ import wishlistService from '../../services/wishlistService';
 import { Minus, Plus, Check, Heart, ImageOff } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { buildProductPath } from '../../utils/categoryUrls';
-import { getAvailableStock, getMaximumOrderQuantity } from '../../utils/inventory';
+import { getAvailableStock, getMaximumOrderQuantity, isLowStock } from '../../utils/inventory';
 
 export const ProductCard = ({ product, onCartUpdated, className }) => {
   const { user, isAuthenticated } = useAuth();
@@ -43,8 +43,8 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
   const availableStock = getAvailableStock(product);
   const maximumQuantity = getMaximumOrderQuantity(product);
   const isOutOfStock = product.stockStatus === 'out-of-stock' || maximumQuantity === 0;
-  const isLowStock = !isOutOfStock && (product.stockStatus === 'low-stock' || (availableStock !== null && availableStock > 0 && availableStock < 5));
-  const isInStock = !isOutOfStock && !isLowStock;
+  const isLowStockItem = !isOutOfStock && isLowStock(product);
+  const isInStock = !isOutOfStock && !isLowStockItem;
 
   let displayPrice = product?.applicablePrice ?? standardPrice;
   let hasDealerDiscount = false;
@@ -93,20 +93,18 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
 
   const handleIncrement = (e) => {
     e.stopPropagation();
-    // If no stock info, allow free increment (legacy products)
-    if (availableStock === null) {
-      setQuantity((prev) => prev + 1);
-      return;
-    }
-    if (quantity >= availableStock) {
-      toast.stock(`Limited stock — only ${availableStock} unit${availableStock === 1 ? '' : 's'} available.`);
+    if (quantity >= maximumQuantity) {
+      if (isLowStockItem) {
+        toast.warning(`Limited stock alert — maximum ${maximumQuantity} units allowed per enquiry.`);
+      } else if (availableStock !== null) {
+        toast.stock(`Limited stock — only ${availableStock} unit${availableStock === 1 ? '' : 's'} available.`);
+      }
       return;
     }
     const nextQuantity = quantity + 1;
     setQuantity(nextQuantity);
-    // Warn when reaching the max
-    if (nextQuantity >= availableStock) {
-      toast.stock(`Limited stock — only ${availableStock} unit${availableStock === 1 ? '' : 's'} available.`);
+    if (nextQuantity >= maximumQuantity && isLowStockItem) {
+      toast.warning(`Limited stock alert — maximum ${maximumQuantity} units allowed per enquiry.`);
     }
   };
 
@@ -181,6 +179,13 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
           />
         </button>
 
+        {/* Limited Stock Badge on Product Image */}
+        {isLowStockItem && (
+          <span className="absolute top-2 left-2 z-10 inline-flex items-center gap-1 rounded bg-amber-600 text-white text-[9.5px] font-black px-1.5 py-0.5 shadow-sm uppercase tracking-wider">
+            Limited Stock
+          </span>
+        )}
+
         {/* Product Image – full size, no wrapper box clipping PNG */}
         {primaryImage && !imgError ? (
           <img
@@ -245,10 +250,10 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-rose-500" />
               Out of Stock
             </span>
-          ) : isLowStock ? (
-            <span className="inline-flex items-center gap-1 rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-amber-700">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
-              Low Stock
+          ) : isLowStockItem ? (
+            <span className="inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10.5px] font-bold text-amber-800 shadow-2xs">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+              Limited Stock Alert {availableStock ? `(${availableStock} Left · Max 3)` : '(Max 3)'}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-emerald-700">
@@ -276,7 +281,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
                 type="button"
                 onClick={handleDecrement}
                 disabled={quantity <= 1}
-                className="flex w-6 items-center justify-center text-gray-700 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+                className="flex w-6 items-center justify-center text-gray-700 hover:bg-gray-100 disabled:opacity-30 transition-colors cursor-pointer"
                 aria-label="Decrease quantity"
               >
                 <Minus className="h-3 w-3" />
@@ -287,8 +292,8 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
               <button
                 type="button"
                 onClick={handleIncrement}
-                disabled={maximumQuantity <= 0}
-                className="flex w-6 items-center justify-center text-gray-700 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+                disabled={quantity >= maximumQuantity || maximumQuantity <= 0}
+                className="flex w-6 items-center justify-center text-gray-700 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 aria-label="Increase quantity"
               >
                 <Plus className="h-3 w-3" />

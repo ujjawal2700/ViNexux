@@ -133,6 +133,7 @@ export const getProductsQuerySchema = {
     search: z.string().max(200).optional(),
     brandSlug: z.string().max(150).optional(),
     inStock: z.enum(['true', 'false']).optional(),
+    lowStock: z.enum(['true', 'false']).optional(),
     availability: z.string().max(100).refine((value) => {
       const allowed = new Set(['in-stock', 'low-stock', 'on-order', 'out-of-stock']);
       const statuses = value.split(',').filter(Boolean);

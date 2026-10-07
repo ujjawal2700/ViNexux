@@ -13,7 +13,7 @@ import { extractProductId, buildCategoryPath, buildCategoryTrail, buildBrandUrl,
 import { Image } from '../../components/ui/Image';
 import { Skeleton } from '../../components/ui/Skeleton';
 import NotFoundPage from './NotFoundPage';
-import { getAvailableStock } from '../../utils/inventory';
+import { getAvailableStock, getMaximumOrderQuantity, isLowStock } from '../../utils/inventory';
 import { allowsPreferences } from '../../utils/storageConsent';
 import {
   ShoppingCart,
@@ -30,6 +30,8 @@ import {
   Minus,
   Plus,
   ExternalLink,
+  AlertTriangle,
+  Flame,
 } from 'lucide-react';
 
 export const ProductDetailPage = () => {
@@ -242,9 +244,10 @@ export const ProductDetailPage = () => {
 
   // Stock status: isActive = true means available in stock
   const availableStock = getAvailableStock(product);
-  const isInStock = product?.stockStatus === 'out-of-stock' || availableStock === 0
-    ? false
-    : ['in-stock', 'low-stock'].includes(product?.stockStatus) || (availableStock !== null && availableStock > 0) || Boolean(product?.isActive);
+  const productIsLowStock = isLowStock(product);
+  const maxAllowedQuantity = getMaximumOrderQuantity(product);
+  const isOutOfStock = product?.stockStatus === 'out-of-stock' || availableStock === 0 || maxAllowedQuantity === 0;
+  const isInStock = !isOutOfStock;
 
   // Dynamic SEO metadata & Google Product Structured Data (JSON-LD)
   usePageSeo({
@@ -283,8 +286,8 @@ export const ProductDetailPage = () => {
       : null,
   });
 
-  // Stepper handlers & disabled state (matches user request: + disables at stock limit, - re-enables it)
-  const isIncrementDisabled = !isInStock || (availableStock !== null && quantity >= availableStock);
+  // Stepper handlers & disabled state (capped at maxAllowedQuantity: 3 for low stock items)
+  const isIncrementDisabled = !isInStock || quantity >= maxAllowedQuantity;
   const isDecrementDisabled = !isInStock || quantity <= 1;
 
   const handleDecrement = () => {
@@ -292,7 +295,12 @@ export const ProductDetailPage = () => {
   };
 
   const handleIncrement = () => {
-    if (availableStock !== null && quantity >= availableStock) {
+    if (quantity >= maxAllowedQuantity) {
+      if (productIsLowStock) {
+        toast.warning(`Limited stock alert: Maximum ${maxAllowedQuantity} units allowed per enquiry for low stock products.`);
+      } else if (availableStock !== null) {
+        toast.warning(`Only ${availableStock} units available in stock.`);
+      }
       return;
     }
     setQuantity((prev) => prev + 1);
@@ -716,16 +724,26 @@ export const ProductDetailPage = () => {
               )}
             </div>
 
-            {/* In Stock / Out of Stock Status Pill */}
-            {isInStock ? (
-              <div className="w-full py-2 px-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>{product?.stockStatus === 'in-stock' ? 'IN STOCK' : 'AVAILABILITY ON REQUEST'}</span>
-              </div>
-            ) : (
-              <div className="w-full py-2 px-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center justify-center gap-2">
+            {/* In Stock / Out of Stock / Limited Stock Status Pill */}
+            {isOutOfStock ? (
+              <div className="w-full py-2.5 px-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center justify-center gap-2">
                 <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
                 <span>OUT OF STOCK</span>
+              </div>
+            ) : productIsLowStock ? (
+              <div className="w-full py-2.5 px-3 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold flex flex-col items-center justify-center gap-1 shadow-2xs">
+                <div className="flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span className="uppercase tracking-wider">LIMITED STOCK ALERT</span>
+                </div>
+                <span className="text-[11px] font-semibold text-amber-800">
+                  {availableStock ? `Only ${availableStock} left in stock` : 'Low stock item'} · Maximum 3 units per enquiry
+                </span>
+              </div>
+            ) : (
+              <div className="w-full py-2 px-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>IN STOCK</span>
               </div>
             )}
 
@@ -772,6 +790,25 @@ export const ProductDetailPage = () => {
                 <span>{isInStock ? (isAdding ? 'Adding...' : 'Add to Cart') : 'Out of Stock'}</span>
               </button>
             </div>
+
+            {/* Limited Stock Notice Notice */}
+            {productIsLowStock && (
+              <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-900 text-xs space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                  <Flame className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Limited Stock Alert</span>
+                </div>
+                <p className="text-[11px] text-amber-800 leading-relaxed">
+                  This product has fewer than 10 units left in stock. To ensure fair allocation for all customers, each enquiry is capped at a maximum of 3 units.
+                </p>
+                <Link
+                  to="/low-stock"
+                  className="inline-flex items-center gap-1 pt-0.5 text-[11px] font-bold text-[#800020] hover:underline"
+                >
+                  View all limited stock products →
+                </Link>
+              </div>
+            )}
 
             {/* Trust Footer */}
             <div className="text-[10px] text-gray-400 text-center pt-2 flex items-center justify-center gap-1">

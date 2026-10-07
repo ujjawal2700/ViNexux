@@ -56,6 +56,7 @@ import {
   MessageCircle,
   Building2,
   Copy,
+  Flame,
 } from 'lucide-react';
 
 const STORE_MAP_URL = 'https://maps.app.goo.gl/QSuzGqkbp2HxMHLp6';
@@ -1360,6 +1361,19 @@ const PublicLayout = () => {
                 </Link>
               </div>
 
+              {/* Limited Stock Deals Button */}
+              <div className="shrink-0 h-full flex items-center relative mr-1 sm:mr-1.5">
+                <Link
+                  to="/low-stock"
+                  onClick={handleHeaderClick}
+                  className="flex items-center gap-1.5 font-bold text-xs sm:text-[13px] px-2.5 h-[29px] rounded shadow-2xs bg-amber-500 hover:bg-amber-400 text-gray-900 transition-colors whitespace-nowrap"
+                  title="Limited Stock Alert - Max 3 units per order"
+                >
+                  <Flame className="w-3.5 h-3.5 text-red-700 animate-pulse" />
+                  <span>Limited Stock</span>
+                </Link>
+              </div>
+
               {categoriesLoading && <div role="status" aria-label="Loading categories" className="flex items-center gap-2 px-2">{[80, 64, 96, 72, 88, 64].map((width, index) => <Skeleton key={index} className="h-6 shrink-0 rounded" style={{ width }} />)}</div>}
               {categoriesError && <button className="px-3 text-xs" onClick={() => setCategoryRetry((value) => value + 1)}>{categoriesError}. Retry</button>}
               {!categoriesLoading && !categoriesError && categoryTree.length === 0 && <span className="px-3 text-xs">No categories available</span>}
@@ -1613,15 +1627,25 @@ const PublicLayout = () => {
               </div>
             )}
           </div>
-          <div className="grid grid-cols-4 gap-1.5 border-b border-gray-200 p-3">
+          <div className="grid grid-cols-5 gap-1 border-b border-gray-200 p-2.5">
             {[
+              { to: '/low-stock', label: 'Limited', icon: Flame, highlight: true },
               { to: '/cart', label: 'Cart', icon: ShoppingCart },
               { to: '/wishlist', label: 'Wishlist', icon: Heart },
               { to: '/account/enquiries', label: 'Enquiries', icon: FileText },
               { to: '/brands', label: 'Brands', icon: Store },
-            ].map(({ to, label, icon: Icon }) => (
-              <Link key={to} to={to} className="flex min-w-0 flex-col items-center gap-1.5 rounded-md border border-gray-200 bg-[#800020]/5 px-1 py-3 text-[10px] font-semibold text-[#800020]">
-                <Icon className="h-5 w-5" /><span className="truncate max-w-full">{label}</span>
+            ].map(({ to, label, icon: Icon, highlight }) => (
+              <Link
+                key={to}
+                to={to}
+                className={`flex min-w-0 flex-col items-center gap-1.5 rounded-md border px-1 py-2.5 text-[10px] font-bold ${
+                  highlight
+                    ? 'border-amber-300 bg-amber-50 text-amber-800'
+                    : 'border-gray-200 bg-[#800020]/5 text-[#800020]'
+                }`}
+              >
+                <Icon className={`h-4 w-4 ${highlight ? 'text-amber-600 animate-pulse' : ''}`} />
+                <span className="truncate max-w-full">{label}</span>
               </Link>
             ))}
           </div>

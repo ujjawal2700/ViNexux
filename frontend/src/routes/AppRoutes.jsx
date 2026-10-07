@@ -41,6 +41,7 @@ const CmsPage = lazyWithRetry(() => import('../pages/public/CmsPage'));
 const LegalPage = lazyWithRetry(() => import('../pages/public/LegalPage'));
 const UnauthorizedPage = lazyWithRetry(() => import('../pages/public/UnauthorizedPage'));
 const UiPreviewPage = lazyWithRetry(() => import('../pages/public/UiPreviewPage'));
+const LowStockProductsPage = lazyWithRetry(() => import('../pages/public/LowStockProductsPage'));
 
 // Account Pages (shared by customer & dealer roles - no more separate
 // dealer portal; see pages/account/)
@@ -96,6 +97,8 @@ const AppRoutes = () => {
         <Route path="/search" element={<ProductsPage />} />
         <Route path="/wishlist" element={<WishlistPage />} />
         <Route path="/cart" element={<CartPage />} />
+        <Route path="/low-stock" element={<LowStockProductsPage />} />
+        <Route path="/limited-stock" element={<Navigate to="/low-stock" replace />} />
         <Route path="/categories" element={<Navigate to="/" replace />} />
         <Route path="/brands" element={<BrandsPage />} />
         <Route path="/shop-by-brand" element={<BrandsPage />} />

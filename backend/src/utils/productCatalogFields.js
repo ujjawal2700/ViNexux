@@ -97,8 +97,8 @@ const toStockNumber = (value) => {
 
 const stockStatusFor = (stock) => {
   if (stock === 0) return 'out-of-stock';
-  if (stock > 0 && stock < 5) return 'low-stock';
-  if (stock >= 5) return 'in-stock';
+  if (stock > 0 && stock < 10) return 'low-stock';
+  if (stock >= 10) return 'in-stock';
   return 'on-order';
 };
 

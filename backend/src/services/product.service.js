@@ -224,6 +224,16 @@ isActive,
       }
     }
 
+    // Filter by low stock (stock > 0 and stock < 10)
+    if (queryParams.lowStock === 'true' || queryParams.lowStock === true || queryParams.availability === 'low-stock') {
+      andClauses.push({
+        $or: [
+          { stockStatus: 'low-stock' },
+          { stockQuantity: { $gt: 0, $lt: 10 } },
+        ],
+      });
+    }
+
     if (andClauses.length > 0) {
       filter.$and = andClauses;
     }

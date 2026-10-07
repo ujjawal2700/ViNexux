@@ -9,7 +9,7 @@ import categoryService from '../../services/categoryService';
 import useToast from '../../hooks/useToast';
 import ProductCard from '../../components/products/ProductCard';
 import { buildProductPath } from '../../utils/categoryUrls';
-import { getAvailableStock } from '../../utils/inventory';
+import { getAvailableStock, isLowStock, getMaximumOrderQuantity } from '../../utils/inventory';
 import { allowsPreferences } from '../../utils/storageConsent';
 import { Skeleton } from '../../components/ui/Skeleton';
 import {
@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Store,
   ChevronRight,
+  Flame,
 } from 'lucide-react';
 
 const WhatsAppIcon = ({ className = 'w-4 h-4' }) => (
@@ -370,6 +371,15 @@ export const CartPage = () => {
   // Update Item Quantity (Optimistic + Broadcast)
   const handleUpdateQuantity = async (productId, newQuantity, product) => {
     if (newQuantity < 1 || !productId) return;
+    const maxAllowed = getMaximumOrderQuantity(product);
+    if (newQuantity > maxAllowed) {
+      if (isLowStock(product)) {
+        toast.warning('Limited stock item — maximum 3 units allowed per order.');
+      } else {
+        toast.stock('Limited stock — maximum available quantity selected.');
+      }
+      return;
+    }
     const availableStock = getAvailableStock(product);
     if (availableStock !== null && newQuantity > availableStock) {
       toast.stock('Limited stock — maximum available quantity selected.');
@@ -670,7 +680,10 @@ export const CartPage = () => {
                   const prodId = String(prod._id || item.productId || item._id);
                   const unitPrice = item.priceSnapshot !== undefined ? item.priceSnapshot : (prod.standardPrice || prod.price || 0);
                   const availableStock = getAvailableStock(prod);
-                  const isAtStockLimit = availableStock !== null && (item.quantity || 1) >= availableStock;
+                  const isItemLowStock = isLowStock(prod);
+                  const maxAllowedQty = getMaximumOrderQuantity(prod);
+                  const currentQty = item.quantity || 1;
+                  const isAtLimit = currentQty >= maxAllowedQty || (availableStock !== null && currentQty >= availableStock);
                   const imgUrl = prod.images?.[0]?.url || prod.image || '';
                   return (
                     <div key={prodId} className={`rounded-lg border border-gray-200 bg-white p-3 ${selectedItemIds.has(prodId) ? '' : 'opacity-60'}`}>
@@ -683,6 +696,12 @@ export const CartPage = () => {
                           <Link to={buildProductPath(prod)} className="line-clamp-2 text-xs font-semibold leading-snug text-gray-900">{prod.name || 'Vinexus Product'}</Link>
                           <p className="mt-1 truncate text-[10px] text-gray-600">Model: {prod.modelNumber || prod.model || '—'}</p>
                           <p className="mt-1 text-[11px] font-semibold text-gray-800">{formatCurrency(unitPrice)} each</p>
+                          {isItemLowStock && (
+                            <div className="mt-1 inline-flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
+                              <Flame className="w-3 h-3 text-amber-600 shrink-0" />
+                              <span>Limited Stock Alert (Max 3)</span>
+                            </div>
+                          )}
                         </div>
                         <button type="button" onClick={() => handleRemoveItem(prodId, prod.name)} disabled={updatingItemId === prodId} aria-label={`Remove ${prod.name || 'product'}`} className="p-1 text-gray-500 hover:text-rose-600"><Trash2 className="h-4 w-4" /></button>
                       </div>
@@ -691,9 +710,13 @@ export const CartPage = () => {
                           <div className="inline-flex items-center overflow-hidden rounded border border-gray-300 bg-white">
                             <button type="button" onClick={() => handleUpdateQuantity(prodId, (item.quantity || 1) - 1, prod)} disabled={(item.quantity || 1) <= 1 || updatingItemId === prodId} aria-label="Decrease quantity" className="flex h-8 w-8 items-center justify-center disabled:opacity-30"><Minus className="h-4 w-4" /></button>
                             <span className="flex h-8 w-8 items-center justify-center border-x border-gray-200 text-xs font-semibold">{item.quantity || 1}</span>
-                            <button type="button" onClick={() => handleUpdateQuantity(prodId, (item.quantity || 1) + 1, prod)} disabled={updatingItemId === prodId || availableStock === 0} aria-label="Increase quantity" className="flex h-8 w-8 items-center justify-center disabled:opacity-30"><Plus className="h-4 w-4" /></button>
+                            <button type="button" onClick={() => handleUpdateQuantity(prodId, (item.quantity || 1) + 1, prod)} disabled={updatingItemId === prodId || isAtLimit || availableStock === 0} aria-label="Increase quantity" className="flex h-8 w-8 items-center justify-center disabled:opacity-30"><Plus className="h-4 w-4" /></button>
                           </div>
-                          {isAtStockLimit && <p className="mt-1 text-[10px] font-semibold text-[#800020]">Limited stock</p>}
+                          {isAtLimit && (
+                            <p className="mt-1 text-[10px] font-semibold text-[#800020]">
+                              {isItemLowStock ? 'Max 3 per order' : 'Limited stock'}
+                            </p>
+                          )}
                         </div>
                         <span className="text-sm font-bold text-[#800020]">{formatCurrency(unitPrice * (item.quantity || 1))}</span>
                       </div>
@@ -738,7 +761,10 @@ export const CartPage = () => {
                       const cdDiscount = Math.max(0, standardPrice - unitPrice);
                       const lineTotal = unitPrice * (item.quantity || 1);
                       const availableStock = getAvailableStock(prod);
-                      const isAtStockLimit = availableStock !== null && (item.quantity || 1) >= availableStock;
+                      const isItemLowStock = isLowStock(prod);
+                      const maxAllowedQty = getMaximumOrderQuantity(prod);
+                      const currentQty = item.quantity || 1;
+                      const isAtLimit = currentQty >= maxAllowedQty || (availableStock !== null && currentQty >= availableStock);
 
                       const imgUrl =
                         prod.images?.[0]?.url ||
@@ -789,6 +815,12 @@ export const CartPage = () => {
                             >
                               {prod.name || 'ViNexus Product'}
                             </Link>
+                            {isItemLowStock && (
+                              <div className="mt-1 inline-flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
+                                <Flame className="w-3 h-3 text-amber-600 shrink-0" />
+                                <span>Limited Stock Alert (Max 3)</span>
+                              </div>
+                            )}
                           </td>
 
                           {/* UNIT PRICE */}
@@ -819,15 +851,17 @@ export const CartPage = () => {
                               <button
                                 type="button"
                                 onClick={() => handleUpdateQuantity(prodId, (item.quantity || 1) + 1, prod)}
-                                disabled={updatingItemId === prodId || availableStock === 0}
+                                disabled={updatingItemId === prodId || isAtLimit || availableStock === 0}
                                 className="w-7 h-7 flex items-center justify-center text-[#420b45] hover:bg-[#fbf7fc] disabled:opacity-30 cursor-pointer transition-colors"
                                 title="Increase quantity"
                               >
                                 <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                               </button>
                             </div>
-                            {isAtStockLimit && (
-                              <div className="mt-1 text-[11px] font-semibold text-[#800020]">Limited stock</div>
+                            {isAtLimit && (
+                              <div className="mt-1 text-[11px] font-semibold text-[#800020]">
+                                {isItemLowStock ? 'Max 3 units' : 'Limited stock'}
+                              </div>
                             )}
                           </td>
 

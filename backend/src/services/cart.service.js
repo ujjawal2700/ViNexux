@@ -8,7 +8,14 @@ import { AppError } from '../utils/AppError.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../constants/errorCodes.js';
 
+const LOW_STOCK_THRESHOLD = 10;
+const LOW_STOCK_MAX_ORDER = 3;
+
 const getAvailableStock = (product) => {
+  if (product?.stockQuantity !== undefined && product?.stockQuantity !== null) {
+    const parsed = Number(product.stockQuantity);
+    if (Number.isFinite(parsed)) return Math.max(0, Math.floor(parsed));
+  }
   const stockSpecification = product?.specifications?.find((specification) =>
     /^(stock|inventory)$/i.test(String(specification?.key || '').trim())
   );
@@ -19,12 +26,21 @@ const getAvailableStock = (product) => {
 
 const assertQuantityAvailable = (product, quantity) => {
   const availableStock = getAvailableStock(product);
-  if (availableStock !== null && quantity > availableStock) {
-    throw new AppError(
-      `Limited stock. Only ${availableStock} unit${availableStock === 1 ? '' : 's'} available.`,
-      HTTP_STATUS.BAD_REQUEST,
-      ERROR_CODES.BAD_REQUEST
-    );
+  if (availableStock !== null) {
+    if (quantity > availableStock) {
+      throw new AppError(
+        `Limited stock. Only ${availableStock} unit${availableStock === 1 ? '' : 's'} available.`,
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.BAD_REQUEST
+      );
+    }
+    if (availableStock > 0 && availableStock < LOW_STOCK_THRESHOLD && quantity > LOW_STOCK_MAX_ORDER) {
+      throw new AppError(
+        `Limited stock alert. For products with low stock (fewer than 10 units), maximum ${LOW_STOCK_MAX_ORDER} units can be added per enquiry.`,
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.BAD_REQUEST
+      );
+    }
   }
 };
 
