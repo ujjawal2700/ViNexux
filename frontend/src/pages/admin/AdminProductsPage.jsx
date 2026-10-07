@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import adminService from '../../services/adminService';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import FilterBar from '../../components/admin/FilterBar';
@@ -18,12 +18,13 @@ import {
   Edit2,
   Trash2,
   Package,
-Image as ImageIcon,
+  Image as ImageIcon,
   FileSpreadsheet,
 } from 'lucide-react';
 
 const AdminProductsPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [categoriesList, setCategoriesList] = useState([]);
@@ -31,25 +32,56 @@ const AdminProductsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Single source of truth for page from URL
+  const urlPage = parseInt(searchParams.get('page'), 10);
+  const page = urlPage > 0 ? urlPage : 1;
+
+  const handlePageChange = useCallback((newPage) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (newPage <= 1) {
+        next.delete('page');
+      } else {
+        next.set('page', String(newPage));
+      }
+      return next;
+    });
+    if (newPage > 1) {
+      sessionStorage.setItem('admin_products_page', String(newPage));
+    } else {
+      sessionStorage.removeItem('admin_products_page');
+    }
+  }, [setSearchParams]);
+
+  // If no page param exists in URL, check if location.state or sessionStorage has a returnPage
+  useEffect(() => {
+    if (!searchParams.has('page')) {
+      const fallback = Number(location.state?.returnPage) || Number(sessionStorage.getItem('admin_products_page'));
+      if (fallback > 1) {
+        handlePageChange(fallback);
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Filters & Search
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const prevSearchRef = useRef(search);
 
+  // Only reset page to 1 when user actually types a new search query
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(search);
-      setPage(1);
+      if (prevSearchRef.current !== search) {
+        prevSearchRef.current = search;
+        handlePageChange(1);
+      }
     }, 350);
     return () => clearTimeout(handler);
-  }, [search]);
+  }, [search, handlePageChange]);
+
   const [categoryIdFilter, setCategoryIdFilter] = useState('');
   const [isActiveFilter, setIsActiveFilter] = useState('');
-
-  // Restore page from URL query param (?page=3) so navigating Back to Products restores the correct page
-  const [page, setPage] = useState(() => {
-    const p = parseInt(new URLSearchParams(window.location.search).get('page'), 10);
-    return p > 0 ? p : 1;
-  });
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('desc');
 
@@ -59,22 +91,6 @@ const AdminProductsPage = () => {
 
   // Toast Notifications
   const [toast, setToast] = useState(null);
-
-  // Keep URL in sync with page state so that "Back to Products" restores the correct page
-  useEffect(() => {
-    const current = parseInt(searchParams.get('page'), 10) || 1;
-    if (page !== current) {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        if (page === 1) {
-          next.delete('page');
-        } else {
-          next.set('page', String(page));
-        }
-        return next;
-      }, { replace: true });
-    }
-  }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -115,7 +131,7 @@ const AdminProductsPage = () => {
   }, [page, categoryIdFilter, isActiveFilter, sortBy, sortOrder, debouncedSearch]);
 
   const handleSearchSubmit = () => {
-    setPage(1);
+    handlePageChange(1);
     fetchProducts();
   };
 
@@ -147,7 +163,7 @@ const AdminProductsPage = () => {
           <Button variant="outline" size="sm" onClick={() => navigate('/admin/products/import')}>
             <FileSpreadsheet className="w-4 h-4 mr-1.5" /> Bulk Import
           </Button>
-          <Button variant="primary" size="sm" onClick={() => navigate('/admin/products/new', { state: { returnPage: page } })}>
+          <Button variant="primary" size="sm" onClick={() => navigate(`/admin/products/new?returnPage=${page}`, { state: { returnPage: page } })}>
             <Plus className="w-4 h-4 mr-1.5" /> Add Product
           </Button>
         </div>}
@@ -159,7 +175,8 @@ const AdminProductsPage = () => {
         onSearchChange={(e) => setSearch(e.target.value)}
         onSearchSubmit={() => {
           setDebouncedSearch(search);
-          setPage(1);
+          prevSearchRef.current = search;
+          handlePageChange(1);
         }}
         searchPlaceholder="Search by SKU or Product Name..."
         filters={[
@@ -167,7 +184,7 @@ const AdminProductsPage = () => {
             value: categoryIdFilter,
             onChange: (val) => {
               setCategoryIdFilter(val);
-              setPage(1);
+              handlePageChange(1);
             },
             options: [
               { value: '', label: 'All Categories' },
@@ -194,7 +211,7 @@ const AdminProductsPage = () => {
             value: isActiveFilter,
             onChange: (val) => {
               setIsActiveFilter(val);
-              setPage(1);
+              handlePageChange(1);
             },
             options: [
               { value: '', label: 'All Statuses' },
@@ -217,9 +234,10 @@ const AdminProductsPage = () => {
         onReset={() => {
           setSearch('');
           setDebouncedSearch('');
+          prevSearchRef.current = '';
           setCategoryIdFilter('');
           setIsActiveFilter('');
-          setPage(1);
+          handlePageChange(1);
           setSortBy('createdAt');
           setSortOrder('desc');
         }}
@@ -240,7 +258,7 @@ const AdminProductsPage = () => {
           title="No products found"
           description="There are no product entries matching your current search or filter rules."
           action={
-            <Button variant="primary" size="sm" onClick={() => navigate('/admin/products/new')}>
+            <Button variant="primary" size="sm" onClick={() => navigate(`/admin/products/new?returnPage=${page}`, { state: { returnPage: page } })}>
               <Plus className="w-4 h-4 mr-1.5" /> Add First Product
             </Button>
           }
@@ -268,7 +286,7 @@ const AdminProductsPage = () => {
                   <Table.Row
                     key={prod._id}
                     className="cursor-pointer"
-                    onClick={() => navigate(`/admin/products/${prod._id}`, { state: { returnPage: page } })}
+                    onClick={() => navigate(`/admin/products/${prod._id}?returnPage=${page}`, { state: { returnPage: page } })}
                   >
                     <Table.Cell onClick={(e) => e.stopPropagation()}>
                       <div className="w-11 h-11 rounded-lg overflow-hidden border border-border bg-muted flex items-center justify-center">
@@ -303,7 +321,7 @@ const AdminProductsPage = () => {
                           variant="ghost"
                           size="sm"
                           iconOnly
-                          onClick={() => navigate(`/admin/products/${prod._id}`, { state: { returnPage: page } })}
+                          onClick={() => navigate(`/admin/products/${prod._id}?returnPage=${page}`, { state: { returnPage: page } })}
                           title="Edit Product"
                           className="bg-muted/80 hover:bg-primary/20 text-foreground hover:text-primary border border-border hover:border-primary/40 transition-all shadow-xs"
                         >
@@ -333,7 +351,7 @@ const AdminProductsPage = () => {
               totalPages={pagination.totalPages}
               totalItems={pagination.total}
               pageSize={pagination.limit || 20}
-              onPageChange={(newPage) => setPage(newPage)}
+              onPageChange={handlePageChange}
             />
           )}
         </div>

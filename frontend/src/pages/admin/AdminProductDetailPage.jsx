@@ -82,19 +82,22 @@ const AdminProductDetailPage = () => {
   const location = useLocation();
   const isCreateMode = !id || id === "new";
 
-  // Retain return page from location.state or query params (?returnPage=3)
+  // Retain return page from location.state, query params (?returnPage=3), or sessionStorage
   const returnPage = useMemo(() => {
     const fromState = location.state?.returnPage;
     if (fromState && Number(fromState) > 0) return Number(fromState);
     const sp = new URLSearchParams(location.search);
     const fromQuery = sp.get("returnPage") || sp.get("page");
     if (fromQuery && Number(fromQuery) > 0) return Number(fromQuery);
+    const fromStorage = sessionStorage.getItem("admin_products_page");
+    if (fromStorage && Number(fromStorage) > 0) return Number(fromStorage);
     return null;
   }, [location.state, location.search]);
 
   const handleBackToProducts = useCallback(() => {
-    if (returnPage && returnPage > 1) {
-      navigate(`/admin/products?page=${returnPage}`);
+    const target = returnPage || Number(sessionStorage.getItem("admin_products_page")) || 1;
+    if (target > 1) {
+      navigate(`/admin/products?page=${target}`, { state: { returnPage: target } });
     } else {
       navigate("/admin/products");
     }
