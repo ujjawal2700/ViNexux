@@ -1666,16 +1666,18 @@ const PublicLayout = () => {
         </Suspense>
       </main>
 
-      {footerData && <footer className="w-full bg-[#111111] text-white px-6 pt-10 text-left">
-        <div className={`storefront-container grid grid-cols-1 md:grid-cols-2 ${hasBankDetails ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-8 md:gap-10 pb-9`}>
-          <div className="space-y-3">
-            <h4 className="font-bold text-xl">{footerData.aboutHeading || 'About'}</h4>
-            <p className="text-[15px] text-white/90 leading-7">
+      {footerData && <footer className="w-full bg-[#111111] px-5 sm:px-6 pt-9 text-left text-white/90 border-t border-[#2b2b2b]">
+        <div className={`storefront-container grid grid-cols-1 sm:grid-cols-2 ${hasBankDetails && whatsappList.length > 0 ? 'xl:grid-cols-5' : hasBankDetails || whatsappList.length > 0 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-x-8 gap-y-9 pb-9`}>
+          <div>
+            <div className="mb-4">
+              <h4 className="font-bold text-xl text-white">{footerData.aboutHeading || 'About'}</h4>
+            </div>
+            <p className="text-[15px] leading-6">
               {footerData.companyDescription ||
                 `${footerData.companyName || 'Vinexus'} is India's leading technology hardware provider, specializing in CCTV surveillance systems, laptops, enterprise networking, IT spare parts, and security equipment.`}
             </p>
             {(footerData.socialLinks || []).length > 0 && (
-              <div className="flex flex-wrap gap-2.5 pt-2">
+              <div className="flex flex-wrap gap-x-4 gap-y-2 pt-4">
                 {[...(footerData.socialLinks || [])]
                   .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
                   .map((link, index) => (
@@ -1684,7 +1686,7 @@ const PublicLayout = () => {
                       href={link.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 rounded-md border border-white/20 bg-white/5 px-2.5 py-1.5 text-xs font-medium text-gray-200 hover:border-white/50 hover:bg-white/10 hover:text-white transition-all shadow-2xs"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium hover:text-amber-300 hover:underline"
                       title={link.label}
                     >
                       {link.iconUrl && (
@@ -1704,18 +1706,20 @@ const PublicLayout = () => {
             )}
           </div>
           <div className="text-[15px]">
-            <h4 className="font-bold text-xl text-white mb-4">{footerData.quickLinksHeading || 'Information'}</h4>
+            <div className="mb-4">
+              <h4 className="font-bold text-xl text-white">{footerData.quickLinksHeading || 'Information'}</h4>
+            </div>
             {(() => {
               const filteredLinks = [...(footerData.quickLinks || []), ...(footerData.legalLinks || [])]
                 .filter((link) => !['all products', 'category directory', 'component library', 'privacy policy', 'terms & conditions'].includes((link.label || '').trim().toLowerCase()))
                 .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
               const allLinks = [
                 ...filteredLinks.map((link, index) => (
-                  <a key={`${link.label}-${index}`} className="block text-white/90 hover:text-white hover:underline mb-2" href={link.url}>{link.label}</a>
+                  <a key={`${link.label}-${index}`} className="block hover:text-amber-300 hover:underline mb-1.5" href={link.url}>{link.label}</a>
                 )),
-                <Link key="privacy" className="block text-white/90 hover:text-white hover:underline mb-2" to="/privacy">Privacy Policy</Link>,
-                <Link key="terms" className="block text-white/90 hover:text-white hover:underline mb-2" to="/terms">Terms &amp; Conditions</Link>,
-                <button key="storage" type="button" onClick={openStorageChoices} className="block text-left text-white/90 hover:text-white hover:underline mb-2">Storage choices</button>,
+                <Link key="privacy" className="block hover:text-amber-300 hover:underline mb-1.5" to="/privacy">Privacy Policy</Link>,
+                <Link key="terms" className="block hover:text-amber-300 hover:underline mb-1.5" to="/terms">Terms &amp; Conditions</Link>,
+                <button key="storage" type="button" onClick={openStorageChoices} className="block text-left hover:text-amber-300 hover:underline mb-1.5">Storage choices</button>,
               ];
               const MAX_PER_COL = 7;
               const col1 = allLinks.slice(0, MAX_PER_COL);
@@ -1728,11 +1732,13 @@ const PublicLayout = () => {
               );
             })()}
           </div>
-          <div className="space-y-3.5 text-[15px] text-white/90">
-            <h4 className="font-bold text-xl text-white mb-4">{footerData.contactHeading || 'Contact Details'}</h4>
+          <div className="space-y-3 text-[15px]">
+            <div className="mb-4">
+              <h4 className="font-bold text-xl text-white">{footerData.contactHeading || 'Contact Details'}</h4>
+            </div>
             {footerData.address && (
-              <a className="flex items-start gap-2 hover:text-white hover:underline leading-6" href={activeMapUrl} target="_blank" rel="noopener noreferrer">
-                <MapPin className="w-4 h-4 mt-1 shrink-0 text-rose-400" />
+              <a className="flex items-start gap-2 hover:text-amber-300 hover:underline leading-6" href={activeMapUrl} target="_blank" rel="noopener noreferrer">
+                <MapPin className="w-4 h-4 mt-1 shrink-0 text-amber-300" />
                 <span>{footerData.address}</span>
               </a>
             )}
@@ -1740,34 +1746,11 @@ const PublicLayout = () => {
               const raw = item.number || '';
               const link = raw.startsWith('+') ? raw : `+91${raw.replace(/\D/g, '').slice(-10)}`;
               return (
-                <a key={`phone-${idx}`} className="flex items-center gap-2 hover:text-white hover:underline" href={`tel:${link}`}>
-                  <Phone className="w-4 h-4 shrink-0 text-primary" />
+                <a key={`phone-${idx}`} className="flex items-center gap-2 hover:text-amber-300 hover:underline" href={`tel:${link}`}>
+                  <Phone className="w-4 h-4 shrink-0 text-amber-300" />
                   <span>
                     {raw}
-                    {item.label && <span className="text-xs text-gray-400 ml-1.5 font-normal">({item.label})</span>}
-                  </span>
-                </a>
-              );
-            })}
-            {whatsappList.map((item, idx) => {
-              const raw = item.number || '';
-              const cleaned = raw.replace(/\D/g, '');
-              const waLink = cleaned.length === 10 ? `91${cleaned}` : cleaned;
-              const displayNum = cleaned.length >= 10 ? `+91 ${cleaned.slice(-10)}` : raw;
-              return (
-                <a
-                  key={`wa-${idx}`}
-                  className="flex items-center gap-2 hover:text-white hover:underline text-emerald-400"
-                  href={`https://wa.me/${waLink}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <WhatsAppIcon className="w-4 h-4 shrink-0 text-[#25D366]" />
-                  <span>
-                    {displayNum}
-                    <span className="text-xs text-emerald-300/80 ml-1.5 font-normal">
-                      ({item.label || 'WhatsApp'})
-                    </span>
+                    {item.label && <span className="text-xs text-white/65 ml-1.5 font-normal">({item.label})</span>}
                   </span>
                 </a>
               );
@@ -1775,11 +1758,11 @@ const PublicLayout = () => {
             {emailList.map((item, idx) => {
               const raw = item.email || '';
               return (
-                <a key={`email-${idx}`} className="flex items-center gap-2 hover:text-white hover:underline" href={`mailto:${raw}`}>
-                  <Mail className="w-4 h-4 shrink-0 text-blue-400" />
+                <a key={`email-${idx}`} className="flex items-center gap-2 hover:text-amber-300 hover:underline" href={`mailto:${raw}`}>
+                  <Mail className="w-4 h-4 shrink-0 text-amber-300" />
                   <span className="break-all">
                     {raw}
-                    {item.label && <span className="text-xs text-gray-400 ml-1.5 font-normal">({item.label})</span>}
+                    {item.label && <span className="text-xs text-white/65 ml-1.5 font-normal">({item.label})</span>}
                   </span>
                 </a>
               );
@@ -1787,46 +1770,43 @@ const PublicLayout = () => {
           </div>
 
           {hasBankDetails && (
-            <div className="text-[15px] text-white/90">
-              <div className="mb-5">
+            <div className="text-[15px]">
+              <div className="mb-4">
                 <h4 className="font-bold text-xl text-white">
                   {footerData.bankDetailsHeading || 'Bank Details'}
                 </h4>
-                <span className="mt-2 block h-1 w-20 bg-gradient-to-r from-amber-500 via-amber-300 to-transparent" />
               </div>
               <div className="space-y-5">
                 {bankAccountList.map((bank, index) => (
                   <div
                     key={`bank-${index}`}
-                    className={index > 0 ? 'border-t border-white/15 pt-5' : ''}
+                    className={index > 0 ? 'border-t border-white/20 pt-5' : ''}
                   >
                     <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-2 gap-y-1.5 leading-6">
-                      {bank.accountName && <><dt className="text-white">Name :</dt><dd className="break-words">{bank.accountName}</dd></>}
-                      {bank.accountNumber && <><dt className="text-white">A/c Number :</dt><dd className="break-all select-all">{bank.accountNumber}</dd></>}
-                      {bank.ifscCode && <><dt className="text-white">IFSC :</dt><dd className="break-all select-all">{bank.ifscCode}</dd></>}
-                      {bank.bankName && <><dt className="text-white">Bank :</dt><dd className="break-words">{bank.bankName}</dd></>}
-                      {bank.branch && <><dt className="text-white">Branch :</dt><dd className="break-words">{bank.branch}</dd></>}
-                      {bank.accountType && <><dt className="text-white">Type :</dt><dd>{bank.accountType}</dd></>}
-                      {bank.upiId && <><dt className="text-white">UPI ID :</dt><dd className="break-all select-all">{bank.upiId}</dd></>}
+                      {bank.accountName && <><dt>Name :</dt><dd className="break-words">{bank.accountName}</dd></>}
+                      {bank.accountNumber && <><dt>A/c Number :</dt><dd className="break-all select-all">{bank.accountNumber}</dd></>}
+                      {bank.ifscCode && <><dt>IFSC :</dt><dd className="break-all select-all">{bank.ifscCode}</dd></>}
+                      {bank.bankName && <><dt>Bank :</dt><dd className="break-words">{bank.bankName}</dd></>}
+                      {bank.branch && <><dt>Branch :</dt><dd className="break-words">{bank.branch}</dd></>}
+                      {bank.accountType && <><dt>Type :</dt><dd>{bank.accountType}</dd></>}
+                      {bank.upiId && <><dt>UPI ID :</dt><dd className="break-all select-all">{bank.upiId}</dd></>}
                     </dl>
                     {bank.qrCodeUrl && (
-                      <div className="mt-3 flex items-center gap-3">
+                      <div className="mt-4">
+                        <p className="mb-2 text-xs font-semibold text-white/70">Scan &amp; Pay</p>
                         <a
                           href={bank.qrCodeUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-block overflow-hidden border border-white/20 bg-white p-1 hover:border-amber-400 transition"
+                          className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-md border border-white/30 bg-white p-2 shadow-xs transition hover:border-amber-300"
                           title="Click to view QR code"
                         >
                           <img
                             src={bank.qrCodeUrl}
                             alt="Payment QR Code"
-                            className="h-14 w-14 object-contain"
+                            className="max-h-full max-w-full object-contain"
                           />
                         </a>
-                        <span className="text-xs text-white/70 leading-tight">
-                          Scan to pay via any UPI app
-                        </span>
                       </div>
                     )}
                   </div>
@@ -1834,12 +1814,41 @@ const PublicLayout = () => {
               </div>
             </div>
           )}
+
+          {whatsappList.length > 0 && (
+            <div className="text-[15px]">
+              <div className="mb-4">
+                <h4 className="font-bold text-xl text-white">Sales &amp; Support</h4>
+              </div>
+              <div className="space-y-2">
+                {whatsappList.map((item, idx) => {
+                  const raw = item.number || '';
+                  const cleaned = raw.replace(/\D/g, '');
+                  const waLink = cleaned.length === 10 ? `91${cleaned}` : cleaned;
+                  const displayNum = cleaned.length >= 10 ? cleaned.slice(-10) : raw;
+                  return (
+                    <a
+                      key={`wa-${idx}`}
+                      className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 hover:text-amber-300 hover:underline"
+                      href={`https://wa.me/${waLink}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <span className="truncate">{item.label || `WhatsApp ${idx + 1}`}</span>
+                      <span className="tabular-nums whitespace-nowrap">{displayNum}</span>
+                      <WhatsAppIcon className="h-4 w-4 shrink-0 text-[#25D366]" />
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
-        <p className="storefront-container border-t border-white/15 py-5 text-center text-sm text-white/90">
+        <p className="storefront-container border-t border-white/20 py-4 text-center text-sm text-white/75">
           {(footerData.copyrightText || '© {year} {company}. All Rights Reserved.').replace(/\{year\}/g, String(new Date().getFullYear())).replace(/\{company\}/g, footerData.companyName || '')}
         </p>
       </footer>}
-      {!footerData && <footer className="w-full bg-[#111111] px-6 py-6 text-white">
+      {!footerData && <footer className="w-full bg-[#111111] px-6 py-6 text-white/90 border-t border-[#2b2b2b]">
         <div className="storefront-container flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
           <Link to="/privacy" className="hover:underline">Privacy Policy</Link>
           <Link to="/terms" className="hover:underline">Terms &amp; Conditions</Link>
