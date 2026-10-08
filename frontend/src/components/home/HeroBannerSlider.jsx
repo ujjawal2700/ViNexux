@@ -74,7 +74,7 @@ const HeroBannerSlider = ({ slides = [], autoPlayInterval = 5000 }) => {
         {slides.map((slide, idx) => {
           const hasLink = Boolean(slide.link && slide.link !== '#' && slide.link !== '/');
           const isExternal = hasLink && /^https?:\/\//i.test(slide.link);
-          const hasOverlay = Boolean(slide.title || slide.subtitle || slide.buttonText);
+          const hasOverlayContent = Boolean(slide.title || slide.subtitle || slide.buttonText);
 
           return (
             <div
@@ -90,16 +90,16 @@ const HeroBannerSlider = ({ slides = [], autoPlayInterval = 5000 }) => {
                   draggable={false}
                 />
 
-                {/* Banner Text & CTA Overlay matching Admin preview */}
-                {hasOverlay && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-transparent flex flex-col justify-center px-6 sm:px-12 lg:px-16 text-white space-y-1 sm:space-y-2 pointer-events-auto">
+                {/* Keep the uploaded artwork clear; shade only text that needs contrast. */}
+                {hasOverlayContent && (
+                  <div className="absolute inset-0 flex flex-col justify-center px-6 sm:px-12 lg:px-16 text-white space-y-1 sm:space-y-2 pointer-events-auto">
                     {slide.title && (
-                      <h2 className="text-base sm:text-2xl md:text-3xl lg:text-4xl font-black tracking-tight drop-shadow-md max-w-xl">
+                      <h2 className="max-w-xl text-base font-black tracking-tight [text-shadow:0_2px_8px_rgba(0,0,0,0.9)] sm:text-2xl md:text-3xl lg:text-4xl">
                         {slide.title}
                       </h2>
                     )}
                     {slide.subtitle && (
-                      <p className="text-xs sm:text-sm md:text-base text-white/90 drop-shadow-sm max-w-lg line-clamp-2">
+                      <p className="max-w-lg self-start rounded bg-black/30 px-2 py-1 text-xs text-white line-clamp-2 backdrop-blur-[1px] sm:text-sm md:text-base">
                         {slide.subtitle}
                       </p>
                     )}

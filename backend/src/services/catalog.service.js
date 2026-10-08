@@ -344,7 +344,8 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   const page = Math.max(1, Number(query.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
   const sortField = ['standardPrice', 'dealerPrice'].includes(query.sortBy) ? 'applicablePrice'
-    : ['name', 'modelNumber', 'sku', 'createdAt', 'updatedAt', 'stockUpdatedAt'].includes(query.sortBy) ? query.sortBy : 'createdAt';
+    : query.sortBy === 'stockQuantity' ? 'stockLevel'
+      : ['name', 'modelNumber', 'sku', 'createdAt', 'updatedAt', 'stockUpdatedAt'].includes(query.sortBy) ? query.sortBy : 'createdAt';
   // The dealer-price lookup is per document, so run it on the current page
   // only, unless a price filter or price sort needs it for every match.
   const priceNeededBeforePaging = sortField === 'applicablePrice' || query.minPrice !== undefined || query.maxPrice !== undefined;

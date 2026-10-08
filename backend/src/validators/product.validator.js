@@ -164,7 +164,7 @@ export const getProductsQuerySchema = {
       })
       .optional(),
     sortBy: z
-      .enum(['name', 'modelNumber', 'sku', 'createdAt', 'standardPrice', 'dealerPrice', 'sortOrder', 'updatedAt', 'stockUpdatedAt'], {
+      .enum(['name', 'modelNumber', 'sku', 'createdAt', 'standardPrice', 'dealerPrice', 'stockQuantity', 'sortOrder', 'updatedAt', 'stockUpdatedAt'], {
         invalid_type_error: 'Invalid sortBy field',
       })
       .optional(),

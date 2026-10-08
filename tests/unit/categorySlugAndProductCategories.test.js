@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
 import { slugify, cleanCategorySlug, generateUniqueCategorySlug } from '../../frontend/src/utils/categoryUrls.js';
 import { sanitizeCategorySlug } from '../../backend/src/services/category.service.js';
-import { createProductSchema, updateProductSchema } from '../../backend/src/validators/product.validator.js';
+import { createProductSchema, getProductsQuerySchema, updateProductSchema } from '../../backend/src/validators/product.validator.js';
 
 describe('Category slug generation and cleaning', () => {
   test('slugify generates kebab-case slug from name', () => {
@@ -89,5 +89,21 @@ describe('Product multi-category schema validation', () => {
     const parsedBody = updateProductSchema.body.safeParse(validUpdate.body);
     expect(parsedParams.success).toBe(true);
     expect(parsedBody.success).toBe(true);
+  });
+});
+
+describe('Product catalog query validation', () => {
+  test('accepts the low-stock page query and stock quantity sorting', () => {
+    const parsed = getProductsQuerySchema.query.safeParse({
+      lowStock: 'true',
+      availability: 'low-stock',
+      page: '1',
+      limit: '20',
+      isActive: 'true',
+      sortBy: 'stockQuantity',
+      sortOrder: 'asc',
+    });
+
+    expect(parsed.success).toBe(true);
   });
 });

@@ -12,6 +12,7 @@ import Skeleton from '../../components/ui/Skeleton';
 import ErrorState from '../../components/ui/ErrorState';
 import FormField from '../../components/ui/FormField';
 import FormError from '../../components/ui/FormError';
+import WhatsAppIcon from '../../components/ui/WhatsAppIcon';
 import {
   UploadCloud,
   X,
@@ -20,7 +21,6 @@ import {
   Image as ImageIcon,
   Building2,
   Phone,
-  MessageCircle,
   Mail,
   Plus,
   Trash2,
@@ -661,7 +661,7 @@ const AdminCmsFooterPage = () => {
             <div className="space-y-3 bg-gray-50/70 p-4 rounded-xl border border-gray-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <MessageCircle className="w-4 h-4 text-emerald-600" />
+                  <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
                   <h4 className="text-sm font-semibold text-gray-900">WhatsApp Numbers</h4>
                   <span className="text-xs text-gray-400">({formData.whatsappNumbers.length})</span>
                 </div>
@@ -670,12 +670,18 @@ const AdminCmsFooterPage = () => {
                   <span>Add WhatsApp</span>
                 </Button>
               </div>
-              <p className="text-xs text-gray-500">Add WhatsApp numbers with labels for quick click-to-chat links in the footer.</p>
+              <p className="text-xs text-gray-500">Add WhatsApp numbers with labels for quick click-to-chat links. The WhatsApp icon is applied automatically.</p>
 
               <div className="space-y-2.5 pt-1">
                 {formData.whatsappNumbers.map((waItem, idx) => (
                   <div key={idx} className="flex items-center gap-2.5 bg-white p-2.5 rounded-lg border border-gray-200 shadow-2xs">
                     <span className="text-xs font-bold text-gray-400 w-5 text-center">#{idx + 1}</span>
+                    <span
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#25D366]/10 text-[#25D366]"
+                      title="WhatsApp icon is added automatically"
+                    >
+                      <WhatsAppIcon className="h-5 w-5" />
+                    </span>
                     <Input
                       type="text"
                       placeholder="WhatsApp No. (e.g. 8769959424)"

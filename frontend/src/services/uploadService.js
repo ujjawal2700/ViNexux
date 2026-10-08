@@ -15,7 +15,10 @@ export const uploadService = {
     formData.append('image', file);
     formData.append('folder', folder);
 
-    const response = await api.post('/upload/image', formData, {
+    // Uploads are admin-only. Using the admin-prefixed route is important
+    // because the API client selects the admin access token from the request
+    // URL (an admin may not have a customer token at all).
+    const response = await api.post('/admin/upload/image', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -34,7 +37,7 @@ export const uploadService = {
     files.forEach((file) => formData.append('images', file));
     formData.append('folder', folder);
 
-    const response = await api.post('/upload/images', formData, {
+    const response = await api.post('/admin/upload/images', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -48,7 +51,7 @@ export const uploadService = {
    * @param {string} publicId
    */
   deleteImage: async (publicId) => {
-    const response = await api.delete('/upload/image', {
+    const response = await api.delete('/admin/upload/image', {
       data: { publicId },
     });
 

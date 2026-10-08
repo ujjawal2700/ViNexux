@@ -674,16 +674,16 @@ const AdminCmsBannersPage = () => {
                       className="w-full h-full object-cover object-center"
                     />
 
-                    {/* Simulated live overlay matching storefront */}
+                    {/* Simulated live content matching the unobscured storefront banner */}
                     {(formData.title || formData.subtitle || formData.buttonText) && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent flex flex-col justify-center px-4 sm:px-6 text-white space-y-1">
+                      <div className="absolute inset-0 flex flex-col justify-center px-4 sm:px-6 text-white space-y-1">
                         {formData.title && (
-                          <h4 className="text-xs sm:text-base md:text-lg font-black tracking-tight line-clamp-1 drop-shadow-sm">
+                          <h4 className="text-xs sm:text-base md:text-lg font-black tracking-tight line-clamp-1 [text-shadow:0_2px_8px_rgba(0,0,0,0.9)]">
                             {formData.title}
                           </h4>
                         )}
                         {formData.subtitle && (
-                          <p className="text-[10px] sm:text-xs text-white/80 line-clamp-1 drop-shadow-sm">
+                          <p className="self-start rounded bg-black/30 px-1.5 py-0.5 text-[10px] sm:text-xs text-white line-clamp-1 backdrop-blur-[1px]">
                             {formData.subtitle}
                           </p>
                         )}

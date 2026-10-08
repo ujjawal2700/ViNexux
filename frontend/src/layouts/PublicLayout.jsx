@@ -18,6 +18,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { slugify, buildCategoryPath, buildProductPath, buildBrandUrl } from '../utils/categoryUrls';
 import useCatalogBrands from '../hooks/useCatalogBrands';
 import { openStorageChoices } from '../utils/storageConsent';
+import WhatsAppIcon from '../components/ui/WhatsAppIcon';
 import {
   Search,
   Phone,
@@ -51,9 +52,6 @@ import {
   Smartphone,
   MapPin,
   Mail,
-  MessageCircle,
-  Building2,
-  Copy,
   Flame,
 } from 'lucide-react';
 
@@ -61,42 +59,6 @@ const STORE_MAP_URL = 'https://maps.app.goo.gl/QSuzGqkbp2HxMHLp6';
 const CONTACT_PHONE_DISPLAY = '8209224481';
 const CONTACT_PHONE_LINK = '+918209224481';
 const WHATSAPP_NUMBER = '918209224481';
-
-const CopyButton = ({ textToCopy, label = 'Copy' }) => {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!textToCopy) return;
-    try {
-      navigator.clipboard?.writeText(textToCopy);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // ignore
-    }
-  };
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-white/10 hover:bg-white/20 text-gray-200 hover:text-white transition cursor-pointer shrink-0"
-      title={`Copy ${label}`}
-    >
-      {copied ? (
-        <>
-          <Check className="w-3 h-3 text-emerald-400" />
-          <span className="text-emerald-400 font-medium">Copied</span>
-        </>
-      ) : (
-        <>
-          <Copy className="w-3 h-3 text-gray-400" />
-          <span>Copy</span>
-        </>
-      )}
-    </button>
-  );
-};
 
 const getHeaderCategoryIcon = (name = '', slug = '') => {
   const s = (slug + ' ' + name).toLowerCase();
@@ -1800,7 +1762,7 @@ const PublicLayout = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <MessageCircle className="w-4 h-4 shrink-0 text-emerald-400" />
+                  <WhatsAppIcon className="w-4 h-4 shrink-0 text-[#25D366]" />
                   <span>
                     {displayNum}
                     <span className="text-xs text-emerald-300/80 ml-1.5 font-normal">
@@ -1825,81 +1787,44 @@ const PublicLayout = () => {
           </div>
 
           {hasBankDetails && (
-            <div className="space-y-4 text-[14px]">
-              <h4 className="font-bold text-xl text-white mb-4 flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-amber-400 shrink-0" />
-                <span>{footerData.bankDetailsHeading || 'Bank Details'}</span>
-              </h4>
-              <div className="space-y-3">
+            <div className="text-[15px] text-white/90">
+              <div className="mb-5">
+                <h4 className="font-bold text-xl text-white">
+                  {footerData.bankDetailsHeading || 'Bank Details'}
+                </h4>
+                <span className="mt-2 block h-1 w-20 bg-gradient-to-r from-amber-500 via-amber-300 to-transparent" />
+              </div>
+              <div className="space-y-5">
                 {bankAccountList.map((bank, index) => (
                   <div
                     key={`bank-${index}`}
-                    className="rounded-lg border border-white/15 bg-white/[0.04] p-3.5 space-y-2 backdrop-blur-xs text-xs text-gray-300 hover:border-white/30 transition-colors shadow-2xs"
+                    className={index > 0 ? 'border-t border-white/15 pt-5' : ''}
                   >
-                    {bank.bankName && (
-                      <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-1.5">
-                        <span className="font-semibold text-white text-[13px]">{bank.bankName}</span>
-                        {bank.accountType && (
-                          <span className="text-[10px] font-medium tracking-wide uppercase px-1.5 py-0.5 rounded-sm bg-white/10 text-gray-200">
-                            {bank.accountType}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    {bank.accountName && (
-                      <div className="flex flex-col">
-                        <span className="text-[10px] uppercase text-gray-400 tracking-wider">Beneficiary</span>
-                        <span className="font-medium text-gray-100">{bank.accountName}</span>
-                      </div>
-                    )}
-                    {bank.accountNumber && (
-                      <div className="flex items-center justify-between gap-2 bg-black/40 px-2.5 py-1.5 rounded-sm border border-white/10">
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-[9px] uppercase text-gray-400 tracking-wider font-semibold">A/C Number</span>
-                          <span className="font-mono text-white text-[12px] font-medium tracking-wider truncate select-all">{bank.accountNumber}</span>
-                        </div>
-                        <CopyButton textToCopy={bank.accountNumber} label="A/C Number" />
-                      </div>
-                    )}
-                    {bank.ifscCode && (
-                      <div className="flex items-center justify-between gap-2 bg-black/40 px-2.5 py-1.5 rounded-sm border border-white/10">
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-[9px] uppercase text-gray-400 tracking-wider font-semibold">IFSC Code</span>
-                          <span className="font-mono text-amber-300 text-[12px] font-medium tracking-wider truncate select-all">{bank.ifscCode}</span>
-                        </div>
-                        <CopyButton textToCopy={bank.ifscCode} label="IFSC Code" />
-                      </div>
-                    )}
-                    {bank.branch && (
-                      <div className="text-[11px] text-gray-400">
-                        <span className="text-gray-500">Branch: </span>{bank.branch}
-                      </div>
-                    )}
-                    {bank.upiId && (
-                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-[9px] uppercase text-gray-400 tracking-wider font-semibold">UPI ID</span>
-                          <span className="font-mono text-emerald-400 text-[11px] truncate select-all">{bank.upiId}</span>
-                        </div>
-                        <CopyButton textToCopy={bank.upiId} label="UPI ID" />
-                      </div>
-                    )}
+                    <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-2 gap-y-1.5 leading-6">
+                      {bank.accountName && <><dt className="text-white">Name :</dt><dd className="break-words">{bank.accountName}</dd></>}
+                      {bank.accountNumber && <><dt className="text-white">A/c Number :</dt><dd className="break-all select-all">{bank.accountNumber}</dd></>}
+                      {bank.ifscCode && <><dt className="text-white">IFSC :</dt><dd className="break-all select-all">{bank.ifscCode}</dd></>}
+                      {bank.bankName && <><dt className="text-white">Bank :</dt><dd className="break-words">{bank.bankName}</dd></>}
+                      {bank.branch && <><dt className="text-white">Branch :</dt><dd className="break-words">{bank.branch}</dd></>}
+                      {bank.accountType && <><dt className="text-white">Type :</dt><dd>{bank.accountType}</dd></>}
+                      {bank.upiId && <><dt className="text-white">UPI ID :</dt><dd className="break-all select-all">{bank.upiId}</dd></>}
+                    </dl>
                     {bank.qrCodeUrl && (
-                      <div className="pt-1.5 flex items-center gap-2.5">
+                      <div className="mt-3 flex items-center gap-3">
                         <a
                           href={bank.qrCodeUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="group relative inline-block rounded-md overflow-hidden border border-white/20 bg-white p-1 hover:border-amber-400 transition"
+                          className="inline-block overflow-hidden border border-white/20 bg-white p-1 hover:border-amber-400 transition"
                           title="Click to view QR code"
                         >
                           <img
                             src={bank.qrCodeUrl}
                             alt="Payment QR Code"
-                            className="w-10 h-10 object-contain"
+                            className="h-14 w-14 object-contain"
                           />
                         </a>
-                        <span className="text-[11px] text-gray-300 leading-tight">
+                        <span className="text-xs text-white/70 leading-tight">
                           Scan to pay via any UPI app
                         </span>
                       </div>

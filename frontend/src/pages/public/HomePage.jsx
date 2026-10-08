@@ -92,7 +92,7 @@ export const HomePage = () => {
     <div className="w-full max-w-full bg-gray-50 pb-16 space-y-6 sm:space-y-8 overflow-x-hidden">
       
       {/* 1. HERO WIDE BANNER SLIDER */}
-      <section className="relative w-full overflow-hidden shadow-xs">
+      <section className="relative w-full overflow-hidden border-t-[3px] border-[#f5f1ed] shadow-xs">
         <HeroBannerSlider slides={banners} />
       </section>
 
