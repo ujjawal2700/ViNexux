@@ -29,10 +29,10 @@ const StorageConsentBanner = () => {
           {/* Main Content Area - Fills Left to Right on Desktop */}
           <div className="space-y-2 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-[#800020]/10 flex items-center justify-center text-[#800020] shrink-0">
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-[var(--store-primary,#800020)]/10 flex items-center justify-center text-[var(--store-primary,#800020)] shrink-0">
                 <Cookie className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
-              <h2 className="text-sm sm:text-base lg:text-lg font-bold text-[#800020] tracking-tight">
+              <h2 className="text-sm sm:text-base lg:text-lg font-bold text-[var(--store-primary,#800020)] tracking-tight">
                 Cookie &amp; Browser Storage Choices
               </h2>
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold text-emerald-700 border border-emerald-200">
@@ -43,7 +43,7 @@ const StorageConsentBanner = () => {
             {/* Mobile short & simple text */}
             <p className="sm:hidden text-xs text-gray-600 leading-snug">
               We use essential storage for your cart, login, and secure checkout. We never sell your data or use ad trackers.{' '}
-              <Link to="/privacy" className="font-semibold text-[#800020] underline">
+              <Link to="/privacy" className="font-semibold text-[var(--store-primary,#800020)] underline">
                 Privacy Policy
               </Link>
             </p>
@@ -53,7 +53,7 @@ const StorageConsentBanner = () => {
               Vinexus uses essential browser storage to power shopping cart persistence, authentication, and secure checkout. With your consent, we also save your wishlist and recently viewed products on this device. We do not sell your personal data or use third-party advertising cookies. Read our{' '}
               <Link
                 to="/privacy"
-                className="font-semibold text-[#800020] underline hover:text-[#650019]"
+                className="font-semibold text-[var(--store-primary,#800020)] underline hover:text-[var(--store-primary-hover,#660019)]"
               >
                 Privacy Policy
               </Link>.
@@ -77,13 +77,13 @@ const StorageConsentBanner = () => {
               </div>
 
               <div className="flex items-start gap-2.5 p-2 rounded-lg bg-gray-50 border border-gray-100">
-                <div className="p-1 rounded bg-[#800020]/10 text-[#800020] shrink-0 mt-0.5">
+                <div className="p-1 rounded bg-[var(--store-primary,#800020)]/10 text-[var(--store-primary,#800020)] shrink-0 mt-0.5">
                   <Sparkles className="w-3.5 h-3.5" />
                 </div>
                 <div className="text-xs">
                   <div className="flex items-center gap-1.5 font-semibold text-gray-800">
                     <span>Personalization</span>
-                    <span className="text-[10px] bg-rose-50 text-[#800020] border border-rose-200 px-1.5 py-0.2 rounded font-medium">Optional</span>
+                    <span className="text-[10px] bg-rose-50 text-[var(--store-primary,#800020)] border border-rose-200 px-1.5 py-0.2 rounded font-medium">Optional</span>
                   </div>
                   <p className="text-gray-500 text-[11px] mt-0.5 line-clamp-2">
                     Wishlist items and recently browsed products across visits.
@@ -113,7 +113,7 @@ const StorageConsentBanner = () => {
             <button
               type="button"
               onClick={() => choose(true)}
-              className="flex-1 sm:flex-initial rounded-lg bg-[#800020] hover:bg-[#650019] px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-xs transition-colors cursor-pointer text-center"
+              className="flex-1 sm:flex-initial rounded-lg bg-[var(--store-primary,#800020)] hover:bg-[var(--store-primary-hover,#660019)] px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-xs transition-colors cursor-pointer text-center"
             >
               Allow saved preferences
             </button>

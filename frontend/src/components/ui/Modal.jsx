@@ -2,6 +2,7 @@ import React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { useThemeScope } from '../../hooks/useThemeScope';
 
 const sizeClasses = {
   sm: 'max-w-sm',
@@ -28,6 +29,7 @@ export const Modal = ({
   closeOnOutsideClick = true,
   className = '',
 }) => {
+  const { inStorefront, themeStyle } = useThemeScope();
   const scrollRef = React.useRef(null);
 
   React.useEffect(() => {
@@ -41,6 +43,7 @@ export const Modal = ({
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0" />
         <DialogPrimitive.Content
+          style={themeStyle}
           onPointerDownOutside={(e) => {
             if (!closeOnOutsideClick) e.preventDefault();
           }}
@@ -48,6 +51,7 @@ export const Modal = ({
             if (!closeOnOutsideClick) e.preventDefault();
           }}
           className={cn(
+            inStorefront && 'storefront-theme',
             'fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)]',
             sizeClasses[size] || sizeClasses.md,
             'bg-white text-gray-900 rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]',

@@ -57,7 +57,7 @@ const HeroBannerSlider = ({ slides = [], autoPlayInterval = 5000 }) => {
 
   return (
     <div
-      className="relative w-full overflow-hidden select-none bg-gray-100 group z-10"
+      className="relative w-full overflow-hidden select-none bg-[var(--store-background)] group z-10"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onTouchStart={handleTouchStart}
@@ -111,20 +111,20 @@ const HeroBannerSlider = ({ slides = [], autoPlayInterval = 5000 }) => {
                               href={slide.link}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-lg bg-[#800020] hover:bg-[#600018] text-white text-xs sm:text-sm font-bold shadow-md transition-colors"
+                              className="inline-flex items-center px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-lg bg-[var(--store-primary)] hover:bg-[var(--store-primary-hover)] text-white text-xs sm:text-sm font-bold shadow-md transition-colors"
                             >
                               {slide.buttonText}
                             </a>
                           ) : (
                             <Link
                               to={slide.link}
-                              className="inline-flex items-center px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-lg bg-[#800020] hover:bg-[#600018] text-white text-xs sm:text-sm font-bold shadow-md transition-colors"
+                              className="inline-flex items-center px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-lg bg-[var(--store-primary)] hover:bg-[var(--store-primary-hover)] text-white text-xs sm:text-sm font-bold shadow-md transition-colors"
                             >
                               {slide.buttonText}
                             </Link>
                           )
                         ) : (
-                          <span className="inline-flex items-center px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-lg bg-[#800020] text-white text-xs sm:text-sm font-bold shadow-md">
+                          <span className="inline-flex items-center px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-lg bg-[var(--store-primary)] text-white text-xs sm:text-sm font-bold shadow-md">
                             {slide.buttonText}
                           </span>
                         )}

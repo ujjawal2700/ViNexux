@@ -650,8 +650,8 @@ export const ProductsPage = () => {
   const renderSidebarFilters = () => (
     <div className="space-y-4">
       {/* 1. Header with Filters title & Reset All */}
-      <div className="flex items-center justify-between pb-3 border-b border-gray-200">
-        <div className="flex items-center gap-2 font-bold text-gray-900 text-sm">
+      <div className="flex items-center justify-between pb-3 border-b border-[var(--store-border)]">
+        <div className="flex items-center gap-2 font-bold text-[var(--store-text)] text-sm">
           <Filter className="w-4 h-4 text-primary" />
           <span>Filters</span>
         </div>
@@ -664,7 +664,7 @@ export const ProductsPage = () => {
       </div>
 
       {/* 2. Categories Accordion (matching Availability checkbox pattern) */}
-      <div className="border-b border-gray-200 pb-3">
+      <div className="border-b border-[var(--store-border)] pb-3">
         <button
           type="button"
           onClick={() =>
@@ -673,13 +673,13 @@ export const ProductsPage = () => {
               categories: !prev.categories,
             }))
           }
-          className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-gray-800 py-1.5 hover:text-primary transition-colors select-none">
+          className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-[var(--store-text)] py-1.5 hover:text-primary transition-colors select-none">
           <div className="flex items-center gap-2">
             <LayoutGrid className="w-4 h-4 text-primary" />
             <span>Categories</span>
           </div>
           <ChevronDown
-            className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
+            className={`w-4 h-4 text-[var(--store-muted)] transition-transform duration-200 ${
               openSections.categories ? "rotate-180" : ""
             }`}
           />
@@ -689,20 +689,20 @@ export const ProductsPage = () => {
           <div className="mt-2.5 space-y-1.5">
             {currentCategory ? (
               /* When inside a specific category page: show ONLY the current category, already ticked */
-              <label className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group">
+              <label className="flex items-center justify-between text-xs text-[var(--store-muted)] hover:text-[var(--store-text)] cursor-pointer select-none py-0.5 group">
                 <span className="flex items-center gap-2 truncate">
                   <input
                     type="checkbox"
                     checked={true}
                     onChange={() => navigate("/products")}
-                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#800020] cursor-pointer"
+                    className="w-4 h-4 rounded border-[var(--store-border)] text-primary focus:ring-primary accent-[var(--store-primary)] cursor-pointer"
                   />
-                  <span className="truncate font-bold text-gray-900">
+                  <span className="truncate font-bold text-[var(--store-text)]">
                     {currentCategory.name}
                   </span>
                 </span>
                 {pagination.total > 0 && (
-                  <span className="text-[11px] text-gray-400 font-medium ml-2 shrink-0">
+                  <span className="text-[11px] text-[var(--store-muted)] font-medium ml-2 shrink-0">
                     {pagination.total}
                   </span>
                 )}
@@ -710,18 +710,18 @@ export const ProductsPage = () => {
             ) : categoriesToRender.length > 0 ? (
               /* On general /products page: show All Categories + Header categories */
               <>
-                <label className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group">
+                <label className="flex items-center justify-between text-xs text-[var(--store-muted)] hover:text-[var(--store-text)] cursor-pointer select-none py-0.5 group">
                   <span className="flex items-center gap-2 truncate">
                     <input
                       type="checkbox"
                       checked={isAllCategoriesChecked}
                       onChange={() => handleToggleCategory(null)}
-                      className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#800020] cursor-pointer"
+                      className="w-4 h-4 rounded border-[var(--store-border)] text-primary focus:ring-primary accent-[var(--store-primary)] cursor-pointer"
                     />
                     <span
                       className={`truncate ${
                         isAllCategoriesChecked
-                          ? "font-bold text-gray-900"
+                          ? "font-bold text-[var(--store-text)]"
                           : "group-hover:text-primary"
                       }`}>
                       All Categories
@@ -733,25 +733,25 @@ export const ProductsPage = () => {
                   return (
                     <label
                       key={cat._id}
-                      className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group">
+                      className="flex items-center justify-between text-xs text-[var(--store-muted)] hover:text-[var(--store-text)] cursor-pointer select-none py-0.5 group">
                       <span className="flex items-center gap-2 truncate">
                         <input
                           type="checkbox"
                           checked={isChecked}
                           onChange={() => handleToggleCategory(cat)}
-                          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#800020] cursor-pointer"
+                          className="w-4 h-4 rounded border-[var(--store-border)] text-primary focus:ring-primary accent-[var(--store-primary)] cursor-pointer"
                         />
                         <span
                           className={`truncate ${
                             isChecked
-                              ? "font-bold text-gray-900"
+                              ? "font-bold text-[var(--store-text)]"
                               : "group-hover:text-primary"
                           }`}>
                           {cat.name}
                         </span>
                       </span>
                       {cat.count !== undefined && cat.count > 0 && (
-                        <span className="text-[11px] text-gray-400 font-medium ml-2 shrink-0">
+                        <span className="text-[11px] text-[var(--store-muted)] font-medium ml-2 shrink-0">
                           {cat.count}
                         </span>
                       )}
@@ -774,19 +774,19 @@ export const ProductsPage = () => {
       {/* 2. Brands Accordion (below Categories: shows only brands that have products available in this category) */}
       {(Boolean(currentCategory) || (!isAllProductsRoute && !brandSlug)) &&
         availableBrands.length > 0 && (
-          <div className="border-b border-gray-200 pb-3">
+          <div className="border-b border-[var(--store-border)] pb-3">
             <button
               type="button"
               onClick={() =>
                 setOpenSections((prev) => ({ ...prev, brands: !prev.brands }))
               }
-              className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-gray-800 py-1.5 hover:text-primary transition-colors select-none">
+              className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-[var(--store-text)] py-1.5 hover:text-primary transition-colors select-none">
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-primary" />
                 <span>Brands</span>
               </div>
               <ChevronDown
-                className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
+                className={`w-4 h-4 text-[var(--store-muted)] transition-transform duration-200 ${
                   openSections.brands ? "rotate-180" : ""
                 }`}
               />
@@ -801,24 +801,24 @@ export const ProductsPage = () => {
                   return (
                     <label
                       key={brand.name}
-                      className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group">
+                      className="flex items-center justify-between text-xs text-[var(--store-muted)] hover:text-[var(--store-text)] cursor-pointer select-none py-0.5 group">
                       <div className="flex items-center gap-2 truncate">
                         <input
                           type="checkbox"
                           checked={isChecked}
                           onChange={() => handleToggleBrand(brand.name)}
-                          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#800020] cursor-pointer"
+                          className="w-4 h-4 rounded border-[var(--store-border)] text-primary focus:ring-primary accent-[var(--store-primary)] cursor-pointer"
                         />
                         <span
                           className={`truncate ${
                             isChecked
-                              ? "font-bold text-gray-900"
+                              ? "font-bold text-[var(--store-text)]"
                               : "group-hover:text-primary"
                           }`}>
                           {brand.name}
                         </span>
                       </div>
-                      <span className="text-[11px] text-gray-400 font-medium ml-2 shrink-0">
+                      <span className="text-[11px] text-[var(--store-muted)] font-medium ml-2 shrink-0">
                         {brand.count}
                       </span>
                     </label>
@@ -833,7 +833,7 @@ export const ProductsPage = () => {
       {(Boolean(currentCategory) || !isAllProductsRoute) &&
         specsToRender.length > 0 &&
         specsToRender.map((spec) => (
-          <div key={spec.key} className="border-b border-gray-200 pb-3">
+          <div key={spec.key} className="border-b border-[var(--store-border)] pb-3">
             <button
               type="button"
               onClick={() =>
@@ -843,7 +843,7 @@ export const ProductsPage = () => {
                     prev[`spec_${spec.key}`] === false ? true : false,
                 }))
               }
-              className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-gray-800 py-1.5 hover:text-primary transition-colors select-none">
+              className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-[var(--store-text)] py-1.5 hover:text-primary transition-colors select-none">
               <div className="flex items-center gap-2">
                 <Cpu className="w-4 h-4 text-primary" />
                 <span className="truncate">
@@ -852,7 +852,7 @@ export const ProductsPage = () => {
                 </span>
               </div>
               <ChevronDown
-                className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
+                className={`w-4 h-4 text-[var(--store-muted)] transition-transform duration-200 ${
                   openSections[`spec_${spec.key}`] !== false ? "rotate-180" : ""
                 }`}
               />
@@ -867,24 +867,24 @@ export const ProductsPage = () => {
                   return (
                     <label
                       key={val}
-                      className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group">
+                      className="flex items-center justify-between text-xs text-[var(--store-muted)] hover:text-[var(--store-text)] cursor-pointer select-none py-0.5 group">
                       <div className="flex items-center gap-2 truncate">
                         <input
                           type="checkbox"
                           checked={isChecked}
                           onChange={() => handleToggleSpec(spec.key, val)}
-                          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#800020] cursor-pointer"
+                          className="w-4 h-4 rounded border-[var(--store-border)] text-primary focus:ring-primary accent-[var(--store-primary)] cursor-pointer"
                         />
                         <span
                           className={`truncate ${
                             isChecked
-                              ? "font-bold text-gray-900"
+                              ? "font-bold text-[var(--store-text)]"
                               : "group-hover:text-primary"
                           }`}>
                           {val}
                         </span>
                       </div>
-                      <span className="text-[11px] text-gray-400 font-medium ml-2 shrink-0">
+                      <span className="text-[11px] text-[var(--store-muted)] font-medium ml-2 shrink-0">
                         {count}
                       </span>
                     </label>
@@ -896,7 +896,7 @@ export const ProductsPage = () => {
         ))}
 
       {/* 4. Availability (last filter: as is) */}
-      <div className="border-b border-gray-200 pb-3">
+      <div className="border-b border-[var(--store-border)] pb-3">
         <button
           type="button"
           onClick={() =>
@@ -905,13 +905,13 @@ export const ProductsPage = () => {
               availability: !prev.availability,
             }))
           }
-          className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-gray-800 py-1.5 hover:text-primary transition-colors select-none">
+          className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-[var(--store-text)] py-1.5 hover:text-primary transition-colors select-none">
           <div className="flex items-center gap-2">
             <PackageCheck className="w-4 h-4 text-primary" />
             <span>Availability</span>
           </div>
           <ChevronDown
-            className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${openSections.availability ? "rotate-180" : ""}`}
+            className={`w-4 h-4 text-[var(--store-muted)] transition-transform duration-200 ${openSections.availability ? "rotate-180" : ""}`}
           />
         </button>
 
@@ -930,20 +930,20 @@ export const ProductsPage = () => {
               return (
                 <label
                   key={status}
-                  className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group">
+                  className="flex items-center justify-between text-xs text-[var(--store-muted)] hover:text-[var(--store-text)] cursor-pointer select-none py-0.5 group">
                   <span className="flex items-center gap-2 truncate">
                     <input
                       type="checkbox"
                       checked={checked}
                       onChange={() => handleToggleAvailability(status)}
-                      className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#800020] cursor-pointer"
+                      className="w-4 h-4 rounded border-[var(--store-border)] text-primary focus:ring-primary accent-[var(--store-primary)] cursor-pointer"
                     />
                     <span
-                      className={`truncate ${checked ? "font-bold text-gray-900" : "group-hover:text-primary"}`}>
+                      className={`truncate ${checked ? "font-bold text-[var(--store-text)]" : "group-hover:text-primary"}`}>
                       {label}
                     </span>
                   </span>
-                  <span className="text-[11px] text-gray-400 font-medium ml-2 shrink-0">
+                  <span className="text-[11px] text-[var(--store-muted)] font-medium ml-2 shrink-0">
                     {count}
                   </span>
                 </label>
@@ -987,7 +987,7 @@ export const ProductsPage = () => {
             />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-            <aside className="hidden lg:block lg:col-span-3 xl:col-span-3 2xl:col-span-2 bg-white rounded-lg border border-gray-200 p-4">
+            <aside className="hidden lg:block lg:col-span-3 xl:col-span-3 2xl:col-span-2 bg-[var(--store-surface)] rounded-lg border border-[var(--store-border)] p-4">
               <FilterSidebarSkeleton />
             </aside>
             <div className="lg:col-span-9 xl:col-span-9 2xl:col-span-10 storefront-product-grid gap-3 sm:gap-3.5">
@@ -1009,11 +1009,11 @@ export const ProductsPage = () => {
           {/* Breadcrumb row */}
           <nav
             aria-label="Breadcrumb"
-            className="hidden md:flex w-full min-w-0 max-w-full items-center flex-nowrap gap-2 overflow-x-auto whitespace-nowrap text-sm sm:text-base text-[#800020] font-medium lg:absolute lg:left-0 lg:w-auto lg:max-w-[35%]">
+            className="hidden md:flex w-full min-w-0 max-w-full items-center flex-nowrap gap-2 overflow-x-auto whitespace-nowrap text-sm sm:text-base text-[var(--store-primary)] font-medium lg:absolute lg:left-0 lg:w-auto lg:max-w-[35%]">
             {breadcrumbTrail.map((crumb, idx) => (
               <React.Fragment key={crumb.label + idx}>
                 {idx > 0 && (
-                  <ChevronRight className="w-4 h-4 text-[#800020] shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-[var(--store-primary)] shrink-0" />
                 )}
                 {crumb.path ? (
                   <Link
@@ -1022,7 +1022,7 @@ export const ProductsPage = () => {
                     {crumb.label}
                   </Link>
                 ) : (
-                  <span className="shrink-0 text-[#800020] font-semibold">
+                  <span className="shrink-0 text-[var(--store-primary)] font-semibold">
                     {crumb.label}
                   </span>
                 )}
@@ -1031,7 +1031,7 @@ export const ProductsPage = () => {
           </nav>
 
           {/* Centered Large Title (matching Screenshot: e.g. "ACER") */}
-          <h1 className="min-w-0 flex-1 truncate text-lg sm:text-2xl lg:flex-none lg:text-3xl font-black text-[#800020] tracking-tight text-left lg:text-center">
+          <h1 className="min-w-0 flex-1 truncate text-lg sm:text-2xl lg:flex-none lg:text-3xl font-black text-[var(--store-primary)] tracking-tight text-left lg:text-center">
             {pageTitle}
           </h1>
 
@@ -1039,7 +1039,7 @@ export const ProductsPage = () => {
             <button
               type="button"
               onClick={() => setIsMobileFilterOpen(true)}
-              className="order-2 lg:hidden flex items-center gap-1.5 px-2.5 sm:px-3 py-2.5 rounded-full sm:rounded-lg border border-gray-300 bg-white text-xs font-bold text-gray-700 hover:border-[#800020] transition-colors cursor-pointer">
+              className="order-2 lg:hidden flex items-center gap-1.5 px-2.5 sm:px-3 py-2.5 rounded-full sm:rounded-lg border border-[var(--store-border)] bg-[var(--store-surface)] text-xs font-bold text-[var(--store-muted)] hover:border-[var(--store-primary)] transition-colors cursor-pointer">
               <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
               <span>Filters</span>
             </button>
@@ -1048,19 +1048,19 @@ export const ProductsPage = () => {
                 <button
                   type="button"
                   aria-label="Sort products"
-                  className="order-1 flex w-auto sm:w-48 items-center justify-between gap-1.5 sm:gap-3 text-xs sm:text-sm font-semibold text-gray-800 bg-white border border-[#800020] rounded-full sm:rounded-lg px-2.5 sm:px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#800020]/20 cursor-pointer shadow-2xs">
-                  <ArrowUpDown className="h-3.5 w-3.5 text-[#800020] sm:hidden" />
+                  className="order-1 flex w-auto sm:w-48 items-center justify-between gap-1.5 sm:gap-3 text-xs sm:text-sm font-semibold text-[var(--store-text)] bg-[var(--store-surface)] border border-[var(--store-primary)] rounded-full sm:rounded-lg px-2.5 sm:px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--store-primary)]/20 cursor-pointer shadow-2xs">
+                  <ArrowUpDown className="h-3.5 w-3.5 text-[var(--store-primary)] sm:hidden" />
                   <span className="sm:hidden">Sort</span>
                   <span className="hidden sm:inline">
                     {SORT_OPTIONS.find((option) => option.value === sortOption)
                       ?.label || "Default"}
                   </span>
-                  <ChevronDown className="hidden sm:block w-4 h-4 text-[#800020]" />
+                  <ChevronDown className="hidden sm:block w-4 h-4 text-[var(--store-primary)]" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="w-56 border-[#800020]/25">
+                className="w-56 border-[var(--store-primary)]/25">
                 {SORT_OPTIONS.map((option) => (
                   <DropdownMenuItem
                     key={option.value}
@@ -1070,8 +1070,8 @@ export const ProductsPage = () => {
                     }}
                     className={
                       sortOption === option.value
-                        ? "bg-[#800020] text-white focus:bg-[#800020] focus:text-white"
-                        : "text-gray-800 focus:bg-[#800020]/10 focus:text-[#800020]"
+                        ? "bg-[var(--store-primary)] text-white focus:bg-[var(--store-primary)] focus:text-white"
+                        : "text-[var(--store-text)] focus:bg-[var(--store-primary)]/10 focus:text-[var(--store-primary)]"
                     }>
                     <span className="flex-1">{option.label}</span>
                     {sortOption === option.value && (
@@ -1089,7 +1089,7 @@ export const ProductsPage = () => {
           {/* DESKTOP SIDEBAR FILTERS (Sticky & Independently Scrollable) */}
           <aside className="hidden lg:block lg:col-span-3 xl:col-span-3 2xl:col-span-2 sticky top-[148px] self-start select-none">
             <div
-              className="bg-white rounded-lg border border-gray-200 p-4 shadow-2xs max-h-[calc(100vh-165px)] overflow-y-auto overscroll-contain [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400"
+              className="bg-[var(--store-surface)] rounded-lg border border-[var(--store-border)] p-4 shadow-2xs max-h-[calc(100vh-165px)] overflow-y-auto overscroll-contain [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400"
               style={{
                 scrollbarWidth: 'thin',
                 scrollbarColor: '#cbd5e1 transparent',

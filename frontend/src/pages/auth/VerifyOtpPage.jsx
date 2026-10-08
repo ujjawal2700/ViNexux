@@ -219,20 +219,20 @@ export const VerifyOtpPage = () => {
         {/* Top Segmented Header */}
         {portal === 'admin' ? (
           <div className="mb-6 p-2.5 bg-[#fdf2f4] border border-[#f3d5dc] rounded text-center">
-            <span className="text-xs font-bold text-[#800020] uppercase tracking-wider">ViNexus Administrator Verification</span>
+            <span className="text-xs font-bold text-[var(--store-primary,#800020)] uppercase tracking-wider">ViNexus Administrator Verification</span>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2 mb-6">
             <button
               type="button"
-              className="py-2.5 bg-[#800020] text-white font-bold text-xs sm:text-sm rounded text-center shadow-xs select-none"
+              className="py-2.5 bg-[var(--store-primary,#800020)] text-white font-bold text-xs sm:text-sm rounded text-center shadow-xs select-none"
             >
               Login
             </button>
             <button
               type="button"
               onClick={() => navigate('/register')}
-              className="py-2.5 bg-[#fdf2f4] hover:bg-[#fae1e6] text-[#800020] hover:text-[#590016] font-semibold text-xs sm:text-sm rounded text-center transition-colors select-none cursor-pointer"
+              className="py-2.5 bg-[#fdf2f4] hover:bg-[#fae1e6] text-[var(--store-primary,#800020)] hover:text-[var(--store-primary-hover,#590016)] font-semibold text-xs sm:text-sm rounded text-center transition-colors select-none cursor-pointer"
             >
               Register
             </button>
@@ -244,11 +244,11 @@ export const VerifyOtpPage = () => {
           <button
             type="button"
             onClick={() => navigate(portal === 'admin' ? '/admin/login' : '/login', { state: { identifier } })}
-            className="w-9 h-9 rounded bg-[#fdf2f4] hover:bg-[#fae1e6] text-[#800020] flex items-center justify-center shrink-0 transition-colors cursor-pointer border border-[#f3d5dc]"
+            className="w-9 h-9 rounded bg-[#fdf2f4] hover:bg-[#fae1e6] text-[var(--store-primary,#800020)] flex items-center justify-center shrink-0 transition-colors cursor-pointer border border-[#f3d5dc]"
             title="Go back"
             aria-label="Go back"
           >
-            <ArrowLeft className="w-4 h-4 text-[#800020] stroke-[2.5]" />
+            <ArrowLeft className="w-4 h-4 text-[var(--store-primary,#800020)] stroke-[2.5]" />
           </button>
           <div className="flex flex-col">
             <h1 className="text-base sm:text-lg font-bold text-gray-900 leading-tight">
@@ -261,8 +261,8 @@ export const VerifyOtpPage = () => {
         </div>
 
         {/* Maroon-Tinted Info Notice Banner */}
-        <div className="bg-[#fdf2f4] border border-[#f3d5dc] rounded p-2.5 sm:p-3 flex items-center gap-2.5 text-xs text-[#800020] font-semibold mb-6">
-          <div className="w-5 h-5 rounded bg-[#800020] flex items-center justify-center text-white shrink-0">
+        <div className="bg-[#fdf2f4] border border-[#f3d5dc] rounded p-2.5 sm:p-3 flex items-center gap-2.5 text-xs text-[var(--store-primary,#800020)] font-semibold mb-6">
+          <div className="w-5 h-5 rounded bg-[var(--store-primary,#800020)] flex items-center justify-center text-white shrink-0">
             <span className="text-[9px] leading-none font-black tracking-tighter">•••</span>
           </div>
           <span>{mockOtpEnabled ? `Mock mode is enabled. Use code ${mockOtp || '123456'}.` : 'Check your SMS for the 6-digit code'}</span>
@@ -288,7 +288,7 @@ export const VerifyOtpPage = () => {
             <button
               onClick={handleForceLogin}
               disabled={loading}
-              className="w-full bg-[#800020] hover:bg-[#9a1b32] text-white font-bold py-2.5 px-4 rounded text-xs transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-[var(--store-primary,#800020)] hover:bg-[var(--store-primary-hover,#9a1b32)] text-white font-bold py-2.5 px-4 rounded text-xs transition-colors flex items-center justify-center gap-2"
             >
               {loading ? 'Disconnecting other device...' : 'Disconnect other device & continue'}
             </button>
@@ -309,7 +309,7 @@ export const VerifyOtpPage = () => {
                   onChange={(e) => handleDigitChange(e, index)}
                   onKeyDown={(e) => handleKeyDown(e, index)}
                   onPaste={handlePaste}
-                  className="w-11 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold text-gray-900 bg-white border-2 border-[#800020] focus:border-[#9a1b32] focus:outline-none focus:ring-2 focus:ring-[#800020]/20 rounded transition-all select-none disabled:opacity-50"
+                  className="w-11 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold text-gray-900 bg-white border-2 border-[var(--store-primary,#800020)] focus:border-[var(--store-primary-hover,#9a1b32)] focus:outline-none focus:ring-2 focus:ring-[var(--store-primary,#800020)]/20 rounded transition-all select-none disabled:opacity-50"
                 />
               ))}
             </div>
@@ -318,7 +318,7 @@ export const VerifyOtpPage = () => {
             <button
               type="submit"
               disabled={loading || otpValue.length < 6}
-              className="w-full py-3 px-4 bg-[#800020] hover:bg-[#9a1b32] active:scale-[0.99] text-white font-bold text-sm rounded shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed mb-3.5"
+              className="w-full py-3 px-4 bg-[var(--store-primary,#800020)] hover:bg-[var(--store-primary-hover,#9a1b32)] active:scale-[0.99] text-white font-bold text-sm rounded shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed mb-3.5"
             >
               {loading ? (
                 <span className="flex items-center gap-2">
@@ -326,7 +326,7 @@ export const VerifyOtpPage = () => {
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center text-[#800020] shrink-0">
+                  <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center text-[var(--store-primary,#800020)] shrink-0">
                     <Check className="w-2.5 h-2.5 stroke-[3.5]" />
                   </div>
                   Verify &amp; Login
@@ -346,7 +346,7 @@ export const VerifyOtpPage = () => {
                 type="button"
                 onClick={handleResend}
                 disabled={resendLoading || loading}
-                className="text-[#800020] font-bold hover:underline cursor-pointer disabled:opacity-50"
+                className="text-[var(--store-primary,#800020)] font-bold hover:underline cursor-pointer disabled:opacity-50"
               >
                 {resendLoading ? 'Resending...' : 'Resend OTP'}
               </button>
@@ -357,7 +357,7 @@ export const VerifyOtpPage = () => {
             <button
               type="button"
               onClick={() => navigate(portal === 'admin' ? '/admin/login' : '/login', { state: { identifier } })}
-              className="text-[#800020] font-bold hover:underline cursor-pointer"
+              className="text-[var(--store-primary,#800020)] font-bold hover:underline cursor-pointer"
             >
               {portal === 'admin' ? 'Change Account' : 'Change Number'}
             </button>

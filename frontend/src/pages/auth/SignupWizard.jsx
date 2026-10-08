@@ -40,7 +40,7 @@ const plainInputClass =
 
 const LegalAcceptances = ({ prefix, agreedTerms, setAgreedTerms, agreedPrivacy, setAgreedPrivacy }) => (
   <div className="flex items-start gap-2 pt-1 text-left text-xs text-gray-700">
-    <input id={`${prefix}-legal`} type="checkbox" checked={agreedTerms && agreedPrivacy} onChange={(e) => { setAgreedTerms(e.target.checked); setAgreedPrivacy(e.target.checked); }} className="mt-0.5 h-4 w-4 shrink-0 accent-[#800020]" />
+    <input id={`${prefix}-legal`} type="checkbox" checked={agreedTerms && agreedPrivacy} onChange={(e) => { setAgreedTerms(e.target.checked); setAgreedPrivacy(e.target.checked); }} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--store-primary,#800020)]" />
     <div><label htmlFor={`${prefix}-legal`} className="cursor-pointer">I accept the </label><Link to="/terms" target="_blank" rel="noopener noreferrer" className="font-bold text-primary underline">Terms &amp; Conditions</Link> and <Link to="/privacy" target="_blank" rel="noopener noreferrer" className="font-bold text-primary underline">Privacy Policy</Link>.</div>
   </div>
 );

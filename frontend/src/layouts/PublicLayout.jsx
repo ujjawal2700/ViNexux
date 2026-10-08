@@ -19,6 +19,10 @@ import { slugify, buildCategoryPath, buildProductPath, buildBrandUrl } from '../
 import useCatalogBrands from '../hooks/useCatalogBrands';
 import { openStorageChoices } from '../utils/storageConsent';
 import WhatsAppIcon from '../components/ui/WhatsAppIcon';
+import { ThemeDecorations } from '../context/SeasonalThemeContext';
+import { useSeasonalTheme } from '../hooks/useSeasonalTheme';
+import { themeVariables, themeStyleAttributes } from '../../../shared/seasonalThemes';
+import { StorefrontScopeContext } from '../context/seasonalThemeStore';
 import {
   Search,
   Phone,
@@ -81,6 +85,7 @@ const getHeaderCategoryIcon = (name = '', slug = '') => {
 };
 
 const PublicLayout = () => {
+  const { theme } = useSeasonalTheme();
   const { user, isAuthenticated, adminUser, isAdminAuthenticated, logout, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -707,7 +712,7 @@ const PublicLayout = () => {
       (prod.sku ? prod.sku.replace(/[^A-Za-z0-9]/g, '').slice(-7).toUpperCase() : (prod._id || '1INGRUO').slice(-7).toUpperCase());
 
     const stockText = prod.stockStatus === 'in-stock' ? 'In Stock' : prod.stockStatus === 'out-of-stock' ? 'Out of Stock' : 'On Request';
-    const stockClass = 'text-gray-600 font-medium text-[11px]';
+    const stockClass = 'text-[var(--store-muted)] font-medium text-[11px]';
 
     return { img, brand, price, pidCode, itemCd, stockText, stockClass };
   };
@@ -717,7 +722,7 @@ const PublicLayout = () => {
     if (!isSearchOpen || !headerSearch.trim()) return null;
 
     return (
-      <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-b-lg shadow-2xl border border-gray-200 z-50 overflow-hidden text-left animate-in fade-in-50 duration-150">
+      <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--store-surface)] rounded-b-lg shadow-2xl border border-[var(--store-border)] z-50 overflow-hidden text-left animate-in fade-in-50 duration-150">
         {isSearching && searchSuggestions.length === 0 ? (
           <div role="status" aria-label="Searching products" className="space-y-3 px-4 py-4">
             <Skeleton className="h-4 w-4/5" />
@@ -726,7 +731,7 @@ const PublicLayout = () => {
           </div>
         ) : searchSuggestions.length === 0 ? (
           <div>
-            <div className="py-7 px-4 text-center text-[13px] text-gray-600 font-normal">
+            <div className="py-7 px-4 text-center text-[13px] text-[var(--store-muted)] font-normal">
               No matches &mdash; press Enter to see full results.
             </div>
             <div
@@ -734,7 +739,7 @@ const PublicLayout = () => {
                 navigate(searchTarget(headerSearch.trim()));
                 setIsSearchOpen(false);
               }}
-              className="border-t border-gray-100 flex items-center justify-between px-4 py-3 text-sm text-[#800020] hover:bg-gray-50 cursor-pointer font-medium transition-colors group"
+              className="border-t border-[var(--store-border)] flex items-center justify-between px-4 py-3 text-sm text-[var(--store-primary)] hover:bg-[var(--store-background)] cursor-pointer font-medium transition-colors group"
             >
               <span>View all results for &ldquo;{headerSearch.trim()}&rdquo;</span>
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
@@ -742,7 +747,7 @@ const PublicLayout = () => {
           </div>
         ) : (
           <div>
-            <div className="px-4 pt-3 pb-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 bg-gray-50/50">
+            <div className="px-4 pt-3 pb-1.5 text-[11px] font-bold text-[var(--store-muted)] uppercase tracking-wider border-b border-[var(--store-border)] bg-[var(--store-background)]/50">
               {correctedSuggestion ? `Showing results for "${correctedSuggestion}"` : 'PRODUCTS'}
             </div>
             <div className="max-h-[380px] overflow-y-auto divide-y divide-gray-100">
@@ -755,9 +760,9 @@ const PublicLayout = () => {
                       navigate(buildProductPath(prod, allCategories));
                       setIsSearchOpen(false);
                     }}
-                    className="flex items-center px-4 py-2.5 hover:bg-gray-50 cursor-pointer transition-colors group"
+                    className="flex items-center px-4 py-2.5 hover:bg-[var(--store-background)] cursor-pointer transition-colors group"
                   >
-                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded border border-gray-200 p-1 flex items-center justify-center shrink-0 bg-white mr-3">
+                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded border border-[var(--store-border)] p-1 flex items-center justify-center shrink-0 bg-[var(--store-surface)] mr-3">
                       <Image
                         src={img}
                         alt={prod.name}
@@ -766,21 +771,21 @@ const PublicLayout = () => {
                       />
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
-                      <div className="text-[13px] font-medium text-gray-900 group-hover:text-primary transition-colors truncate leading-snug">
+                      <div className="text-[13px] font-medium text-[var(--store-text)] group-hover:text-primary transition-colors truncate leading-snug">
                         {prod.name}
                       </div>
                       <div className="flex items-center gap-2 text-xs mt-0.5">
-                        <span className="font-semibold text-gray-500 uppercase tracking-tight text-[11px]">
+                        <span className="font-semibold text-[var(--store-muted)] uppercase tracking-tight text-[11px]">
                           {brand}
                         </span>
-                        <span className="font-bold text-gray-900">
+                        <span className="font-bold text-[var(--store-text)]">
                           ₹{price.toLocaleString('en-IN')}
                         </span>
                         <span className={stockClass}>
                           {stockText}
                         </span>
                       </div>
-                      {(prod.modelNumber || prod.specifications?.find((s) => s.key?.toLowerCase().includes('model'))?.value) && <div className="text-[11px] text-gray-400 mt-0.5">Model: {prod.modelNumber || prod.specifications.find((s) => s.key?.toLowerCase().includes('model'))?.value}</div>}
+                      {(prod.modelNumber || prod.specifications?.find((s) => s.key?.toLowerCase().includes('model'))?.value) && <div className="text-[11px] text-[var(--store-muted)] mt-0.5">Model: {prod.modelNumber || prod.specifications.find((s) => s.key?.toLowerCase().includes('model'))?.value}</div>}
                     </div>
                   </div>
                 );
@@ -791,7 +796,7 @@ const PublicLayout = () => {
                 navigate(searchTarget(headerSearch.trim()));
                 setIsSearchOpen(false);
               }}
-              className="border-t border-gray-100 flex items-center justify-between px-4 py-2.5 text-xs text-[#800020] hover:bg-gray-50 cursor-pointer font-medium transition-colors group"
+              className="border-t border-[var(--store-border)] flex items-center justify-between px-4 py-2.5 text-xs text-[var(--store-primary)] hover:bg-[var(--store-background)] cursor-pointer font-medium transition-colors group"
             >
               <span>View all results for &ldquo;{headerSearch.trim()}&rdquo;</span>
               <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
@@ -817,16 +822,18 @@ const PublicLayout = () => {
   };
 
   return (
-    <div className="min-h-screen w-full max-w-full bg-gray-50 text-gray-900 flex flex-col font-sans overflow-x-hidden">
+    <StorefrontScopeContext.Provider value={true}><div className="storefront-theme min-h-screen w-full max-w-full bg-[var(--store-background)] text-[var(--store-text)] flex flex-col font-sans overflow-x-hidden" style={themeVariables(theme.config)} {...themeStyleAttributes(theme.config)} data-theme={theme.id || 'default'} data-decoration={theme.config.decoration} data-custom-background={Boolean(theme.config.assets?.background?.url)}>
       {/* 1. STICKY HEADER CONTAINER (Locks top announcement + main header + category nav at top when scrolling) */}
-      <header className="sticky top-0 z-50 w-full max-w-full bg-white shadow-xs">
+      <header className="sticky top-0 z-50 w-full max-w-full bg-[var(--store-surface)] shadow-xs">
+        {theme.config.announcement && <div className="theme-announcement">{theme.config.announcement}</div>}
+        <ThemeDecorations config={theme.config} placement="header" />
         
         {/* Top Announcement Bar */}
-        <div className="w-full bg-white border-b border-gray-200 py-1 sm:py-1.5 px-4 text-center text-xs text-gray-600 font-medium tracking-wide">
+        <div className="w-full bg-[var(--store-surface)] border-b border-[var(--store-border)] py-1 sm:py-1.5 px-4 text-center text-xs text-[var(--store-muted)] font-medium tracking-wide">
           {isAuthenticated ? (
             <span>
               Welcome back,{' '}
-              <strong className="text-[#800020] font-bold uppercase tracking-tight">
+              <strong className="text-[var(--store-primary)] font-bold uppercase tracking-tight">
                 {user?.fullName || user?.name || user?.contactPerson || 'Customer'}
               </strong>
               {user?.role === 'dealer' && ' (Verified Dealer)'}
@@ -834,7 +841,7 @@ const PublicLayout = () => {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="font-bold text-[#800020] hover:underline cursor-pointer transition-colors inline-block ml-0.5"
+                className="font-bold text-[var(--store-primary)] hover:underline cursor-pointer transition-colors inline-block ml-0.5"
               >
                 Logout
               </button>
@@ -845,7 +852,7 @@ const PublicLayout = () => {
         </div>
 
         {/* MOBILE & COMPACT HEADER (< 1024px: covers mobile + 175% zoom + 250% zoom, matching Mega Jaipur) */}
-        <div className="lg:hidden bg-[#800020] text-white px-3 sm:px-4 pt-2.5 pb-2.5 space-y-2 border-b border-[#6b001a]">
+        <div className="lg:hidden bg-[var(--store-primary)] text-white px-3 sm:px-4 pt-2.5 pb-2.5 space-y-2 border-b border-[var(--store-primary-hover,#660019)]">
           {/* Row 1: Hamburger Menu | White Brand Logo | Phone | WhatsApp | Account | Cart Badge */}
           <div className="flex items-center justify-between gap-2">
             {/* Left: Menu + Logo */}
@@ -853,14 +860,14 @@ const PublicLayout = () => {
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="flex h-9 w-9 shrink-0 items-center justify-center text-white hover:bg-white/10 rounded-md transition-colors cursor-pointer"
+                className="flex h-9 w-9 shrink-0 items-center justify-center text-white hover:bg-[var(--store-surface)]/10 rounded-md transition-colors cursor-pointer"
                 aria-label="Open menu"
               >
                 <Menu className="h-6 w-6 stroke-[2.2]" />
               </button>
 
               {hasCustomLogo ? (
-                <Link to="/" className="flex items-center shrink-0 group bg-white/95 rounded px-2 py-0.5 shadow-xs" aria-label="Vinexus home">
+                <Link to="/" className="flex items-center shrink-0 group bg-[var(--store-surface)]/95 rounded px-2 py-0.5 shadow-xs" aria-label="Vinexus home">
                   <img
                     src={websiteSettings.logo.url}
                     alt={websiteName || 'Vinexus'}
@@ -869,7 +876,7 @@ const PublicLayout = () => {
                 </Link>
               ) : (
                 <Link to="/" className="flex items-center gap-2 min-w-0 group" aria-label="Vinexus home">
-                  <Logo className="w-8 h-8 object-contain rounded bg-white p-0.5 shrink-0" />
+                  <Logo className="w-8 h-8 object-contain rounded bg-[var(--store-surface)] p-0.5 shrink-0" />
                   <span className="text-lg sm:text-xl font-bold tracking-tight text-white truncate">
                     {websiteName}
                   </span>
@@ -931,7 +938,7 @@ const PublicLayout = () => {
           {/* Row 2: Full-width Pill Search Bar with Autocomplete */}
           <div ref={mobileSearchRef} className="relative w-full">
             <form onSubmit={handleSearchSubmit} className="flex w-full items-center relative rounded-full bg-[#fdfbf7] shadow-inner border border-transparent overflow-visible">
-              <button type="submit" className="pl-3.5 pr-1.5 text-gray-500 hover:text-primary transition-colors cursor-pointer" aria-label="Search products">
+              <button type="submit" className="pl-3.5 pr-1.5 text-[var(--store-muted)] hover:text-primary transition-colors cursor-pointer" aria-label="Search products">
                 <Search className="h-4 w-4" />
               </button>
               <div className="relative min-w-0 flex-1 flex items-center pr-3">
@@ -946,7 +953,7 @@ const PublicLayout = () => {
                     setHeaderSearch(e.target.value);
                     if (e.target.value.trim()) setIsSearchOpen(true);
                   }}
-                  className="w-full h-10 px-2 bg-transparent text-gray-900 placeholder-gray-500 text-xs sm:text-sm border-0 focus:outline-none"
+                  className="w-full h-10 px-2 bg-transparent text-[var(--store-text)] placeholder-gray-500 text-xs sm:text-sm border-0 focus:outline-none"
                 />
                 {renderSearchDropdown()}
               </div>
@@ -955,7 +962,7 @@ const PublicLayout = () => {
         </div>
 
         {/* DESKTOP HEADER (≥ 1024px: covers 150% zoom, 125%, 100%, 80% with clear separation and zero clipping) */}
-        <div className="hidden lg:block w-full bg-white border-b border-gray-200">
+        <div className="hidden lg:block w-full bg-[var(--store-surface)] border-b border-[var(--store-border)]">
           <div className="storefront-container px-3 lg:px-4 2xl:px-8 py-3 flex items-center justify-between gap-2 lg:gap-2.5 xl:gap-3.5 2xl:gap-4 min-w-0">
             {/* Logo & Brand Name */}
             {hasCustomLogo ? (
@@ -972,7 +979,7 @@ const PublicLayout = () => {
                 <div className="flex flex-col text-left">
                   <div className="flex items-center leading-none" aria-label={websiteName}>
                     <span className="text-2xl font-black tracking-tight text-primary">{websiteName.slice(0, 2)}</span>
-                    <span className="text-2xl font-black tracking-tight text-gray-900">{websiteName.slice(2)}</span>
+                    <span className="text-2xl font-black tracking-tight text-[var(--store-text)]">{websiteName.slice(2)}</span>
                   </div>
                   <span className="text-[10px] font-black tracking-widest text-primary uppercase mt-0.5">
                     COMPU WORLD
@@ -999,7 +1006,7 @@ const PublicLayout = () => {
                     setHeaderSearch(e.target.value);
                     if (e.target.value.trim()) setIsSearchOpen(true);
                   }}
-                  className="w-full h-11 px-4 bg-gray-50 hover:bg-white focus:bg-white text-gray-900 placeholder-gray-400 text-sm rounded-l-md border border-r-0 border-gray-300 focus:border-primary focus:outline-none transition-all shadow-inner"
+                  className="w-full h-11 px-4 bg-[var(--store-background)] hover:bg-[var(--store-surface)] focus:bg-[var(--store-surface)] text-[var(--store-text)] placeholder-gray-400 text-sm rounded-l-md border border-r-0 border-[var(--store-border)] focus:border-primary focus:outline-none transition-all shadow-inner"
                 />
 
                 {renderSearchDropdown()}
@@ -1020,13 +1027,13 @@ const PublicLayout = () => {
               {/* 1. Phone / Call (Icon only at 100% zoom; 2-line text reveals at 90% zoom / >= 1600px) */}
               <a
                 href={`tel:${activePhoneLink}`}
-                className="flex items-center gap-1.5 text-gray-700 hover:text-primary transition-colors p-1.5 lg:p-2 rounded-lg hover:bg-gray-50 group shrink-0"
+                className="flex items-center gap-1.5 text-[var(--store-muted)] hover:text-primary transition-colors p-1.5 lg:p-2 rounded-lg hover:bg-[var(--store-background)] group shrink-0"
                 title={`Call ${activePhoneDisplay}`}
               >
-                <Phone className="w-6 h-6 min-[1600px]:w-5 min-[1600px]:h-5 text-[#800020] group-hover:scale-105 transition-all shrink-0" />
+                <Phone className="w-6 h-6 min-[1600px]:w-5 min-[1600px]:h-5 text-[var(--store-primary)] group-hover:scale-105 transition-all shrink-0" />
                 <div className="hidden min-[1600px]:flex flex-col text-left leading-tight">
-                  <span className="text-xs font-bold text-gray-900 whitespace-nowrap">{activePhoneDisplay}</span>
-                  <span className="text-[10px] text-gray-500 whitespace-nowrap">Call us</span>
+                  <span className="text-xs font-bold text-[var(--store-text)] whitespace-nowrap">{activePhoneDisplay}</span>
+                  <span className="text-[10px] text-[var(--store-muted)] whitespace-nowrap">Call us</span>
                 </div>
               </a>
 
@@ -1035,13 +1042,13 @@ const PublicLayout = () => {
                 href={activeMapUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-gray-700 hover:text-primary transition-colors p-1.5 lg:p-2 rounded-lg hover:bg-gray-50 group shrink-0"
+                className="flex items-center gap-1.5 text-[var(--store-muted)] hover:text-primary transition-colors p-1.5 lg:p-2 rounded-lg hover:bg-[var(--store-background)] group shrink-0"
                 title="Store Location - Directions to the Store"
               >
-                <Store className="w-6 h-6 min-[1600px]:w-5 min-[1600px]:h-5 text-[#800020] group-hover:scale-105 transition-all shrink-0" />
+                <Store className="w-6 h-6 min-[1600px]:w-5 min-[1600px]:h-5 text-[var(--store-primary)] group-hover:scale-105 transition-all shrink-0" />
                 <div className="hidden min-[1600px]:flex flex-col text-left leading-tight">
-                  <span className="text-xs font-bold text-gray-900 whitespace-nowrap">Store Location</span>
-                  <span className="text-[10px] text-gray-500 whitespace-nowrap">Directions to the Store</span>
+                  <span className="text-xs font-bold text-[var(--store-text)] whitespace-nowrap">Store Location</span>
+                  <span className="text-[10px] text-[var(--store-muted)] whitespace-nowrap">Directions to the Store</span>
                 </div>
               </a>
 
@@ -1050,17 +1057,17 @@ const PublicLayout = () => {
                 href={`https://wa.me/${activeWhatsappNumber}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-gray-700 hover:text-primary transition-colors p-1.5 lg:p-2 rounded-lg hover:bg-gray-50 group shrink-0"
+                className="flex items-center gap-1.5 text-[var(--store-muted)] hover:text-primary transition-colors p-1.5 lg:p-2 rounded-lg hover:bg-[var(--store-background)] group shrink-0"
                 title="Chat on WhatsApp - Available 24/7"
               >
-                <div className="w-6 h-6 min-[1600px]:w-5 min-[1600px]:h-5 text-[#800020] flex items-center justify-center shrink-0 group-hover:scale-105 transition-all">
+                <div className="w-6 h-6 min-[1600px]:w-5 min-[1600px]:h-5 text-[var(--store-primary)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-all">
                   <svg className="w-full h-full fill-current" viewBox="0 0 24 24">
                     <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
                   </svg>
                 </div>
                 <div className="hidden min-[1600px]:flex flex-col text-left leading-tight">
-                  <span className="text-xs font-bold text-gray-900 whitespace-nowrap">Chat With Us</span>
-                  <span className="text-[10px] text-gray-500 whitespace-nowrap">Available 24/7</span>
+                  <span className="text-xs font-bold text-[var(--store-text)] whitespace-nowrap">Chat With Us</span>
+                  <span className="text-[10px] text-[var(--store-muted)] whitespace-nowrap">Available 24/7</span>
                 </div>
               </a>
 
@@ -1068,7 +1075,7 @@ const PublicLayout = () => {
               {isAuthenticated ? (
                 <Link
                   to={getProfileLink() || '/account/profile'}
-                  className="flex flex-col items-center text-gray-700 hover:text-primary transition-colors text-center p-1.5 lg:p-2 rounded-lg hover:bg-gray-50 group shrink-0"
+                  className="flex flex-col items-center text-[var(--store-muted)] hover:text-primary transition-colors text-center p-1.5 lg:p-2 rounded-lg hover:bg-[var(--store-background)] group shrink-0"
                 >
                   <User className="w-6 h-6 min-[1600px]:w-5 min-[1600px]:h-5 group-hover:scale-105 transition-transform" />
                   <span className="text-xs min-[1600px]:text-[11px] font-semibold mt-0.5 whitespace-nowrap">Account</span>
@@ -1076,7 +1083,7 @@ const PublicLayout = () => {
               ) : (
                 <Link
                   to="/login"
-                  className="flex flex-col items-center text-gray-700 hover:text-primary transition-colors text-center p-1.5 lg:p-2 rounded-lg hover:bg-gray-50 group shrink-0"
+                  className="flex flex-col items-center text-[var(--store-muted)] hover:text-primary transition-colors text-center p-1.5 lg:p-2 rounded-lg hover:bg-[var(--store-background)] group shrink-0"
                 >
                   <LogIn className="w-6 h-6 min-[1600px]:w-5 min-[1600px]:h-5 group-hover:scale-105 transition-transform" />
                   <span className="text-xs min-[1600px]:text-[11px] font-semibold mt-0.5 whitespace-nowrap">Login</span>
@@ -1087,7 +1094,7 @@ const PublicLayout = () => {
               <Link
                 to="/wishlist"
                 title="Wishlist"
-                className="flex flex-col items-center text-gray-700 hover:text-primary transition-colors text-center p-1.5 lg:p-2 rounded-lg hover:bg-gray-50 group relative shrink-0"
+                className="flex flex-col items-center text-[var(--store-muted)] hover:text-primary transition-colors text-center p-1.5 lg:p-2 rounded-lg hover:bg-[var(--store-background)] group relative shrink-0"
               >
                 <div className="relative">
                   <Heart className="w-6 h-6 min-[1600px]:w-5 min-[1600px]:h-5 group-hover:scale-105 transition-transform" />
@@ -1105,7 +1112,7 @@ const PublicLayout = () => {
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent('open-promotional-offers'))}
                 title="View Promotional Offers & Deals"
-                className="flex flex-col items-center text-gray-700 hover:text-primary transition-colors text-center p-1.5 lg:p-2 rounded-lg hover:bg-gray-50 group shrink-0 cursor-pointer"
+                className="flex flex-col items-center text-[var(--store-muted)] hover:text-primary transition-colors text-center p-1.5 lg:p-2 rounded-lg hover:bg-[var(--store-background)] group shrink-0 cursor-pointer"
               >
                 <div className="relative">
                   <BadgePercent className="w-6 h-6 min-[1600px]:w-5 min-[1600px]:h-5 group-hover:scale-110 transition-transform text-primary" />
@@ -1130,7 +1137,7 @@ const PublicLayout = () => {
                   to="/cart"
                   className="relative flex items-center border-[1.5px] border-primary rounded-md hover:shadow-md transition-all group shrink-0 h-11 min-[1600px]:h-10 overflow-visible"
                 >
-                  <span className="flex px-2 xl:px-2.5 text-xs xl:text-sm font-bold text-gray-900 bg-white group-hover:bg-gray-50 transition-colors whitespace-nowrap rounded-l-[5px] h-full items-center">
+                  <span className="flex px-2 xl:px-2.5 text-xs xl:text-sm font-bold text-[var(--store-text)] bg-[var(--store-surface)] group-hover:bg-[var(--store-background)] transition-colors whitespace-nowrap rounded-l-[5px] h-full items-center">
                     <span className="hidden xl:inline">{cartCount} item(s) - </span>
                     <span className="xl:hidden">{cartCount} · </span>
                     ₹{(Number(cartSubtotal) || 0).toLocaleString('en-IN')}
@@ -1158,12 +1165,12 @@ const PublicLayout = () => {
                     }, 200);
                   }}
                 >
-                  <div className="w-[360px] sm:w-[420px] bg-white rounded-xl shadow-2xl border border-gray-200 relative overflow-hidden text-left">
-                    <div className="absolute -top-1.5 right-6 w-3 h-3 bg-white border-t border-l border-gray-200 rotate-45 transform z-10" />
+                  <div className="w-[360px] sm:w-[420px] bg-[var(--store-surface)] rounded-xl shadow-2xl border border-[var(--store-border)] relative overflow-hidden text-left">
+                    <div className="absolute -top-1.5 right-6 w-3 h-3 bg-[var(--store-surface)] border-t border-l border-[var(--store-border)] rotate-45 transform z-10" />
 
                     {cartItems.length === 0 ? (
                       <div className="py-10 px-6 text-center select-none">
-                        <p className="text-gray-500 font-medium text-sm sm:text-base">
+                        <p className="text-[var(--store-muted)] font-medium text-sm sm:text-base">
                           Your cart is empty
                         </p>
                       </div>
@@ -1182,7 +1189,7 @@ const PublicLayout = () => {
                                 key={item._id || idx}
                                 className="pt-2.5 first:pt-0 flex items-start gap-3 group/item"
                               >
-                                <div className="w-14 h-14 bg-white rounded-lg border border-gray-200 p-1 shrink-0 flex items-center justify-center overflow-hidden">
+                                <div className="w-14 h-14 bg-[var(--store-surface)] rounded-lg border border-[var(--store-border)] p-1 shrink-0 flex items-center justify-center overflow-hidden">
                                   <Image
                                     src={img}
                                     alt={product.name || 'Product'}
@@ -1193,24 +1200,24 @@ const PublicLayout = () => {
                                   <Link
                                     to={buildProductPath(product, allCategories)}
                                     onClick={() => setIsCartHovered(false)}
-                                    className="text-xs font-bold text-gray-900 line-clamp-2 leading-snug hover:text-[#800020] transition-colors block"
+                                    className="text-xs font-bold text-[var(--store-text)] line-clamp-2 leading-snug hover:text-[var(--store-primary)] transition-colors block"
                                     title={product.name}
                                   >
                                     {product.name || 'Product'}
                                   </Link>
-                                  {(product.modelNumber || product.specifications?.find((s) => s.key?.toLowerCase().includes('model'))?.value) && <p className="text-[11px] text-gray-500 mt-1">Model: {product.modelNumber || product.specifications.find((s) => s.key?.toLowerCase().includes('model'))?.value}</p>}
+                                  {(product.modelNumber || product.specifications?.find((s) => s.key?.toLowerCase().includes('model'))?.value) && <p className="text-[11px] text-[var(--store-muted)] mt-1">Model: {product.modelNumber || product.specifications.find((s) => s.key?.toLowerCase().includes('model'))?.value}</p>}
                                 </div>
                                 <div className="text-right shrink-0 flex flex-col items-end justify-between self-stretch">
-                                  <span className="text-[11px] text-gray-400 font-medium">
+                                  <span className="text-[11px] text-[var(--store-muted)] font-medium">
                                     x {item.quantity || 1}
                                   </span>
-                                  <span className="text-xs font-black text-gray-900">
+                                  <span className="text-xs font-black text-[var(--store-text)]">
                                     ₹{Number(price * (item.quantity || 1)).toLocaleString('en-IN')}
                                   </span>
                                   <button
                                     type="button"
                                     onClick={(e) => handleRemoveCartItem(e, product._id || item.productId || item._id)}
-                                    className="text-gray-400 hover:text-rose-600 transition-colors p-0.5 mt-0.5 cursor-pointer"
+                                    className="text-[var(--store-muted)] hover:text-rose-600 transition-colors p-0.5 mt-0.5 cursor-pointer"
                                     title="Remove item from cart"
                                   >
                                     <Trash2 className="w-3.5 h-3.5 stroke-[1.75]" />
@@ -1221,10 +1228,10 @@ const PublicLayout = () => {
                           })}
                         </div>
 
-                        <div className="pt-3 border-t border-gray-200 space-y-3">
+                        <div className="pt-3 border-t border-[var(--store-border)] space-y-3">
                           <div className="flex items-center justify-between px-1">
-                            <span className="text-sm font-bold text-gray-900">Total</span>
-                            <span className="text-base font-black text-gray-900">
+                            <span className="text-sm font-bold text-[var(--store-text)]">Total</span>
+                            <span className="text-base font-black text-[var(--store-text)]">
                               ₹{(Number(cartSubtotal) || 0).toLocaleString('en-IN')}
                             </span>
                           </div>
@@ -1233,7 +1240,7 @@ const PublicLayout = () => {
                             <Link
                               to="/cart"
                               onClick={() => setIsCartHovered(false)}
-                              className="w-full h-11 rounded-lg bg-[#800020] hover:bg-[#66001a] text-xs font-bold text-white flex items-center justify-center gap-2 transition-all shadow-xs uppercase tracking-wider cursor-pointer active:scale-98"
+                              className="w-full h-11 rounded-lg bg-[var(--store-primary)] hover:bg-[var(--store-primary-hover,#660019)] text-xs font-bold text-white flex items-center justify-center gap-2 transition-all shadow-xs uppercase tracking-wider cursor-pointer active:scale-98"
                             >
                               <ShoppingCart className="w-4 h-4" />
                               <span>View Cart</span>
@@ -1251,7 +1258,7 @@ const PublicLayout = () => {
       </div>
 
         {/* 3. CATEGORY NAVIGATION BAR WITH MEGA MENU ON HOVER (Hidden on mobile / tablet / 175%+ zoom, active on desktop >= lg) */}
-        <nav className="hidden lg:block w-full max-w-full bg-[#800020] text-white shadow-xs relative z-40 select-none">
+        <nav className="hidden lg:block w-full max-w-full bg-[var(--store-primary)] text-white shadow-xs relative z-40 select-none">
           <div className="storefront-container px-2 sm:px-3 lg:px-4 2xl:px-6 flex items-center relative h-[38px] sm:h-[40px] min-w-0">
             
             {/* Scroll Left Button (if categories overflow on narrow screens) */}
@@ -1259,7 +1266,7 @@ const PublicLayout = () => {
               <button
                 type="button"
                 onClick={() => scrollNav('left')}
-                className="hidden md:flex absolute left-1 top-1/2 -translate-y-1/2 z-20 w-5 h-5 rounded-full bg-white text-[#800020] shadow-md items-center justify-center hover:bg-gray-100 transition-all cursor-pointer"
+                className="hidden md:flex absolute left-1 top-1/2 -translate-y-1/2 z-20 w-5 h-5 rounded-full bg-[var(--store-surface)] text-[var(--store-primary)] shadow-md items-center justify-center hover:bg-[var(--store-background)] transition-all cursor-pointer"
                 aria-label="Scroll categories left"
               >
                 <ChevronLeft className="w-3 h-3" />
@@ -1288,11 +1295,11 @@ const PublicLayout = () => {
                   onClick={handleHeaderClick}
                   className={`flex items-center gap-1.5 font-bold text-xs sm:text-[13px] px-2.5 h-[29px] rounded shadow-2xs transition-colors whitespace-nowrap ${
                     hoveredHeaderId === 'shop-by-brand'
-                      ? 'bg-gray-100 text-[#800020]'
-                      : 'bg-white text-[#800020] hover:bg-gray-100'
+                      ? 'bg-[var(--store-background)] text-[var(--store-primary)]'
+                      : 'bg-[var(--store-surface)] text-[var(--store-primary)] hover:bg-[var(--store-background)]'
                   }`}
                 >
-                  <Store className="w-3.5 h-3.5 text-[#800020]" />
+                  <Store className="w-3.5 h-3.5 text-[var(--store-primary)]" />
                   <span>Shop By Brand</span>
                 </Link>
               </div>
@@ -1302,7 +1309,7 @@ const PublicLayout = () => {
                 <Link
                   to="/low-stock"
                   onClick={handleHeaderClick}
-                  className="flex items-center gap-1.5 font-bold text-xs sm:text-[13px] px-2.5 h-[29px] rounded shadow-2xs bg-amber-500 hover:bg-amber-400 text-gray-900 transition-colors whitespace-nowrap"
+                  className="flex items-center gap-1.5 font-bold text-xs sm:text-[13px] px-2.5 h-[29px] rounded shadow-2xs bg-amber-500 hover:bg-amber-400 text-[var(--store-text)] transition-colors whitespace-nowrap"
                   title="Limited Stock Alert - Max 3 units per order"
                 >
                   <Flame className="w-3.5 h-3.5 text-red-700 animate-pulse" />
@@ -1333,8 +1340,8 @@ const PublicLayout = () => {
                         onClick={handleHeaderClick}
                         className={`transition-colors duration-150 select-none px-2 h-[29px] rounded flex items-center text-[14.5px] font-medium tracking-normal leading-none no-underline ${
                           isHovered
-                            ? 'bg-white/15 text-white'
-                            : 'text-white/90 hover:bg-white/10 hover:text-white'
+                            ? 'bg-[var(--store-surface)]/15 text-white'
+                            : 'text-white/90 hover:bg-[var(--store-surface)]/10 hover:text-white'
                         }`}
                       >
                         <span>{header.name}</span>
@@ -1350,7 +1357,7 @@ const PublicLayout = () => {
               <button
                 type="button"
                 onClick={() => scrollNav('right')}
-                className="hidden md:flex absolute right-1 top-1/2 -translate-y-1/2 z-20 w-5 h-5 rounded-full bg-white text-[#800020] shadow-md items-center justify-center hover:bg-gray-100 transition-all cursor-pointer"
+                className="hidden md:flex absolute right-1 top-1/2 -translate-y-1/2 z-20 w-5 h-5 rounded-full bg-[var(--store-surface)] text-[var(--store-primary)] shadow-md items-center justify-center hover:bg-[var(--store-background)] transition-all cursor-pointer"
                 aria-label="Scroll categories right"
               >
                 <ChevronRight className="w-3 h-3" />
@@ -1374,17 +1381,17 @@ const PublicLayout = () => {
             >
               {/* Upward arrow connecting dropdown to category above */}
               <div
-                className="absolute -top-1 w-0 h-0 border-x-[7px] border-x-transparent border-b-[7px] border-b-[#800020] z-50 pointer-events-none"
+                className="absolute -top-1 w-0 h-0 border-x-[7px] border-x-transparent border-b-[7px] border-b-[var(--store-primary)] z-50 pointer-events-none"
                 style={{
                   left: `${Math.max(20, Math.min(dropdownLeft - Math.max(12, Math.min(dropdownLeft, windowWidth - Math.min(840, windowWidth - 24) - 12)) + 16, Math.min(840, windowWidth - 24) - 40))}px`,
                 }}
               />
 
-              <div className="w-full bg-white rounded-md shadow-2xl border border-gray-200 overflow-hidden text-left animate-in fade-in slide-in-from-top-1 duration-150">
+              <div className="w-full bg-[var(--store-surface)] rounded-md shadow-2xl border border-[var(--store-border)] overflow-hidden text-left animate-in fade-in slide-in-from-top-1 duration-150">
                 {/* Dropdown Header Bar (Solid Maroon theme) */}
-                <div className="bg-[#800020] text-white px-4 py-2.5 flex items-center">
+                <div className="bg-[var(--store-primary)] text-white px-4 py-2.5 flex items-center">
                   <div className="flex items-center gap-2.5 font-bold text-sm sm:text-base tracking-wide text-white">
-                    <div className="w-6 h-6 rounded bg-white/15 flex items-center justify-center shrink-0">
+                    <div className="w-6 h-6 rounded bg-[var(--store-surface)]/15 flex items-center justify-center shrink-0">
                       {getHeaderCategoryIcon(hoveredHeader.name, hoveredHeader.slug)}
                     </div>
                     <span>{hoveredHeader.name}</span>
@@ -1392,7 +1399,7 @@ const PublicLayout = () => {
                 </div>
 
                 {/* Dropdown Body: 3-column grid matching user screenshot */}
-                <div className="p-3.5 sm:p-4 grid grid-cols-1 md:grid-cols-3 gap-3 max-h-[75vh] overflow-y-auto bg-white">
+                <div className="p-3.5 sm:p-4 grid grid-cols-1 md:grid-cols-3 gap-3 max-h-[75vh] overflow-y-auto bg-[var(--store-surface)]">
                   {dropdownColumns.map((col, colIdx) => (
                     <div key={colIdx} className="flex flex-col gap-2.5">
                       {col.map((main) => {
@@ -1404,15 +1411,15 @@ const PublicLayout = () => {
                           return (
                             <div
                               key={main._id}
-                              className="border border-gray-200/90 rounded-md p-3.5 bg-white hover:border-[#800020]/40 transition-all shadow-2xs flex flex-col justify-start"
+                              className="border border-[var(--store-border)]/90 rounded-md p-3.5 bg-[var(--store-surface)] hover:border-[var(--store-primary)]/40 transition-all shadow-2xs flex flex-col justify-start"
                             >
                               {/* Main Category Header with Divider Line */}
                               <Link
                                 to={`/${headerSlug}/${mainSlug}`}
                                 onClick={() => setHoveredHeaderId(null)}
-                                className="text-[13px] sm:text-[13.5px] font-bold text-[#800020] flex items-center gap-2 pb-2 border-b border-gray-200 hover:text-[#590016] transition-colors no-underline group"
+                                className="text-[13px] sm:text-[13.5px] font-bold text-[var(--store-primary)] flex items-center gap-2 pb-2 border-b border-[var(--store-border)] hover:text-[var(--store-primary-hover,#660019)] transition-colors no-underline group"
                               >
-                                <span className="text-[#800020] text-sm leading-none font-bold">•</span>
+                                <span className="text-[var(--store-primary)] text-sm leading-none font-bold">•</span>
                                 <span>{main.name}</span>
                               </Link>
 
@@ -1425,7 +1432,7 @@ const PublicLayout = () => {
                                       key={sub._id}
                                       to={`/${headerSlug}/${mainSlug}/${subSlug}`}
                                       onClick={() => setHoveredHeaderId(null)}
-                                      className="block text-[12px] sm:text-[12.5px] text-gray-700 hover:text-[#800020] px-2 py-1 rounded-md border border-transparent hover:border-[#800020]/25 hover:bg-[#800020]/5 transition-all duration-150 leading-snug no-underline"
+                                      className="block text-[12px] sm:text-[12.5px] text-[var(--store-muted)] hover:text-[var(--store-primary)] px-2 py-1 rounded-md border border-transparent hover:border-[var(--store-primary)]/25 hover:bg-[var(--store-primary)]/5 transition-all duration-150 leading-snug no-underline"
                                     >
                                       {sub.name}
                                     </Link>
@@ -1442,15 +1449,15 @@ const PublicLayout = () => {
                             key={main._id}
                             to={`/${headerSlug}/${mainSlug}`}
                             onClick={() => setHoveredHeaderId(null)}
-                            className="border border-gray-200/90 rounded-md px-3.5 py-2.5 bg-white hover:border-[#800020] hover:bg-[#800020]/5 hover:shadow-xs transition-all duration-200 flex items-center justify-between group select-none cursor-pointer no-underline"
+                            className="border border-[var(--store-border)]/90 rounded-md px-3.5 py-2.5 bg-[var(--store-surface)] hover:border-[var(--store-primary)] hover:bg-[var(--store-primary)]/5 hover:shadow-xs transition-all duration-200 flex items-center justify-between group select-none cursor-pointer no-underline"
                           >
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-gray-400 text-sm leading-none font-bold group-hover:text-[#800020] transition-colors">•</span>
-                              <span className="text-[12.5px] sm:text-[13px] font-medium text-gray-800 group-hover:text-[#800020] group-hover:font-semibold transition-all leading-tight truncate">
+                              <span className="text-[var(--store-muted)] text-sm leading-none font-bold group-hover:text-[var(--store-primary)] transition-colors">•</span>
+                              <span className="text-[12.5px] sm:text-[13px] font-medium text-[var(--store-text)] group-hover:text-[var(--store-primary)] group-hover:font-semibold transition-all leading-tight truncate">
                                 {main.name}
                               </span>
                             </div>
-                            <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-[#800020] group-hover:translate-x-0.5 transition-all duration-200 shrink-0 ml-1.5 opacity-60 group-hover:opacity-100" />
+                            <ChevronRight className="w-3.5 h-3.5 text-[var(--store-muted)] group-hover:text-[var(--store-primary)] group-hover:translate-x-0.5 transition-all duration-200 shrink-0 ml-1.5 opacity-60 group-hover:opacity-100" />
                           </Link>
                         );
                       })}
@@ -1477,17 +1484,17 @@ const PublicLayout = () => {
             >
               {/* Upward arrow connecting dropdown to button above */}
               <div
-                className="absolute -top-1 w-0 h-0 border-x-[7px] border-x-transparent border-b-[7px] border-b-[#800020] z-50 pointer-events-none"
+                className="absolute -top-1 w-0 h-0 border-x-[7px] border-x-transparent border-b-[7px] border-b-[var(--store-primary)] z-50 pointer-events-none"
                 style={{
                   left: `${Math.max(20, Math.min(dropdownLeft - Math.max(12, Math.min(dropdownLeft, windowWidth - Math.min(840, windowWidth - 24) - 12)) + 16, Math.min(840, windowWidth - 24) - 40))}px`,
                 }}
               />
 
-              <div className="w-full bg-white rounded-md shadow-2xl border border-gray-200 overflow-hidden text-left animate-in fade-in slide-in-from-top-1 duration-150">
+              <div className="w-full bg-[var(--store-surface)] rounded-md shadow-2xl border border-[var(--store-border)] overflow-hidden text-left animate-in fade-in slide-in-from-top-1 duration-150">
                 {/* Dropdown Header Bar */}
-                <div className="bg-[#800020] text-white px-4 py-2.5 flex items-center justify-between">
+                <div className="bg-[var(--store-primary)] text-white px-4 py-2.5 flex items-center justify-between">
                   <div className="flex items-center gap-2.5 font-bold text-sm sm:text-base tracking-wide text-white">
-                    <div className="w-6 h-6 rounded bg-white/15 flex items-center justify-center shrink-0">
+                    <div className="w-6 h-6 rounded bg-[var(--store-surface)]/15 flex items-center justify-center shrink-0">
                       <Store className="w-4 h-4 text-white" />
                     </div>
                     <span>Featured Brands</span>
@@ -1503,19 +1510,19 @@ const PublicLayout = () => {
                 </div>
 
                 {/* Brands Grid */}
-                <div className="p-3.5 sm:p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-[70vh] overflow-y-auto bg-white">
+                <div className="p-3.5 sm:p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-[70vh] overflow-y-auto bg-[var(--store-surface)]">
                   {catalogBrands.slice(0, 24).map((brand) => (
                     <Link
                       key={brand._id || brand.name}
                       to={buildBrandUrl(brand.name)}
                       onClick={() => setHoveredHeaderId(null)}
-                      className="border border-gray-200 rounded-md p-2.5 bg-white hover:border-[#800020] hover:bg-[#800020]/5 hover:shadow-xs transition-all flex items-center justify-between group no-underline"
+                      className="border border-[var(--store-border)] rounded-md p-2.5 bg-[var(--store-surface)] hover:border-[var(--store-primary)] hover:bg-[var(--store-primary)]/5 hover:shadow-xs transition-all flex items-center justify-between group no-underline"
                     >
-                      <span className="text-xs font-bold text-gray-800 group-hover:text-[#800020] transition-colors truncate">
+                      <span className="text-xs font-bold text-[var(--store-text)] group-hover:text-[var(--store-primary)] transition-colors truncate">
                         {brand.name}
                       </span>
                       {brand.count > 0 && (
-                        <span className="text-[10px] text-gray-400 font-medium ml-1.5 shrink-0">
+                        <span className="text-[10px] text-[var(--store-muted)] font-medium ml-1.5 shrink-0">
                           {brand.count}
                         </span>
                       )}
@@ -1530,6 +1537,8 @@ const PublicLayout = () => {
 
       {/* MOBILE NAVIGATION DRAWER */}
       <Drawer
+        overlayClassName="storefront-theme"
+        overlayStyle={{ ...themeVariables(theme.config), backgroundColor: 'rgba(0, 0, 0, 0.4)' }}
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
         position="left"
@@ -1537,33 +1546,33 @@ const PublicLayout = () => {
         className="!max-w-[min(88vw,380px)]"
         contentClassName="!p-0 !space-y-0"
         footer={<div className="grid w-full grid-cols-2 gap-2">
-          <a href={`tel:${activePhoneLink}`} className="flex items-center justify-center gap-2 rounded-full border border-[#800020]/20 bg-[#800020]/5 px-3 py-2.5 text-xs font-semibold text-[#800020]"><Phone className="h-4 w-4" /> Call us</a>
+          <a href={`tel:${activePhoneLink}`} className="flex items-center justify-center gap-2 rounded-full border border-[var(--store-primary)]/20 bg-[var(--store-primary)]/5 px-3 py-2.5 text-xs font-semibold text-[var(--store-primary)]"><Phone className="h-4 w-4" /> Call us</a>
           <a href={`https://wa.me/${activeWhatsappNumber}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-semibold text-emerald-800">WhatsApp</a>
         </div>}
       >
         <div className="text-left" onClick={(event) => { if (event.target.closest('a')) setIsMobileMenuOpen(false); }}>
-          <div className="space-y-4 bg-[#800020] px-4 py-5 text-white">
+          <div className="space-y-4 bg-[var(--store-primary)] px-4 py-5 text-white">
             <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15"><User className="h-5 w-5" /></span>
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--store-surface)]/15"><User className="h-5 w-5" /></span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold">{isAuthenticated ? (user?.fullName || user?.name || 'My account') : 'Welcome to Vinexus'}</p>
                 <p className="text-xs text-white/80">{isAuthenticated ? 'Manage your account and enquiries' : 'Sign in to manage your enquiries'}</p>
               </div>
-              <button type="button" onClick={() => setIsMobileMenuOpen(false)} aria-label="Close menu" className="rounded-full p-2 text-white hover:bg-white/15"><X className="h-5 w-5" /></button>
+              <button type="button" onClick={() => setIsMobileMenuOpen(false)} aria-label="Close menu" className="rounded-full p-2 text-white hover:bg-[var(--store-surface)]/15"><X className="h-5 w-5" /></button>
             </div>
             {isAuthenticated ? (
               <div className="grid grid-cols-2 gap-2">
-                <Link to={getProfileLink() || '/account/profile'} className="rounded-md bg-white py-2.5 text-center text-xs font-bold text-[#800020]">My Account</Link>
+                <Link to={getProfileLink() || '/account/profile'} className="rounded-md bg-[var(--store-surface)] py-2.5 text-center text-xs font-bold text-[var(--store-primary)]">My Account</Link>
                 <button type="button" onClick={handleLogout} className="rounded-md border border-white/50 py-2.5 text-xs font-bold text-white">Log out</button>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
-                <Link to="/login" className="rounded-md bg-white py-2.5 text-center text-xs font-bold text-[#800020]">Login</Link>
+                <Link to="/login" className="rounded-md bg-[var(--store-surface)] py-2.5 text-center text-xs font-bold text-[var(--store-primary)]">Login</Link>
                 <Link to="/register" className="rounded-md border border-white/50 py-2.5 text-center text-xs font-bold text-white">Register</Link>
               </div>
             )}
           </div>
-          <div className="grid grid-cols-5 gap-1 border-b border-gray-200 p-2.5">
+          <div className="grid grid-cols-5 gap-1 border-b border-[var(--store-border)] p-2.5">
             {[
               { to: '/low-stock', label: 'Limited', icon: Flame, highlight: true },
               { to: '/cart', label: 'Cart', icon: ShoppingCart },
@@ -1577,7 +1586,7 @@ const PublicLayout = () => {
                 className={`flex min-w-0 flex-col items-center gap-1.5 rounded-md border px-1 py-2.5 text-[10px] font-bold ${
                   highlight
                     ? 'border-amber-300 bg-amber-50 text-amber-800'
-                    : 'border-gray-200 bg-[#800020]/5 text-[#800020]'
+                    : 'border-[var(--store-border)] bg-[var(--store-primary)]/5 text-[var(--store-primary)]'
                 }`}
               >
                 <Icon className={`h-4 w-4 ${highlight ? 'text-amber-600 animate-pulse' : ''}`} />
@@ -1585,25 +1594,25 @@ const PublicLayout = () => {
               </Link>
             ))}
           </div>
-          <div className="px-4 pt-3 text-[11px] font-bold uppercase tracking-widest text-gray-500">Shop by category</div>
+          <div className="px-4 pt-3 text-[11px] font-bold uppercase tracking-widest text-[var(--store-muted)]">Shop by category</div>
           <div className="px-2 pb-5">
             {categoriesLoading && <div role="status" aria-label="Loading categories" className="space-y-2 px-3 py-2">{[1, 2, 3, 4, 5].map((item) => <Skeleton key={item} className="h-10 w-full" />)}</div>}
-            {categoriesError && <button onClick={() => setCategoryRetry((value) => value + 1)} className="px-3 py-3 text-sm text-[#800020]">{categoriesError}. Retry</button>}
+            {categoriesError && <button onClick={() => setCategoryRetry((value) => value + 1)} className="px-3 py-3 text-sm text-[var(--store-primary)]">{categoriesError}. Retry</button>}
             {categoryTree.map((header) => (
-              <details key={header._id} className="group border-b border-gray-100">
-                <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-3 text-sm font-medium text-gray-900 [&::-webkit-details-marker]:hidden">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[#800020]/10 text-[#800020]">{getHeaderCategoryIcon(header.name, header.slug)}</span>
+              <details key={header._id} className="group border-b border-[var(--store-border)]">
+                <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-3 text-sm font-medium text-[var(--store-text)] [&::-webkit-details-marker]:hidden">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--store-primary)]/10 text-[var(--store-primary)]">{getHeaderCategoryIcon(header.name, header.slug)}</span>
                   <span className="min-w-0 flex-1 truncate">{header.name}</span>
-                  <ChevronDown className="h-4 w-4 shrink-0 text-gray-500 transition-transform group-open:rotate-180" />
+                  <ChevronDown className="h-4 w-4 shrink-0 text-[var(--store-muted)] transition-transform group-open:rotate-180" />
                 </summary>
-                <div className="space-y-1 bg-[#800020]/[0.03] px-4 pb-3 pl-14 text-xs">
+                <div className="space-y-1 bg-[var(--store-primary)]/[0.03] px-4 pb-3 pl-14 text-xs">
                   {header.mainCategories.map((main) => (
                     <div key={main._id} className="space-y-1">
-                      <Link className="block py-2 font-semibold text-gray-800" to={buildCategoryPath(main, allCategories)}>{main.name}</Link>
-                      {main.subCategories.map((sub) => <Link key={sub._id} className="block py-1.5 pl-3 text-gray-600" to={buildCategoryPath(sub, allCategories)}>{sub.name}</Link>)}
+                      <Link className="block py-2 font-semibold text-[var(--store-text)]" to={buildCategoryPath(main, allCategories)}>{main.name}</Link>
+                      {main.subCategories.map((sub) => <Link key={sub._id} className="block py-1.5 pl-3 text-[var(--store-muted)]" to={buildCategoryPath(sub, allCategories)}>{sub.name}</Link>)}
                     </div>
                   ))}
-                  <Link className="block pt-2 font-semibold text-[#800020]" to={buildCategoryPath(header, allCategories)}>View all {header.name} →</Link>
+                  <Link className="block pt-2 font-semibold text-[var(--store-primary)]" to={buildCategoryPath(header, allCategories)}>View all {header.name} →</Link>
                 </div>
               </details>
             ))}
@@ -1613,7 +1622,7 @@ const PublicLayout = () => {
 
       {/* 4. ADDED TO CART FLOATING TOAST POPUP (Matching Image 2) */}
       {addedCartToast && (
-        <div className="fixed top-20 left-4 right-4 sm:left-auto sm:right-8 z-50 sm:max-w-md w-auto sm:w-full bg-white rounded-2xl shadow-2xl border border-gray-200 border-l-4 border-l-emerald-500 overflow-hidden animate-in slide-in-from-top-4 duration-200 text-left">
+        <div className="fixed top-20 left-4 right-4 sm:left-auto sm:right-8 z-50 sm:max-w-md w-auto sm:w-full bg-[var(--store-surface)] rounded-2xl shadow-2xl border border-[var(--store-border)] border-l-4 border-l-emerald-500 overflow-hidden animate-in slide-in-from-top-4 duration-200 text-left">
           <div className="p-4 space-y-2.5">
             {/* Top Row: Green Check Circle + Title + Close Button */}
             <div className="flex items-center justify-between">
@@ -1621,14 +1630,14 @@ const PublicLayout = () => {
                 <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
                   <Check className="w-4 h-4 stroke-[3]" />
                 </div>
-                <h3 className="font-bold text-sm text-gray-900">
+                <h3 className="font-bold text-sm text-[var(--store-text)]">
                   Added to cart
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setAddedCartToast(null)}
-                className="text-gray-400 hover:text-gray-700 p-1 rounded-full cursor-pointer transition-colors"
+                className="text-[var(--store-muted)] hover:text-[var(--store-muted)] p-1 rounded-full cursor-pointer transition-colors"
                 aria-label="Close notification"
               >
                 <X className="w-4 h-4" />
@@ -1636,7 +1645,7 @@ const PublicLayout = () => {
             </div>
 
             {/* Product Details line matching Image 2 */}
-            <p className="text-xs text-gray-600 leading-snug pl-8 pr-1 font-medium">
+            <p className="text-xs text-[var(--store-muted)] leading-snug pl-8 pr-1 font-medium">
               {addedCartToast.quantity} unit · {addedCartToast.product.name} · ₹{Number(addedCartToast.price).toLocaleString('en-IN')}
             </p>
 
@@ -1645,7 +1654,7 @@ const PublicLayout = () => {
               <Link
                 to="/cart"
                 onClick={() => setAddedCartToast(null)}
-                className="inline-flex items-center justify-center px-5 py-2 rounded-lg bg-[#800020] hover:bg-[#66001a] text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-xs"
+                className="inline-flex items-center justify-center px-5 py-2 rounded-lg bg-[var(--store-primary)] hover:bg-[var(--store-primary-hover,#660019)] text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-xs"
               >
                 View Cart ({cartCount > 0 ? cartCount : (addedCartToast.quantity || 1)})
               </Link>
@@ -1666,9 +1675,11 @@ const PublicLayout = () => {
         </Suspense>
       </main>
 
-      {footerData && <footer className="w-full bg-[#111111] px-5 sm:px-6 pt-9 text-left text-white/90 border-t border-[#2b2b2b]">
-        <div className={`storefront-container grid grid-cols-1 sm:grid-cols-2 ${hasBankDetails && whatsappList.length > 0 ? 'xl:grid-cols-5' : hasBankDetails || whatsappList.length > 0 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-x-8 gap-y-9 pb-9`}>
-          <div>
+      <ThemeDecorations config={theme.config} placement="footer" />
+
+      {footerData && <footer className="store-footer w-full bg-[#111111] px-5 sm:px-6 pt-9 text-left text-white/90 border-t border-[#2b2b2b]">
+        <div className={`store-footer-grid storefront-container grid grid-cols-1 sm:grid-cols-2 ${hasBankDetails && whatsappList.length > 0 ? 'xl:grid-cols-5' : hasBankDetails || whatsappList.length > 0 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-x-8 gap-y-9 pb-9`}>
+          <div className="footer-about">
             <div className="mb-4">
               <h4 className="font-bold text-xl text-white">{footerData.aboutHeading || 'About'}</h4>
             </div>
@@ -1705,7 +1716,7 @@ const PublicLayout = () => {
               </div>
             )}
           </div>
-          <div className="text-[15px]">
+          <div className="footer-information text-[15px]">
             <div className="mb-4">
               <h4 className="font-bold text-xl text-white">{footerData.quickLinksHeading || 'Information'}</h4>
             </div>
@@ -1732,7 +1743,7 @@ const PublicLayout = () => {
               );
             })()}
           </div>
-          <div className="space-y-3 text-[15px]">
+          <div className="footer-contact space-y-3 text-[15px]">
             <div className="mb-4">
               <h4 className="font-bold text-xl text-white">{footerData.contactHeading || 'Contact Details'}</h4>
             </div>
@@ -1770,7 +1781,7 @@ const PublicLayout = () => {
           </div>
 
           {hasBankDetails && (
-            <div className="text-[15px]">
+            <div className="footer-bank text-[15px]">
               <div className="mb-4">
                 <h4 className="font-bold text-xl text-white">
                   {footerData.bankDetailsHeading || 'Bank Details'}
@@ -1798,7 +1809,7 @@ const PublicLayout = () => {
                           href={bank.qrCodeUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-md border border-white/30 bg-white p-2 shadow-xs transition hover:border-amber-300"
+                          className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-md border border-white/30 bg-[var(--store-surface)] p-2 shadow-xs transition hover:border-amber-300"
                           title="Click to view QR code"
                         >
                           <img
@@ -1816,7 +1827,7 @@ const PublicLayout = () => {
           )}
 
           {whatsappList.length > 0 && (
-            <div className="text-[15px]">
+            <div className="footer-support text-[15px]">
               <div className="mb-4">
                 <h4 className="font-bold text-xl text-white">Sales &amp; Support</h4>
               </div>
@@ -1834,7 +1845,7 @@ const PublicLayout = () => {
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <span className="truncate">{item.label || `WhatsApp ${idx + 1}`}</span>
+                      <span className="min-w-0 break-words">{item.label || `WhatsApp ${idx + 1}`}</span>
                       <span className="tabular-nums whitespace-nowrap">{displayNum}</span>
                       <WhatsAppIcon className="h-4 w-4 shrink-0 text-[#25D366]" />
                     </a>
@@ -1848,7 +1859,7 @@ const PublicLayout = () => {
           {(footerData.copyrightText || '© {year} {company}. All Rights Reserved.').replace(/\{year\}/g, String(new Date().getFullYear())).replace(/\{company\}/g, footerData.companyName || '')}
         </p>
       </footer>}
-      {!footerData && <footer className="w-full bg-[#111111] px-6 py-6 text-white/90 border-t border-[#2b2b2b]">
+      {!footerData && <footer className="store-footer w-full bg-[#111111] px-6 py-6 text-white/90 border-t border-[#2b2b2b]">
         <div className="storefront-container flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
           <Link to="/privacy" className="hover:underline">Privacy Policy</Link>
           <Link to="/terms" className="hover:underline">Terms &amp; Conditions</Link>
@@ -1856,7 +1867,7 @@ const PublicLayout = () => {
           <a href="mailto:vinexus@gmail.com" className="hover:underline">vinexus@gmail.com</a>
         </div>
       </footer>}
-    </div>
+    </div></StorefrontScopeContext.Provider>
   );
 };
 

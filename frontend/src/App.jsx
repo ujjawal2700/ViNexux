@@ -1,4 +1,5 @@
 import React from 'react';
+import { SeasonalThemeProvider, StorefrontOverlayScope } from './context/SeasonalThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -12,14 +13,18 @@ function App() {
   return (
     <ThemeProvider>
       <WebsiteSettingsProvider>
+        <SeasonalThemeProvider>
         <AuthProvider>
           <ToastProvider>
             <ScrollToTop />
             <AppRoutes />
-            <StorageConsentBanner />
-            <PromotionalOfferModal />
+            <StorefrontOverlayScope>
+              <StorageConsentBanner />
+              <PromotionalOfferModal />
+            </StorefrontOverlayScope>
           </ToastProvider>
         </AuthProvider>
+        </SeasonalThemeProvider>
       </WebsiteSettingsProvider>
     </ThemeProvider>
   );

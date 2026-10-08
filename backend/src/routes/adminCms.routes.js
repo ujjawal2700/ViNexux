@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import themeRoutes, { resetTheme } from './theme.routes.js';
+import bannerGridRoutes from './bannerGrid.routes.js';
 import {
   addBanner,
   fetchBanners,
@@ -51,6 +53,9 @@ const router = Router();
 
 // Protected Admin CMS Operations
 router.use(authenticate, authorize('admin'));
+router.use('/banner-grid', bannerGridRoutes);
+router.post('/themes/reset', resetTheme);
+router.use('/themes', themeRoutes);
 
 // --- Hero Banners ---
 router.post('/banners', validate(bannerSchema), addBanner);
@@ -93,4 +98,3 @@ router.put('/website-settings', validate(websiteSettingsSchema), editWebsiteSett
 router.post('/website-settings/:field/image', validate(websiteAssetSchema), uploadSingle('file', 'cms'), uploadWebsiteAssetImg);
 
 export default router;
-

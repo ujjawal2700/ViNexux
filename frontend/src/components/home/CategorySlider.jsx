@@ -51,7 +51,7 @@ export const CategorySlider = ({ categories = [] }) => {
         <button
           type="button"
           onClick={() => scrollManual('left')}
-          className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white border border-gray-300 shadow-md flex items-center justify-center text-gray-700 hover:text-primary hover:border-primary transition-all opacity-95 hover:opacity-100 cursor-pointer hover:scale-105 active:scale-95"
+          className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[var(--store-surface)] border border-[var(--store-border)] shadow-md flex items-center justify-center text-[var(--store-muted)] hover:text-primary hover:border-primary transition-all opacity-95 hover:opacity-100 cursor-pointer hover:scale-105 active:scale-95"
           aria-label="Scroll categories left"
         >
           <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
@@ -69,7 +69,7 @@ export const CategorySlider = ({ categories = [] }) => {
           <Link
             key={cat.id || idx}
             to={`/${cat.slug}`}
-            className="flex flex-col items-center justify-between p-2.5 sm:p-3 bg-white border border-gray-200 rounded-lg sm:rounded-xl hover:border-[#800020] hover:shadow-md transition-all duration-200 text-center select-none group shrink-0 w-[110px] sm:w-[130px] md:w-[145px] h-[120px] sm:h-[135px] md:h-[150px]"
+            className="flex flex-col items-center justify-between p-2.5 sm:p-3 bg-[var(--store-surface)] border border-[var(--store-border)] rounded-lg sm:rounded-xl hover:border-[var(--store-primary)] hover:shadow-md transition-all duration-200 text-center select-none group shrink-0 w-[110px] sm:w-[130px] md:w-[145px] h-[120px] sm:h-[135px] md:h-[150px]"
           >
             <div className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 flex items-center justify-center overflow-hidden mb-1 sm:mb-1.5 shrink-0">
               <Image
@@ -79,7 +79,7 @@ export const CategorySlider = ({ categories = [] }) => {
                 loading="lazy"
               />
             </div>
-            <span className="w-full text-center text-[11px] sm:text-xs md:text-sm font-bold text-[#800020] group-hover:text-[#66001a] leading-tight line-clamp-1 transition-colors">
+            <span className="w-full text-center text-[11px] sm:text-xs md:text-sm font-bold text-[var(--store-primary)] group-hover:text-[var(--store-primary-hover,#660019)] leading-tight line-clamp-1 transition-colors">
               {cat.name}
             </span>
           </Link>
@@ -91,7 +91,7 @@ export const CategorySlider = ({ categories = [] }) => {
         <button
           type="button"
           onClick={() => scrollManual('right')}
-          className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white border border-gray-300 shadow-md flex items-center justify-center text-gray-700 hover:text-primary hover:border-primary transition-all opacity-95 hover:opacity-100 cursor-pointer hover:scale-105 active:scale-95"
+          className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[var(--store-surface)] border border-[var(--store-border)] shadow-md flex items-center justify-center text-[var(--store-muted)] hover:text-primary hover:border-primary transition-all opacity-95 hover:opacity-100 cursor-pointer hover:scale-105 active:scale-95"
           aria-label="Scroll categories right"
         >
           <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />

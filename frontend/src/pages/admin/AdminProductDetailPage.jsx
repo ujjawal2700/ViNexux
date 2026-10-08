@@ -756,11 +756,16 @@ const AdminProductDetailPage = () => {
           </button>
           <div className="h-5 w-px bg-gray-200 hidden sm:block" />
           <div>
-            <h1 className="text-base sm:text-lg font-black text-gray-900 tracking-tight flex items-center gap-2">
+            <h1 className="text-base sm:text-lg font-black text-gray-900 tracking-tight flex flex-wrap items-center gap-2">
               <span>{isCreateMode ? "Add New Product" : "Edit Product"}</span>
               {sku && (
                 <span className="text-xs font-bold text-[#800020] bg-[#fdf2f4] px-2 py-0.5 rounded-md">
                   ({sku})
+                </span>
+              )}
+              {!isCreateMode && name.trim() && (
+                <span className="max-w-[min(56vw,42rem)] truncate text-xs font-semibold text-gray-700 sm:text-sm" title={name.trim()}>
+                  — {name.trim()}
                 </span>
               )}
             </h1>

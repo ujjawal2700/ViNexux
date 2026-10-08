@@ -36,7 +36,7 @@ const KYC_DOC_TYPES = [
  * Account Dashboard for ViNexus (Mega Jaipur 2-column layout).
  * Left Sidebar: ACCOUNT (My Profile, My Enquiries, Delete Account, Log Out)
  * Right Pane: Dynamic content depending on active tab.
- * Brand theme: ViNexus signature Maroon (#800020).
+ * Brand theme: ViNexus signature Maroon (var(--store-primary)).
  */
 export const ProfilePage = () => {
   const { user, logout } = useAuth();
@@ -134,13 +134,13 @@ export const ProfilePage = () => {
                 to="/account/profile"
                 className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-semibold transition-all text-left cursor-pointer border-l-4 ${
                   activeTab === 'profile'
-                    ? 'border-[#800020] bg-[#800020]/5 text-[#800020] font-bold shadow-2xs'
+                    ? 'border-[var(--store-primary)] bg-[var(--store-primary)]/5 text-[var(--store-primary)] font-bold shadow-2xs'
                     : 'border-transparent text-gray-700 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
                 <User
                   className={`w-5 h-5 shrink-0 ${
-                    activeTab === 'profile' ? 'text-[#800020]' : 'text-gray-400'
+                    activeTab === 'profile' ? 'text-[var(--store-primary)]' : 'text-gray-400'
                   }`}
                 />
                 <span>My Profile</span>
@@ -151,13 +151,13 @@ export const ProfilePage = () => {
                 to="/account/enquiries"
                 className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-semibold transition-all text-left cursor-pointer border-l-4 ${
                   activeTab === 'enquiries'
-                    ? 'border-[#800020] bg-[#800020]/5 text-[#800020] font-bold shadow-2xs'
+                    ? 'border-[var(--store-primary)] bg-[var(--store-primary)]/5 text-[var(--store-primary)] font-bold shadow-2xs'
                     : 'border-transparent text-gray-700 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
                 <FileSpreadsheet
                   className={`w-5 h-5 shrink-0 ${
-                    activeTab === 'enquiries' ? 'text-[#800020]' : 'text-gray-400'
+                    activeTab === 'enquiries' ? 'text-[var(--store-primary)]' : 'text-gray-400'
                   }`}
                 />
                 <span>My Enquiries</span>
@@ -177,7 +177,7 @@ export const ProfilePage = () => {
               <button
                 type="button"
                 onClick={handleDirectLogout}
-                className="w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-semibold text-gray-700 hover:text-[#800020] hover:bg-gray-50 border-l-4 border-transparent transition-all text-left cursor-pointer"
+                className="w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-semibold text-gray-700 hover:text-[var(--store-primary)] hover:bg-gray-50 border-l-4 border-transparent transition-all text-left cursor-pointer"
               >
                 <LogOut className="w-5 h-5 shrink-0 text-gray-400" />
                 <span>Log Out</span>
@@ -199,11 +199,11 @@ export const ProfilePage = () => {
               {/* Header Row */}
               <div className="border-b border-gray-200 pb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="text-left">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#800020]">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--store-primary)]">
                     Account Overview
                   </span>
                   <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2.5 mt-0.5">
-                    <User className="w-6 h-6 sm:w-7 sm:h-7 text-[#800020]" />
+                    <User className="w-6 h-6 sm:w-7 sm:h-7 text-[var(--store-primary)]" />
                     <span>My Profile</span>
                   </h1>
                 </div>
@@ -215,7 +215,7 @@ export const ProfilePage = () => {
                   </span>
                   <Link
                     to="/account/profile/update"
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#800020] hover:bg-[#9a1b32] text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[var(--store-primary)] hover:bg-[#9a1b32] text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
                     <span>Edit Profile</span>
@@ -229,7 +229,7 @@ export const ProfilePage = () => {
                   <h2 className="text-base font-bold text-gray-900">Personal Information</h2>
                   <Link
                     to="/account/profile/update"
-                    className="text-xs font-bold text-[#800020] hover:underline flex items-center gap-1"
+                    className="text-xs font-bold text-[var(--store-primary)] hover:underline flex items-center gap-1"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
                     <span>Edit Details</span>
@@ -240,7 +240,7 @@ export const ProfilePage = () => {
                   {/* Full Name */}
                   <div className="space-y-1.5 bg-gray-50/80 hover:bg-gray-50 p-4 rounded-xl border border-gray-200/80 transition-colors">
                     <span className="text-gray-500 font-semibold flex items-center gap-2">
-                      <User className="w-3.5 h-3.5 text-[#800020]" /> Full Name
+                      <User className="w-3.5 h-3.5 text-[var(--store-primary)]" /> Full Name
                     </span>
                     <span className="text-sm font-bold text-gray-900 block truncate">
                       {user?.fullName || user?.name || user?.contactPerson || 'Dipesh Gocher'}
@@ -250,7 +250,7 @@ export const ProfilePage = () => {
                   {/* Email Address */}
                   <div className="space-y-1.5 bg-gray-50/80 hover:bg-gray-50 p-4 rounded-xl border border-gray-200/80 transition-colors">
                     <span className="text-gray-500 font-semibold flex items-center gap-2">
-                      <Mail className="w-3.5 h-3.5 text-[#800020]" /> Email Address
+                      <Mail className="w-3.5 h-3.5 text-[var(--store-primary)]" /> Email Address
                     </span>
                     <span className="text-sm font-mono font-medium text-gray-900 block truncate">
                       {user?.email || 'customer@vinexus.com'}
@@ -260,7 +260,7 @@ export const ProfilePage = () => {
                   {/* Mobile Number */}
                   <div className="space-y-1.5 bg-gray-50/80 hover:bg-gray-50 p-4 rounded-xl border border-gray-200/80 transition-colors">
                     <span className="text-gray-500 font-semibold flex items-center gap-2">
-                      <Phone className="w-3.5 h-3.5 text-[#800020]" /> Mobile Number
+                      <Phone className="w-3.5 h-3.5 text-[var(--store-primary)]" /> Mobile Number
                     </span>
                     <span className="text-sm font-mono font-medium text-gray-900 block truncate">
                       {user?.phone || user?.identifier || '8209224481'}
@@ -272,7 +272,7 @@ export const ProfilePage = () => {
                     <span className="text-gray-500 font-semibold flex items-center gap-2">
                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Account Role
                     </span>
-                    <span className="text-sm font-extrabold text-[#800020] uppercase block">
+                    <span className="text-sm font-extrabold text-[var(--store-primary)] uppercase block">
                       {user?.role || 'Customer'}
                     </span>
                   </div>
@@ -284,7 +284,7 @@ export const ProfilePage = () => {
                 <div className="bg-white p-5 sm:p-7 rounded-xl border border-gray-200 shadow-2xs space-y-4">
                   <div className="pb-3 border-b border-gray-100 flex items-center justify-between">
                     <h2 className="text-base font-bold flex items-center gap-2 text-gray-900">
-                      <Building2 className="w-4 h-4 text-[#800020]" />
+                      <Building2 className="w-4 h-4 text-[var(--store-primary)]" />
                       <span>Business &amp; KYC Verification</span>
                     </h2>
                     {dealerProfile && <StatusBadge status={dealerProfile.status} />}
@@ -306,7 +306,7 @@ export const ProfilePage = () => {
                         </p>
                         <Link
                           to="/account/profile/update"
-                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#800020] hover:bg-[#9a1b32] text-white text-xs font-bold shadow-2xs transition-colors"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[var(--store-primary)] hover:bg-[#9a1b32] text-white text-xs font-bold shadow-2xs transition-colors"
                         >
                           <span>Start KYC Submission</span>
                           <ArrowRight className="w-3.5 h-3.5" />
@@ -372,7 +372,7 @@ export const ProfilePage = () => {
 
                         <div className="space-y-2 pt-2 border-t border-gray-200">
                           <h4 className="text-[11px] font-bold text-gray-600 uppercase flex items-center gap-1.5">
-                            <FileText className="w-3.5 h-3.5 text-[#800020]" /> Submitted KYC Documents
+                            <FileText className="w-3.5 h-3.5 text-[var(--store-primary)]" /> Submitted KYC Documents
                           </h4>
                           {KYC_DOC_TYPES.map(({ type: docType, required }) => {
                             const doc = (dealerProfile.kycDocuments || []).find((d) => d.type === docType);
@@ -383,7 +383,7 @@ export const ProfilePage = () => {
                                   {!required && <span className="text-gray-400 normal-case font-normal"> (Optional)</span>}
                                 </span>
                                 {doc ? (
-                                  <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-[#800020] hover:underline flex items-center gap-1 font-semibold">
+                                  <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-[var(--store-primary)] hover:underline flex items-center gap-1 font-semibold">
                                     View <ExternalLink className="w-3 h-3" />
                                   </a>
                                 ) : required ? (
@@ -405,7 +405,7 @@ export const ProfilePage = () => {
               <div className="bg-white p-5 sm:p-7 rounded-xl border border-gray-200 shadow-2xs space-y-4">
                 <div className="pb-3 border-b border-gray-100 flex items-center justify-between">
                   <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-[#800020]" />
+                    <MapPin className="w-4 h-4 text-[var(--store-primary)]" />
                     <span>Saved Addresses</span>
                   </h2>
                 </div>

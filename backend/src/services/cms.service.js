@@ -1,4 +1,5 @@
 import { Banner } from '../models/Banner.js';
+import { getActiveTheme } from './theme.service.js';
 import { PromotionalBanner } from '../models/PromotionalBanner.js';
 import { CmsPage } from '../models/CmsPage.js';
 import { TrustBadge } from '../models/TrustBadge.js';
@@ -70,6 +71,12 @@ export const deleteBanner = async (id) => {
 };
 
 export const getPublicActiveBanners = async () => {
+  const theme = await getActiveTheme();
+  const ids = theme.config.bannerIds || [];
+  if (ids.length) {
+    const banners = await Banner.find({ _id: { $in: ids }, isActive: true }).lean();
+    if (banners.length) return ids.map(id => banners.find(b => String(b._id) === id)).filter(Boolean);
+  }
   return await Banner.find({ isActive: true }).sort({ sortOrder: 1, createdAt: -1 }).lean();
 };
 
@@ -546,4 +553,3 @@ export const uploadTrustBadgeIcon = async (id, file) => {
   await badge.save();
   return badge;
 };
-

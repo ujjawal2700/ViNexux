@@ -157,24 +157,24 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
     <div
       onClick={handleCardClick}
       className={cn(
-        "group relative flex h-full flex-col overflow-hidden rounded-sm border border-gray-200 bg-white text-gray-900 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer",
+        "theme-product-card group relative flex h-full flex-col overflow-hidden rounded-sm border border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-text)] shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer",
         className
       )}
     >
       {/* ── IMAGE AREA (large, no restricting inner div, transparent bg for PNGs) ── */}
-      <div className="relative w-full aspect-square max-h-[320px] bg-white overflow-hidden">
+      <div className="relative w-full aspect-square max-h-[320px] bg-[var(--store-surface)] overflow-hidden">
         {/* Wishlist Button */}
         <button
           type="button"
           onClick={handleToggleWishlist}
           title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
           aria-label="Wishlist"
-          className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center text-gray-400 hover:text-[#800020] hover:scale-105 active:scale-95 transition-all duration-200 opacity-0 group-hover:opacity-100 cursor-pointer"
+          className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-[var(--store-surface)] shadow-sm border border-[var(--store-border)] flex items-center justify-center text-[var(--store-muted)] hover:text-[var(--store-primary)] hover:scale-105 active:scale-95 transition-all duration-200 opacity-0 group-hover:opacity-100 cursor-pointer"
         >
           <Heart
             className={cn(
               'w-4 h-4 transition-colors',
-              isWishlisted ? 'fill-red-500 text-red-500' : 'text-gray-400 hover:text-red-500'
+              isWishlisted ? 'fill-red-500 text-red-500' : 'text-[var(--store-muted)] hover:text-red-500'
             )}
           />
         </button>
@@ -196,7 +196,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 text-gray-300">
+          <div className="w-full h-full flex flex-col items-center justify-center bg-[var(--store-background)] text-gray-300">
             <ImageOff className="w-10 h-10 mb-1 opacity-40" />
             <span className="text-[10px] font-bold uppercase tracking-wider opacity-40">No Image</span>
           </div>
@@ -204,10 +204,10 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
       </div>
 
       {/* ── CONTENT AREA ── */}
-      <div className="flex flex-1 flex-col p-2 sm:p-3 text-left border-t border-gray-100">
+      <div className="flex flex-1 flex-col p-2 sm:p-3 text-left border-t border-[var(--store-border)]">
 
         {/* Product Title */}
-        <h3 className="min-h-[50px] line-clamp-3 text-[13px] font-semibold leading-[1.35] text-gray-900 transition-colors group-hover:text-[#800020] sm:text-[13.5px]">
+        <h3 className="min-h-[50px] line-clamp-3 text-[13px] font-semibold leading-[1.35] text-[var(--store-text)] transition-colors group-hover:text-[var(--store-primary)] sm:text-[13.5px]">
           {product.name}
         </h3>
 
@@ -215,7 +215,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
         {modelNumber && (
           <div className="mt-2">
             <span
-              className="inline-block min-w-0 max-w-full truncate rounded bg-gray-100 border border-gray-200 px-1.5 py-0.5 text-[10.5px] font-semibold text-gray-600"
+              className="inline-block min-w-0 max-w-full truncate rounded bg-[var(--store-background)] border border-[var(--store-border)] px-1.5 py-0.5 text-[10.5px] font-semibold text-[var(--store-muted)]"
               title={`Model: ${modelNumber}`}
             >
               Model: {modelNumber}
@@ -226,11 +226,11 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
         {/* Price row with brand logo/name */}
         <div className="mt-2.5 flex min-h-8 items-center justify-between gap-2">
           <div className="flex min-w-0 items-baseline gap-1">
-            <span className="text-[15px] font-extrabold text-gray-900 sm:text-lg leading-none">
+            <span className="text-[15px] font-extrabold text-[var(--store-text)] sm:text-lg leading-none">
               ₹{(Number(displayPrice) || 0).toLocaleString('en-IN')}
             </span>
             {hasDealerDiscount && (
-              <span className="text-[10px] sm:text-xs text-gray-400 line-through">
+              <span className="text-[10px] sm:text-xs text-[var(--store-muted)] line-through">
                 ₹{(Number(standardPrice) || 0).toLocaleString('en-IN')}
               </span>
             )}
@@ -239,7 +239,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
           {brandLogo ? (
             <img loading="lazy" decoding="async" src={brandLogo} alt={`${brandName} logo`} title={brandName} className="h-7 w-14 shrink-0 object-contain object-right" />
           ) : (
-            <span className="max-w-[72px] shrink-0 truncate text-right text-[10px] font-extrabold uppercase text-[#800020]" title={brandName}>{brandName}</span>
+            <span className="max-w-[72px] shrink-0 truncate text-right text-[10px] font-extrabold uppercase text-[var(--store-primary)]" title={brandName}>{brandName}</span>
           )}
         </div>
 
@@ -264,36 +264,36 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
         </div>
 
         {hasDealerDiscount && (
-          <div className="mt-1 text-[10px] font-semibold text-[#800020]">
+          <div className="mt-1 text-[10px] font-semibold text-[var(--store-primary)]">
             Dealer saving: ₹{(standardPrice - displayPrice).toLocaleString('en-IN')}
           </div>
         )}
 
         {/* Quantity Selector + Add to Cart / Out of Stock Button */}
-        <div className="mt-auto pt-2 border-t border-gray-100 flex h-8.5 w-full items-center gap-1.5 mt-3">
+        <div className="mt-auto pt-2 border-t border-[var(--store-border)] flex h-8.5 w-full items-center gap-1.5 mt-3">
           {/* Qty Stepper - only shown when not OOS */}
           {!isOutOfStock && (
             <div
               onClick={(e) => e.stopPropagation()}
-              className="flex max-[360px]:hidden shrink-0 h-8 overflow-hidden rounded border border-gray-300 bg-white text-xs shadow-xs"
+              className="flex max-[360px]:hidden shrink-0 h-8 overflow-hidden rounded border border-[var(--store-border)] bg-[var(--store-surface)] text-xs shadow-xs"
             >
               <button
                 type="button"
                 onClick={handleDecrement}
                 disabled={quantity <= 1}
-                className="flex w-6 items-center justify-center text-gray-700 hover:bg-gray-100 disabled:opacity-30 transition-colors cursor-pointer"
+                className="flex w-6 items-center justify-center text-[var(--store-muted)] hover:bg-[var(--store-background)] disabled:opacity-30 transition-colors cursor-pointer"
                 aria-label="Decrease quantity"
               >
                 <Minus className="h-3 w-3" />
               </button>
-              <span className="flex w-6 items-center justify-center border-x border-gray-200 text-xs font-bold text-gray-900 select-none">
+              <span className="flex w-6 items-center justify-center border-x border-[var(--store-border)] text-xs font-bold text-[var(--store-text)] select-none">
                 {quantity}
               </span>
               <button
                 type="button"
                 onClick={handleIncrement}
                 disabled={quantity >= maximumQuantity || maximumQuantity <= 0}
-                className="flex w-6 items-center justify-center text-gray-700 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="flex w-6 items-center justify-center text-[var(--store-muted)] hover:bg-[var(--store-background)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 aria-label="Increase quantity"
               >
                 <Plus className="h-3 w-3" />
@@ -320,7 +320,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
                 'flex h-8 min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded px-1.5 sm:px-2 text-[10px] sm:text-[10.5px] font-bold uppercase tracking-tight transition-all shadow-xs',
                 isAdded
                   ? 'bg-emerald-600 text-white'
-                  : 'bg-[#800020] text-white hover:bg-[#660019] active:scale-98 cursor-pointer'
+                  : 'bg-[var(--store-primary)] text-white hover:bg-[var(--store-primary-hover)] active:scale-98 cursor-pointer'
               )}
             >
               {isAdding ? (

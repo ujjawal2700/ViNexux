@@ -40,7 +40,7 @@ const BrandLogoDisplay = ({ brand }) => {
     case 'amazon':
       return (
         <div className="flex flex-col items-center leading-none">
-          <span className="text-base sm:text-lg font-bold tracking-tight text-gray-900 lowercase font-sans">
+          <span className="text-base sm:text-lg font-bold tracking-tight text-[var(--store-text)] lowercase font-sans">
             amazon
           </span>
           <div className="w-9 h-1 border-b-2 border-[#ff9900] rounded-full -mt-0.5"></div>
@@ -51,7 +51,7 @@ const BrandLogoDisplay = ({ brand }) => {
       return (
         <div className="flex items-center gap-1">
           <div className="w-3.5 h-3.5 bg-[#ed1c24] rotate-45 shrink-0"></div>
-          <span className="text-lg sm:text-xl font-black tracking-tight text-gray-900 font-mono">
+          <span className="text-lg sm:text-xl font-black tracking-tight text-[var(--store-text)] font-mono">
             AMD
           </span>
         </div>
@@ -136,7 +136,7 @@ const BrandLogoDisplay = ({ brand }) => {
             <span className="bg-[#00a4ef]"></span>
             <span className="bg-[#ffb900]"></span>
           </div>
-          <span className="text-xs font-semibold text-gray-700">Microsoft</span>
+          <span className="text-xs font-semibold text-[var(--store-muted)]">Microsoft</span>
         </div>
       );
 
@@ -182,7 +182,7 @@ const BrandLogoDisplay = ({ brand }) => {
           <span className="w-4 h-4 rounded-full bg-[#e60067] text-white flex items-center justify-center font-bold text-[10px]">
             b
           </span>
-          <span className="text-xs font-black tracking-wider text-gray-900">
+          <span className="text-xs font-black tracking-wider text-[var(--store-text)]">
             BEETEL
           </span>
         </div>
@@ -286,13 +286,13 @@ export const BrandsPage = () => {
   if (error) return <ErrorState title="Brands unavailable" description={error} onRetry={reload} />;
 
   return (
-    <div className="w-full min-h-screen bg-gray-50/70 text-gray-900 pb-16">
+    <div className="w-full min-h-screen bg-[var(--store-background)]/70 text-[var(--store-text)] pb-16">
       
       {/* Search Bar Container (Centered exactly like Mega Jaipur screenshot) */}
       <div className="w-full px-4 pt-6 sm:pt-8 pb-4 sm:pb-6">
         <div className="max-w-xl mx-auto">
           <div className="relative w-full">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--store-muted)]">
               <Search className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <input
@@ -300,13 +300,13 @@ export const BrandsPage = () => {
               placeholder="Search brands..."
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full h-11 sm:h-12 pl-10 sm:pl-11 pr-10 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#800020] focus:ring-1 focus:ring-[#800020] shadow-2xs transition-all"
+              className="w-full h-11 sm:h-12 pl-10 sm:pl-11 pr-10 bg-[var(--store-surface)] border border-[var(--store-border)] rounded-lg text-sm text-[var(--store-text)] placeholder-gray-400 focus:outline-none focus:border-[var(--store-primary)] focus:ring-1 focus:ring-[var(--store-primary)] shadow-2xs transition-all"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => handleSearchChange('')}
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 cursor-pointer"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[var(--store-muted)] hover:text-[var(--store-muted)] cursor-pointer"
                 title="Clear search"
               >
                 <X className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -315,14 +315,14 @@ export const BrandsPage = () => {
           </div>
 
           {searchQuery && (
-            <div className="mt-2 text-xs text-gray-500 text-left px-1 flex items-center justify-between">
+            <div className="mt-2 text-xs text-[var(--store-muted)] text-left px-1 flex items-center justify-between">
               <span>
                 Found <strong>{filteredBrands.length}</strong> brand{filteredBrands.length !== 1 ? 's' : ''} matching "{searchQuery}"
               </span>
               <button
                 type="button"
                 onClick={() => handleSearchChange('')}
-                className="text-[#800020] font-semibold hover:underline cursor-pointer"
+                className="text-[var(--store-primary)] font-semibold hover:underline cursor-pointer"
               >
                 Show all
               </button>
@@ -335,22 +335,22 @@ export const BrandsPage = () => {
       <div className="storefront-container px-2 sm:px-4 lg:px-8">
         
         {filteredBrands.length === 0 ? (
-          <div className="text-center py-16 px-4 bg-white rounded-xl border border-gray-200 max-w-lg mx-auto shadow-2xs space-y-4">
-            <div className="w-14 h-14 rounded-full bg-gray-100 text-gray-400 mx-auto flex items-center justify-center">
+          <div className="text-center py-16 px-4 bg-[var(--store-surface)] rounded-xl border border-[var(--store-border)] max-w-lg mx-auto shadow-2xs space-y-4">
+            <div className="w-14 h-14 rounded-full bg-[var(--store-background)] text-[var(--store-muted)] mx-auto flex items-center justify-center">
               <Store className="w-7 h-7" />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-gray-900">
+              <h3 className="text-base font-extrabold text-[var(--store-text)]">
                 No brands found
               </h3>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-[var(--store-muted)] mt-1">
                 We couldn't find any brands matching "{searchQuery}".
               </p>
             </div>
             <button
               type="button"
               onClick={() => handleSearchChange('')}
-              className="px-4 py-2 bg-[#800020] hover:bg-[#9a1b32] text-white rounded-lg text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+              className="px-4 py-2 bg-[var(--store-primary)] hover:bg-[#9a1b32] text-white rounded-lg text-xs font-bold shadow-2xs transition-colors cursor-pointer"
             >
               Clear search filter
             </button>
@@ -362,7 +362,7 @@ export const BrandsPage = () => {
                 <Link
                   key={brand._id || brand.slug || brand.name}
                   to={buildBrandUrl(brand)}
-                  className="relative group bg-white border border-gray-200/90 hover:border-[#800020] rounded-lg p-2 sm:p-3 flex items-center justify-center aspect-square shadow-2xs hover:shadow-md transition-all duration-200 select-none cursor-pointer"
+                  className="relative group bg-[var(--store-surface)] border border-[var(--store-border)]/90 hover:border-[var(--store-primary)] rounded-lg p-2 sm:p-3 flex items-center justify-center aspect-square shadow-2xs hover:shadow-md transition-all duration-200 select-none cursor-pointer"
                 >
                   {/* Brand Visual Logo Representation */}
                   <div className="flex items-center justify-center w-full h-full text-center px-1 transition-transform duration-200 group-hover:scale-105">

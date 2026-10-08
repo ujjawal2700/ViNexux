@@ -11,6 +11,7 @@ export const discoverFrontendRoutes = () => {
 };
 
 const SAMPLES = {
+  '/admin/cms/themes/:id': '/admin/cms/themes/507f1f77bcf86cd799439011',
   '/products/:id': '/products/507f1f77bcf86cd799439011',
   '/content/pages/:slug': '/content/pages/about-us',
   '/account/enquiries/:id': '/account/enquiries/507f1f77bcf86cd799439011',

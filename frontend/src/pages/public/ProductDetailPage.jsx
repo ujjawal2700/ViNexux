@@ -446,7 +446,7 @@ export const ProductDetailPage = () => {
 
   if (isLoading) {
     return (
-      <div className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 py-8 space-y-6 bg-white min-h-screen">
+      <div className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 py-8 space-y-6 bg-[var(--store-surface)] min-h-screen">
         <Skeleton className="h-5 w-48" />
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-12 gap-8">
           <div className="xl:col-span-4">
@@ -469,18 +469,18 @@ export const ProductDetailPage = () => {
   }
 
   return (
-    <div className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 py-4 sm:py-6 space-y-10 bg-white min-h-screen text-gray-900 font-sans">
+    <div className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 py-4 sm:py-6 space-y-10 bg-[var(--store-surface)] min-h-screen text-[var(--store-text)] font-sans">
       
       {/* 1. TOP BREADCRUMBS (Matching Given Image - No left gap) */}
-      <div className="flex items-center justify-between gap-3 border-b border-gray-200 pb-3">
-        <nav aria-label="Breadcrumb" className="flex min-w-0 max-w-full items-center flex-nowrap gap-2 overflow-x-auto whitespace-nowrap text-sm sm:text-base text-[#800020] font-medium">
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--store-border)] pb-3">
+        <nav aria-label="Breadcrumb" className="flex min-w-0 max-w-full items-center flex-nowrap gap-2 overflow-x-auto whitespace-nowrap text-sm sm:text-base text-[var(--store-primary)] font-medium">
           {breadcrumbTrail.map((crumb, idx) => {
             const isLast = idx === breadcrumbTrail.length - 1;
             return (
               <React.Fragment key={idx}>
-                {idx > 0 && <ChevronRight className="w-4 h-4 text-[#800020] shrink-0" />}
+                {idx > 0 && <ChevronRight className="w-4 h-4 text-[var(--store-primary)] shrink-0" />}
                 {isLast || !crumb.path ? (
-                  <span className="font-semibold text-[#800020] shrink-0">
+                  <span className="font-semibold text-[var(--store-primary)] shrink-0">
                     {crumb.label}
                   </span>
                 ) : (
@@ -504,7 +504,7 @@ export const ProductDetailPage = () => {
             COLUMN 1: PRODUCT IMAGE & THUMBNAILS (Left - No empty margin)
            ========================================= */}
         <div className="xl:col-span-4 space-y-3">
-          <div className="bg-white p-4 rounded-xl border border-gray-200 overflow-hidden relative shadow-2xs group flex items-center justify-center min-h-[360px] sm:min-h-[420px] xl:min-h-[clamp(460px,34vw,660px)]">
+          <div className="bg-[var(--store-surface)] p-4 rounded-xl border border-[var(--store-border)] overflow-hidden relative shadow-2xs group flex items-center justify-center min-h-[360px] sm:min-h-[420px] xl:min-h-[clamp(460px,34vw,660px)]">
             <Image
               src={currentImage}
               alt={product.name}
@@ -521,7 +521,7 @@ export const ProductDetailPage = () => {
                     e.stopPropagation();
                     setSelectedImageIndex((prev) => (prev - 1 + images.length) % images.length);
                   }}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/95 shadow-md border border-gray-200 flex items-center justify-center hover:bg-white text-gray-700 transition-all hover:scale-105 active:scale-95 cursor-pointer z-10"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[var(--store-surface)]/95 shadow-md border border-[var(--store-border)] flex items-center justify-center hover:bg-[var(--store-surface)] text-[var(--store-muted)] transition-all hover:scale-105 active:scale-95 cursor-pointer z-10"
                   aria-label="Previous image"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -532,7 +532,7 @@ export const ProductDetailPage = () => {
                     e.stopPropagation();
                     setSelectedImageIndex((prev) => (prev + 1) % images.length);
                   }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/95 shadow-md border border-gray-200 flex items-center justify-center hover:bg-white text-gray-700 transition-all hover:scale-105 active:scale-95 cursor-pointer z-10"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[var(--store-surface)]/95 shadow-md border border-[var(--store-border)] flex items-center justify-center hover:bg-[var(--store-surface)] text-[var(--store-muted)] transition-all hover:scale-105 active:scale-95 cursor-pointer z-10"
                   aria-label="Next image"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -548,10 +548,10 @@ export const ProductDetailPage = () => {
                 <button
                   key={index}
                   onClick={() => setSelectedImageIndex(index)}
-                  className={`w-18 h-18 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 transition-all shrink-0 bg-white p-1 cursor-pointer flex items-center justify-center ${
+                  className={`w-18 h-18 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 transition-all shrink-0 bg-[var(--store-surface)] p-1 cursor-pointer flex items-center justify-center ${
                     selectedImageIndex === index
-                      ? 'border-[#800020] shadow-xs ring-1 ring-[#800020]/20'
-                      : 'border-gray-200 opacity-70 hover:opacity-100 hover:border-gray-300'
+                      ? 'border-[var(--store-primary)] shadow-xs ring-1 ring-[var(--store-primary)]/20'
+                      : 'border-[var(--store-border)] opacity-70 hover:opacity-100 hover:border-[var(--store-border)]'
                   }`}
                   aria-label={`Select photo ${index + 1}`}
                 >
@@ -569,7 +569,7 @@ export const ProductDetailPage = () => {
           {/* Title Row + Action Icons + Brand Box */}
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2 flex-1">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight leading-snug">
+              <h1 className="text-xl sm:text-2xl font-bold text-[var(--store-text)] tracking-tight leading-snug">
                 {product.name}
               </h1>
 
@@ -581,7 +581,7 @@ export const ProductDetailPage = () => {
                   className={`p-1.5 rounded-full border transition-all cursor-pointer ${
                     isWishlisted
                       ? 'border-rose-300 bg-rose-50 text-rose-600'
-                      : 'border-gray-200 text-gray-500 hover:text-[#800020] hover:border-gray-300'
+                      : 'border-[var(--store-border)] text-[var(--store-muted)] hover:text-[var(--store-primary)] hover:border-[var(--store-border)]'
                   }`}
                   title={isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
                 >
@@ -591,7 +591,7 @@ export const ProductDetailPage = () => {
                 <button
                   type="button"
                   onClick={handleCopyName}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:text-[#800020] hover:border-[#800020]/40 hover:bg-[#800020]/5 transition-colors cursor-pointer"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--store-border)] text-[var(--store-muted)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)]/40 hover:bg-[var(--store-primary)]/5 transition-colors cursor-pointer"
                   title={hasNameCopied ? "Product Name Copied!" : "Copy Product Name"}
                   aria-label="Copy Product Name"
                 >
@@ -601,7 +601,7 @@ export const ProductDetailPage = () => {
                 <button
                   type="button"
                   onClick={handleCopyLink}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:text-[#800020] hover:border-[#800020]/40 hover:bg-[#800020]/5 transition-colors cursor-pointer"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--store-border)] text-[var(--store-muted)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)]/40 hover:bg-[var(--store-primary)]/5 transition-colors cursor-pointer"
                   title={hasCopied ? "Product Link Copied!" : "Copy Product Link"}
                   aria-label="Copy Product Link"
                 >
@@ -614,7 +614,7 @@ export const ProductDetailPage = () => {
             {brandUrl ? (
               <Link
                 to={brandUrl}
-                className="border border-gray-200 hover:border-[#800020] rounded-lg px-3 py-1.5 min-w-[70px] text-center font-black text-sm text-[#800020] bg-white hover:bg-gray-50/80 shadow-2xs hover:shadow-sm shrink-0 flex items-center justify-center uppercase tracking-wider transition-all group/brand cursor-pointer"
+                className="border border-[var(--store-border)] hover:border-[var(--store-primary)] rounded-lg px-3 py-1.5 min-w-[70px] text-center font-black text-sm text-[var(--store-primary)] bg-[var(--store-surface)] hover:bg-[var(--store-background)]/80 shadow-2xs hover:shadow-sm shrink-0 flex items-center justify-center uppercase tracking-wider transition-all group/brand cursor-pointer"
                 title={`View all products from ${brandName}`}
               >
                 {product?.brandId?.logo?.url ? (
@@ -629,7 +629,7 @@ export const ProductDetailPage = () => {
               </Link>
             ) : (
               <div
-                className="border border-gray-200 rounded-lg px-3 py-1.5 min-w-[70px] text-center font-black text-sm text-[#800020] bg-white shadow-2xs shrink-0 flex items-center justify-center uppercase tracking-wider"
+                className="border border-[var(--store-border)] rounded-lg px-3 py-1.5 min-w-[70px] text-center font-black text-sm text-[var(--store-primary)] bg-[var(--store-surface)] shadow-2xs shrink-0 flex items-center justify-center uppercase tracking-wider"
                 title={`Brand: ${brandName}`}
               >
                 {product?.brandId?.logo?.url ? (
@@ -642,30 +642,30 @@ export const ProductDetailPage = () => {
           </div>
 
           {/* Product Overview Specs Table (Matching Given Image) */}
-          <div className="border border-gray-200 rounded-xl overflow-hidden shadow-2xs bg-white text-xs">
+          <div className="border border-[var(--store-border)] rounded-xl overflow-hidden shadow-2xs bg-[var(--store-surface)] text-xs">
             <table className="w-full text-left border-collapse">
               <tbody>
-                <tr className="border-b border-gray-100 hover:bg-gray-50/50">
-                  <td className="px-4 py-2.5 font-medium text-gray-600 flex items-center gap-2">
-                    <span className="text-gray-400 font-bold">#</span>
+                <tr className="border-b border-[var(--store-border)] hover:bg-[var(--store-background)]/50">
+                  <td className="px-4 py-2.5 font-medium text-[var(--store-muted)] flex items-center gap-2">
+                    <span className="text-[var(--store-muted)] font-bold">#</span>
                     <span>Model Number</span>
                   </td>
-                  <td className="px-4 py-2.5 font-semibold text-gray-800">{modelNumber}</td>
+                  <td className="px-4 py-2.5 font-semibold text-[var(--store-text)]">{modelNumber}</td>
                 </tr>
 
-                <tr className="border-b border-gray-100 hover:bg-gray-50/50">
-                  <td className="px-4 py-2.5 font-medium text-gray-600 flex items-center gap-2">
-                    <span className="text-gray-400 font-bold">▣</span>
+                <tr className="border-b border-[var(--store-border)] hover:bg-[var(--store-background)]/50">
+                  <td className="px-4 py-2.5 font-medium text-[var(--store-muted)] flex items-center gap-2">
+                    <span className="text-[var(--store-muted)] font-bold">▣</span>
                     <span>Model</span>
                   </td>
-                  <td className="px-4 py-2.5 font-semibold text-gray-800">
+                  <td className="px-4 py-2.5 font-semibold text-[var(--store-text)]">
                     {modelName}
                   </td>
                 </tr>
 
-                <tr className="border-b border-gray-100 hover:bg-gray-50/50">
-                  <td className="px-4 py-2.5 font-medium text-gray-600 flex items-center gap-2">
-                    <ExternalLink className="w-3.5 h-3.5 text-[#800020]" />
+                <tr className="border-b border-[var(--store-border)] hover:bg-[var(--store-background)]/50">
+                  <td className="px-4 py-2.5 font-medium text-[var(--store-muted)] flex items-center gap-2">
+                    <ExternalLink className="w-3.5 h-3.5 text-[var(--store-primary)]" />
                     <span>Product URL</span>
                   </td>
                   <td className="px-4 py-2.5 font-medium">
@@ -674,23 +674,23 @@ export const ProductDetailPage = () => {
                         href={product.productUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-[#800020] underline underline-offset-2 hover:text-[#650019]"
+                        className="inline-flex items-center gap-1.5 text-[var(--store-primary)] underline underline-offset-2 hover:text-[#650019]"
                       >
                         View Product <ExternalLink className="w-3 h-3" />
                       </a>
                     ) : (
-                      <span className="text-gray-400">Not provided</span>
+                      <span className="text-[var(--store-muted)]">Not provided</span>
                     )}
                   </td>
                 </tr>
 
                 {/* 4. Warranty Period */}
-                <tr className="border-b border-gray-100 hover:bg-gray-50/50">
-                  <td className="px-4 py-2.5 font-medium text-gray-600 flex items-center gap-2">
-                    <ShieldCheck className="w-3.5 h-3.5 text-[#800020]" />
+                <tr className="border-b border-[var(--store-border)] hover:bg-[var(--store-background)]/50">
+                  <td className="px-4 py-2.5 font-medium text-[var(--store-muted)] flex items-center gap-2">
+                    <ShieldCheck className="w-3.5 h-3.5 text-[var(--store-primary)]" />
                     <span>Warranty Period</span>
                   </td>
-                  <td className="px-4 py-2.5 text-gray-800 font-medium">
+                  <td className="px-4 py-2.5 text-[var(--store-text)] font-medium">
                     {warrantyText}
                   </td>
                 </tr>
@@ -702,23 +702,23 @@ export const ProductDetailPage = () => {
 
         {/* Purchase card: product quantity is adjusted later in the cart. */}
         <div className="lg:col-span-2 xl:col-span-3">
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-xs space-y-4">
+          <div className="bg-[var(--store-surface)] rounded-2xl border border-[var(--store-border)] p-5 shadow-xs space-y-4">
             
             {/* Price & Discount Row */}
-            <div className="flex items-center justify-between gap-2 border-b border-gray-100 pb-3">
+            <div className="flex items-center justify-between gap-2 border-b border-[var(--store-border)] pb-3">
               <div className="flex flex-col">
-                <span className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
+                <span className="text-2xl sm:text-3xl font-black text-[var(--store-text)] tracking-tight">
                   {formatCurrency(displayPrice)}
                 </span>
                 {hasDealerDiscount && (
-                  <span className="text-xs text-gray-400 line-through">
+                  <span className="text-xs text-[var(--store-muted)] line-through">
                     Standard: {formatCurrency(standardPrice)}
                   </span>
                 )}
               </div>
 
               {hasDealerDiscount && (
-                <span className="inline-flex items-center rounded border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-bold uppercase tracking-tight text-[#800020]">
+                <span className="inline-flex items-center rounded border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-bold uppercase tracking-tight text-[var(--store-primary)]">
                   DEALER SAVING: {formatCurrency(standardPrice - dealerPrice)}
                 </span>
               )}
@@ -750,24 +750,24 @@ export const ProductDetailPage = () => {
             {/* Quantity Stepper + Add to Cart Button (Matching Screenshot) */}
             <div className="flex items-center gap-3">
               {isInStock && (
-                <div className="flex items-center h-11 border border-gray-300 rounded-lg bg-white overflow-hidden shadow-xs shrink-0">
+                <div className="flex items-center h-11 border border-[var(--store-border)] rounded-lg bg-[var(--store-surface)] overflow-hidden shadow-xs shrink-0">
                   <button
                     type="button"
                     onClick={handleDecrement}
                     disabled={isDecrementDisabled}
-                    className="w-10 h-full flex items-center justify-center text-gray-700 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    className="w-10 h-full flex items-center justify-center text-[var(--store-muted)] hover:bg-[var(--store-background)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     aria-label="Decrease quantity"
                   >
                     <Minus className="w-4 h-4 stroke-[2.2]" />
                   </button>
-                  <span className="w-10 h-full flex items-center justify-center border-x border-gray-200 font-bold text-sm text-gray-900 select-none">
+                  <span className="w-10 h-full flex items-center justify-center border-x border-[var(--store-border)] font-bold text-sm text-[var(--store-text)] select-none">
                     {quantity}
                   </span>
                   <button
                     type="button"
                     onClick={handleIncrement}
                     disabled={isIncrementDisabled}
-                    className="w-10 h-full flex items-center justify-center text-gray-700 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    className="w-10 h-full flex items-center justify-center text-[var(--store-muted)] hover:bg-[var(--store-background)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     aria-label="Increase quantity"
                   >
                     <Plus className="w-4 h-4 stroke-[2.2]" />
@@ -781,8 +781,8 @@ export const ProductDetailPage = () => {
                 disabled={!isInStock || isAdding}
                 className={`flex-1 h-11 px-4 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xs ${
                   isInStock
-                    ? 'bg-[#800020] hover:bg-[#66001a] text-white cursor-pointer active:scale-98'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-75'
+                    ? 'bg-[var(--store-primary)] hover:bg-[#66001a] text-white cursor-pointer active:scale-98'
+                    : 'bg-gray-200 text-[var(--store-muted)] cursor-not-allowed opacity-75'
                 }`}
                 title={isInStock ? 'Add to Cart' : 'Out of Stock - Please send an enquiry'}
               >
@@ -803,7 +803,7 @@ export const ProductDetailPage = () => {
                 </p>
                 <Link
                   to="/low-stock"
-                  className="inline-flex items-center gap-1 pt-0.5 text-[11px] font-bold text-[#800020] hover:underline"
+                  className="inline-flex items-center gap-1 pt-0.5 text-[11px] font-bold text-[var(--store-primary)] hover:underline"
                 >
                   View all limited stock products →
                 </Link>
@@ -811,8 +811,8 @@ export const ProductDetailPage = () => {
             )}
 
             {/* Trust Footer */}
-            <div className="text-[10px] text-gray-400 text-center pt-2 flex items-center justify-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+            <div className="text-[10px] text-[var(--store-muted)] text-center pt-2 flex items-center justify-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-[var(--store-muted)] shrink-0" />
               <span>Secured by ViNexus Genuine Warranty</span>
             </div>
           </div>
@@ -822,42 +822,42 @@ export const ProductDetailPage = () => {
       {/* =========================================================================
           3. SPECIFICATIONS SECTION (On Scroll Down - Exactly Matching Given Image 2)
          ========================================================================= */}
-      <section className="space-y-4 pt-6 border-t border-gray-200">
+      <section className="space-y-4 pt-6 border-t border-[var(--store-border)]">
         {/* Header with List Icon */}
-        <div className="flex items-center gap-2.5 text-gray-900">
-          <div className="w-6 h-6 rounded bg-[#800020]/10 flex items-center justify-center text-[#800020]">
+        <div className="flex items-center gap-2.5 text-[var(--store-text)]">
+          <div className="w-6 h-6 rounded bg-[var(--store-primary)]/10 flex items-center justify-center text-[var(--store-primary)]">
             <ListFilter className="w-4 h-4" />
           </div>
-          <h2 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900">
+          <h2 className="text-lg sm:text-xl font-bold tracking-tight text-[var(--store-text)]">
             Specifications
           </h2>
         </div>
 
         {/* Alternating Row Table Matching Given Image 2 */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-2xs">
+        <div className="bg-[var(--store-surface)] rounded-xl border border-[var(--store-border)] overflow-hidden shadow-2xs">
           <table className="w-full text-left border-collapse text-xs sm:text-sm">
             <tbody>
               {fullSpecifications.map((spec, idx) => (
                 <tr
                   key={idx}
                   className={`transition-colors ${
-                    idx % 2 === 0 ? 'bg-[#fcfbfc]' : 'bg-white'
-                  } border-b border-gray-100 last:border-b-0`}
+                    idx % 2 === 0 ? 'bg-[#fcfbfc]' : 'bg-[var(--store-surface)]'
+                  } border-b border-[var(--store-border)] last:border-b-0`}
                 >
-                  <td className="px-5 sm:px-6 py-3.5 font-medium text-gray-500 w-1/4 sm:w-1/5 select-none">
+                  <td className="px-5 sm:px-6 py-3.5 font-medium text-[var(--store-muted)] w-1/4 sm:w-1/5 select-none">
                     {spec.key}
                   </td>
-                  <td className="px-5 sm:px-6 py-3.5 font-semibold text-gray-900 font-mono text-xs sm:text-sm">
+                  <td className="px-5 sm:px-6 py-3.5 font-semibold text-[var(--store-text)] font-mono text-xs sm:text-sm">
                     {spec.key === 'Product URL' ? (
-                      <a href={spec.value} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[#800020] underline underline-offset-2 hover:text-[#650019]">
+                      <a href={spec.value} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[var(--store-primary)] underline underline-offset-2 hover:text-[#650019]">
                         View Product <ExternalLink className="w-3 h-3" />
                       </a>
                     ) : spec.key === 'Brand' && brandUrl ? (
-                      <Link to={brandUrl} className="inline-flex items-center text-[#800020] hover:underline font-bold font-sans">
+                      <Link to={brandUrl} className="inline-flex items-center text-[var(--store-primary)] hover:underline font-bold font-sans">
                         {spec.value}
                       </Link>
                     ) : spec.key === 'Key Features' ? (
-                      <div className="whitespace-pre-line font-sans font-normal text-gray-800 text-xs sm:text-sm leading-relaxed">
+                      <div className="whitespace-pre-line font-sans font-normal text-[var(--store-text)] text-xs sm:text-sm leading-relaxed">
                         {spec.value}
                       </div>
                     ) : spec.value}
@@ -873,14 +873,14 @@ export const ProductDetailPage = () => {
           4. RELATED PRODUCTS SECTION (On Scroll Down - Exactly Matching Given Image 3 & 4)
          ========================================================================= */}
       {product?.categoryId && (
-        <section className="space-y-4 pt-8 border-t border-gray-200">
-          <div className="flex items-center justify-between border-b border-gray-200 pb-3">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">
+        <section className="space-y-4 pt-8 border-t border-[var(--store-border)]">
+          <div className="flex items-center justify-between border-b border-[var(--store-border)] pb-3">
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--store-text)] tracking-tight">
               Related Products
             </h2>
             <Link
               to={categoryPath}
-              className="text-xs sm:text-sm font-semibold text-[#800020] hover:underline flex items-center gap-1"
+              className="text-xs sm:text-sm font-semibold text-[var(--store-primary)] hover:underline flex items-center gap-1"
             >
               <span>Show all in {categoryName}</span>
               <ChevronRight className="w-4 h-4" />
@@ -895,7 +895,7 @@ export const ProductDetailPage = () => {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-600">No other products in this category yet.</p>
+            <p className="text-sm text-[var(--store-muted)]">No other products in this category yet.</p>
           )}
         </section>
       )}

@@ -13,7 +13,7 @@ for (const routeCase of frontendRouteCases()) {
     expect(response?.status() || 200).toBeLessThan(400);
     await expect(page.locator('#root')).toBeVisible();
     await expect(page.locator('#root')).not.toContainText('Something went wrong');
-    expect((await page.locator('#root').innerText()).trim().length).toBeGreaterThan(0);
+    await expect.poll(async () => (await page.locator('#root').innerText()).trim().length).toBeGreaterThan(0);
     expect(pageErrors, pageErrors.join('\n')).toEqual([]);
   });
 }

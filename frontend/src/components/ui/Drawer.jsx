@@ -13,6 +13,8 @@ export const Drawer = ({
   className = '',
   contentClassName = '',
   showHeader = true,
+  overlayClassName = '',
+  overlayStyle,
 }) => {
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -41,7 +43,8 @@ export const Drawer = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm transition-opacity duration-200"
+      className={`fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm transition-opacity duration-200 ${overlayClassName}`}
+      style={overlayStyle}
       onClick={onClose}
     >
       <div

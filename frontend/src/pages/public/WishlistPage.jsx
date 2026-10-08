@@ -103,19 +103,19 @@ export const WishlistPage = () => {
   const userName = user?.fullName || user?.name || (user?.email ? user.email.split('@')[0].toUpperCase() : 'USER');
 
   return (
-    <div className="w-full bg-white text-gray-900 pb-2">
+    <div className="w-full bg-[var(--store-surface)] text-[var(--store-text)] pb-2">
       {/* 1. TOP HEADER (Matching Mega Jaipur Image 1, 2 & 3) */}
       <div className="max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-3">
-        <div className="flex items-center justify-between flex-wrap gap-4 border-b border-gray-100 pb-4">
+        <div className="flex items-center justify-between flex-wrap gap-4 border-b border-[var(--store-border)] pb-4">
           {/* Left Title: Heart + User's Wishlist + Items Saved Badge */}
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               <Heart className="w-5 h-5 text-red-500 fill-red-500 shrink-0" />
-              <h1 className="text-xl sm:text-2xl font-bold text-[#800020] tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-bold text-[var(--store-primary)] tracking-tight">
                 {userName} &apos;s Wishlist
               </h1>
             </div>
-            <span className="text-xs font-semibold text-[#800020] bg-red-50 px-3 py-1 rounded-full border border-red-100">
+            <span className="text-xs font-semibold text-[var(--store-primary)] bg-red-50 px-3 py-1 rounded-full border border-red-100">
               {items.length} {items.length === 1 ? 'item' : 'items'} saved
             </span>
           </div>
@@ -123,9 +123,9 @@ export const WishlistPage = () => {
           {/* Right Action: Browse Products Button */}
           <Link
             to="/"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-red-50 hover:bg-red-100 text-[#800020] text-xs sm:text-[13px] font-semibold transition-colors shadow-2xs cursor-pointer active:scale-98"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-red-50 hover:bg-red-100 text-[var(--store-primary)] text-xs sm:text-[13px] font-semibold transition-colors shadow-2xs cursor-pointer active:scale-98"
           >
-            <Store className="w-4 h-4 text-[#800020]" />
+            <Store className="w-4 h-4 text-[var(--store-primary)]" />
             <span>Browse Products</span>
           </Link>
         </div>
@@ -136,17 +136,17 @@ export const WishlistPage = () => {
         {isEmpty ? (
           /* Empty State */
           <div className="py-20 text-center max-w-md mx-auto space-y-4">
-            <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto text-[#800020]">
-              <Heart className="w-8 h-8 text-[#800020] stroke-[1.5]" />
+            <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto text-[var(--store-primary)]">
+              <Heart className="w-8 h-8 text-[var(--store-primary)] stroke-[1.5]" />
             </div>
-            <h2 className="text-xl font-bold text-gray-900">Your wishlist is empty</h2>
-            <p className="text-xs sm:text-sm text-gray-500">
+            <h2 className="text-xl font-bold text-[var(--store-text)]">Your wishlist is empty</h2>
+            <p className="text-xs sm:text-sm text-[var(--store-muted)]">
               Browse our catalog and tap the heart icon on any product to save it here.
             </p>
             <div className="pt-2">
               <Link
                 to="/"
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[#800020] hover:bg-[#66001a] text-white text-xs sm:text-sm font-semibold transition-colors shadow-xs"
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[var(--store-primary)] hover:bg-[#66001a] text-white text-xs sm:text-sm font-semibold transition-colors shadow-xs"
               >
                 <Store className="w-4 h-4" />
                 <span>Explore Products</span>
@@ -172,7 +172,7 @@ export const WishlistPage = () => {
                 return (
                   <div
                     key={prodId}
-                    className="bg-white rounded-lg border border-[#eddced] p-3 flex flex-col justify-between hover:shadow-sm transition-all group relative"
+                    className="bg-[var(--store-surface)] rounded-lg border border-[#eddced] p-3 flex flex-col justify-between hover:shadow-sm transition-all group relative"
                   >
                     {/* Top Row: Small Red Heart + Stock Status */}
                     <div className="flex items-center justify-between mb-2">
@@ -187,7 +187,7 @@ export const WishlistPage = () => {
                       {/* Image Thumbnail */}
                       <Link
                         to={buildProductPath(product)}
-                        className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 flex items-center justify-center bg-white rounded p-1 overflow-hidden"
+                        className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 flex items-center justify-center bg-[var(--store-surface)] rounded p-1 overflow-hidden"
                       >
                         <img loading="lazy" decoding="async"
                           src={imgUrl}
@@ -200,7 +200,7 @@ export const WishlistPage = () => {
                       <div className="flex-1 min-w-0 space-y-1">
                         <Link
                           to={buildProductPath(product)}
-                          className="text-xs font-semibold text-gray-900 hover:text-[#420b45] line-clamp-2 leading-tight block transition-colors"
+                          className="text-xs font-semibold text-[var(--store-text)] hover:text-[#420b45] line-clamp-2 leading-tight block transition-colors"
                           title={product.name}
                         >
                           {product.name || 'ViNexus Product'}
@@ -208,7 +208,7 @@ export const WishlistPage = () => {
 
                         {/* Price & CD Discount */}
                         <div className="flex items-baseline gap-1.5 flex-wrap pt-0.5">
-                          <span className="text-xs sm:text-[13px] font-bold text-gray-900">
+                          <span className="text-xs sm:text-[13px] font-bold text-[var(--store-text)]">
                             {formatCurrency(unitPrice)}
                           </span>
                           <span className="text-[10px] font-medium bg-[#f5edf6] text-[#420b45] px-1.5 py-0.5 rounded leading-none">
@@ -216,17 +216,17 @@ export const WishlistPage = () => {
                           </span>
                         </div>
 
-                        {product.modelNumber && <div className="text-[10px] text-gray-500">Model: {product.modelNumber}</div>}
+                        {product.modelNumber && <div className="text-[10px] text-[var(--store-muted)]">Model: {product.modelNumber}</div>}
                       </div>
                     </div>
 
                     {/* Bottom Row: [Add to Cart] + [Remove] */}
-                    <div className="flex items-center gap-2 pt-2.5 mt-2 border-t border-gray-100">
+                    <div className="flex items-center gap-2 pt-2.5 mt-2 border-t border-[var(--store-border)]">
                       {stockInfo.canAdd ? (
                         <button
                           type="button"
                           onClick={() => handleAddToCart(product)}
-                          className="flex-1 h-7 sm:h-8 rounded bg-[#800020] hover:bg-[#66001a] text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer active:scale-98 shadow-xs"
+                          className="flex-1 h-7 sm:h-8 rounded bg-[var(--store-primary)] hover:bg-[#66001a] text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer active:scale-98 shadow-xs"
                         >
                           <ShoppingCart className="w-3.5 h-3.5" />
                           <span>Add to Cart</span>
@@ -235,7 +235,7 @@ export const WishlistPage = () => {
                         <button
                           type="button"
                           disabled
-                          className="flex-1 h-7 sm:h-8 rounded bg-gray-100 text-gray-400 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-not-allowed"
+                          className="flex-1 h-7 sm:h-8 rounded bg-[var(--store-background)] text-[var(--store-muted)] text-xs font-semibold flex items-center justify-center gap-1.5 cursor-not-allowed"
                         >
                           <ShoppingCart className="w-3.5 h-3.5" />
                           <span>Add to Cart</span>
@@ -245,7 +245,7 @@ export const WishlistPage = () => {
                       <button
                         type="button"
                         onClick={() => handleRemove(product)}
-                        className="h-7 sm:h-8 px-2 rounded text-gray-500 hover:text-red-600 hover:bg-gray-50 text-xs font-medium flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                        className="h-7 sm:h-8 px-2 rounded text-[var(--store-muted)] hover:text-red-600 hover:bg-[var(--store-background)] text-xs font-medium flex items-center justify-center gap-1 transition-colors cursor-pointer"
                         title="Remove from wishlist"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -259,7 +259,7 @@ export const WishlistPage = () => {
 
             {/* 3. PAGINATION BAR (Matching Mega Jaipur Image 2 - only shown when items > pageSize) */}
             {items.length > pageSize && (
-              <div className="flex items-center justify-between flex-wrap gap-4 pt-3 border-t border-gray-100 text-xs text-gray-500">
+              <div className="flex items-center justify-between flex-wrap gap-4 pt-3 border-t border-[var(--store-border)] text-xs text-[var(--store-muted)]">
                 {/* Left: Showing X-Y of Z */}
                 <div>
                   Showing {(page - 1) * pageSize + 1}-
@@ -276,7 +276,7 @@ export const WishlistPage = () => {
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
                       disabled={page === 1}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium text-[var(--store-muted)] hover:bg-[var(--store-background)] disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
                     >
                       <ChevronLeft className="w-3.5 h-3.5" />
                       <span>Prev</span>
@@ -292,8 +292,8 @@ export const WishlistPage = () => {
                         }}
                         className={`min-w-[28px] h-7 px-2 rounded text-xs font-semibold transition-colors cursor-pointer ${
                           page === num
-                            ? 'bg-[#800020] text-white shadow-2xs'
-                            : 'text-gray-700 hover:bg-gray-100'
+                            ? 'bg-[var(--store-primary)] text-white shadow-2xs'
+                            : 'text-[var(--store-muted)] hover:bg-[var(--store-background)]'
                         }`}
                       >
                         {num}
@@ -307,7 +307,7 @@ export const WishlistPage = () => {
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
                       disabled={page === totalPages}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium text-[var(--store-muted)] hover:bg-[var(--store-background)] disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
                     >
                       <span>Next</span>
                       <ChevronRight className="w-3.5 h-3.5" />

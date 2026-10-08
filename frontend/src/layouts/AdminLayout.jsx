@@ -79,8 +79,9 @@ const AdminLayout = () => {
   ];
 
   const cmsNav = [
+    { label: 'Seasonal Themes', path: '/admin/cms/themes', icon: Sparkles },
     { label: 'Website / SEO Settings', path: '/admin/cms/website-settings', icon: Settings2 },
-    { label: 'Hero Banners', path: '/admin/cms/banners', icon: Image },
+    { label: 'Homepage Banners', path: '/admin/cms/banners', icon: Image },
     { label: 'Promotional Cards', path: '/admin/cms/promotional-banners', icon: Sparkles },
     { label: 'CMS Static Pages', path: '/admin/cms/pages', icon: FileText },
     { label: 'Footer Content', path: '/admin/cms/footer-content', icon: LayoutList },

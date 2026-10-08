@@ -655,7 +655,7 @@ export const CartPage = () => {
           <div className="pt-2">
             <Link
               to="/"
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[#800020] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#660019] transition-all shadow-xs"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[var(--store-primary)] text-white text-xs font-bold uppercase tracking-wider hover:bg-[var(--store-primary-hover)] transition-all shadow-xs"
             >
               <Store className="w-4 h-4" /> Continue Shopping
             </Link>
@@ -671,7 +671,7 @@ export const CartPage = () => {
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-2xs">
               <div className="space-y-3 p-3 md:hidden">
                 <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs font-semibold text-gray-800">
-                  <input type="checkbox" checked={selectedLineCount === items.length} onChange={handleToggleSelectAll} className="h-4 w-4 accent-[#800020]" />
+                  <input type="checkbox" checked={selectedLineCount === items.length} onChange={handleToggleSelectAll} className="h-4 w-4 accent-[var(--store-primary)]" />
                   <span className="flex-1">Select all items</span>
                   <span className="text-gray-500">{selectedLineCount}/{items.length}</span>
                 </label>
@@ -688,7 +688,7 @@ export const CartPage = () => {
                   return (
                     <div key={prodId} className={`rounded-lg border border-gray-200 bg-white p-3 ${selectedItemIds.has(prodId) ? '' : 'opacity-60'}`}>
                       <div className="flex items-start gap-2.5">
-                        <input type="checkbox" aria-label={`Select ${prod.name || 'product'}`} checked={selectedItemIds.has(prodId)} onChange={() => handleToggleSelectItem(prodId)} className="mt-3 h-4 w-4 shrink-0 accent-[#800020]" />
+                        <input type="checkbox" aria-label={`Select ${prod.name || 'product'}`} checked={selectedItemIds.has(prodId)} onChange={() => handleToggleSelectItem(prodId)} className="mt-3 h-4 w-4 shrink-0 accent-[var(--store-primary)]" />
                         <Link to={buildProductPath(prod)} className="flex h-16 w-16 shrink-0 items-center justify-center rounded border border-gray-200 bg-white p-1">
                           {imgUrl ? <img loading="lazy" decoding="async" src={imgUrl} alt={prod.name || 'Product'} className="max-h-full max-w-full object-contain" /> : <span className="text-[10px] text-gray-400">No image</span>}
                         </Link>
@@ -713,12 +713,12 @@ export const CartPage = () => {
                             <button type="button" onClick={() => handleUpdateQuantity(prodId, (item.quantity || 1) + 1, prod)} disabled={updatingItemId === prodId || isAtLimit || availableStock === 0} aria-label="Increase quantity" className="flex h-8 w-8 items-center justify-center disabled:opacity-30"><Plus className="h-4 w-4" /></button>
                           </div>
                           {isAtLimit && (
-                            <p className="mt-1 text-[10px] font-semibold text-[#800020]">
+                            <p className="mt-1 text-[10px] font-semibold text-[var(--store-primary)]">
                               {isItemLowStock ? 'Max 3 per order' : 'Limited stock'}
                             </p>
                           )}
                         </div>
-                        <span className="text-sm font-bold text-[#800020]">{formatCurrency(unitPrice * (item.quantity || 1))}</span>
+                        <span className="text-sm font-bold text-[var(--store-primary)]">{formatCurrency(unitPrice * (item.quantity || 1))}</span>
                       </div>
                     </div>
                   );
@@ -859,7 +859,7 @@ export const CartPage = () => {
                               </button>
                             </div>
                             {isAtLimit && (
-                              <div className="mt-1 text-[11px] font-semibold text-[#800020]">
+                              <div className="mt-1 text-[11px] font-semibold text-[var(--store-primary)]">
                                 {isItemLowStock ? 'Max 3 units' : 'Limited stock'}
                               </div>
                             )}
@@ -894,7 +894,7 @@ export const CartPage = () => {
             <div className="flex items-center justify-between gap-3 flex-wrap pt-2">
               <Link
                 to="/"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[#d2b8d5] rounded-md text-xs sm:text-[13px] font-semibold text-[#800020] hover:bg-[#fcf8fd] hover:border-[#800020] transition-all shadow-2xs active:scale-98"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[#d2b8d5] rounded-md text-xs sm:text-[13px] font-semibold text-[var(--store-primary)] hover:bg-[#fcf8fd] hover:border-[var(--store-primary)] transition-all shadow-2xs active:scale-98"
               >
                 <span>Continue Shopping</span>
               </Link>
@@ -924,7 +924,7 @@ export const CartPage = () => {
 
               <div className="border-t border-gray-200 pt-3 flex items-baseline justify-between">
                 <span className="text-sm font-semibold text-gray-900">Grand Total</span>
-                <span className="text-xl sm:text-2xl font-bold text-[#800020]">
+                <span className="text-xl sm:text-2xl font-bold text-[var(--store-primary)]">
                   {formatCurrency(grandTotal)}
                 </span>
               </div>
@@ -947,7 +947,7 @@ export const CartPage = () => {
                   type="button"
                   onClick={handleProceedCheckout}
                   disabled={selectedCount === 0}
-                  className="w-full h-11 rounded-md bg-[#800020] hover:bg-[#66001a] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-bold tracking-wide flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-98"
+                  className="w-full h-11 rounded-md bg-[var(--store-primary)] hover:bg-[var(--store-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-bold tracking-wide flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-98"
                 >
                   <FileText className="w-4 h-4" />
                   <span>Send Enquiry</span>
@@ -979,7 +979,7 @@ export const CartPage = () => {
             </div>
             <Link
               to={primaryHeaderCategory?.slug ? `/${primaryHeaderCategory.slug}` : '/products'}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-[#800020] bg-white text-xs sm:text-sm font-semibold text-[#800020] hover:bg-[#800020] hover:text-white shadow-2xs transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-[var(--store-primary)] bg-white text-xs sm:text-sm font-semibold text-[var(--store-primary)] hover:bg-[var(--store-primary)] hover:text-white shadow-2xs transition-all cursor-pointer"
             >
               <span>View All Products</span>
               <ChevronRight className="w-4 h-4" />
@@ -1018,7 +1018,7 @@ export const CartPage = () => {
             </h2>
             <Link
               to="/"
-              className="text-xs font-semibold text-[#800020] hover:underline flex items-center gap-1"
+              className="text-xs font-semibold text-[var(--store-primary)] hover:underline flex items-center gap-1"
             >
               See all products <ChevronRight className="w-3.5 h-3.5" />
             </Link>
@@ -1037,8 +1037,8 @@ export const CartPage = () => {
       )}
 
       {items.length > 0 && <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-gray-200 bg-white px-4 py-3 shadow-[0_-6px_20px_rgba(0,0,0,0.08)] md:hidden">
-        <div className="min-w-0 flex-1"><p className="text-[10px] text-gray-600">TOTAL ({selectedCount} ITEMS)</p><p className="truncate text-base font-bold text-[#800020]">{formatCurrency(grandTotal)}</p></div>
-        <button type="button" onClick={handleProceedCheckout} disabled={selectedCount === 0} className="min-h-10 rounded-md bg-[#800020] px-4 text-xs font-bold text-white disabled:opacity-50">Send Enquiry</button>
+        <div className="min-w-0 flex-1"><p className="text-[10px] text-gray-600">TOTAL ({selectedCount} ITEMS)</p><p className="truncate text-base font-bold text-[var(--store-primary)]">{formatCurrency(grandTotal)}</p></div>
+        <button type="button" onClick={handleProceedCheckout} disabled={selectedCount === 0} className="min-h-10 rounded-md bg-[var(--store-primary)] px-4 text-xs font-bold text-white disabled:opacity-50">Send Enquiry</button>
       </div>}
 
       {/* 4. FOOTER is rendered automatically by PublicLayout below this main container */}

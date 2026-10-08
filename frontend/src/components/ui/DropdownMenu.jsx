@@ -1,17 +1,22 @@
 import React from 'react';
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import { cn } from '../../lib/utils';
+import { useThemeScope } from '../../hooks/useThemeScope';
 
 export const DropdownMenu = DropdownMenuPrimitive.Root;
 export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 
-export const DropdownMenuContent = React.forwardRef(({ className = '', sideOffset = 6, align = 'end', ...props }, ref) => (
+export const DropdownMenuContent = React.forwardRef(({ className = '', sideOffset = 6, align = 'end', style, ...props }, ref) => {
+  const { inStorefront, themeStyle } = useThemeScope();
+  return (
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
       align={align}
+      style={{ ...themeStyle, ...style }}
       className={cn(
+        inStorefront && 'storefront-theme',
         'z-50 min-w-[14rem] overflow-hidden rounded-xl border border-border bg-card p-1.5 text-foreground shadow-xl',
         'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
         'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
@@ -20,7 +25,8 @@ export const DropdownMenuContent = React.forwardRef(({ className = '', sideOffse
       {...props}
     />
   </DropdownMenuPrimitive.Portal>
-));
+  );
+});
 DropdownMenuContent.displayName = 'DropdownMenuContent';
 
 export const DropdownMenuItem = React.forwardRef(({ className = '', ...props }, ref) => (

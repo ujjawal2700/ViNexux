@@ -1,4 +1,6 @@
+import { presetConfig } from '../../shared/seasonalThemes.js';
 const objectId = '507f1f77bcf86cd799439011';
+const testTheme = { _id: objectId, name: 'E2E Diwali', preset: 'diwali', draft: presetConfig('diwali'), schedule: { enabled: false, startAt: null, endAt: null, priority: 0 }, revision: 0 };
 
 const customer = { _id: objectId, name: 'E2E Customer', email: 'customer@example.com', phone: '9876543210', role: 'customer', isActive: true };
 const admin = { _id: objectId, name: 'E2E Admin', email: 'admin@example.com', phone: '9876543211', role: 'admin', isActive: true };
@@ -23,6 +25,9 @@ const pagination = { page: 1, limit: 20, total: 0, pages: 0, totalPages: 0 };
 
 const responseFor = (url, method, postData) => {
   const pathname = new URL(url).pathname;
+  if (pathname.endsWith('/content/theme')) return { success: true, data: { theme: { id: null, name: 'Store default', config: presetConfig(), nextChangeAt: null } } };
+  if (pathname.endsWith('/admin/cms/themes')) return { success: true, data: { themes: [testTheme], active: { id: null, name: 'Store default' } } };
+  if (pathname.includes('/admin/cms/themes/')) return { success: true, data: { theme: testTheme } };
 
   if (pathname.endsWith('/auth/refresh-token')) {
     const isAdmin = postData?.includes('admin-refresh');
@@ -46,6 +51,8 @@ const responseFor = (url, method, postData) => {
   if (pathname.includes('/reports')) return { success: true, data: { summary: {}, series: [], rows: [], pagination } };
   if (pathname.includes('/dashboard')) return { success: true, data: { stats: {}, recentEnquiries: [], pendingDealers: [] } };
   if (pathname.endsWith('/content/banners') || pathname.endsWith('/admin/cms/banners')) return { success: true, data: { banners: [] } };
+  if (pathname.endsWith('/content/banner-grid')) return { success: true, data: { grid: null } };
+  if (pathname.endsWith('/admin/cms/banner-grid')) return { success: true, data: { grid: { sections: Array.from({ length: 4 }, () => ({ images: [] })), revision: 0, configured: false } } };
   if (pathname.includes('promotional')) return { success: true, data: { promotionalBanners: [], settings: {} } };
   if (pathname.includes('footer')) return { success: true, data: { footer: { quickLinks: [], legalLinks: [], socialLinks: [], isActive: true } } };
   if (pathname.includes('website-settings')) return { success: true, data: { settings: {} } };

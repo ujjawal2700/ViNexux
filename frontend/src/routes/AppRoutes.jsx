@@ -75,6 +75,7 @@ const AdminCmsPagesPage = lazyWithRetry(() => import('../pages/admin/AdminCmsPag
 
 const AdminCmsFooterPage = lazyWithRetry(() => import('../pages/admin/AdminCmsFooterPage'));
 const AdminWebsiteSettingsPage = lazyWithRetry(() => import('../pages/admin/AdminWebsiteSettingsPage'));
+const AdminSeasonalThemesPage = lazyWithRetry(() => import('../pages/admin/AdminSeasonalThemesPage'));
 const AdminProfilePage = lazyWithRetry(() => import('../pages/admin/AdminProfilePage'));
 const AdminProfileUpdatePage = lazyWithRetry(() => import('../pages/admin/AdminProfileUpdatePage'));
 
@@ -92,6 +93,7 @@ const AppRoutes = () => {
       {/* PUBLIC ROUTES (WITH PUBLIC LAYOUT) */}
       <Route element={<PublicLayout />}>
         <Route path="/" element={<HomePage />} />
+        <Route path="/theme-preview" element={<HomePage />} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/products/:id" element={<ProductDetailPage />} />
         <Route path="/search" element={<ProductsPage />} />
@@ -216,6 +218,9 @@ const AppRoutes = () => {
 
             <Route path="/admin/cms/footer-content" element={<AdminCmsFooterPage />} />
             <Route path="/admin/cms/website-settings" element={<AdminWebsiteSettingsPage />} />
+            <Route path="/admin/cms/themes" element={<AdminSeasonalThemesPage />} />
+            <Route path="/admin/cms/themes/new" element={<AdminSeasonalThemesPage />} />
+            <Route path="/admin/cms/themes/:id" element={<AdminSeasonalThemesPage />} />
             <Route path="/admin/profile" element={<AdminProfilePage />} />
             <Route path="/admin/profile/update" element={<AdminProfileUpdatePage />} />
           </Route>

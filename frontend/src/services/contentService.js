@@ -1,14 +1,10 @@
 import apiClient from '../api/axios';
 
 export const contentService = {
-  /**
-   * Fetch active hero carousel banners for homepage.
-   */
-  async getBanners(options = {}) {
-    const response = await apiClient.get('/content/banners', options);
+  async getBannerGrid(options = {}) {
+    const response = await apiClient.get('/content/banner-grid', options);
     return response.data;
   },
-
   /**
    * Fetch active promotional banners.
    */

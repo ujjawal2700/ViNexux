@@ -32,6 +32,10 @@ describe('core API behavior', () => {
       request.get('/api/cart'),
       request.get('/api/dealers/profile'),
       request.get('/api/admin/dashboard'),
+      request.get('/api/admin/cms/themes'),
+      request.get('/api/admin/cms/banner-grid'),
+      request.post('/api/admin/cms/banner-grid/0/images'),
+      request.post('/api/admin/cms/themes/reset'),
     ]);
     for (const response of responses) {
       expect(response.status).toBe(401);

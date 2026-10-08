@@ -120,8 +120,8 @@ export const LoginPage = ({ initialTab = 'login' }) => {
               className={cn(
                 "py-2.5 text-xs sm:text-sm font-bold rounded transition-all duration-200 cursor-pointer text-center",
                 activeTab === 'login'
-                  ? "bg-[#800020] text-white shadow-xs"
-                  : "bg-[#fdf2f4] hover:bg-[#fae1e6] text-[#800020] hover:text-[#590016] font-semibold"
+                  ? "bg-[var(--store-primary,#800020)] text-white shadow-xs"
+                  : "bg-[#fdf2f4] hover:bg-[#fae1e6] text-[var(--store-primary,#800020)] hover:text-[var(--store-primary-hover,#590016)] font-semibold"
               )}
             >
               Login
@@ -132,8 +132,8 @@ export const LoginPage = ({ initialTab = 'login' }) => {
               className={cn(
                 "py-2.5 text-xs sm:text-sm font-bold rounded transition-all duration-200 cursor-pointer text-center",
                 activeTab === 'signup'
-                  ? "bg-[#800020] text-white shadow-xs"
-                  : "bg-[#fdf2f4] hover:bg-[#fae1e6] text-[#800020] hover:text-[#590016] font-semibold"
+                  ? "bg-[var(--store-primary,#800020)] text-white shadow-xs"
+                  : "bg-[#fdf2f4] hover:bg-[#fae1e6] text-[var(--store-primary,#800020)] hover:text-[var(--store-primary-hover,#590016)] font-semibold"
               )}
             >
               Register

@@ -86,7 +86,7 @@ export const EnquiriesPage = ({ embedded = false }) => {
     <div className={embedded ? 'w-full min-w-0 space-y-6 text-left' : 'w-full min-h-screen px-3 py-6 sm:px-6 lg:px-8 space-y-6 text-left'}>
       <div>
         <h1 className="flex items-center gap-2 text-2xl sm:text-3xl font-extrabold text-slate-950">
-          <FileText className="h-7 w-7 text-[#800020]" /> My Enquiries
+          <FileText className="h-7 w-7 text-[var(--store-primary)]" /> My Enquiries
         </h1>
         <p className="mt-1 text-sm text-slate-600">Track the product enquiries you have sent to our team.</p>
       </div>
@@ -99,7 +99,7 @@ export const EnquiriesPage = ({ embedded = false }) => {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search by enquiry number..."
-            className="h-11 w-full rounded-lg border border-slate-300 bg-white pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-500 focus:border-[#800020] focus:outline-none focus:ring-1 focus:ring-[#800020]"
+            className="h-11 w-full rounded-lg border border-slate-300 bg-white pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-500 focus:border-[var(--store-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--store-primary)]"
           />
         </label>
         <div className="w-full sm:w-56">
@@ -136,12 +136,12 @@ export const EnquiriesPage = ({ embedded = false }) => {
                   const quantity = items.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
                   const total = items.reduce((sum, item) => sum + (Number(item.priceShown) || 0) * (Number(item.quantity) || 1), 0);
                   return <tr key={enquiry._id} className="hover:bg-slate-50">
-                    <td className={`${cellClass} font-mono font-bold`}><Link className="text-[#800020] hover:underline" to={`/account/enquiries/${enquiry._id}`}>{enquiry.enquiryNumber}</Link></td>
+                    <td className={`${cellClass} font-mono font-bold`}><Link className="text-[var(--store-primary)] hover:underline" to={`/account/enquiries/${enquiry._id}`}>{enquiry.enquiryNumber}</Link></td>
                     <td className={cellClass}>{new Date(enquiry.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                     <td className={cellClass}><StatusBadge status={enquiry.status} /></td>
                     <td className={cellClass}>{groupEnquiryItems(items).length} product(s) · Qty {quantity}</td>
                     <td className={`${cellClass} text-right font-semibold`}>{formatCurrency(total)}</td>
-                    <td className={`${cellClass} text-center`}><Link to={`/account/enquiries/${enquiry._id}`} className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 font-semibold text-[#800020] hover:bg-[#800020]/5"><Eye className="h-4 w-4" /> View</Link></td>
+                    <td className={`${cellClass} text-center`}><Link to={`/account/enquiries/${enquiry._id}`} className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 font-semibold text-[var(--store-primary)] hover:bg-[var(--store-primary)]/5"><Eye className="h-4 w-4" /> View</Link></td>
                   </tr>;
                 })}
               </tbody>

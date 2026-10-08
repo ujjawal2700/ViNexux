@@ -356,7 +356,7 @@ export const BrandCarousel = () => {
       <button
         type="button"
         onClick={() => scrollManual('left')}
-        className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white border border-gray-300 shadow-md flex items-center justify-center text-gray-700 hover:text-primary hover:border-primary transition-all opacity-85 hover:opacity-100 cursor-pointer"
+        className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[var(--store-surface)] border border-[var(--store-border)] shadow-md flex items-center justify-center text-[var(--store-muted)] hover:text-primary hover:border-primary transition-all opacity-85 hover:opacity-100 cursor-pointer"
         aria-label="Scroll brands left"
       >
         <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -372,7 +372,7 @@ export const BrandCarousel = () => {
           <div key={`${brand._id || brand.slug || brand.name}-${index}`} className="relative group/brand shrink-0">
             <Link
               to={buildBrandUrl(brand.name)}
-              className="flex flex-col items-center justify-center w-[clamp(64px,20vw,76px)] h-[clamp(64px,20vw,76px)] sm:w-[98px] sm:h-[98px] md:w-[110px] md:h-[110px] aspect-square p-2 bg-white border border-gray-200 rounded-lg transition-all duration-200 ease-out hover:border-[#800020] hover:shadow-md select-none relative"
+              className="flex flex-col items-center justify-center w-[clamp(64px,20vw,76px)] h-[clamp(64px,20vw,76px)] sm:w-[98px] sm:h-[98px] md:w-[110px] md:h-[110px] aspect-square p-2 bg-[var(--store-surface)] border border-[var(--store-border)] rounded-lg transition-all duration-200 ease-out hover:border-[var(--store-primary)] hover:shadow-md select-none relative"
             >
               {/* Brand Logo Display */}
               <div className="flex items-center justify-center w-full h-full p-1 transition-transform duration-200 group-hover/brand:scale-105">
@@ -387,7 +387,7 @@ export const BrandCarousel = () => {
       <button
         type="button"
         onClick={() => scrollManual('right')}
-        className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white border border-gray-300 shadow-md flex items-center justify-center text-gray-700 hover:text-primary hover:border-primary transition-all opacity-85 hover:opacity-100 cursor-pointer"
+        className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[var(--store-surface)] border border-[var(--store-border)] shadow-md flex items-center justify-center text-[var(--store-muted)] hover:text-primary hover:border-primary transition-all opacity-85 hover:opacity-100 cursor-pointer"
         aria-label="Scroll brands right"
       >
         <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />

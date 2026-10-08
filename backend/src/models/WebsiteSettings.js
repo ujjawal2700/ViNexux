@@ -11,6 +11,7 @@ const imageAssetSchema = new mongoose.Schema(
 const websiteSettingsSchema = new mongoose.Schema(
   {
     singletonKey: { type: String, default: 'primary', unique: true, immutable: true },
+    activeThemeId: { type: String, default: null },
     websiteName: { type: String, trim: true, required: true, default: 'Vinexus', maxlength: 150 },
     metaTitle: {
       type: String,

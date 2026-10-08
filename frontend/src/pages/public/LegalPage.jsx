@@ -7,8 +7,8 @@ const updated = '29 September 2026';
 
 const Section = ({ title, children }) => (
   <section className="space-y-3">
-    <h2 className="text-xl font-bold text-[#800020]">{title}</h2>
-    <div className="space-y-3 leading-7 text-gray-700">{children}</div>
+    <h2 className="text-xl font-bold text-[var(--store-primary)]">{title}</h2>
+    <div className="space-y-3 leading-7 text-[var(--store-muted)]">{children}</div>
   </section>
 );
 
@@ -59,23 +59,23 @@ const LegalPage = ({ type }) => {
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
-      <nav className="mb-6 text-sm text-[#800020]" aria-label="Breadcrumb">
+      <nav className="mb-6 text-sm text-[var(--store-primary)]" aria-label="Breadcrumb">
         <Link to="/" className="hover:underline">Home</Link> <span aria-hidden="true">›</span> {privacy ? 'Privacy Policy' : 'Terms & Conditions'}
       </nav>
-      <header className="mb-8 border-b border-gray-200 pb-6">
+      <header className="mb-8 border-b border-[var(--store-border)] pb-6">
         <h1 className="text-3xl font-bold text-gray-950 sm:text-4xl">{managedPage?.title || (privacy ? 'Privacy Policy' : 'Terms & Conditions')}</h1>
-        <p className="mt-2 text-sm text-gray-500">Last updated: {managedPage ? new Date(managedPage.updatedAt || managedPage.createdAt).toLocaleDateString('en-IN') : updated}</p>
+        <p className="mt-2 text-sm text-[var(--store-muted)]">Last updated: {managedPage ? new Date(managedPage.updatedAt || managedPage.createdAt).toLocaleDateString('en-IN') : updated}</p>
       </header>
 
       {managedPage ? (
         <article
-          className="prose max-w-none space-y-4 text-sm leading-7 text-gray-700 sm:text-base [&>h2]:text-xl [&>h2]:font-bold [&>h2]:text-[#800020] [&>h3]:text-lg [&>h3]:font-semibold [&>ul]:list-disc [&>ul]:pl-6 [&>ol]:list-decimal [&>ol]:pl-6 [&_a]:text-[#800020] [&_a]:underline"
+          className="prose max-w-none space-y-4 text-sm leading-7 text-[var(--store-muted)] sm:text-base [&>h2]:text-xl [&>h2]:font-bold [&>h2]:text-[var(--store-primary)] [&>h3]:text-lg [&>h3]:font-semibold [&>ul]:list-disc [&>ul]:pl-6 [&>ol]:list-decimal [&>ol]:pl-6 [&_a]:text-[var(--store-primary)] [&_a]:underline"
           dangerouslySetInnerHTML={{ __html: sanitizeHtml(managedPage.content) }}
         />
       ) : privacy ? (
         <div className="space-y-9 text-sm sm:text-base">
           <Section title="Who we are and what this covers">
-            <p>Vinexus - Lead Generation &amp; Product Catalog Platform operates this online product catalogue, customer accounts, dealer registration and product enquiry service. This notice explains how we handle personal information you give us or that is generated while using the website. For privacy questions or requests, email <a href={`mailto:${contactEmail}`} className="text-[#800020] underline">{contactEmail}</a> or call <a href={`tel:${contactPhoneLink}`} className="text-[#800020] underline">{contactPhone}</a>.</p>
+            <p>Vinexus - Lead Generation &amp; Product Catalog Platform operates this online product catalogue, customer accounts, dealer registration and product enquiry service. This notice explains how we handle personal information you give us or that is generated while using the website. For privacy questions or requests, email <a href={`mailto:${contactEmail}`} className="text-[var(--store-primary)] underline">{contactEmail}</a> or call <a href={`tel:${contactPhoneLink}`} className="text-[var(--store-primary)] underline">{contactPhone}</a>.</p>
           </Section>
           <Section title="Information we collect and why">
             <ul className="list-disc space-y-2 pl-6">
@@ -97,17 +97,17 @@ const LegalPage = ({ type }) => {
             <p>We keep account and enquiry records while needed to provide the service, resolve requests or meet applicable record-keeping requirements. We delete or de-identify data when it is no longer needed, subject to legal obligations and backup cycles. Login tokens expire or are revoked according to the session rules. We use access controls and technical safeguards, but no internet system can promise absolute security.</p>
           </Section>
           <Section title="Your choices and requests">
-            <p>You can update some account details in your profile, change optional storage choices in the footer, or email <a href={`mailto:${contactEmail}`} className="text-[#800020] underline">{contactEmail}</a> to request access, correction, deletion, withdrawal of consent or help with a privacy complaint. Withdrawal may mean we cannot continue features that need the relevant information; it does not undo processing already completed or records we must keep by law. We will verify a request before changing account information.</p>
+            <p>You can update some account details in your profile, change optional storage choices in the footer, or email <a href={`mailto:${contactEmail}`} className="text-[var(--store-primary)] underline">{contactEmail}</a> to request access, correction, deletion, withdrawal of consent or help with a privacy complaint. Withdrawal may mean we cannot continue features that need the relevant information; it does not undo processing already completed or records we must keep by law. We will verify a request before changing account information.</p>
           </Section>
           <Section title="Children and changes to this notice">
             <p>This website and dealer services are intended for adults. If you believe a child has submitted personal information, contact us so we can review it. We may update this notice as the service changes and will show the new date here. Material changes will be brought to users’ attention where appropriate.</p>
           </Section>
-          <p className="border-t border-gray-200 pt-6">Please also read our <Link to="/terms" className="font-semibold text-[#800020] underline">Terms & Conditions</Link>.</p>
+          <p className="border-t border-[var(--store-border)] pt-6">Please also read our <Link to="/terms" className="font-semibold text-[var(--store-primary)] underline">Terms & Conditions</Link>.</p>
         </div>
       ) : (
         <div className="space-y-9 text-sm sm:text-base">
           <Section title="Using Vinexus">
-            <p>These terms apply to use of the Vinexus website, product catalogue, accounts, dealer registration, carts and enquiries. You must provide accurate information and use the service lawfully. By creating an account, you confirm you have read these terms and the <Link to="/privacy" className="text-[#800020] underline">Privacy Policy</Link>. Creating an account does not waive any statutory rights.</p>
+            <p>These terms apply to use of the Vinexus website, product catalogue, accounts, dealer registration, carts and enquiries. You must provide accurate information and use the service lawfully. By creating an account, you confirm you have read these terms and the <Link to="/privacy" className="text-[var(--store-primary)] underline">Privacy Policy</Link>. Creating an account does not waive any statutory rights.</p>
           </Section>
           <Section title="Accounts and dealer applications">
             <p>Keep your account access confidential and tell us if you suspect unauthorised use. Dealer status and dealer prices depend on review of business information and documents. We may request corrections or reject an application that cannot be verified. Do not provide someone else’s identity or business documents without authority.</p>
@@ -125,7 +125,7 @@ const LegalPage = ({ type }) => {
             <p>We may update or temporarily interrupt the website for maintenance or security. We work to keep catalogue information accurate, but errors can occur; please confirm important details before placing an order. Any limitation of responsibility applies only to the extent permitted by applicable law. These terms do not exclude rights or remedies that cannot legally be excluded.</p>
           </Section>
           <Section title="Questions and updates">
-            <p>For questions or a dispute, email <a href={`mailto:${contactEmail}`} className="text-[#800020] underline">{contactEmail}</a> or call <a href={`tel:${contactPhoneLink}`} className="text-[#800020] underline">{contactPhone}</a>. We may revise these terms and will update the date above. Continued use after a material change may require a new acknowledgement where appropriate.</p>
+            <p>For questions or a dispute, email <a href={`mailto:${contactEmail}`} className="text-[var(--store-primary)] underline">{contactEmail}</a> or call <a href={`tel:${contactPhoneLink}`} className="text-[var(--store-primary)] underline">{contactPhone}</a>. We may revise these terms and will update the date above. Continued use after a material change may require a new acknowledgement where appropriate.</p>
           </Section>
         </div>
       )}

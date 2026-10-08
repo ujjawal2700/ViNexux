@@ -326,41 +326,6 @@ export const adminService = {
   },
 
   // --- CMS MANAGEMENT ---
-  // Banners
-  async getBannersAdmin() {
-    const response = await apiClient.get('/admin/cms/banners');
-    return response.data;
-  },
-
-  async getBannerByIdAdmin(id) {
-    const response = await apiClient.get(`/admin/cms/banners/${id}`);
-    return response.data;
-  },
-
-  async createBannerAdmin(bannerData) {
-    const response = await apiClient.post('/admin/cms/banners', bannerData);
-    return response.data;
-  },
-
-  async updateBannerAdmin(id, bannerData) {
-    const response = await apiClient.put(`/admin/cms/banners/${id}`, bannerData);
-    return response.data;
-  },
-
-  async deleteBannerAdmin(id) {
-    const response = await apiClient.delete(`/admin/cms/banners/${id}`);
-    return response.data;
-  },
-
-  async uploadBannerImageAdmin(id, file) {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await apiClient.post(`/admin/cms/banners/${id}/image`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return response.data;
-  },
-
   // Promotional Banners
   async getPromoBannersAdmin() {
     const response = await apiClient.get('/admin/cms/promotional-banners');
