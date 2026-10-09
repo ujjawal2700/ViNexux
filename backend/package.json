@@ -5,8 +5,8 @@
   "type": "module",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
+    "start": "node api.js && node src/server.js",
+    "dev": "node api.js && nodemon src/server.js",
     "test": "node tests/health.test.js",
     "test:catalog-integration": "node tests/catalogIntegration.test.js",
     "test:product-import": "node tests/productImport.test.js",

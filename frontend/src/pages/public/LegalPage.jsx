@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import contentService from '../../services/contentService';
+import { SHIPPING_POLICY_HTML, SHIPPING_POLICY_UPDATED } from '../../../../shared/shippingPolicy';
 import { sanitizeHtml } from '../../lib/sanitizeHtml';
 
 const updated = '29 September 2026';
@@ -14,7 +15,9 @@ const Section = ({ title, children }) => (
 
 const LegalPage = ({ type }) => {
   const privacy = type === 'privacy';
-  const legalSlug = privacy ? 'privacy-policy' : 'terms-and-conditions';
+  const shipping = type === 'shipping';
+  const pageTitle = shipping ? 'Shipping Policy' : privacy ? 'Privacy Policy' : 'Terms & Conditions';
+  const legalSlug = shipping ? 'shipping-policy' : privacy ? 'privacy-policy' : 'terms-and-conditions';
   const [managedContent, setManagedContent] = useState({ slug: '', page: null });
   const [footer, setFooter] = useState(null);
   const managedPage = managedContent.slug === legalSlug ? managedContent.page : null;
@@ -40,6 +43,7 @@ const LegalPage = ({ type }) => {
         if (active && page) setManagedContent({ slug: legalSlug, page });
       })
       .catch(() => {
+        if (shipping) return;
         // Try short slug as fallback
         const shortSlug = privacy ? 'privacy' : 'terms';
         contentService.getCmsPageBySlug(shortSlug)
@@ -52,7 +56,7 @@ const LegalPage = ({ type }) => {
           });
       });
     return () => { active = false; };
-  }, [legalSlug, privacy]);
+  }, [legalSlug, privacy, shipping]);
   const contactEmail = footer?.emails?.[0]?.email || footer?.email || 'vinexus2024@gmail.com';
   const contactPhone = footer?.phoneNumbers?.[0]?.number || footer?.phone || '8003923316';
   const contactPhoneLink = contactPhone.startsWith('+') ? contactPhone : `+91${contactPhone.replace(/\D/g, '').slice(-10)}`;
@@ -60,17 +64,17 @@ const LegalPage = ({ type }) => {
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
       <nav className="mb-6 text-sm text-[var(--store-primary)]" aria-label="Breadcrumb">
-        <Link to="/" className="hover:underline">Home</Link> <span aria-hidden="true">›</span> {privacy ? 'Privacy Policy' : 'Terms & Conditions'}
+        <Link to="/" className="hover:underline">Home</Link> <span aria-hidden="true">›</span> {pageTitle}
       </nav>
       <header className="mb-8 border-b border-[var(--store-border)] pb-6">
-        <h1 className="text-3xl font-bold text-gray-950 sm:text-4xl">{managedPage?.title || (privacy ? 'Privacy Policy' : 'Terms & Conditions')}</h1>
-        <p className="mt-2 text-sm text-[var(--store-muted)]">Last updated: {managedPage ? new Date(managedPage.updatedAt || managedPage.createdAt).toLocaleDateString('en-IN') : updated}</p>
+        <h1 className="text-3xl font-bold text-gray-950 sm:text-4xl">{managedPage?.title || pageTitle}</h1>
+        <p className="mt-2 text-sm text-[var(--store-muted)]">Last updated: {managedPage ? new Date(managedPage.updatedAt || managedPage.createdAt).toLocaleDateString('en-IN') : shipping ? SHIPPING_POLICY_UPDATED : updated}</p>
       </header>
 
-      {managedPage ? (
+      {managedPage || shipping ? (
         <article
           className="prose max-w-none space-y-4 text-sm leading-7 text-[var(--store-muted)] sm:text-base [&>h2]:text-xl [&>h2]:font-bold [&>h2]:text-[var(--store-primary)] [&>h3]:text-lg [&>h3]:font-semibold [&>ul]:list-disc [&>ul]:pl-6 [&>ol]:list-decimal [&>ol]:pl-6 [&_a]:text-[var(--store-primary)] [&_a]:underline"
-          dangerouslySetInnerHTML={{ __html: sanitizeHtml(managedPage.content) }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(managedPage ? managedPage.content : SHIPPING_POLICY_HTML) }}
         />
       ) : privacy ? (
         <div className="space-y-9 text-sm sm:text-base">

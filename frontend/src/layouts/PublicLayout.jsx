@@ -1719,12 +1719,13 @@ const PublicLayout = () => {
             </div>
             {(() => {
               const filteredLinks = [...(footerData.quickLinks || []), ...(footerData.legalLinks || [])]
-                .filter((link) => !['all products', 'category directory', 'component library', 'privacy policy', 'terms & conditions'].includes((link.label || '').trim().toLowerCase()))
+                .filter((link) => !['all products', 'category directory', 'component library', 'privacy policy', 'terms & conditions', 'shipping policy'].includes((link.label || '').trim().toLowerCase()))
                 .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
               const allLinks = [
                 ...filteredLinks.map((link, index) => (
                   <a key={`${link.label}-${index}`} className="block hover:text-amber-300 hover:underline mb-1.5" href={link.url}>{link.label}</a>
                 )),
+                <Link key="shipping" className="block hover:text-amber-300 hover:underline mb-1.5" to="/shipping-policy">Shipping Policy</Link>,
                 <Link key="privacy" className="block hover:text-amber-300 hover:underline mb-1.5" to="/privacy">Privacy Policy</Link>,
                 <Link key="terms" className="block hover:text-amber-300 hover:underline mb-1.5" to="/terms">Terms &amp; Conditions</Link>,
                 <button key="storage" type="button" onClick={openStorageChoices} className="block text-left hover:text-amber-300 hover:underline mb-1.5">Storage choices</button>,
@@ -1858,6 +1859,7 @@ const PublicLayout = () => {
       </footer>}
       {!footerData && <footer className="store-footer w-full bg-[#111111] px-6 py-6 text-white/90 border-t border-[#2b2b2b]">
         <div className="storefront-container flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
+          <Link to="/shipping-policy" className="hover:underline">Shipping Policy</Link>
           <Link to="/privacy" className="hover:underline">Privacy Policy</Link>
           <Link to="/terms" className="hover:underline">Terms &amp; Conditions</Link>
           <button type="button" onClick={openStorageChoices} className="hover:underline">Storage choices</button>

@@ -9,7 +9,7 @@ import { sanitizeHtml } from '../../lib/sanitizeHtml';
 
 export const CmsPage = () => {
   const { slug } = useParams();
-  const legalDestination = slug === 'privacy-policy' ? '/privacy' : slug === 'terms-and-conditions' ? '/terms' : null;
+  const legalDestination = slug === 'shipping-policy' ? '/shipping-policy' : slug === 'privacy-policy' ? '/privacy' : slug === 'terms-and-conditions' ? '/terms' : null;
   const [page, setPage] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
