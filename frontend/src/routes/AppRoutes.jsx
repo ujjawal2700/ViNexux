@@ -105,6 +105,7 @@ const AppRoutes = () => {
         <Route path="/brands" element={<BrandsPage />} />
         <Route path="/shop-by-brand" element={<BrandsPage />} />
         <Route path="/content/pages/:slug" element={<CmsPage />} />
+        <Route path="/shipping-policy" element={<LegalPage type="shipping" />} />
         <Route path="/privacy" element={<LegalPage type="privacy" />} />
         <Route path="/terms" element={<LegalPage type="terms" />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />

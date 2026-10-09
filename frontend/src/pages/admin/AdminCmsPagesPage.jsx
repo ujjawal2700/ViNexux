@@ -16,11 +16,13 @@ import Skeleton from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 import ErrorState from '../../components/ui/ErrorState';
 import Toast from '../../components/ui/Toast';
+import { SHIPPING_POLICY_HTML } from '../../../../shared/shippingPolicy';
 import { sanitizeHtml } from '../../lib/sanitizeHtml';
 import { Plus, Edit2, Trash2, FileText, ExternalLink, Eye, Code } from 'lucide-react';
 
 const legalPathForSlug = (slug) => {
   const s = (slug || '').toLowerCase().trim();
+  if (s === 'shipping-policy') return '/shipping-policy';
   if (s === 'privacy-policy' || s === 'privacy') return '/privacy';
   if (s === 'terms-and-conditions' || s === 'terms') return '/terms';
   return null;
@@ -59,6 +61,14 @@ const TERMS_DEFAULT_HTML = `<h2>Using Vinexus</h2>
 <p>For questions or assistance regarding your orders or account, reach out to our team via our official email, phone, or WhatsApp helpline.</p>`;
 
 const LEGAL_PAGE_DEFAULTS = [
+  {
+    _id: null,
+    _isPlaceholder: true,
+    slug: 'shipping-policy',
+    title: 'Shipping Policy',
+    content: SHIPPING_POLICY_HTML,
+    isPublished: true,
+  },
   {
     _id: null,
     _isPlaceholder: true,
@@ -153,7 +163,7 @@ const AdminCmsPagesPage = () => {
     setFormData({
       slug: page.slug || '',
       title: page.title || '',
-      content: page.content || (page.slug === 'privacy-policy' ? PRIVACY_DEFAULT_HTML : page.slug === 'terms-and-conditions' ? TERMS_DEFAULT_HTML : ''),
+      content: page.content || (page.slug === 'privacy-policy' ? PRIVACY_DEFAULT_HTML : page.slug === 'terms-and-conditions' ? TERMS_DEFAULT_HTML : page.slug === 'shipping-policy' ? SHIPPING_POLICY_HTML : ''),
       isPublished: page.isPublished !== undefined ? page.isPublished : true,
     });
     setFormError('');
