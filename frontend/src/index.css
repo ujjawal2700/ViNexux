@@ -402,13 +402,13 @@ body {
 
 @media (min-width: 640px) {
   .storefront-product-grid {
-    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   }
 }
 
 @media (min-width: 1600px) {
   .storefront-product-grid {
-    grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(245px, 1fr));
   }
 }
 
@@ -446,3 +446,68 @@ body {
   }
 }
 
+
+/* Scope interaction feedback to the admin panel, including portaled dialogs. */
+body:has(.admin-panel) :is(
+  input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+  textarea, select, [role="combobox"], button[aria-haspopup="menu"]
+):not(:disabled):not([aria-disabled="true"]):not([readonly]) {
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+body:has(.admin-panel) :is(
+  input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+  textarea, select, [role="combobox"], button[aria-haspopup="menu"]
+):not(:disabled):not([aria-disabled="true"]):not([readonly]):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.admin-panel tbody > tr {
+  transition: background-color 160ms ease;
+}
+.admin-panel tbody > tr:focus-within {
+  background-color: color-mix(in srgb, var(--primary) 7%, var(--card));
+}
+.admin-panel tbody > tr:focus-within > td:first-child {
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+@media (hover: hover) {
+  body:has(.admin-panel) :is(
+    input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+    textarea, select, [role="combobox"], button[aria-haspopup="menu"]
+  ):not(:disabled):not([aria-disabled="true"]):not([readonly]):not([aria-invalid="true"]):not(.border-rose-500):hover {
+    border-color: color-mix(in srgb, var(--primary) 50%, var(--border));
+    background-color: color-mix(in srgb, var(--primary) 3%, var(--card));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 8%, transparent);
+  }
+  .admin-panel tbody > tr:hover {
+    background-color: color-mix(in srgb, var(--primary) 7%, var(--card));
+  }
+  .admin-panel tbody > tr:hover > td:first-child {
+    box-shadow: inset 3px 0 0 var(--primary);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body:has(.admin-panel) :is(input, textarea, select, [role="combobox"], button[aria-haspopup="menu"]),
+  .admin-panel tbody > tr { transition: none; }
+}
+
+/* Brand tiles fill ten desktop columns; fewer, larger targets on small screens. */
+.brand-carousel-track {
+  container-type: inline-size;
+  --brand-columns: 3;
+  --brand-gap: 12px;
+  gap: var(--brand-gap);
+}
+.brand-carousel-item {
+  flex: 0 0 calc((100cqw - (var(--brand-columns) - 1) * var(--brand-gap)) / var(--brand-columns));
+  min-width: 0;
+}
+@media (min-width: 640px) { .brand-carousel-track { --brand-columns: 6; --brand-gap: 14px; } }
+@media (min-width: 1024px) { .brand-carousel-track { --brand-columns: 10; } }
+
+.theme-product-card { container-type: inline-size; }
+@container (max-width: 180px) {
+  .product-card-actions { flex-wrap: wrap; }
+  .product-card-actions > div { justify-content: center; margin-inline: auto; }
+  .product-card-actions > button { flex-basis: 100%; }
+}

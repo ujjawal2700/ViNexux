@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { DEFAULT_QUICK_SPEC_KEYS } from '../../../shared/productSpecifications.js';
 
 const imageAssetSchema = new mongoose.Schema(
   {
@@ -11,6 +12,7 @@ const imageAssetSchema = new mongoose.Schema(
 const websiteSettingsSchema = new mongoose.Schema(
   {
     singletonKey: { type: String, default: 'primary', unique: true, immutable: true },
+    quickSpecKeys: { type: [{ type: String, trim: true, maxlength: 80 }], default: () => [...DEFAULT_QUICK_SPEC_KEYS] },
     activeThemeId: { type: String, default: null },
     websiteName: { type: String, trim: true, required: true, default: 'Vinexus', maxlength: 150 },
     metaTitle: {

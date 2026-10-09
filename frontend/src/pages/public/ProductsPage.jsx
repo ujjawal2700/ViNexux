@@ -66,7 +66,7 @@ const DEFAULT_AVAILABILITY = [
   "out-of-stock",
 ];
 
-export const ProductsPage = () => {
+export const ProductsPage = ({ lowStockOnly = false }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -246,8 +246,12 @@ export const ProductsPage = () => {
 
         if (brandSlug && !initialBrand) query.brandSlug = brandSlug;
         else if (initialBrand) query.brand = initialBrand;
-        if (selectedAvailability.length && selectedAvailability.length < 4) {
+        if (selectedAvailability.length && selectedAvailability.length < DEFAULT_AVAILABILITY.length) {
           query.availability = selectedAvailability.join(",");
+        }
+        if (lowStockOnly) {
+          query.lowStock = true;
+          query.availability = "low-stock";
         }
         if (Object.values(selectedSpecs).some((values) => values.length))
           query.specs = JSON.stringify(selectedSpecs);
@@ -303,6 +307,7 @@ export const ProductsPage = () => {
       }
     },
     [
+      lowStockOnly,
       currentPage,
       itemsPerPage,
       searchTerm,
@@ -328,7 +333,7 @@ export const ProductsPage = () => {
     return () => controller.abort();
   }, [fetchProducts]);
 
-  const isAllProductsRoute = location.pathname.startsWith("/products");
+  const isAllProductsRoute = lowStockOnly || location.pathname.startsWith("/products");
 
   const availableCategories = facets.categories || [];
   const displayCategories = useMemo(() => {
@@ -406,7 +411,7 @@ export const ProductsPage = () => {
   const totalProductCount = pagination.total || products.length;
   const hasMultipleRows = totalProductCount > 12;
   const specsToRender =
-    hasMultipleRows && dynamicSpecs && dynamicSpecs.length > 0
+    (hasMultipleRows || lowStockOnly) && dynamicSpecs && dynamicSpecs.length > 0
       ? dynamicSpecs.slice(0, 6)
       : [];
 
@@ -488,6 +493,7 @@ export const ProductsPage = () => {
 
   // Compute Breadcrumb Trail (Supports Brand view like "Home > Brands > ACER" & Category hierarchy like "Home > Laptop > Branded Laptop")
   const breadcrumbTrail = useMemo(() => {
+    if (lowStockOnly) return [{ label: "Home", path: "/" }, { label: "Low Stock", path: null }];
     const brandName =
       resolvedBrand ||
       (selectedBrands.length === 1 && !selectedCategoryId
@@ -523,6 +529,7 @@ export const ProductsPage = () => {
       { label: "All Products", path: null },
     ];
   }, [
+    lowStockOnly,
     resolvedBrand,
     selectedBrands,
     selectedCategoryId,
@@ -575,7 +582,7 @@ export const ProductsPage = () => {
       navigate(`/brands/${brandSlug}`);
       return;
     }
-    const destination = location.pathname.startsWith("/products")
+    const destination = lowStockOnly ? "/low-stock" : location.pathname.startsWith("/products")
       ? "/products"
       : activeCategory
         ? buildCategoryPath(activeCategory, categories)
@@ -587,6 +594,7 @@ export const ProductsPage = () => {
 
   // Compute Page Header Title (Matching Mega Jaipur: "Branded Laptop", "Laptop Hinges", "ACER")
   const pageTitle = useMemo(() => {
+    if (lowStockOnly) return "Low Stock Products";
     if (isAllProductsRoute) {
       if (searchTerm) return `Search: "${searchTerm}"`;
       return "All Products";
@@ -601,10 +609,11 @@ export const ProductsPage = () => {
       return `Search: "${searchTerm}"`;
     }
     return "All Products";
-  }, [isAllProductsRoute, activeCategory, brandSlug, routeBrand, searchTerm]);
+  }, [lowStockOnly, isAllProductsRoute, activeCategory, brandSlug, routeBrand, searchTerm]);
 
   // Dynamic SEO metadata targeting Networking & IT Search Ranking
   const seoTitle = useMemo(() => {
+    if (lowStockOnly) return "Low Stock Products | Vinexus";
     if (headerSlug === "networking" || activeCategory?.slug === "networking") {
       return "Networking Products, Enterprise PoE Switches, Routers & Racks | Vinexus";
     }
@@ -622,7 +631,7 @@ export const ProductsPage = () => {
       return `Search: "${searchTerm}" — Products | Vinexus`;
     }
     return "All Products — Enterprise Networking, CCTV & IT Hardware | Vinexus";
-  }, [headerSlug, activeCategory, brandSlug, routeBrand, searchTerm]);
+  }, [lowStockOnly, headerSlug, activeCategory, brandSlug, routeBrand, searchTerm]);
 
   const seoDescription = useMemo(() => {
     if (headerSlug === "networking" || activeCategory?.slug === "networking") {
@@ -772,7 +781,7 @@ export const ProductsPage = () => {
       </div>
 
       {/* 2. Brands Accordion (below Categories: shows only brands that have products available in this category) */}
-      {(Boolean(currentCategory) || (!isAllProductsRoute && !brandSlug)) &&
+      {(lowStockOnly || Boolean(currentCategory) || (!isAllProductsRoute && !brandSlug)) &&
         availableBrands.length > 0 && (
           <div className="border-b border-[var(--store-border)] pb-3">
             <button
@@ -830,7 +839,7 @@ export const ProductsPage = () => {
         )}
 
       {/* 3. Category-specific specification filters (Shown when multiple rows of products exist: > 12 products) */}
-      {(Boolean(currentCategory) || !isAllProductsRoute) &&
+      {(lowStockOnly || Boolean(currentCategory) || !isAllProductsRoute) &&
         specsToRender.length > 0 &&
         specsToRender.map((spec) => (
           <div key={spec.key} className="border-b border-[var(--store-border)] pb-3">
@@ -896,7 +905,7 @@ export const ProductsPage = () => {
         ))}
 
       {/* 4. Availability (last filter: as is) */}
-      <div className="border-b border-[var(--store-border)] pb-3">
+      {!lowStockOnly && <div className="border-b border-[var(--store-border)] pb-3">
         <button
           type="button"
           onClick={() =>
@@ -924,9 +933,9 @@ export const ProductsPage = () => {
               ["out-of-stock", "Out of Stock"],
             ].map(([status, label]) => {
               const checked = selectedAvailability.includes(status);
-              const count =
-                availabilityFacets.find((item) => item.status === status)
-                  ?.count || 0;
+              const count = availabilityFacets
+                .filter((item) => item.status === status)
+                .reduce((total, item) => total + (item.count || 0), 0);
               return (
                 <label
                   key={status}
@@ -951,7 +960,7 @@ export const ProductsPage = () => {
             })}
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 
@@ -1004,6 +1013,17 @@ export const ProductsPage = () => {
   return (
     <div className="w-full bg-[#f8f9fa]">
       <div className="storefront-container px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-0 space-y-2">
+        {lowStockOnly && (
+          <section className="relative overflow-hidden rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-5 sm:p-7 my-3">
+            <div className="absolute inset-y-0 right-0 w-1/3 pointer-events-none" style={{ background: 'linear-gradient(110deg, transparent, color-mix(in srgb, var(--store-primary) 8%, transparent))' }} />
+            <div className="relative max-w-2xl space-y-2.5">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-800"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Limited availability</span>
+              <h2 className="text-xl sm:text-3xl font-bold tracking-tight text-[var(--store-text)]">Good finds. Limited availability.</h2>
+              <p className="text-sm leading-relaxed text-[var(--store-muted)]">Explore low-stock products from trusted brands. Filter by category, brand or specification to find what you need.</p>
+              <p className="text-xs font-semibold text-[var(--store-primary)]">{isLoading ? 'Updating selection…' : `${pagination.total || products.length} products in this selection`}</p>
+            </div>
+          </section>
+        )}
         {/* 1. BREADCRUMBS & CENTERED BRAND/CATEGORY TITLE (matching Screenshot) */}
         <div className="relative flex min-h-12 items-center justify-between gap-2 lg:justify-center">
           {/* Breadcrumb row */}
@@ -1190,8 +1210,8 @@ export const ProductsPage = () => {
 };
 
 // URL changes start a fresh query and reset pagination/spec filters.
-const CatalogRoutePage = () => {
+const CatalogRoutePage = ({ lowStockOnly = false }) => {
   const location = useLocation();
-  return <ProductsPage key={location.pathname + location.search} />;
+  return <ProductsPage key={location.pathname + location.search} lowStockOnly={lowStockOnly} />;
 };
 export default CatalogRoutePage;

@@ -74,6 +74,15 @@ test('admin uploads three images per section, edits and replaces; independent be
   await page.clock.fastForward(6500);
   await expect(hero.locator('.bento-banner-tile-1 .is-active')).toHaveAttribute('src', '/bento-test/0-1.svg');
   await expect(hero.locator('.bento-banner-tile-2 .is-active')).toHaveAttribute('src', '/bento-test/1-1.svg');
+  const firstTile = hero.locator('.bento-banner-tile-1');
+  await expect(firstTile.locator('.bento-banner-controls button')).toHaveCount(2);
+  await expect(firstTile.locator('.bento-banner-controls')).not.toContainText(/\d/);
+  await firstTile.hover();
+  await page.clock.fastForward(12000);
+  await expect(firstTile.locator('.is-active')).toHaveAttribute('src', '/bento-test/0-1.svg');
+  await firstTile.getByRole('button', { name: 'Next image in section 1', exact: true }).click();
+  await expect(firstTile.locator('.is-active')).toHaveAttribute('src', '/bento-test/0-2.svg');
+  await page.mouse.move(0, 0);
   await hero.screenshot({ path: testInfo.outputPath('bento-desktop.png') });
   await page.setViewportSize({ width: 390, height: 844 });
   const tiles = await hero.locator('.bento-banner-tile').all();

@@ -6,6 +6,7 @@ import useToast from '../../hooks/useToast';
 import wishlistService from '../../services/wishlistService';
 import cartService from '../../services/cartService';
 import guestCartService from '../../services/guestCartService';
+import { isLowStock } from '../../utils/inventory';
 import { buildProductPath } from '../../utils/categoryUrls';
 
 export const WishlistPage = () => {
@@ -42,9 +43,7 @@ export const WishlistPage = () => {
     if (stock <= 0) {
       return { label: '• On Order', color: 'text-amber-700', canAdd: false };
     }
-    if (stock < 5) {
-      return { label: '• Low Stock', color: 'text-amber-600', canAdd: true };
-    }
+    if (isLowStock(product)) return { label: '• Low Stock', color: 'text-amber-600', canAdd: true };
     return { label: '• In Stock', color: 'text-emerald-600', canAdd: true };
   };
 

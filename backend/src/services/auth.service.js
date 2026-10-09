@@ -552,6 +552,13 @@ export const authService = {
       await user.save();
     }
 
+    // TEMPORARY TESTING: admin single-device enforcement is disabled.
+    // Comment out this bypass to restore the session-conflict restriction for admins.
+    // Each device still gets its own authenticated, expiring session.
+    if (user.role === 'admin') {
+      return await this.createSessionAndIssueTokens(user, reqInfo);
+    }
+
     // Check for existing active session (Single Active Session Enforcement)
     const existingSession = await Session.findOne({ userId: user._id, isActive: true });
 

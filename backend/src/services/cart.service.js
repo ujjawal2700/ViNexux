@@ -29,14 +29,14 @@ const assertQuantityAvailable = (product, quantity) => {
   if (availableStock !== null) {
     if (quantity > availableStock) {
       throw new AppError(
-        `Limited stock. Only ${availableStock} unit${availableStock === 1 ? '' : 's'} available.`,
+        'The requested quantity cannot be added to this enquiry.',
         HTTP_STATUS.BAD_REQUEST,
         ERROR_CODES.BAD_REQUEST
       );
     }
     if (availableStock > 0 && availableStock < LOW_STOCK_THRESHOLD && quantity > LOW_STOCK_MAX_ORDER) {
       throw new AppError(
-        `Limited stock alert. For products with low stock (fewer than 10 units), maximum ${LOW_STOCK_MAX_ORDER} units can be added per enquiry.`,
+        'The quantity limit for this enquiry has been reached.',
         HTTP_STATUS.BAD_REQUEST,
         ERROR_CODES.BAD_REQUEST
       );

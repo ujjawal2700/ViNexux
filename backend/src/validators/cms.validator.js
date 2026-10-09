@@ -238,6 +238,8 @@ export const footerContentSchema = {
 
 export const websiteSettingsSchema = {
   body: z.object({
+    quickSpecKeys: z.array(z.string().trim().min(1).max(80)).max(100)
+      .refine((keys) => new Set(keys.map((key) => key.toLowerCase())).size === keys.length, { message: 'Quick Add specification names must be unique' }).optional(),
     websiteName: z.string().trim().min(1, 'Website name is required').max(150).optional(),
     metaTitle: z.string().trim().min(1, 'Meta title is required').max(200).optional(),
     metaDescription: z.string().trim().min(20, 'Meta description must be at least 20 characters').max(500).optional(),

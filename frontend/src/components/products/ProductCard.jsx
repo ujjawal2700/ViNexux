@@ -8,7 +8,7 @@ import wishlistService from '../../services/wishlistService';
 import { Minus, Plus, Check, Heart, ImageOff } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { buildProductPath } from '../../utils/categoryUrls';
-import { getAvailableStock, getMaximumOrderQuantity, isLowStock } from '../../utils/inventory';
+import { getMaximumOrderQuantity, isLowStock } from '../../utils/inventory';
 
 export const ProductCard = ({ product, onCartUpdated, className }) => {
   const { user, isAuthenticated } = useAuth();
@@ -40,11 +40,9 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
 
   const standardPrice = product.standardPrice || 0;
   const dealerPrice = product.dealerPrice || 0;
-  const availableStock = getAvailableStock(product);
   const maximumQuantity = getMaximumOrderQuantity(product);
   const isOutOfStock = product.stockStatus === 'out-of-stock' || maximumQuantity === 0;
   const isLowStockItem = !isOutOfStock && isLowStock(product);
-  const isInStock = !isOutOfStock && !isLowStockItem;
 
   let displayPrice = product?.applicablePrice ?? standardPrice;
   let hasDealerDiscount = false;
@@ -94,18 +92,11 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
   const handleIncrement = (e) => {
     e.stopPropagation();
     if (quantity >= maximumQuantity) {
-      if (isLowStockItem) {
-        toast.warning(`Limited stock alert — maximum ${maximumQuantity} units allowed per enquiry.`);
-      } else if (availableStock !== null) {
-        toast.stock(`Limited stock — only ${availableStock} unit${availableStock === 1 ? '' : 's'} available.`);
-      }
+      toast.warning('The quantity limit for this enquiry has been reached.');
       return;
     }
     const nextQuantity = quantity + 1;
     setQuantity(nextQuantity);
-    if (nextQuantity >= maximumQuantity && isLowStockItem) {
-      toast.warning(`Limited stock alert — maximum ${maximumQuantity} units allowed per enquiry.`);
-    }
   };
 
   // Handle Add to Cart action
@@ -157,19 +148,19 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
     <div
       onClick={handleCardClick}
       className={cn(
-        "theme-product-card group relative flex h-full flex-col overflow-hidden rounded-sm border border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-text)] shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer",
+        "theme-product-card group relative flex h-full flex-col overflow-hidden rounded-xl border border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-text)] shadow-sm transition-[border-color,box-shadow,transform] duration-200 motion-reduce:transition-none cursor-pointer",
         className
       )}
     >
       {/* ── IMAGE AREA (large, no restricting inner div, transparent bg for PNGs) ── */}
-      <div className="relative w-full aspect-square max-h-[320px] bg-[var(--store-surface)] overflow-hidden">
+      <div className="relative w-full aspect-[4/3] bg-[var(--store-surface)] overflow-hidden">
         {/* Wishlist Button */}
         <button
           type="button"
           onClick={handleToggleWishlist}
           title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
           aria-label="Wishlist"
-          className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-[var(--store-surface)] shadow-sm border border-[var(--store-border)] flex items-center justify-center text-[var(--store-muted)] hover:text-[var(--store-primary)] hover:scale-105 active:scale-95 transition-all duration-200 opacity-0 group-hover:opacity-100 cursor-pointer"
+          className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-[var(--store-surface)] shadow-sm border border-[var(--store-border)] flex items-center justify-center text-[var(--store-muted)] hover:text-[var(--store-primary)] hover:scale-105 active:scale-95 transition-all duration-200 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 cursor-pointer"
         >
           <Heart
             className={cn(
@@ -179,54 +170,47 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
           />
         </button>
 
-        {/* Limited Stock Badge on Product Image */}
-        {isLowStockItem && (
-          <span className="absolute top-2 left-2 z-10 inline-flex items-center gap-1 rounded bg-amber-600 text-white text-[9.5px] font-black px-1.5 py-0.5 shadow-sm uppercase tracking-wider">
-            Limited Stock
-          </span>
-        )}
-
         {/* Product Image – full size, no wrapper box clipping PNG */}
         {primaryImage && !imgError ? (
           <img
             src={primaryImage}
             alt={product.name}
             onError={() => setImgError(true)}
-            className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105 p-3"
+            className="w-full h-full object-contain transition-transform duration-300 motion-safe:group-hover:scale-105 p-4 sm:p-5"
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-[var(--store-background)] text-gray-300">
-            <ImageOff className="w-10 h-10 mb-1 opacity-40" />
-            <span className="text-[10px] font-bold uppercase tracking-wider opacity-40">No Image</span>
+          <div className="w-full h-full flex flex-col items-center justify-center bg-[var(--store-background)] text-[var(--store-muted)]">
+            <ImageOff className="w-8 h-8 mb-2 opacity-35" />
+            <span className="text-[10px] font-bold uppercase tracking-wider opacity-60">No image available</span>
           </div>
         )}
       </div>
 
       {/* ── CONTENT AREA ── */}
-      <div className="flex flex-1 flex-col p-2 sm:p-3 text-left border-t border-[var(--store-border)]">
+      <div className="flex flex-1 flex-col p-3 sm:p-3.5 text-left border-t border-[var(--store-border)]">
 
         {/* Product Title */}
-        <h3 className="min-h-[50px] line-clamp-3 text-[13px] font-semibold leading-[1.35] text-[var(--store-text)] transition-colors group-hover:text-[var(--store-primary)] sm:text-[13.5px]">
+        <h3 className="min-h-[38px] line-clamp-2 text-[13px] font-semibold leading-[1.45] text-[var(--store-text)] transition-colors group-hover:text-[var(--store-primary)] sm:text-sm">
           {product.name}
         </h3>
 
         {/* Model Number box only (no PID) */}
-        {modelNumber && (
-          <div className="mt-2">
+        <div className="mt-1.5 min-h-5">
+          {modelNumber && (
             <span
-              className="inline-block min-w-0 max-w-full truncate rounded bg-[var(--store-background)] border border-[var(--store-border)] px-1.5 py-0.5 text-[10.5px] font-semibold text-[var(--store-muted)]"
+              className="block min-w-0 max-w-full truncate text-[10.5px] sm:text-[11px] font-medium text-[var(--store-muted)]"
               title={`Model: ${modelNumber}`}
             >
               Model: {modelNumber}
             </span>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Price row with brand logo/name */}
-        <div className="mt-2.5 flex min-h-8 items-center justify-between gap-2">
-          <div className="flex min-w-0 items-baseline gap-1">
-            <span className="text-[15px] font-extrabold text-[var(--store-text)] sm:text-lg leading-none">
+        <div className="mt-2 flex min-h-9 items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-1 gap-y-0.5">
+            <span className="text-lg font-bold text-[var(--store-text)] sm:text-xl leading-none">
               ₹{(Number(displayPrice) || 0).toLocaleString('en-IN')}
             </span>
             {hasDealerDiscount && (
@@ -237,23 +221,23 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
           </div>
 
           {brandLogo ? (
-            <img loading="lazy" decoding="async" src={brandLogo} alt={`${brandName} logo`} title={brandName} className="h-7 w-14 shrink-0 object-contain object-right" />
+            <img loading="lazy" decoding="async" src={brandLogo} alt={`${brandName} logo`} title={brandName} className="h-8 w-[30%] max-w-16 shrink-0 object-contain object-right" />
           ) : (
-            <span className="max-w-[72px] shrink-0 truncate text-right text-[10px] font-extrabold uppercase text-[var(--store-primary)]" title={brandName}>{brandName}</span>
+            <span className="max-w-[30%] shrink-0 truncate text-right text-[10px] font-extrabold uppercase text-[var(--store-primary)]" title={brandName}>{brandName}</span>
           )}
         </div>
 
         {/* Stock Status Badge (matching Mega Jaipur green/amber/rose dot + text) */}
-        <div className="mt-1.5">
+        <div className="mt-2 min-h-6">
           {isOutOfStock ? (
             <span className="inline-flex items-center gap-1 rounded border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-rose-700">
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-rose-500" />
               Out of Stock
             </span>
           ) : isLowStockItem ? (
-            <span className="inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10.5px] font-bold text-amber-800 shadow-2xs">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-              Limited Stock Alert {availableStock ? `(${availableStock} Left · Max 3)` : '(Max 3)'}
+            <span className="inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-amber-800">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
+              Low Stock
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-emerald-700">
@@ -269,31 +253,32 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
           </div>
         )}
 
+        <div className="h-3" />
         {/* Quantity Selector + Add to Cart / Out of Stock Button */}
-        <div className="mt-auto pt-2 border-t border-[var(--store-border)] flex h-8.5 w-full items-center gap-1.5 mt-3">
+        <div className="product-card-actions mt-auto pt-3 border-t border-[var(--store-border)] flex w-full items-center gap-2 translate-y-0">
           {/* Qty Stepper - only shown when not OOS */}
           {!isOutOfStock && (
             <div
               onClick={(e) => e.stopPropagation()}
-              className="flex max-[360px]:hidden shrink-0 h-8 overflow-hidden rounded border border-[var(--store-border)] bg-[var(--store-surface)] text-xs shadow-xs"
+              className="flex shrink-0 h-9 overflow-hidden rounded border border-[var(--store-border)] bg-[var(--store-surface)] text-xs shadow-xs"
             >
               <button
                 type="button"
                 onClick={handleDecrement}
                 disabled={quantity <= 1}
-                className="flex w-6 items-center justify-center text-[var(--store-muted)] hover:bg-[var(--store-background)] disabled:opacity-30 transition-colors cursor-pointer"
+                className="flex w-6 sm:w-7 items-center justify-center text-[var(--store-muted)] hover:bg-[var(--store-background)] disabled:opacity-30 transition-colors cursor-pointer"
                 aria-label="Decrease quantity"
               >
                 <Minus className="h-3 w-3" />
               </button>
-              <span className="flex w-6 items-center justify-center border-x border-[var(--store-border)] text-xs font-bold text-[var(--store-text)] select-none">
+              <span className="flex w-6 sm:w-7 items-center justify-center border-x border-[var(--store-border)] text-xs font-bold text-[var(--store-text)] select-none">
                 {quantity}
               </span>
               <button
                 type="button"
                 onClick={handleIncrement}
                 disabled={quantity >= maximumQuantity || maximumQuantity <= 0}
-                className="flex w-6 items-center justify-center text-[var(--store-muted)] hover:bg-[var(--store-background)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="flex w-6 sm:w-7 items-center justify-center text-[var(--store-muted)] hover:bg-[var(--store-background)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 aria-label="Increase quantity"
               >
                 <Plus className="h-3 w-3" />
@@ -307,7 +292,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
             <button
               type="button"
               disabled
-              className="flex h-8 w-full items-center justify-center whitespace-nowrap rounded border border-orange-300 bg-orange-50 text-orange-700 text-[10.5px] font-bold tracking-tight uppercase cursor-not-allowed select-none"
+              className="flex h-9 w-full items-center justify-center whitespace-nowrap rounded border border-orange-300 bg-orange-50 text-orange-700 text-[10.5px] font-bold tracking-tight uppercase cursor-not-allowed select-none"
             >
               OUT OF STOCK
             </button>
@@ -317,7 +302,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
               disabled={!product.isActive || isAdding}
               onClick={handleAddToCart}
               className={cn(
-                'flex h-8 min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded px-1.5 sm:px-2 text-[10px] sm:text-[10.5px] font-bold uppercase tracking-tight transition-all shadow-xs',
+                'flex h-9 min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-lg px-1.5 sm:px-2 text-[10.5px] font-semibold tracking-normal transition-all shadow-xs',
                 isAdded
                   ? 'bg-emerald-600 text-white'
                   : 'bg-[var(--store-primary)] text-white hover:bg-[var(--store-primary-hover)] active:scale-98 cursor-pointer'
@@ -331,7 +316,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
                   <span>ADDED</span>
                 </>
               ) : (
-                <span>ADD TO CART</span>
+                <span>Add to cart</span>
               )}
             </button>
           )}

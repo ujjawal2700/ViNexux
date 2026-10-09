@@ -35,13 +35,13 @@ const AdminLoginPage = lazyWithRetry(() => import('../pages/auth/AdminLoginPage'
 const VerifyOtpPage = lazyWithRetry(() => import('../pages/auth/VerifyOtpPage'));
 const ForgotPasswordPage = lazyWithRetry(() => import('../pages/auth/ForgotPasswordPage'));
 const ResetPasswordPage = lazyWithRetry(() => import('../pages/auth/ResetPasswordPage'));
+const LowStockProductsPage = lazyWithRetry(() => import('../pages/public/LowStockProductsPage'));
 const WishlistPage = lazyWithRetry(() => import('../pages/public/WishlistPage'));
 const BrandsPage = lazyWithRetry(() => import('../pages/public/BrandsPage'));
 const CmsPage = lazyWithRetry(() => import('../pages/public/CmsPage'));
 const LegalPage = lazyWithRetry(() => import('../pages/public/LegalPage'));
 const UnauthorizedPage = lazyWithRetry(() => import('../pages/public/UnauthorizedPage'));
 const UiPreviewPage = lazyWithRetry(() => import('../pages/public/UiPreviewPage'));
-const LowStockProductsPage = lazyWithRetry(() => import('../pages/public/LowStockProductsPage'));
 
 // Account Pages (shared by customer & dealer roles - no more separate
 // dealer portal; see pages/account/)

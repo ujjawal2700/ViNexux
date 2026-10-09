@@ -14,6 +14,7 @@ import { Image } from '../../components/ui/Image';
 import { Skeleton } from '../../components/ui/Skeleton';
 import NotFoundPage from './NotFoundPage';
 import { getAvailableStock, getMaximumOrderQuantity, isLowStock } from '../../utils/inventory';
+import { isInventorySpecification } from '../../../../shared/productSpecifications';
 import { allowsPreferences } from '../../utils/storageConsent';
 import {
   ShoppingCart,
@@ -30,8 +31,6 @@ import {
   Minus,
   Plus,
   ExternalLink,
-  AlertTriangle,
-  Flame,
 } from 'lucide-react';
 
 export const ProductDetailPage = () => {
@@ -244,10 +243,10 @@ export const ProductDetailPage = () => {
 
   // Stock status: isActive = true means available in stock
   const availableStock = getAvailableStock(product);
-  const productIsLowStock = isLowStock(product);
   const maxAllowedQuantity = getMaximumOrderQuantity(product);
   const isOutOfStock = product?.stockStatus === 'out-of-stock' || availableStock === 0 || maxAllowedQuantity === 0;
   const isInStock = !isOutOfStock;
+  const productIsLowStock = !isOutOfStock && isLowStock(product);
 
   // Dynamic SEO metadata & Google Product Structured Data (JSON-LD)
   usePageSeo({
@@ -296,11 +295,7 @@ export const ProductDetailPage = () => {
 
   const handleIncrement = () => {
     if (quantity >= maxAllowedQuantity) {
-      if (productIsLowStock) {
-        toast.warning(`Limited stock alert: Maximum ${maxAllowedQuantity} units allowed per enquiry for low stock products.`);
-      } else if (availableStock !== null) {
-        toast.warning(`Only ${availableStock} units available in stock.`);
-      }
+      toast.warning('The quantity limit for this enquiry has been reached.');
       return;
     }
     setQuantity((prev) => prev + 1);
@@ -407,13 +402,7 @@ export const ProductDetailPage = () => {
     // 1. Brand
     list.push({ key: 'Brand', value: brandName });
 
-    // 2. Stock Quantity
-    const stockVal = product.stockQuantity !== undefined && product.stockQuantity !== null
-      ? product.stockQuantity
-      : (availableStock !== undefined && availableStock !== null ? availableStock : 0);
-    list.push({ key: 'Stock Quantity', value: String(stockVal) });
-
-    // 3. Variant (if provided)
+    // Variant (if provided)
     if (product.variant && product.variant.trim()) {
       list.push({ key: 'Variant', value: product.variant.trim() });
     }
@@ -422,7 +411,7 @@ export const ProductDetailPage = () => {
     if (product.specifications && Array.isArray(product.specifications)) {
       product.specifications.forEach((s) => {
         const keyLower = s.key?.trim().toLowerCase();
-        if (s.key && s.value && !['brand', 'stock', 'inventory', 'stock quantity', 'variant'].includes(keyLower)) {
+        if (s.key && s.value && !isInventorySpecification(s.key) && !['brand', 'variant'].includes(keyLower)) {
           list.push({ key: s.key.trim(), value: s.value.trim() });
         }
       });
@@ -434,7 +423,7 @@ export const ProductDetailPage = () => {
     }
 
     return list;
-  }, [product, brandName, availableStock]);
+  }, [product, brandName]);
 
   // Product Images Gallery (Safe for hooks order)
   const images = useMemo(() => {
@@ -724,21 +713,16 @@ export const ProductDetailPage = () => {
               )}
             </div>
 
-            {/* In Stock / Out of Stock / Limited Stock Status Pill */}
+            {/* In Stock / Out of Stock Status Pill */}
             {isOutOfStock ? (
               <div className="w-full py-2.5 px-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center justify-center gap-2">
                 <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
                 <span>OUT OF STOCK</span>
               </div>
             ) : productIsLowStock ? (
-              <div className="w-full py-2.5 px-3 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold flex flex-col items-center justify-center gap-1 shadow-2xs">
-                <div className="flex items-center gap-1.5">
-                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span className="uppercase tracking-wider">LIMITED STOCK ALERT</span>
-                </div>
-                <span className="text-[11px] font-semibold text-amber-800">
-                  {availableStock ? `Only ${availableStock} left in stock` : 'Low stock item'} · Maximum 3 units per enquiry
-                </span>
+              <div className="w-full py-2.5 px-3 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold flex items-center justify-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                <span>LOW STOCK</span>
               </div>
             ) : (
               <div className="w-full py-2 px-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-center gap-2">
@@ -791,24 +775,6 @@ export const ProductDetailPage = () => {
               </button>
             </div>
 
-            {/* Limited Stock Notice Notice */}
-            {productIsLowStock && (
-              <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-900 text-xs space-y-1">
-                <div className="flex items-center gap-1.5 font-bold text-amber-900">
-                  <Flame className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>Limited Stock Alert</span>
-                </div>
-                <p className="text-[11px] text-amber-800 leading-relaxed">
-                  This product has fewer than 10 units left in stock. To ensure fair allocation for all customers, each enquiry is capped at a maximum of 3 units.
-                </p>
-                <Link
-                  to="/low-stock"
-                  className="inline-flex items-center gap-1 pt-0.5 text-[11px] font-bold text-[var(--store-primary)] hover:underline"
-                >
-                  View all limited stock products →
-                </Link>
-              </div>
-            )}
 
             {/* Trust Footer */}
             <div className="text-[10px] text-[var(--store-muted)] text-center pt-2 flex items-center justify-center gap-1">
@@ -835,7 +801,7 @@ export const ProductDetailPage = () => {
 
         {/* Alternating Row Table Matching Given Image 2 */}
         <div className="bg-[var(--store-surface)] rounded-xl border border-[var(--store-border)] overflow-hidden shadow-2xs">
-          <table className="w-full text-left border-collapse text-xs sm:text-sm">
+          <table className="w-full text-left border-collapse text-xs sm:text-sm" style={{ fontFamily: 'inherit' }}>
             <tbody>
               {fullSpecifications.map((spec, idx) => (
                 <tr
@@ -847,13 +813,13 @@ export const ProductDetailPage = () => {
                   <td className="px-5 sm:px-6 py-3.5 font-medium text-[var(--store-muted)] w-1/4 sm:w-1/5 select-none">
                     {spec.key}
                   </td>
-                  <td className="px-5 sm:px-6 py-3.5 font-semibold text-[var(--store-text)] font-mono text-xs sm:text-sm">
+                  <td className="px-5 sm:px-6 py-3.5 font-medium text-[var(--store-text)] text-xs sm:text-sm">
                     {spec.key === 'Product URL' ? (
                       <a href={spec.value} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[var(--store-primary)] underline underline-offset-2 hover:text-[#650019]">
                         View Product <ExternalLink className="w-3 h-3" />
                       </a>
                     ) : spec.key === 'Brand' && brandUrl ? (
-                      <Link to={brandUrl} className="inline-flex items-center text-[var(--store-primary)] hover:underline font-bold font-sans">
+                      <Link to={brandUrl} className="inline-flex items-center text-[var(--store-primary)] hover:underline font-semibold">
                         {spec.value}
                       </Link>
                     ) : spec.key === 'Key Features' ? (

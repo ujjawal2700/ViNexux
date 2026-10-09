@@ -27,6 +27,7 @@ import {
   Search,
   Phone,
   Store,
+  Flame,
   Heart,
   FileText,
   BadgePercent,
@@ -56,7 +57,6 @@ import {
   Smartphone,
   MapPin,
   Mail,
-  Flame,
 } from 'lucide-react';
 
 const STORE_MAP_URL = 'https://maps.app.goo.gl/QSuzGqkbp2HxMHLp6';
@@ -711,7 +711,7 @@ const PublicLayout = () => {
       prod.specifications?.find((s) => s.key?.toLowerCase().includes('code') || s.key?.toLowerCase().includes('item cd'))?.value ||
       (prod.sku ? prod.sku.replace(/[^A-Za-z0-9]/g, '').slice(-7).toUpperCase() : (prod._id || '1INGRUO').slice(-7).toUpperCase());
 
-    const stockText = prod.stockStatus === 'in-stock' ? 'In Stock' : prod.stockStatus === 'out-of-stock' ? 'Out of Stock' : 'On Request';
+    const stockText = prod.stockStatus === 'low-stock' ? 'Low Stock' : prod.stockStatus === 'in-stock' ? 'In Stock' : prod.stockStatus === 'out-of-stock' ? 'Out of Stock' : 'On Request';
     const stockClass = 'text-[var(--store-muted)] font-medium text-[11px]';
 
     return { img, brand, price, pidCode, itemCd, stockText, stockClass };
@@ -937,7 +937,7 @@ const PublicLayout = () => {
 
           {/* Row 2: Full-width Pill Search Bar with Autocomplete */}
           <div ref={mobileSearchRef} className="relative w-full">
-            <form onSubmit={handleSearchSubmit} className="flex w-full items-center relative rounded-full bg-[#fdfbf7] shadow-inner border border-transparent overflow-visible">
+            <form onSubmit={handleSearchSubmit} className="store-search flex w-full items-center relative rounded-full bg-[#fdfbf7] shadow-inner border border-[var(--store-border)] overflow-visible">
               <button type="submit" className="pl-3.5 pr-1.5 text-[var(--store-muted)] hover:text-primary transition-colors cursor-pointer" aria-label="Search products">
                 <Search className="h-4 w-4" />
               </button>
@@ -992,7 +992,7 @@ const PublicLayout = () => {
             <form
               ref={desktopSearchRef}
               onSubmit={handleSearchSubmit}
-              className="flex-1 min-w-0 max-w-2xl flex items-center mx-1 lg:mx-2 xl:mx-3 relative"
+              className="store-search flex-1 min-w-0 max-w-2xl flex items-center mx-1 lg:mx-2 xl:mx-3 relative rounded-md"
             >
               <div className="relative w-full flex items-center">
                 <input
@@ -1045,7 +1045,7 @@ const PublicLayout = () => {
                 className="flex items-center gap-1.5 text-[var(--store-muted)] hover:text-primary transition-colors p-1.5 lg:p-2 rounded-lg hover:bg-[var(--store-background)] group shrink-0"
                 title="Store Location - Directions to the Store"
               >
-                <Store className="w-6 h-6 min-[1600px]:w-5 min-[1600px]:h-5 text-[var(--store-primary)] group-hover:scale-105 transition-all shrink-0" />
+                <MapPin className="w-6 h-6 min-[1600px]:w-5 min-[1600px]:h-5 text-[var(--store-primary)] group-hover:scale-105 transition-all shrink-0" />
                 <div className="hidden min-[1600px]:flex flex-col text-left leading-tight">
                   <span className="text-xs font-bold text-[var(--store-text)] whitespace-nowrap">Store Location</span>
                   <span className="text-[10px] text-[var(--store-muted)] whitespace-nowrap">Directions to the Store</span>
@@ -1304,16 +1304,13 @@ const PublicLayout = () => {
                 </Link>
               </div>
 
-              {/* Limited Stock Deals Button */}
+
               <div className="shrink-0 h-full flex items-center relative mr-1 sm:mr-1.5">
-                <Link
-                  to="/low-stock"
-                  onClick={handleHeaderClick}
-                  className="flex items-center gap-1.5 font-bold text-xs sm:text-[13px] px-2.5 h-[29px] rounded shadow-2xs bg-amber-500 hover:bg-amber-400 text-[var(--store-text)] transition-colors whitespace-nowrap"
-                  title="Limited Stock Alert - Max 3 units per order"
-                >
-                  <Flame className="w-3.5 h-3.5 text-red-700 animate-pulse" />
-                  <span>Limited Stock</span>
+                <Link to="/low-stock" onClick={handleHeaderClick}
+                  className="flex items-center gap-1.5 font-bold text-xs sm:text-[13px] px-2.5 h-[29px] rounded shadow-2xs bg-amber-500 hover:bg-amber-400 text-amber-950 transition-colors whitespace-nowrap"
+                  title="Browse low stock products">
+                  <Flame className="w-3.5 h-3.5 text-red-700" />
+                  <span>Low Stock</span>
                 </Link>
               </div>
 
@@ -1574,11 +1571,11 @@ const PublicLayout = () => {
           </div>
           <div className="grid grid-cols-5 gap-1 border-b border-[var(--store-border)] p-2.5">
             {[
-              { to: '/low-stock', label: 'Limited', icon: Flame, highlight: true },
               { to: '/cart', label: 'Cart', icon: ShoppingCart },
               { to: '/wishlist', label: 'Wishlist', icon: Heart },
               { to: '/account/enquiries', label: 'Enquiries', icon: FileText },
               { to: '/brands', label: 'Brands', icon: Store },
+              { to: '/low-stock', label: 'Low Stock', icon: Flame, highlight: true },
             ].map(({ to, label, icon: Icon, highlight }) => (
               <Link
                 key={to}

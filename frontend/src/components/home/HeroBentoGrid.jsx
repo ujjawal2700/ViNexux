@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Pause, Play, ArrowUpRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowUpRight } from 'lucide-react';
 import { bannerFramingStyle, BENTO_IMAGE_LIMIT, BENTO_SECTION_COUNT } from '../../../../shared/bannerGrid';
 
 function BannerTile({ images = [], section }) {
   const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const [interacting, setInteracting] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(document.hidden);
   const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   useEffect(() => {
@@ -17,10 +17,10 @@ function BannerTile({ images = [], section }) {
     return () => { media.removeEventListener('change', change); document.removeEventListener('visibilitychange', visibility); };
   }, []);
   useEffect(() => {
-    if (images.length < 2 || paused || interacting || hidden || reducedMotion) return;
+    if (images.length < 2 || hovered || focused || hidden || reducedMotion) return;
     const timer = setInterval(() => setIndex(i => (i + 1) % images.length), 5000 + section * 700);
     return () => clearInterval(timer);
-  }, [images.length, paused, interacting, hidden, reducedMotion, section]);
+  }, [images.length, hovered, focused, hidden, reducedMotion, section]);
   const current = images[index] || images[0];
   const nav = delta => setIndex(i => (i + delta + images.length) % images.length);
   const art = current ? <>
@@ -30,13 +30,11 @@ function BannerTile({ images = [], section }) {
   const link = current?.link || (!current ? '/products' : '');
   const external = /^https?:\/\//i.test(link);
   const validLink = external || /^\/(?!\/)/.test(link);
-  return <div className={`bento-banner-tile bento-banner-tile-${section + 1}`} role="region" aria-roledescription="carousel" aria-label={`Banner section ${section + 1}`} onMouseEnter={() => setInteracting(true)} onMouseLeave={() => setInteracting(false)} onFocusCapture={() => setInteracting(true)} onBlurCapture={e => { if (!e.currentTarget.contains(e.relatedTarget)) setInteracting(false); }}>
+  return <div className={`bento-banner-tile bento-banner-tile-${section + 1}`} role="region" aria-roledescription="carousel" aria-label={`Banner section ${section + 1}`} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} onFocusCapture={() => setFocused(true)} onBlurCapture={e => { if (!e.currentTarget.contains(e.relatedTarget)) setFocused(false); }}>
     {validLink ? external ? <a href={link} target="_blank" rel="noopener noreferrer" className="bento-banner-content">{art}</a> : <Link to={link} className="bento-banner-content">{art}</Link> : <div className="bento-banner-content">{art}</div>}
     {images.length > 1 && <div className="bento-banner-controls">
       <button type="button" onClick={() => nav(-1)} aria-label={`Previous image in section ${section + 1}`}><ChevronLeft size={16} /></button>
-      <span aria-live="off">{index + 1}/{images.length}</span>
       <button type="button" onClick={() => nav(1)} aria-label={`Next image in section ${section + 1}`}><ChevronRight size={16} /></button>
-      {!reducedMotion && <button type="button" onClick={() => setPaused(v => !v)} aria-label={`${paused ? 'Play' : 'Pause'} section ${section + 1}`}>{paused ? <Play size={13} /> : <Pause size={13} />}</button>}
     </div>}
   </div>;
 }

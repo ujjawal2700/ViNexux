@@ -365,14 +365,14 @@ export const BrandCarousel = () => {
       {/* Brands Track (Clean SQUARE shape cards) */}
       <div
         ref={scrollRef}
-        className="flex items-center gap-2.5 sm:gap-3.5 overflow-x-auto scrollbar-none py-3 sm:py-4 px-2 sm:px-10 min-w-0 max-w-full"
+        className="brand-carousel-track flex items-center overflow-x-auto scrollbar-none py-3 sm:py-4 min-w-0 max-w-full"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {displayBrands.map((brand, index) => (
-          <div key={`${brand._id || brand.slug || brand.name}-${index}`} className="relative group/brand shrink-0">
+          <div key={`${brand._id || brand.slug || brand.name}-${index}`} className="brand-carousel-item relative group/brand shrink-0">
             <Link
               to={buildBrandUrl(brand.name)}
-              className="flex flex-col items-center justify-center w-[clamp(64px,20vw,76px)] h-[clamp(64px,20vw,76px)] sm:w-[98px] sm:h-[98px] md:w-[110px] md:h-[110px] aspect-square p-2 bg-[var(--store-surface)] border border-[var(--store-border)] rounded-lg transition-all duration-200 ease-out hover:border-[var(--store-primary)] hover:shadow-md select-none relative"
+              className="flex flex-col items-center justify-center w-full aspect-square p-3 bg-[var(--store-surface)] border border-[var(--store-border)] rounded-lg transition-all duration-200 ease-out hover:border-[var(--store-primary)] hover:shadow-md select-none relative"
             >
               {/* Brand Logo Display */}
               <div className="flex items-center justify-center w-full h-full p-1 transition-transform duration-200 group-hover/brand:scale-105">

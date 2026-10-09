@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { isInventorySpecification } from '../../../shared/productSpecifications.js';
 import { Category } from '../models/Category.js';
 import { Product } from '../models/Product.js';
 import { DealerProfile } from '../models/DealerProfile.js';
@@ -449,6 +450,7 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
       productUrl: product.productUrl || '',
       variant: product.variant || '',
       warranty: product.warranty || '1 Year ON-SITE / Direct Replacement Warranty',
+      specifications: (product.specifications || []).filter((specification) => !isInventorySpecification(specification.key)),
       availableStock: resolvedStock,
       stockQuantity: resolvedStock,
       stockStatus: resolvedStatus,
@@ -480,6 +482,7 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   for (const spec of result.specs || []) {
     const rawKey = spec._id.key?.trim() || '';
     if (!rawKey) continue;
+    if (isInventorySpecification(rawKey)) continue;
     if (/^(brand|manufacturer|model|model number|sku|warranty|country of origin|hsn|hsn code|stock|inventory|variant|highlight \d+|product url|information phone|dealer price|price|standard price)$/i.test(rawKey)) continue;
 
     const lowerKey = rawKey.toLowerCase();

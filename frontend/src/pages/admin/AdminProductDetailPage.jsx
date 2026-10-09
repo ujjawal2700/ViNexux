@@ -6,6 +6,7 @@ import React, {
   useRef,
 } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { DEFAULT_QUICK_SPEC_KEYS } from "../../../../shared/productSpecifications";
 import adminService from "../../services/adminService";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
@@ -60,21 +61,7 @@ const TABS = [
   },
 ];
 
-const QUICK_SPEC_KEYS = [
-  "Processor",
-  "RAM",
-  "Storage",
-  "Graphics",
-  "Display",
-  "Resolution",
-  "Ports",
-  "Weight",
-  "Operating System",
-  "Battery",
-  "Dimensions",
-  "Warranty",
-  "Connectivity",
-];
+
 
 const AdminProductDetailPage = () => {
   const { id } = useParams();
@@ -139,6 +126,11 @@ const AdminProductDetailPage = () => {
   const [specifications, setSpecifications] = useState([]);
   const [specKey, setSpecKey] = useState("");
   const [specVal, setSpecVal] = useState("");
+  const [quickSpecKeys, setQuickSpecKeys] = useState(DEFAULT_QUICK_SPEC_KEYS);
+  const [newQuickSpecKey, setNewQuickSpecKey] = useState("");
+  const [quickSpecsLoading, setQuickSpecsLoading] = useState(true);
+  const [quickSpecsSaving, setQuickSpecsSaving] = useState(false);
+  const [quickSpecsError, setQuickSpecsError] = useState("");
 
   // Media / Images
   const [imagesList, setImagesList] = useState([]);
@@ -443,6 +435,45 @@ const AdminProductDetailPage = () => {
 
   const handleRemoveSpec = (index) => {
     setSpecifications((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const loadQuickSpecs = useCallback(async () => {
+    setQuickSpecsLoading(true);
+    setQuickSpecsError("");
+    try {
+      const response = await adminService.getWebsiteSettingsAdmin();
+      setQuickSpecKeys(response.data?.settings?.quickSpecKeys ?? DEFAULT_QUICK_SPEC_KEYS);
+    } catch {
+      setQuickSpecsError("Could not load Quick Add shortcuts. Please retry before editing them.");
+    } finally {
+      setQuickSpecsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadQuickSpecs(); }, [loadQuickSpecs]);
+
+  const saveQuickSpecs = async (keys) => {
+    setQuickSpecsSaving(true);
+    try {
+      await adminService.updateWebsiteSettingsAdmin({ quickSpecKeys: keys });
+      setQuickSpecKeys(keys);
+      setNewQuickSpecKey("");
+      setToast({ message: "Quick Add shortcuts saved for all admin devices.", type: "success" });
+    } catch (err) {
+      setToast({ message: err.response?.data?.message || "Could not save Quick Add shortcuts.", type: "error" });
+    } finally {
+      setQuickSpecsSaving(false);
+    }
+  };
+
+  const handleAddQuickSpec = () => {
+    const key = newQuickSpecKey.trim();
+    if (!key) return;
+    if (quickSpecKeys.some((existing) => existing.toLowerCase() === key.toLowerCase())) {
+      setToast({ message: "This Quick Add shortcut already exists.", type: "error" });
+      return;
+    }
+    saveQuickSpecs([...quickSpecKeys, key]);
   };
 
   // Quick preset spec chip clicked
@@ -1657,20 +1688,39 @@ const AdminProductDetailPage = () => {
                   </p>
                 </div>
 
-                {/* Quick Spec Presets */}
-                <div className="flex flex-wrap gap-1.5 items-center bg-gray-50/70 p-2.5 rounded-xl border border-gray-100">
-                  <span className="text-[10px] font-bold text-gray-500 uppercase">
-                    Quick Add:
-                  </span>
-                  {QUICK_SPEC_KEYS.map((k) => (
-                    <button
-                      key={k}
-                      type="button"
-                      onClick={() => handleQuickSpecKey(k)}
-                      className="text-[10px] font-semibold px-2.5 py-1 bg-white hover:bg-[#800020] hover:text-white text-gray-700 rounded-lg border border-gray-200 transition-colors shadow-2xs cursor-pointer">
-                      + {k}
-                    </button>
-                  ))}
+                {/* Shared Quick Add shortcuts; removing one leaves product specifications intact. */}
+                <div className="space-y-3 bg-gray-50/70 p-3 rounded-xl border border-gray-100">
+                  <div className="flex flex-wrap gap-1.5 items-center">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase">Quick Add:</span>
+                    {quickSpecsLoading ? <span className="text-xs text-gray-500" role="status">Loading shortcuts…</span> : quickSpecKeys.map((key) => (
+                      <div key={key} className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white shadow-2xs">
+                        <button type="button" onClick={() => handleQuickSpecKey(key)}
+                          className="text-[10px] font-semibold px-2.5 py-1 hover:bg-[#800020] hover:text-white text-gray-700 transition-colors cursor-pointer">
+                          + {key}
+                        </button>
+                        <button type="button" aria-label={`Delete ${key} shortcut`}
+                          disabled={quickSpecsSaving || Boolean(quickSpecsError)}
+                          onClick={() => saveQuickSpecs(quickSpecKeys.filter((item) => item !== key))}
+                          className="px-1.5 border-l border-gray-200 text-gray-400 hover:bg-rose-50 hover:text-rose-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                    <div className="flex-1">
+                      <Input label="New Quick Add shortcut" value={newQuickSpecKey} maxLength={80}
+                        isDisabled={quickSpecsLoading || quickSpecsSaving || Boolean(quickSpecsError)}
+                        onChange={(event) => setNewQuickSpecKey(event.target.value)}
+                        placeholder="e.g. Refresh Rate"
+                        onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); handleAddQuickSpec(); } }} />
+                    </div>
+                    <Button type="button" variant="outline" onClick={handleAddQuickSpec}
+                      disabled={!newQuickSpecKey.trim() || quickSpecsLoading || quickSpecsSaving || Boolean(quickSpecsError) || quickSpecKeys.length >= 100}
+                      isLoading={quickSpecsSaving}><Plus className="w-3.5 h-3.5 mr-1" />Add Shortcut</Button>
+                  </div>
+                  <p className="text-[11px] text-gray-500">Shortcuts are shared across products. Deleting a shortcut keeps existing product specifications.</p>
+                  {quickSpecsError && <div className="text-xs text-rose-600" role="alert">{quickSpecsError} <button type="button" onClick={loadQuickSpecs} className="underline font-semibold">Retry</button></div>}
                 </div>
 
                 {/* Specification Inputs */}

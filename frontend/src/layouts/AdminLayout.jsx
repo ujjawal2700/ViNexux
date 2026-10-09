@@ -88,7 +88,7 @@ const AdminLayout = () => {
   ];
 
   return (
-    <div className="h-screen overflow-hidden bg-background text-foreground flex flex-col md:flex-row font-sans relative">
+    <div className="admin-panel h-screen overflow-hidden bg-background text-foreground flex flex-col md:flex-row font-sans relative">
       {/* Mobile Backdrop */}
       {mobileOpen && (
         <div
