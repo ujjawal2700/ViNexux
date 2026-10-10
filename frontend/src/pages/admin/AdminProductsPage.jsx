@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import adminService from '../../services/adminService';
+import useToast from '../../hooks/useToast';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import FilterBar from '../../components/admin/FilterBar';
 import Table from '../../components/ui/Table';
@@ -24,6 +25,7 @@ import {
 
 const AdminProductsPage = () => {
   const navigate = useNavigate();
+  const toastApi = useToast();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
@@ -82,6 +84,7 @@ const AdminProductsPage = () => {
 
   const [categoryIdFilter, setCategoryIdFilter] = useState('');
   const [isActiveFilter, setIsActiveFilter] = useState('');
+  const [trendingBusy, setTrendingBusy] = useState({});
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('desc');
 
@@ -129,6 +132,20 @@ const AdminProductsPage = () => {
     fetchProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, categoryIdFilter, isActiveFilter, sortBy, sortOrder, debouncedSearch]);
+
+  const toggleTrending = async (product, isTrending) => {
+    setTrendingBusy(current => ({ ...current, [product._id]: true }));
+    setProducts(current => current.map(item => item._id === product._id ? { ...item, isTrending } : item));
+    try {
+      await adminService.updateProduct(product._id, { isTrending });
+      toastApi.success(isTrending ? 'Product marked as trending.' : 'Product removed from trending.');
+    } catch (err) {
+      setProducts(current => current.map(item => item._id === product._id ? { ...item, isTrending: Boolean(product.isTrending) } : item));
+      toastApi.error(err.response?.data?.message || 'Unable to update trending status.');
+    } finally {
+      setTrendingBusy(current => ({ ...current, [product._id]: false }));
+    }
+  };
 
   const handleSearchSubmit = () => {
     handlePageChange(1);
@@ -273,6 +290,7 @@ const AdminProductsPage = () => {
                 <Table.Head>Category</Table.Head>
                 <Table.Head>Standard Price</Table.Head>
                 <Table.Head>Dealer Price</Table.Head>
+                <Table.Head>Trending</Table.Head>
                 <Table.Head>Status</Table.Head>
                 <Table.Head className="text-right">Actions</Table.Head>
               </Table.Row>
@@ -311,6 +329,9 @@ const AdminProductsPage = () => {
                     </Table.Cell>
                     <Table.Cell className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400">
                       ₹{Number(prod.dealerPrice || 0).toLocaleString('en-IN')}
+                    </Table.Cell>
+                    <Table.Cell onClick={e => e.stopPropagation()}>
+                      <input type="checkbox" aria-label={`Trending: ${prod.name}`} checked={Boolean(prod.isTrending)} disabled={Boolean(trendingBusy[prod._id])} onChange={e => toggleTrending(prod, e.target.checked)} className="h-4 w-4 cursor-pointer accent-primary disabled:opacity-50" />
                     </Table.Cell>
                     <Table.Cell>
                       <StatusBadge status={prod.isActive ? 'active' : 'inactive'} />

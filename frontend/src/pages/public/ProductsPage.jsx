@@ -53,8 +53,9 @@ import {
 
 const SORT_OPTIONS = [
   { value: "default", label: "Default" },
-  { value: "name_asc", label: "Name (A - Z)" },
-  { value: "name_desc", label: "Name (Z - A)" },
+  { value: "newest", label: "Newest First" },
+  { value: "stock_updated", label: "Stock Updated" },
+  { value: "trending", label: "Trending" },
   { value: "price_asc", label: "Price (Low > High)" },
   { value: "price_desc", label: "Price (High > Low)" },
 ];
@@ -209,11 +210,8 @@ export const ProductsPage = ({ lowStockOnly = false }) => {
         } else if (sortOption === "price_desc") {
           sortBy = "standardPrice";
           sortOrder = "desc";
-        } else if (sortOption === "name_asc") {
-          sortBy = "name";
-          sortOrder = "asc";
-        } else if (sortOption === "name_desc") {
-          sortBy = "name";
+        } else if (sortOption === "stock_updated") {
+          sortBy = "stockUpdatedAt";
           sortOrder = "desc";
         } else if (sortOption === "newest") {
           sortBy = "createdAt";
@@ -230,6 +228,8 @@ export const ProductsPage = ({ lowStockOnly = false }) => {
           sortBy,
           sortOrder,
         };
+
+        if (sortOption === "trending") query.isTrending = true;
 
         if (searchTerm.trim()) {
           query.search = searchTerm.trim();

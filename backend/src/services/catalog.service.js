@@ -282,9 +282,11 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   }
   if (query.id) match._id = new mongoose.Types.ObjectId(query.id);
   if (options.ids) match._id = { $in: options.ids.map((id) => new mongoose.Types.ObjectId(id)) };
-  if (query.sortBy === 'stockUpdatedAt') {
+  if (query.stockUpdatedOnly === 'true' || query.stockUpdatedOnly === true) {
     match.stockUpdatedAt = { $ne: null };
   }
+  if (query.isTrending === 'true' || query.isTrending === true) match.isTrending = true;
+  if (query.isTrending === 'false' || query.isTrending === false) match.isTrending = { $ne: true };
   const searchTerm = options.searchWords ? '' : query.search?.trim() || '';
   const searchOr = searchTerm ? buildSearchOr(categories, searchTerm) : null;
   if (searchOr) {
@@ -356,7 +358,7 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   const facetFilters = includeFacets ? filtered : [];
   if (!includeFacets) pipeline.push(...filtered);
   const sortStage = query.sortBy === 'stockUpdatedAt'
-    ? { stockUpdatedAt: query.sortOrder === 'asc' ? 1 : -1, updatedAt: -1, _id: 1 }
+    ? { stockUpdatedAt: query.sortOrder === 'asc' ? 1 : -1, createdAt: -1, _id: 1 }
     : { [sortField]: query.sortOrder === 'asc' ? 1 : -1, _id: 1 };
   const resultFacets = {
     products: [

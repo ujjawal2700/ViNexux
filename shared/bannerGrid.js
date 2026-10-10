@@ -1,3 +1,5 @@
+export const BENTO_TRANSITIONS = ['fade', 'top-to-bottom', 'bottom-to-top', 'left-to-right', 'right-to-left', 'blur', 'pixelate'];
+export const BENTO_TRANSITION_LABELS = ['Fade (current effect)', 'Top to bottom', 'Bottom to top', 'Left to right', 'Right to left', 'Blur', 'Pixelate'];
 export const BENTO_SECTION_COUNT = 4;
 export const BENTO_IMAGE_LIMIT = 3;
 export function bannerFramingStyle(image = {}) {

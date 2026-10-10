@@ -61,6 +61,7 @@ export const createProductSchema = {
       .min(0, { message: 'Dealer price cannot be negative' })
       .default(0)
       .optional(),
+    isTrending: z.boolean().default(false).optional(),
     isFeatured: z.boolean().default(false).optional(),
     isActive: z.boolean().default(true).optional(),
   }),
@@ -111,6 +112,7 @@ export const updateProductSchema = {
       .number({ invalid_type_error: 'Dealer price must be a number' })
       .min(0, { message: 'Dealer price cannot be negative' })
       .optional(),
+    isTrending: z.boolean().optional(),
     isFeatured: z.boolean().optional(),
     isActive: z.boolean().optional(),
   }),
@@ -150,6 +152,8 @@ export const getProductsQuerySchema = {
     category: z.string().optional(),
     categorySlug: z.string().optional(),
     brand: z.string().optional(),
+    isTrending: z.enum(['true', 'false']).optional(),
+    stockUpdatedOnly: z.enum(['true', 'false']).optional(),
     isFeatured: z.string().optional(),
     isActive: z.string().optional(),
     includeFacets: z.enum(['true', 'false']).optional(),

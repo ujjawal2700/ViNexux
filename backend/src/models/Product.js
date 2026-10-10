@@ -89,6 +89,8 @@ const productSchema = new mongoose.Schema(
       default: 0,
       min: [0, 'Stock quantity cannot be negative'],
     },
+    stockUpdatedAt: { type: Date, default: null },
+    isTrending: { type: Boolean, default: false },
     variant: {
       type: String,
       trim: true,
@@ -157,6 +159,8 @@ productSchema.index({ categoryId: 1, isActive: 1 });
 productSchema.index({ categoryIds: 1, isActive: 1 });
 // Admin listing (default sort newest first) and newest-per-category lookups.
 productSchema.index({ isActive: 1, createdAt: -1 });
+productSchema.index({ isActive: 1, stockUpdatedAt: -1 });
+productSchema.index({ isActive: 1, isTrending: 1, createdAt: -1 });
 productSchema.index({ categoryId: 1, createdAt: -1 });
 productSchema.index({ searchTokens: 1 });
 productSchema.index({ brandKey: 1, isActive: 1 });

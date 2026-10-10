@@ -63,7 +63,7 @@ export const HomePage = () => {
     try {
       const [catRes, featured, newest, allRes, gridResponse] = await Promise.all([
         categoryService.getCategoryTree(),
-        productService.getProducts({ sortBy: 'stockUpdatedAt', sortOrder: 'desc', limit: 8, includeFacets: false }),
+        productService.getProducts({ sortBy: 'stockUpdatedAt', stockUpdatedOnly: true, sortOrder: 'desc', limit: 8, includeFacets: false }),
         productService.getProducts({ sortBy: 'createdAt', sortOrder: 'desc', limit: 8, includeFacets: false }),
         productService.getProducts({ page: 1, limit: 16, includeFacets: false }),
         contentService.getBannerGrid().catch(() => ({ data: { grid: null } })),

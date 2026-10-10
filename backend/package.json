@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "node tests/health.test.js",
+    "test:catalog-sorting": "node tests/catalogSorting.test.js",
     "test:catalog-integration": "node tests/catalogIntegration.test.js",
     "test:product-import": "node tests/productImport.test.js",
     "backfill:product-models": "node scripts/backfill_product_models.js",

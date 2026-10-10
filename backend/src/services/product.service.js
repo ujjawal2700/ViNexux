@@ -82,6 +82,7 @@ export const productService = {
     specifications = [],
     standardPrice = 0,
     dealerPrice = 0,
+    isTrending = false,
     isActive = true,
   }) {
     const uppercaseSku = sku.trim().toUpperCase();
@@ -157,7 +158,8 @@ export const productService = {
       specifications: normalizedSpecifications,
       standardPrice,
       dealerPrice,
-isActive,
+      isTrending,
+      isActive,
     });
 
     return product;
@@ -421,6 +423,7 @@ isActive,
     if (updateData.specifications !== undefined) product.specifications = updateData.specifications;
     if (updateData.standardPrice !== undefined) product.standardPrice = updateData.standardPrice;
     if (updateData.dealerPrice !== undefined) product.dealerPrice = updateData.dealerPrice;
+    if (updateData.isTrending !== undefined) product.isTrending = updateData.isTrending;
     if (updateData.isActive !== undefined) product.isActive = updateData.isActive;
     if (updateData.brandId !== undefined) {
       const brand = await Brand.findOne({ _id: updateData.brandId, isActive: true });

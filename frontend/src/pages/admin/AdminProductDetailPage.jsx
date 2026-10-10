@@ -106,6 +106,7 @@ const AdminProductDetailPage = () => {
   const [modelNumber, setModelNumber] = useState("");
   const [model, setModel] = useState("");
   const [stockQuantity, setStockQuantity] = useState("0");
+  const [isTrending, setIsTrending] = useState(false);
   const [variant, setVariant] = useState("");
   const [warranty, setWarranty] = useState("1 Year ON-SITE / Direct Replacement Warranty");
   const [productUrl, setProductUrl] = useState("");
@@ -279,6 +280,7 @@ const AdminProductDetailPage = () => {
       setDealerPrice(
         prod.dealerPrice !== undefined ? String(prod.dealerPrice) : "",
       );
+      setIsTrending(Boolean(prod.isTrending));
       setStatus(prod.isActive ? "published" : "draft");
       setImagesList(prod.images || []);
 
@@ -660,6 +662,7 @@ const AdminProductDetailPage = () => {
         name: name.trim(),
         modelNumber: modelNumber.trim(),
         model: model.trim() || "Standard Model",
+        isTrending,
         stockQuantity: Number(stockQuantity) >= 0 ? Number(stockQuantity) : 0,
         variant: variant.trim(),
         warranty: warranty.trim(),
@@ -1042,6 +1045,11 @@ const AdminProductDetailPage = () => {
                   />
                 </FormField>
               </div>
+
+              <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 text-sm">
+                <input type="checkbox" checked={isTrending} onChange={e => setIsTrending(e.target.checked)} className="h-4 w-4 accent-primary" />
+                <span><span className="font-semibold">Trending product</span><span className="mt-0.5 block text-xs text-muted-foreground">Show this product in the storefront Trending filter.</span></span>
+              </label>
 
               {/* Bottom Nav Bar */}
               <div className="flex justify-end pt-4 border-t border-[#f0e6e8]">

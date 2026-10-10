@@ -3,6 +3,7 @@ import React, { Suspense, useState, useEffect, useRef, useMemo, useCallback } fr
 import RouteFallback from '../components/ui/RouteFallback';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
+import useToast from '../hooks/useToast';
 import contentService from '../services/contentService';
 import cartService from '../services/cartService';
 import guestCartService from '../services/guestCartService';
@@ -34,6 +35,7 @@ import {
   ShoppingCart,
   Trash2,
   Check,
+  Copy,
   X,
   User,
   LogIn,
@@ -86,6 +88,7 @@ const getHeaderCategoryIcon = (name = '', slug = '') => {
 
 const PublicLayout = () => {
   const { theme } = useSeasonalTheme();
+  const toast = useToast();
   const { user, isAuthenticated, adminUser, isAdminAuthenticated, logout, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -167,6 +170,22 @@ const PublicLayout = () => {
   }, [footerData]);
 
   const hasBankDetails = bankAccountList.length > 0;
+  const copyBankDetails = async () => {
+    const fields = [
+      ['Name', 'accountName'], ['A/c Number', 'accountNumber'],
+      ['IFSC', 'ifscCode'], ['Bank', 'bankName'], ['Branch', 'branch'],
+      ['Type', 'accountType'], ['UPI ID', 'upiId'],
+    ];
+    const text = bankAccountList.map(bank => fields
+      .filter(([, key]) => bank[key])
+      .map(([label, key]) => `${label}: ${bank[key]}`).join('\n')).join('\n\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Bank details successfully copied.');
+    } catch {
+      toast.error('Unable to copy. Please select and copy the details.');
+    }
+  };
 
   // Category Mega Menu & Navigation State
   const [allCategories, setAllCategories] = useState([]);
@@ -1112,12 +1131,12 @@ const PublicLayout = () => {
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent('open-promotional-offers'))}
                 title="View Promotional Offers & Deals"
-                className="flex flex-col items-center text-[var(--store-muted)] hover:text-primary transition-colors text-center p-1.5 lg:p-2 rounded-lg hover:bg-[var(--store-background)] group shrink-0 cursor-pointer"
+                className="flex flex-col items-center bg-amber-500 hover:bg-amber-400 text-amber-950 shadow-sm transition-colors text-center p-1.5 lg:p-2 rounded-lg group shrink-0 cursor-pointer"
               >
                 <div className="relative">
                   <BadgePercent className="w-6 h-6 min-[1600px]:w-5 min-[1600px]:h-5 group-hover:scale-110 transition-transform text-primary" />
                 </div>
-                <span className="text-xs min-[1600px]:text-[11px] font-semibold mt-0.5 whitespace-nowrap">Offers</span>
+                <span className="text-xs min-[1600px]:text-[11px] font-bold mt-0.5 whitespace-nowrap">Offers</span>
               </button>
 
               {/* 7. Cart Box */}
@@ -1676,6 +1695,42 @@ const PublicLayout = () => {
 
       {footerData && <footer className="store-footer w-full bg-[#111111] px-5 sm:px-6 pt-9 text-left text-white/90 border-t border-[#2b2b2b]">
         <div className={`store-footer-grid storefront-container grid grid-cols-1 sm:grid-cols-2 ${hasBankDetails && whatsappList.length > 0 ? 'xl:grid-cols-5' : hasBankDetails || whatsappList.length > 0 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-x-8 gap-y-9 pb-9`}>
+          <div className="footer-contact space-y-3 text-[15px]">
+            <div className="mb-4">
+              <h4 className="font-bold text-xl text-white">{footerData.contactHeading || 'Contact Us'}</h4>
+            </div>
+            {footerData.address && (
+              <a className="flex items-start gap-2 hover:text-[var(--store-primary)] hover:underline leading-6" href={activeMapUrl} target="_blank" rel="noopener noreferrer">
+                <MapPin className="w-4 h-4 mt-1 shrink-0 text-[var(--store-primary)]" />
+                <span>{footerData.address}</span>
+              </a>
+            )}
+            {phoneList.map((item, idx) => {
+              const raw = item.number || '';
+              const link = raw.startsWith('+') ? raw : `+91${raw.replace(/\D/g, '').slice(-10)}`;
+              return (
+                <a key={`phone-${idx}`} className="flex items-center gap-2 hover:text-[var(--store-primary)] hover:underline" href={`tel:${link}`}>
+                  <Phone className="w-4 h-4 shrink-0 text-[var(--store-primary)]" />
+                  <span>
+                    {raw}
+                    {item.label && <span className="text-xs text-white/65 ml-1.5 font-normal">({item.label})</span>}
+                  </span>
+                </a>
+              );
+            })}
+            {emailList.map((item, idx) => {
+              const raw = item.email || '';
+              return (
+                <a key={`email-${idx}`} className="flex items-center gap-2 hover:text-[var(--store-primary)] hover:underline" href={`mailto:${raw}`}>
+                  <Mail className="w-4 h-4 shrink-0 text-[var(--store-primary)]" />
+                  <span className="break-all">
+                    {raw}
+                    {item.label && <span className="text-xs text-white/65 ml-1.5 font-normal">({item.label})</span>}
+                  </span>
+                </a>
+              );
+            })}
+          </div>
           <div className="footer-about">
             <div className="mb-4">
               <h4 className="font-bold text-xl text-white">{footerData.aboutHeading || 'About'}</h4>
@@ -1694,7 +1749,7 @@ const PublicLayout = () => {
                       href={link.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-xs font-medium hover:text-amber-300 hover:underline"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium hover:text-[var(--store-primary)] hover:underline"
                       title={link.label}
                     >
                       {link.iconUrl && (
@@ -1723,12 +1778,12 @@ const PublicLayout = () => {
                 .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
               const allLinks = [
                 ...filteredLinks.map((link, index) => (
-                  <a key={`${link.label}-${index}`} className="block hover:text-amber-300 hover:underline mb-1.5" href={link.url}>{link.label}</a>
+                  <a key={`${link.label}-${index}`} className="block hover:text-[var(--store-primary)] hover:underline mb-1.5" href={link.url}>{link.label}</a>
                 )),
-                <Link key="shipping" className="block hover:text-amber-300 hover:underline mb-1.5" to="/shipping-policy">Shipping Policy</Link>,
-                <Link key="privacy" className="block hover:text-amber-300 hover:underline mb-1.5" to="/privacy">Privacy Policy</Link>,
-                <Link key="terms" className="block hover:text-amber-300 hover:underline mb-1.5" to="/terms">Terms &amp; Conditions</Link>,
-                <button key="storage" type="button" onClick={openStorageChoices} className="block text-left hover:text-amber-300 hover:underline mb-1.5">Storage choices</button>,
+                <Link key="shipping" className="block hover:text-[var(--store-primary)] hover:underline mb-1.5" to="/shipping-policy">Shipping Policy</Link>,
+                <Link key="privacy" className="block hover:text-[var(--store-primary)] hover:underline mb-1.5" to="/privacy">Privacy Policy</Link>,
+                <Link key="terms" className="block hover:text-[var(--store-primary)] hover:underline mb-1.5" to="/terms">Terms &amp; Conditions</Link>,
+                <button key="storage" type="button" onClick={openStorageChoices} className="block text-left hover:text-[var(--store-primary)] hover:underline mb-1.5">Storage choices</button>,
               ];
               const MAX_PER_COL = 7;
               const col1 = allLinks.slice(0, MAX_PER_COL);
@@ -1741,49 +1796,17 @@ const PublicLayout = () => {
               );
             })()}
           </div>
-          <div className="footer-contact space-y-3 text-[15px]">
-            <div className="mb-4">
-              <h4 className="font-bold text-xl text-white">{footerData.contactHeading || 'Contact Details'}</h4>
-            </div>
-            {footerData.address && (
-              <a className="flex items-start gap-2 hover:text-amber-300 hover:underline leading-6" href={activeMapUrl} target="_blank" rel="noopener noreferrer">
-                <MapPin className="w-4 h-4 mt-1 shrink-0 text-amber-300" />
-                <span>{footerData.address}</span>
-              </a>
-            )}
-            {phoneList.map((item, idx) => {
-              const raw = item.number || '';
-              const link = raw.startsWith('+') ? raw : `+91${raw.replace(/\D/g, '').slice(-10)}`;
-              return (
-                <a key={`phone-${idx}`} className="flex items-center gap-2 hover:text-amber-300 hover:underline" href={`tel:${link}`}>
-                  <Phone className="w-4 h-4 shrink-0 text-amber-300" />
-                  <span>
-                    {raw}
-                    {item.label && <span className="text-xs text-white/65 ml-1.5 font-normal">({item.label})</span>}
-                  </span>
-                </a>
-              );
-            })}
-            {emailList.map((item, idx) => {
-              const raw = item.email || '';
-              return (
-                <a key={`email-${idx}`} className="flex items-center gap-2 hover:text-amber-300 hover:underline" href={`mailto:${raw}`}>
-                  <Mail className="w-4 h-4 shrink-0 text-amber-300" />
-                  <span className="break-all">
-                    {raw}
-                    {item.label && <span className="text-xs text-white/65 ml-1.5 font-normal">({item.label})</span>}
-                  </span>
-                </a>
-              );
-            })}
-          </div>
+
 
           {hasBankDetails && (
             <div className="footer-bank text-[15px]">
-              <div className="mb-4">
+              <div className="mb-4 flex items-center gap-2">
                 <h4 className="font-bold text-xl text-white">
                   {footerData.bankDetailsHeading || 'Bank Details'}
                 </h4>
+                <button type="button" onClick={copyBankDetails} aria-label="Copy all bank details" title="Copy all bank details" className="inline-flex shrink-0 items-center justify-center rounded p-2 hover:text-[var(--store-primary)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current">
+                  <Copy className="h-4 w-4" />
+                </button>
               </div>
               <div className="space-y-5">
                 {bankAccountList.map((bank, index) => (
@@ -1807,7 +1830,7 @@ const PublicLayout = () => {
                           href={bank.qrCodeUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-md border border-white/30 bg-[var(--store-surface)] p-2 shadow-xs transition hover:border-amber-300"
+                          className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-md border border-white/30 bg-[var(--store-surface)] p-2 shadow-xs transition hover:border-[var(--store-primary)]"
                           title="Click to view QR code"
                         >
                           <img
@@ -1838,7 +1861,7 @@ const PublicLayout = () => {
                   return (
                     <a
                       key={`wa-${idx}`}
-                      className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 hover:text-amber-300 hover:underline"
+                      className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 hover:text-[var(--store-primary)] hover:underline"
                       href={`https://wa.me/${waLink}`}
                       target="_blank"
                       rel="noopener noreferrer"

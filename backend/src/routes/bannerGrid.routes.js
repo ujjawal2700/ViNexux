@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { BENTO_TRANSITIONS } from '../../../shared/bannerGrid.js';
 import { z } from 'zod';
 import BannerGrid from '../models/BannerGrid.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -19,7 +20,11 @@ export const gridImageInput = z.object({
   zoom: z.coerce.number().min(1).max(3).default(1),
   revision: z.coerce.number().int().min(0),
 });
-const emptySections = () => Array.from({ length: 4 }, () => ({ images: [] }));
+export const gridSectionInput = z.object({
+  transition: z.enum(BENTO_TRANSITIONS),
+  revision: z.coerce.number().int().min(0),
+});
+const emptySections = () => Array.from({ length: 4 }, () => ({ images: [], transition: 'fade' }));
 const input = body => {
   const result = gridImageInput.safeParse(body);
   if (!result.success) throw new AppError(result.error.issues.map(i => i.message).join('; '), 400, ERROR_CODES.VALIDATION_ERROR);
@@ -43,6 +48,18 @@ const router = Router(); // Mounted behind the admin authentication/authorizatio
 router.get('/', asyncHandler(async (req, res) => {
   const grid = await BannerGrid.findOne({ singletonKey: 'primary' }).lean();
   return ApiResponse.success(res, 'Banner grid', { grid: grid || { sections: emptySections(), revision: 0, configured: false } });
+}));
+router.put('/:section', asyncHandler(async (req, res) => {
+  const section = sectionIndex(req);
+  const parsed = gridSectionInput.safeParse(req.body);
+  if (!parsed.success) throw new AppError('Choose a valid transition and revision', 400, ERROR_CODES.VALIDATION_ERROR);
+  await BannerGrid.updateOne({ singletonKey: 'primary' }, { $setOnInsert: { singletonKey: 'primary', sections: emptySections(), revision: 0, configured: false } }, { upsert: true });
+  const grid = checked(await BannerGrid.findOneAndUpdate(
+    { singletonKey: 'primary', revision: parsed.data.revision },
+    { $set: { [`sections.${section}.transition`]: parsed.data.transition }, $inc: { revision: 1 } },
+    { new: true, runValidators: true }
+  ));
+  return ApiResponse.success(res, 'Section transition updated', { grid });
 }));
 const uploadImage = asyncHandler(async (req, res) => {
   const section = sectionIndex(req), data = input(req.body);

@@ -18,7 +18,8 @@ test('admin uploads three images per section, edits and replaces; independent be
     const request = route.request(), parts = new URL(request.url()).pathname.split('/');
     if (request.method() !== 'GET') {
       const section = Number(parts[5]), images = grid.sections[section].images, id = parts[7];
-      if (request.method() === 'POST') {
+      if (request.method() === 'PUT' && !id) grid.sections[section].transition = request.postDataJSON().transition;
+      else if (request.method() === 'POST') {
         if (id) images.find(i => i._id === id).url = `/bento-test/${section}-9.svg`;
         else images.push({ _id: String(++counter).padStart(24, '0'), url: `/bento-test/${section}-${images.length}.svg`, title: '', link: '', fit: 'cover' });
         grid.configured = true;
@@ -66,7 +67,15 @@ test('admin uploads three images per section, edits and replaces; independent be
   await expect(page.getByRole('dialog').getByLabel('Zoom', { exact: true })).toHaveValue('1');
   await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
   expect(grid.sections[0].images[0].zoom).toBe(3);
+  await firstPanel.getByLabel('Transition effect for section 1').selectOption('left-to-right');
+  await expect(firstPanel.getByLabel('Transition effect for section 1')).toHaveValue('left-to-right');
+  const secondPanel = page.getByRole('group', { name: 'Manage banner section 2', exact: true });
+  await secondPanel.getByLabel('Transition effect for section 2').selectOption('blur');
+  await expect(secondPanel.getByLabel('Transition effect for section 2')).toHaveValue('blur');
   await page.goto('/'); await page.mouse.move(0, 0);
+  await expect(page.locator('.bento-banner-tile-1 .bento-banner-slide.is-current')).toHaveClass(/effect-left-to-right/);
+  await expect(page.locator('.bento-banner-tile-2 .bento-banner-slide.is-current')).toHaveClass(/effect-blur/);
+
   const hero = page.getByRole('region', { name: 'Featured collections', exact: true });
   await expect(hero.locator('.bento-banner-tile')).toHaveCount(4);
   await expect(hero.locator('.bento-banner-tile-1 .is-active')).toHaveAttribute('src', '/bento-test/0-9.svg');
