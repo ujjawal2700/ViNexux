@@ -32,6 +32,11 @@ import {
   ChevronRight,
   UploadCloud,
   Check,
+  Star,
+  GripVertical,
+  AlertCircle,
+  Loader2,
+  ChevronLeft,
 } from "lucide-react";
 
 const TABS = [
@@ -140,8 +145,11 @@ const AdminProductDetailPage = () => {
   const [imageDeleteTarget, setImageDeleteTarget] = useState(null);
   const [imageDeleteLoading, setImageDeleteLoading] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
 
   // Submission & Feedback
+  const [fieldErrors, setFieldErrors] = useState({});
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
   const [toast, setToast] = useState(null);
@@ -520,9 +528,183 @@ const AdminProductDetailPage = () => {
     });
   };
 
+  // Clear specific field error on user edit
+  const clearFieldError = (key) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  // Scroll smoothly to invalid element, focus it, and trigger shake animation
+  const scrollToAndHighlightField = (fieldKey, tabId, errorMessage) => {
+    if (errorMessage) {
+      setFieldErrors((prev) => ({ ...prev, [fieldKey]: errorMessage }));
+      setFormError(errorMessage);
+    }
+    if (tabId) {
+      setActiveTab(tabId);
+    }
+
+    setTimeout(() => {
+      const el =
+        document.getElementById(`field-${fieldKey}`) ||
+        document.querySelector(`[data-field="${fieldKey}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("error-shake-pulse");
+        setTimeout(() => {
+          el.classList.remove("error-shake-pulse");
+        }, 1200);
+
+        const focusable =
+          el.querySelector("input, select, textarea, button") || el;
+        if (focusable && typeof focusable.focus === "function") {
+          focusable.focus();
+        }
+      }
+    }, 120);
+  };
+
+  const hasTabError = (tabId) => {
+    if (tabId === "general") {
+      return Boolean(
+        fieldErrors.name ||
+        fieldErrors.brandId ||
+        fieldErrors.sku ||
+        fieldErrors.modelNumber ||
+        fieldErrors.stockQuantity ||
+        fieldErrors.productUrl
+      );
+    }
+    if (tabId === "variants") {
+      return Boolean(
+        fieldErrors.standardPrice ||
+        fieldErrors.dealerPrice ||
+        fieldErrors.images
+      );
+    }
+    if (tabId === "groups") {
+      return Boolean(fieldErrors.headerCategory);
+    }
+    if (tabId === "specifications") {
+      return Object.keys(fieldErrors).some((k) => k.startsWith("spec-"));
+    }
+    return false;
+  };
+
+  // Drag and drop reordering handlers
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(index));
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e, targetIndex) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+    if (draggedIndex === null || draggedIndex === targetIndex) return;
+
+    if (isCreateMode) {
+      setStagedImages((prev) => {
+        const next = [...prev];
+        const [moved] = next.splice(draggedIndex, 1);
+        next.splice(targetIndex, 0, moved);
+        return next;
+      });
+    } else {
+      setImagesList((prev) => {
+        const next = [...prev];
+        const [moved] = next.splice(draggedIndex, 1);
+        next.splice(targetIndex, 0, moved);
+        return next.map((item, idx) => ({ ...item, sortOrder: idx }));
+      });
+    }
+    setDraggedIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleSetPrimaryImage = (index) => {
+    if (index === 0) return;
+    if (isCreateMode) {
+      setStagedImages((prev) => {
+        const next = [...prev];
+        const [moved] = next.splice(index, 1);
+        next.unshift(moved);
+        return next;
+      });
+    } else {
+      setImagesList((prev) => {
+        const next = [...prev];
+        const [moved] = next.splice(index, 1);
+        next.unshift(moved);
+        return next.map((item, idx) => ({ ...item, sortOrder: idx }));
+      });
+    }
+    setToast({ message: "Primary image updated!", type: "success" });
+  };
+
+  const handleMoveImage = (fromIndex, toIndex) => {
+    if (toIndex < 0) return;
+    if (isCreateMode) {
+      setStagedImages((prev) => {
+        if (toIndex >= prev.length) return prev;
+        const next = [...prev];
+        const [moved] = next.splice(fromIndex, 1);
+        next.splice(toIndex, 0, moved);
+        return next;
+      });
+    } else {
+      setImagesList((prev) => {
+        if (toIndex >= prev.length) return prev;
+        const next = [...prev];
+        const [moved] = next.splice(fromIndex, 1);
+        next.splice(toIndex, 0, moved);
+        return next.map((item, idx) => ({ ...item, sortOrder: idx }));
+      });
+    }
+  };
+
   // Direct upload for edit mode
   const handleEditModeUpload = async (file) => {
     if (!file || !id) return;
+    if (
+      !["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(
+        file.type,
+      )
+    ) {
+      setToast({
+        message: "Only JPEG, PNG and WebP product images are allowed.",
+        type: "error",
+      });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setToast({
+        message: "Product image size must be under 5MB.",
+        type: "error",
+      });
+      return;
+    }
+    clearFieldError("images");
     setImageUploading(true);
     try {
       const res = await adminService.uploadProductImage(
@@ -530,14 +712,27 @@ const AdminProductDetailPage = () => {
         file,
         name.trim() || "Product image",
       );
-      setImagesList(res.data?.images || []);
+      const updatedImages = res.data?.images || [];
+      if (updatedImages.length > 0) {
+        const newest = updatedImages[updatedImages.length - 1];
+        setImagesList((prev) => {
+          const exists = prev.some((p) => p.publicId && p.publicId === newest.publicId);
+          if (exists) return updatedImages;
+          return [...prev, newest].map((img, idx) => ({ ...img, sortOrder: idx }));
+        });
+      } else {
+        setImagesList(updatedImages);
+      }
       setToast({ message: "Image uploaded successfully!", type: "success" });
     } catch (err) {
       console.error("Failed to upload image:", err);
+      const errMsg =
+        err.response?.data?.message || "Failed to upload image. Please try again.";
       setToast({
-        message: err.response?.data?.message || "Failed to upload image",
+        message: errMsg,
         type: "error",
       });
+      setFormError(errMsg);
     } finally {
       setImageUploading(false);
     }
@@ -573,71 +768,134 @@ const AdminProductDetailPage = () => {
   // --- SAVE & PUBLISH HANDLER ---
   const handleSaveAndPublish = async () => {
     setFormError("");
+    setFieldErrors({});
 
     // 1. Validate General Info
     if (!name.trim()) {
-      setFormError("Product Title is required.");
-      setActiveTab("general");
+      scrollToAndHighlightField("name", "general", "Product Title is required.");
       return;
     }
+    if (name.trim().length < 2) {
+      scrollToAndHighlightField("name", "general", "Product Title must be at least 2 characters.");
+      return;
+    }
+    if (name.trim().length > 150) {
+      scrollToAndHighlightField("name", "general", "Product Title cannot exceed 150 characters.");
+      return;
+    }
+
+    if (!selectedBrandId) {
+      scrollToAndHighlightField("brandId", "general", "Please select a Brand for this product.");
+      return;
+    }
+
     if (!sku.trim()) {
-      setFormError("Product SKU code is required.");
-      setActiveTab("general");
+      scrollToAndHighlightField("sku", "general", "Product SKU code is required.");
       return;
     }
+    if (sku.trim().length < 2) {
+      scrollToAndHighlightField("sku", "general", "SKU must be at least 2 characters.");
+      return;
+    }
+    if (sku.trim().length > 50) {
+      scrollToAndHighlightField("sku", "general", "SKU cannot exceed 50 characters.");
+      return;
+    }
+
     if (!modelNumber.trim()) {
-      setFormError("Model Number is required.");
-      setActiveTab("general");
+      scrollToAndHighlightField("modelNumber", "general", "Model Number is required.");
       return;
     }
-    if (stockQuantity === "" || isNaN(Number(stockQuantity)) || Number(stockQuantity) < 0) {
-      setFormError("Stock Quantity is required and must be a non-negative number.");
-      setActiveTab("general");
+    if (modelNumber.trim().length > 100) {
+      scrollToAndHighlightField("modelNumber", "general", "Model Number cannot exceed 100 characters.");
       return;
     }
 
-    // 2. Validate Category Hierarchy
+    if (
+      stockQuantity === "" ||
+      isNaN(Number(stockQuantity)) ||
+      Number(stockQuantity) < 0
+    ) {
+      scrollToAndHighlightField(
+        "stockQuantity",
+        "general",
+        "Stock Quantity is required and must be 0 or greater."
+      );
+      return;
+    }
+
+    if (productUrl.trim()) {
+      let cleanUrl = productUrl.trim();
+      if (!/^https?:\/\//i.test(cleanUrl)) {
+        if (/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(cleanUrl)) {
+          cleanUrl = `https://${cleanUrl}`;
+          setProductUrl(cleanUrl);
+        } else {
+          scrollToAndHighlightField(
+            "productUrl",
+            "general",
+            "Product URL must start with http:// or https://"
+          );
+          return;
+        }
+      }
+    }
+
+    // 2. Validate Pricing & Media
+    const sPrice = Number(standardPrice);
+    if (standardPrice === "" || isNaN(sPrice) || sPrice < 0) {
+      scrollToAndHighlightField(
+        "standardPrice",
+        "variants",
+        "Please enter a valid Standard Retail Price (₹ 0 or greater)."
+      );
+      return;
+    }
+
+    const dPrice = Number(dealerPrice);
+    if (dealerPrice === "" || isNaN(dPrice) || dPrice < 0) {
+      scrollToAndHighlightField(
+        "dealerPrice",
+        "variants",
+        "Please enter a valid Wholesale Dealer Price (₹ 0 or greater)."
+      );
+      return;
+    }
+
+    const totalImagesCount = isCreateMode
+      ? imagesList.length + stagedImages.length
+      : imagesList.length;
+    if (totalImagesCount === 0) {
+      scrollToAndHighlightField(
+        "images",
+        "variants",
+        "Please upload at least one product image."
+      );
+      return;
+    }
+
+    // 3. Validate Category Hierarchy
     if (isCreateMode && !selectedHeaderId) {
-      setFormError("Please select a Header Category in the Groups card.");
-      setActiveTab("groups");
+      scrollToAndHighlightField(
+        "headerCategory",
+        "groups",
+        "Please select a Header Category in the Groups card."
+      );
       return;
     }
 
+    // 4. Validate Category Required Specifications
     const missingFilter = categoryFilterDefinitions.find(
       (definition) =>
         definition.isRequired &&
         getCategorySpecValues(definition.key).length === 0,
     );
     if (missingFilter) {
-      setFormError(
-        `Please enter ${missingFilter.label || missingFilter.key} in the Specifications card.`,
+      scrollToAndHighlightField(
+        `spec-${missingFilter.key}`,
+        "specifications",
+        `Please enter ${missingFilter.label || missingFilter.key} (Required for this category).`
       );
-      setActiveTab("specifications");
-      return;
-    }
-
-    // 3. Validate Pricing
-    const sPrice = Number(standardPrice);
-    const dPrice = Number(dealerPrice);
-    if (isNaN(sPrice) || sPrice < 0) {
-      setFormError(
-        "Please enter a valid Standard Retail Price in Pricing & Media.",
-      );
-      setActiveTab("variants");
-      return;
-    }
-    if (isNaN(dPrice) || dPrice < 0) {
-      setFormError(
-        "Please enter a valid Dealer Sale Price in Pricing & Media.",
-      );
-      setActiveTab("variants");
-      return;
-    }
-    if (isCreateMode && imagesList.length + stagedImages.length === 0) {
-      setFormError(
-        "Please upload at least one product image in Pricing & Media.",
-      );
-      setActiveTab("variants");
       return;
     }
 
@@ -656,7 +914,11 @@ const AdminProductDetailPage = () => {
         ...selectedMainIds,
         ...selectedSubIds,
       ].filter(Boolean);
-      const primaryCategoryId = selectedSubIds[0] || selectedMainIds[0] || selectedHeaderId || undefined;
+      const primaryCategoryId =
+        selectedSubIds[0] ||
+        selectedMainIds[0] ||
+        selectedHeaderId ||
+        undefined;
 
       const payload = {
         name: name.trim(),
@@ -688,7 +950,7 @@ const AdminProductDetailPage = () => {
         const res = await adminService.createProduct(payload);
         const newId = res.data?._id;
 
-        // Upload any staged files
+        // Upload any staged files in order
         if (newId && stagedImages.length > 0) {
           for (const staged of stagedImages) {
             await adminService.uploadProductImage(
@@ -721,12 +983,102 @@ const AdminProductDetailPage = () => {
       }
     } catch (err) {
       console.error("Failed to save product:", err);
+      const data = err.response?.data;
       const errMsg =
-        err.response?.data?.message ||
-        err.response?.data?.errors?.[0]?.message ||
+        data?.message ||
+        data?.errors?.[0]?.message ||
+        data?.details?.[0]?.message ||
         "Failed to save product. Please verify all fields and try again.";
       setFormError(errMsg);
       setToast({ message: errMsg, type: "error" });
+
+      // Automatically map server error to the exact field and scroll to it
+      const details = data?.details || data?.error?.details || [];
+      let mapped = false;
+
+      for (const item of details) {
+        const path = String(item.path || "").toLowerCase();
+        if (path.includes("sku")) {
+          scrollToAndHighlightField("sku", "general", item.message);
+          mapped = true;
+          break;
+        }
+        if (path.includes("modelnumber")) {
+          scrollToAndHighlightField("modelNumber", "general", item.message);
+          mapped = true;
+          break;
+        }
+        if (path.includes("brandid") || path.includes("brand")) {
+          scrollToAndHighlightField("brandId", "general", item.message);
+          mapped = true;
+          break;
+        }
+        if (path.includes("name")) {
+          scrollToAndHighlightField("name", "general", item.message);
+          mapped = true;
+          break;
+        }
+        if (path.includes("stock")) {
+          scrollToAndHighlightField("stockQuantity", "general", item.message);
+          mapped = true;
+          break;
+        }
+        if (path.includes("url")) {
+          scrollToAndHighlightField("productUrl", "general", item.message);
+          mapped = true;
+          break;
+        }
+        if (path.includes("standardprice")) {
+          scrollToAndHighlightField("standardPrice", "variants", item.message);
+          mapped = true;
+          break;
+        }
+        if (path.includes("dealerprice")) {
+          scrollToAndHighlightField("dealerPrice", "variants", item.message);
+          mapped = true;
+          break;
+        }
+        if (path.includes("image")) {
+          scrollToAndHighlightField("images", "variants", item.message);
+          mapped = true;
+          break;
+        }
+        if (path.includes("category")) {
+          scrollToAndHighlightField("headerCategory", "groups", item.message);
+          mapped = true;
+          break;
+        }
+      }
+
+      if (!mapped) {
+        const msgLower = errMsg.toLowerCase();
+        if (msgLower.includes("sku")) {
+          scrollToAndHighlightField("sku", "general", errMsg);
+        } else if (
+          msgLower.includes("model number") ||
+          msgLower.includes("modelnumber")
+        ) {
+          scrollToAndHighlightField("modelNumber", "general", errMsg);
+        } else if (msgLower.includes("brand")) {
+          scrollToAndHighlightField("brandId", "general", errMsg);
+        } else if (
+          msgLower.includes("title") ||
+          msgLower.includes("product name")
+        ) {
+          scrollToAndHighlightField("name", "general", errMsg);
+        } else if (msgLower.includes("price")) {
+          scrollToAndHighlightField("standardPrice", "variants", errMsg);
+        } else if (msgLower.includes("image")) {
+          scrollToAndHighlightField("images", "variants", errMsg);
+        } else if (msgLower.includes("category")) {
+          scrollToAndHighlightField("headerCategory", "groups", errMsg);
+        } else if (
+          msgLower.includes("specification") ||
+          msgLower.includes("required for this category")
+        ) {
+          setActiveTab("specifications");
+        }
+      }
     } finally {
       setFormSubmitting(false);
     }
@@ -840,6 +1192,7 @@ const AdminProductDetailPage = () => {
           <div className="bg-white border border-[#f0e6e8] rounded-2xl p-2.5 shadow-xs space-y-1.5">
             {TABS.map((tab) => {
               const isActive = activeTab === tab.id;
+              const hasError = hasTabError(tab.id);
               const Icon = tab.icon;
               return (
                 <button
@@ -849,18 +1202,29 @@ const AdminProductDetailPage = () => {
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all text-xs font-bold ${
                     isActive
                       ? "bg-[#fdf2f4] text-[#800020] border border-[#f5d6dc] shadow-xs"
+                      : hasError
+                      ? "bg-rose-50 text-rose-800 border border-rose-300"
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 border border-transparent"
                   }`}>
                   <div
                     className={`p-1.5 rounded-lg shrink-0 ${
                       isActive
                         ? "bg-[#800020] text-white"
+                        : hasError
+                        ? "bg-rose-600 text-white"
                         : "bg-gray-100 text-gray-500"
                     }`}>
                     <Icon className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="truncate text-xs">{tab.label}</div>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="truncate text-xs">{tab.label}</span>
+                      {hasError && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-600 text-white animate-pulse">
+                          Error
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[10px] text-gray-400 font-normal truncate">
                       {tab.subtitle}
                     </div>
@@ -912,23 +1276,30 @@ const AdminProductDetailPage = () => {
               </div>
 
               {/* Product Title */}
-              <FormField
-                label="PRODUCT TITLE"
-                required
-                hint="Full official name of the product">
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. ASUS ROG Strix G16 Gaming Laptop, Dahua 4K IP Bullet Camera..."
+              <div id="field-name" data-field="name" className="rounded-xl transition-all">
+                <FormField
+                  label="PRODUCT TITLE"
                   required
-                  className="text-sm font-medium"
-                />
-              </FormField>
+                  error={fieldErrors.name}
+                  helperText="Full official name of the product">
+                  <Input
+                    value={name}
+                    error={Boolean(fieldErrors.name)}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      clearFieldError("name");
+                    }}
+                    placeholder="e.g. ASUS ROG Strix G16 Gaming Laptop, Dahua 4K IP Bullet Camera..."
+                    required
+                    className="text-sm font-medium"
+                  />
+                </FormField>
+              </div>
 
               {/* Description */}
               <FormField
                 label="KEY FEATURES"
-                hint="Provide key features, tech overview, capabilities and highlights">
+                helperText="Provide key features, tech overview, capabilities and highlights">
                 <Textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -940,14 +1311,19 @@ const AdminProductDetailPage = () => {
 
               {/* Brand & SKU Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                <div id="field-brandId" data-field="brandId" className="rounded-xl transition-all">
                   <FormField
                     label="BRAND"
                     required
-                    hint="Managed in Admin → Brand Management">
+                    error={fieldErrors.brandId}
+                    helperText="Managed in Admin → Brand Management">
                     <Select
                       value={selectedBrandId}
-                      onChange={(e) => setSelectedBrandId(e.target.value)}
+                      error={Boolean(fieldErrors.brandId)}
+                      onChange={(e) => {
+                        setSelectedBrandId(e.target.value);
+                        clearFieldError("brandId");
+                      }}
                       placeholder="Select a brand"
                       options={brandsList.map((brand) => ({
                         value: brand._id,
@@ -958,15 +1334,20 @@ const AdminProductDetailPage = () => {
                   </FormField>
                 </div>
 
-                <div>
+                <div id="field-sku" data-field="sku" className="rounded-xl transition-all">
                   <FormField
                     label="PRODUCT CODE (SKU)"
                     required
-                    hint="Unique inventory code">
+                    error={fieldErrors.sku}
+                    helperText="Unique inventory code">
                     <div className="flex gap-2">
                       <Input
                         value={sku}
-                        onChange={(e) => setSku(e.target.value.toUpperCase())}
+                        error={Boolean(fieldErrors.sku)}
+                        onChange={(e) => {
+                          setSku(e.target.value.toUpperCase());
+                          clearFieldError("sku");
+                        }}
                         placeholder="e.g. ROG-G16-RXG20"
                         required
                         className="font-mono uppercase font-bold"
@@ -986,19 +1367,26 @@ const AdminProductDetailPage = () => {
 
               {/* Hardware Spec Attributes Grid (Only DB fields) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-2 border-t border-gray-100">
-                <FormField
-                  label="MODEL NUMBER"
-                  required
-                  hint="Unique model identifier">
-                  <Input
-                    value={modelNumber}
-                    onChange={(e) => setModelNumber(e.target.value)}
-                    placeholder="e.g. VNX-G614JU-N3193WS"
+                <div id="field-modelNumber" data-field="modelNumber" className="rounded-xl transition-all">
+                  <FormField
+                    label="MODEL NUMBER"
                     required
-                  />
-                </FormField>
+                    error={fieldErrors.modelNumber}
+                    helperText="Unique model identifier">
+                    <Input
+                      value={modelNumber}
+                      error={Boolean(fieldErrors.modelNumber)}
+                      onChange={(e) => {
+                        setModelNumber(e.target.value);
+                        clearFieldError("modelNumber");
+                      }}
+                      placeholder="e.g. VNX-G614JU-N3193WS"
+                      required
+                    />
+                  </FormField>
+                </div>
 
-                <FormField label="MODEL (OPTIONAL)" hint="Specific model line">
+                <FormField label="MODEL (OPTIONAL)" helperText="Specific model line">
                   <Input
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
@@ -1006,21 +1394,28 @@ const AdminProductDetailPage = () => {
                   />
                 </FormField>
 
-                <FormField
-                  label="STOCK QUANTITY"
-                  required
-                  hint="Current available units (Required)">
-                  <Input
-                    type="number"
-                    min="0"
-                    value={stockQuantity}
-                    onChange={(e) => setStockQuantity(e.target.value)}
-                    placeholder="e.g. 25"
+                <div id="field-stockQuantity" data-field="stockQuantity" className="rounded-xl transition-all">
+                  <FormField
+                    label="STOCK QUANTITY"
                     required
-                  />
-                </FormField>
+                    error={fieldErrors.stockQuantity}
+                    helperText="Current available units (Required)">
+                    <Input
+                      type="number"
+                      min="0"
+                      value={stockQuantity}
+                      error={Boolean(fieldErrors.stockQuantity)}
+                      onChange={(e) => {
+                        setStockQuantity(e.target.value);
+                        clearFieldError("stockQuantity");
+                      }}
+                      placeholder="e.g. 25"
+                      required
+                    />
+                  </FormField>
+                </div>
 
-                <FormField label="VARIANT (OPTIONAL)" hint="e.g. 16GB RAM | 512GB SSD">
+                <FormField label="VARIANT (OPTIONAL)" helperText="e.g. 16GB RAM | 512GB SSD">
                   <Input
                     value={variant}
                     onChange={(e) => setVariant(e.target.value)}
@@ -1028,7 +1423,7 @@ const AdminProductDetailPage = () => {
                   />
                 </FormField>
 
-                <FormField label="WARRANTY (OPTIONAL)" hint="Warranty terms & conditions">
+                <FormField label="WARRANTY (OPTIONAL)" helperText="Warranty terms & conditions">
                   <Input
                     value={warranty}
                     onChange={(e) => setWarranty(e.target.value)}
@@ -1036,14 +1431,23 @@ const AdminProductDetailPage = () => {
                   />
                 </FormField>
 
-                <FormField label="PRODUCT URL (OPTIONAL)" hint="Brand official page">
-                  <Input
-                    type="url"
-                    value={productUrl}
-                    onChange={(e) => setProductUrl(e.target.value)}
-                    placeholder="https://brand.com/products/model"
-                  />
-                </FormField>
+                <div id="field-productUrl" data-field="productUrl" className="rounded-xl transition-all">
+                  <FormField
+                    label="PRODUCT URL (OPTIONAL)"
+                    error={fieldErrors.productUrl}
+                    helperText="Brand official page">
+                    <Input
+                      type="url"
+                      value={productUrl}
+                      error={Boolean(fieldErrors.productUrl)}
+                      onChange={(e) => {
+                        setProductUrl(e.target.value);
+                        clearFieldError("productUrl");
+                      }}
+                      placeholder="https://brand.com/products/model"
+                    />
+                  </FormField>
+                </div>
               </div>
 
               <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 text-sm">
@@ -1081,7 +1485,7 @@ const AdminProductDetailPage = () => {
               {/* Clean 2-Column Pricing Grid matching DB Schema */}
               <div className="bg-[#fdfbfb] p-5 rounded-xl border border-[#f0e6e8] space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div>
+                  <div id="field-standardPrice" data-field="standardPrice" className="rounded-xl transition-all">
                     <label className="text-xs font-black uppercase tracking-wider text-gray-700 block mb-1.5">
                       Standard Retail Price (₹) *
                     </label>
@@ -1089,17 +1493,28 @@ const AdminProductDetailPage = () => {
                       type="number"
                       min="0"
                       value={standardPrice}
-                      onChange={(e) => setStandardPrice(e.target.value)}
+                      error={Boolean(fieldErrors.standardPrice)}
+                      onChange={(e) => {
+                        setStandardPrice(e.target.value);
+                        clearFieldError("standardPrice");
+                      }}
                       placeholder="e.g. 50000"
                       required
                       className="text-sm font-bold"
                     />
-                    <p className="text-[11px] text-gray-400 mt-1">
-                      Default public retail price
-                    </p>
+                    {fieldErrors.standardPrice ? (
+                      <p className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {fieldErrors.standardPrice}
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-gray-400 mt-1">
+                        Default public retail price
+                      </p>
+                    )}
                   </div>
 
-                  <div>
+                  <div id="field-dealerPrice" data-field="dealerPrice" className="rounded-xl transition-all">
                     <label className="text-xs font-black uppercase tracking-wider text-emerald-700 block mb-1.5">
                       Wholesale Dealer Price (₹) *
                     </label>
@@ -1107,29 +1522,41 @@ const AdminProductDetailPage = () => {
                       type="number"
                       min="0"
                       value={dealerPrice}
-                      onChange={(e) => setDealerPrice(e.target.value)}
+                      error={Boolean(fieldErrors.dealerPrice)}
+                      onChange={(e) => {
+                        setDealerPrice(e.target.value);
+                        clearFieldError("dealerPrice");
+                      }}
                       placeholder="e.g. 42000"
                       required
                       className="text-sm font-extrabold text-emerald-700 bg-emerald-50/40 border-emerald-200"
                     />
-                    <p className="text-[11px] text-emerald-600 mt-1">
-                      Special price for verified B2B dealers
-                    </p>
+                    {fieldErrors.dealerPrice ? (
+                      <p className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {fieldErrors.dealerPrice}
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-emerald-600 mt-1">
+                        Special price for verified B2B dealers
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Media Images Upload Section */}
-              <div className="space-y-4 pt-2">
+              <div id="field-images" data-field="images" className="space-y-4 pt-2 rounded-xl transition-all p-1">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <h4 className="text-xs font-black uppercase tracking-wider text-gray-800">
-                      Product Gallery Images (
-                      {imagesList.length + stagedImages.length})
+                    <h4 className="text-xs font-black uppercase tracking-wider text-gray-800 flex items-center gap-2">
+                      <span>Product Gallery Images ({isCreateMode ? stagedImages.length : imagesList.length})</span>
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                        Front Image = Primary
+                      </span>
                     </h4>
                     <p className="text-[11px] text-gray-500">
-                      Click an empty slot or browse files to upload high quality
-                      photos for this product.
+                      Drag and drop to rearrange photo display order. The 1st front image is automatically designated as the Primary image.
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1142,6 +1569,7 @@ const AdminProductDetailPage = () => {
                       onChange={async (e) => {
                         const files = Array.from(e.target.files || []);
                         if (!files.length) return;
+                        clearFieldError("images");
                         if (isCreateMode) {
                           files.forEach(handleStageFile);
                         } else {
@@ -1167,55 +1595,145 @@ const AdminProductDetailPage = () => {
                   </div>
                 </div>
 
-                {/* 7-slot visual image gallery */}
+                {fieldErrors.images && (
+                  <div className="flex items-center gap-2 p-3 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl font-bold animate-pulse">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                    <span>{fieldErrors.images}</span>
+                  </div>
+                )}
+
+                {/* Draggable & Sortable Visual Image Gallery */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3">
-                  {[...imagesList, ...stagedImages].map((img, idx) => {
+                  {(isCreateMode ? stagedImages : imagesList).map((img, idx) => {
                     const src = img.previewUrl || img.url;
                     const isStaged = Boolean(img.file);
+                    const isDraggingThis = draggedIndex === idx;
+                    const isDragOverThis = dragOverIndex === idx;
+                    const isPrimary = idx === 0;
+
                     return (
                       <div
-                        key={idx}
-                        className="group relative rounded-xl border border-gray-200 bg-gray-50 overflow-hidden aspect-square flex items-center justify-center shadow-xs">
+                        key={img.publicId || img.previewUrl || idx}
+                        draggable={!imageUploading}
+                        onDragStart={(e) => handleDragStart(e, idx)}
+                        onDragOver={(e) => handleDragOver(e, idx)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, idx)}
+                        onDragEnd={handleDragEnd}
+                        className={`group relative rounded-xl overflow-hidden aspect-square flex items-center justify-center shadow-xs transition-all select-none cursor-grab active:cursor-grabbing ${
+                          isDraggingThis
+                            ? "opacity-40 scale-95 border-2 border-dashed border-[#800020] bg-[#fdf2f4]"
+                            : isDragOverThis
+                            ? "border-2 border-[#800020] bg-[#fdf2f4]/60 scale-105 shadow-md ring-2 ring-[#800020]/30"
+                            : isPrimary
+                            ? "border-2 border-amber-400 bg-amber-50/20 shadow-xs"
+                            : "border border-gray-200 bg-gray-50 hover:border-gray-300"
+                        }`}>
                         <img
                           src={src}
-                          alt={img.altText || "Product"}
-                          className="w-full h-full object-cover"
+                          alt={img.altText || `Product Image ${idx + 1}`}
+                          className="w-full h-full object-cover pointer-events-none"
                         />
-                        {idx === 0 && (
-                          <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded-md bg-[#800020] text-white text-[9px] font-bold uppercase tracking-wider shadow-sm">
+
+                        {/* Primary Badge or Position Number */}
+                        {isPrimary ? (
+                          <span className="absolute top-2 left-2 z-10 px-1.5 py-0.5 rounded-md bg-[#800020] text-white text-[9px] font-extrabold uppercase tracking-wider shadow-sm flex items-center gap-1">
+                            <Star className="w-2.5 h-2.5 fill-amber-300 text-amber-300" />
                             Primary
                           </span>
+                        ) : (
+                          <span className="absolute top-2 left-2 z-10 px-1.5 py-0.5 rounded-md bg-black/60 text-white text-[9px] font-bold backdrop-blur-xs">
+                            #{idx + 1}
+                          </span>
                         )}
+
+                        {/* Drag Handle Indicator */}
+                        <div
+                          className="absolute top-2 right-8 z-10 p-1 bg-black/50 hover:bg-black/75 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity cursor-grab"
+                          title="Drag to rearrange order">
+                          <GripVertical className="w-3 h-3" />
+                        </div>
+
+                        {/* Remove Image Button */}
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             if (isStaged) {
                               const stagedIndex = stagedImages.findIndex(
                                 (s) => s.previewUrl === img.previewUrl,
                               );
-                              handleRemoveStagedImage(stagedIndex);
+                              handleRemoveStagedImage(stagedIndex >= 0 ? stagedIndex : idx);
                             } else if (img.publicId) {
                               setImageDeleteTarget(img);
                             } else {
-                              const urlIndex = imagesList.findIndex(
-                                (u) => u.url === img.url,
-                              );
-                              handleRemoveUrlImage(urlIndex);
+                              handleRemoveUrlImage(idx);
                             }
                           }}
-                          className="absolute top-2 right-2 p-1.5 bg-rose-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-sm cursor-pointer"
+                          className="absolute top-2 right-2 z-10 p-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-sm cursor-pointer"
                           title="Remove Image">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
+
+                        {/* Hover Actions: Quick Set Primary & Shift Arrows */}
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent p-1.5 pt-4 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                          {!isPrimary && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSetPrimaryImage(idx);
+                              }}
+                              className="text-[9px] font-bold bg-white text-[#800020] hover:bg-amber-100 px-1.5 py-0.5 rounded shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
+                              title="Make this the Primary Storefront Image">
+                              <Star className="w-2.5 h-2.5 fill-[#800020]" />
+                              Primary
+                            </button>
+                          )}
+                          <div className="flex items-center gap-1 ml-auto">
+                            {idx > 0 && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMoveImage(idx, idx - 1);
+                                }}
+                                className="p-0.5 bg-white/80 hover:bg-white text-gray-800 rounded transition-colors cursor-pointer"
+                                title="Move Left">
+                                <ChevronLeft className="w-3 h-3" />
+                              </button>
+                            )}
+                            {idx < (isCreateMode ? stagedImages.length : imagesList.length) - 1 && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMoveImage(idx, idx + 1);
+                                }}
+                                className="p-0.5 bg-white/80 hover:bg-white text-gray-800 rounded transition-colors cursor-pointer"
+                                title="Move Right">
+                                <ChevronRight className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
+
+                  {/* Uploading Placeholder Tile */}
+                  {imageUploading && (
+                    <div className="rounded-xl border-2 border-[#800020] border-dashed bg-[#fdf2f4]/60 aspect-square flex flex-col items-center justify-center p-3 text-center gap-2 animate-pulse">
+                      <Loader2 className="w-6 h-6 text-[#800020] animate-spin" />
+                      <span className="text-[10px] font-bold text-[#800020]">Uploading...</span>
+                    </div>
+                  )}
 
                   {/* Empty Slot Placeholder Tiles (up to 7) */}
                   {Array.from({
                     length: Math.max(
                       0,
-                      7 - (imagesList.length + stagedImages.length),
+                      7 - ((isCreateMode ? stagedImages.length : imagesList.length) + (imageUploading ? 1 : 0)),
                     ),
                   }).map((_, slotIdx) => (
                     <button
@@ -1233,7 +1751,7 @@ const AdminProductDetailPage = () => {
                   ))}
 
                   {/* Additional slot when at least 7 images are uploaded */}
-                  {imagesList.length + stagedImages.length >= 7 && (
+                  {(isCreateMode ? stagedImages.length : imagesList.length) >= 7 && (
                     <button
                       type="button"
                       onClick={() =>
@@ -1288,7 +1806,7 @@ const AdminProductDetailPage = () => {
               {/* 3-tier selection */}
               <div className="space-y-6">
                 {/* 1. HEADER CATEGORY (Strictly Single-Select) */}
-                <div className="bg-[#fdf9f9] border border-[#f5d6dc] rounded-xl p-4">
+                <div id="field-headerCategory" data-field="headerCategory" className="bg-[#fdf9f9] border border-[#f5d6dc] rounded-xl p-4 transition-all">
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-xs font-bold uppercase tracking-wider text-gray-800">
                       {isCreateMode ? "1. HEADER CATEGORY *" : "1. HEADER CATEGORY (OPTIONAL)"}
@@ -1304,10 +1822,12 @@ const AdminProductDetailPage = () => {
                   </p>
                   <Select
                     value={selectedHeaderId}
+                    error={Boolean(fieldErrors.headerCategory)}
                     onChange={(e) => {
                       setSelectedHeaderId(e.target.value);
                       setSelectedMainIds([]);
                       setSelectedSubIds([]);
+                      clearFieldError("headerCategory");
                     }}
                     placeholder="Select Header Category"
                     options={[
@@ -1323,6 +1843,12 @@ const AdminProductDetailPage = () => {
                     required={isCreateMode}
                     className="font-semibold text-xs"
                   />
+                  {fieldErrors.headerCategory && (
+                    <p className="text-xs text-rose-600 font-bold mt-2 flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      {fieldErrors.headerCategory}
+                    </p>
+                  )}
                 </div>
 
                 {/* 2. MAIN CATEGORIES (Multi-Select) */}
@@ -1608,14 +2134,26 @@ const AdminProductDetailPage = () => {
                     {categoryFilterDefinitions.map((definition) => {
                       const values = getCategorySpecValues(definition.key);
                       const label = `${definition.label || definition.key}${definition.unit ? ` (${definition.unit})` : ""}`;
+                      const specError = fieldErrors[`spec-${definition.key}`];
                       return (
-                        <div key={definition.key} className="space-y-1.5">
-                          <label className="text-[11px] font-bold text-gray-700">
-                            {label}
-                            {definition.isRequired ? " *" : ""}
+                        <div
+                          key={definition.key}
+                          id={`field-spec-${definition.key}`}
+                          data-field={`spec-${definition.key}`}
+                          className="space-y-1.5 rounded-xl transition-all p-1">
+                          <label className="text-[11px] font-bold text-gray-700 flex items-center justify-between">
+                            <span>
+                              {label}
+                              {definition.isRequired ? " *" : ""}
+                            </span>
+                            {specError && (
+                              <span className="text-[10px] text-rose-600 font-bold">Required</span>
+                            )}
                           </label>
                           {definition.inputType === "multi-select" ? (
-                            <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 bg-white p-2">
+                            <div className={`flex flex-wrap gap-2 rounded-lg border bg-white p-2 ${
+                              specError ? "border-rose-500 ring-1 ring-rose-500/30" : "border-gray-200"
+                            }`}>
                               {(definition.options || []).map((option) => (
                                 <label
                                   key={option}
@@ -1623,7 +2161,7 @@ const AdminProductDetailPage = () => {
                                   <input
                                     type="checkbox"
                                     checked={values.includes(option)}
-                                    onChange={(event) =>
+                                    onChange={(event) => {
                                       setCategorySpecValues(
                                         definition,
                                         event.target.checked
@@ -1631,8 +2169,9 @@ const AdminProductDetailPage = () => {
                                           : values.filter(
                                               (value) => value !== option,
                                             ),
-                                      )
-                                    }
+                                      );
+                                      clearFieldError(`spec-${definition.key}`);
+                                    }}
                                   />{" "}
                                   {option}
                                 </label>
@@ -1641,13 +2180,16 @@ const AdminProductDetailPage = () => {
                           ) : definition.inputType === "select" ||
                             definition.inputType === "boolean" ? (
                             <select
-                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs"
+                              className={`w-full rounded-lg border bg-white px-3 py-2 text-xs ${
+                                specError ? "border-rose-500 ring-1 ring-rose-500/30" : "border-gray-300"
+                              }`}
                               value={values[0] || ""}
-                              onChange={(event) =>
+                              onChange={(event) => {
                                 setCategorySpecValues(definition, [
                                   event.target.value,
-                                ])
-                              }>
+                                ]);
+                                clearFieldError(`spec-${definition.key}`);
+                              }}>
                               <option value="">
                                 Select {definition.label || definition.key}
                               </option>
@@ -1668,14 +2210,22 @@ const AdminProductDetailPage = () => {
                                   : "text"
                               }
                               value={values[0] || ""}
-                              onChange={(event) =>
+                              error={Boolean(specError)}
+                              onChange={(event) => {
                                 setCategorySpecValues(definition, [
                                   event.target.value,
-                                ])
-                              }
+                                ]);
+                                clearFieldError(`spec-${definition.key}`);
+                              }}
                               placeholder={`Enter ${definition.label || definition.key}`}
                               className="text-xs"
                             />
+                          )}
+                          {specError && (
+                            <p className="text-xs text-rose-600 font-bold flex items-center gap-1 mt-1">
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                              {specError}
+                            </p>
                           )}
                         </div>
                       );

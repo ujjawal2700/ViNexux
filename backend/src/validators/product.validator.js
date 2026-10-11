@@ -11,13 +11,15 @@ const productImageSchema = z.object({
 });
 
 const productSpecificationSchema = z.object({
-  key: z.string({ required_error: 'Specification key is required' }).trim().min(1).max(50),
-  value: z.string({ required_error: 'Specification value is required' }).trim().min(1).max(255),
+  key: z.string({ required_error: 'Specification key is required' }).trim().min(1).max(100),
+  value: z.string({ required_error: 'Specification value is required' }).trim().min(1).max(2000),
 });
 
 const productUrlSchema = z.string().trim().max(500, 'Product URL cannot exceed 500 characters')
   .refine((value) => !value || /^https?:\/\//i.test(value), 'Product URL must start with http:// or https://')
-  .optional();
+  .optional()
+  .nullable()
+  .or(z.literal(''));
 
 export const createProductSchema = {
   body: z.object({
@@ -36,19 +38,21 @@ export const createProductSchema = {
     stockQuantity: z.coerce.number().min(0, { message: 'Stock quantity cannot be negative' }).default(0).optional(),
     variant: z.string().trim().max(100).optional().default(''),
     warranty: z.string().trim().max(200).optional().default('1 Year ON-SITE / Direct Replacement Warranty'),
-    informationPhone: z.string().trim().max(20).regex(/^\+?[0-9 ]*$/, 'Information phone must contain only digits, spaces, or a leading +').optional(),
+    informationPhone: z.string().trim().max(20).regex(/^\+?[0-9 ]*$/, 'Information phone must contain only digits, spaces, or a leading +').optional().nullable().or(z.literal('')),
     productUrl: productUrlSchema,
     categoryId: z
-      .string({ required_error: 'Category ID is required' })
+      .string()
       .refine(isValidObjectId, { message: 'Invalid categoryId format. Must be a valid MongoDB ObjectId' })
-      .optional(),
-    categoryIds: z.array(z.string().refine(isValidObjectId, { message: 'Invalid categoryId format. Must be a valid MongoDB ObjectId' })).optional(),
+      .optional()
+      .nullable(),
+    categoryIds: z.array(z.string().refine(isValidObjectId, { message: 'Invalid categoryId format. Must be a valid MongoDB ObjectId' })).optional().default([]),
     brandId: z.string({ required_error: 'Brand is required' }).refine(isValidObjectId, { message: 'Invalid brandId format' }),
     description: z
       .string()
       .trim()
       .max(2000, { message: 'Description cannot exceed 2000 characters' })
-      .optional(),
+      .optional()
+      .nullable(),
     images: z.array(productImageSchema).optional().default([]),
     specifications: z.array(productSpecificationSchema).optional().default([]),
     standardPrice: z
@@ -87,21 +91,23 @@ export const updateProductSchema = {
     categoryId: z
       .string()
       .refine(isValidObjectId, { message: 'Invalid categoryId format. Must be a valid MongoDB ObjectId' })
-      .optional(),
+      .optional()
+      .nullable(),
     categoryIds: z.array(z.string().refine(isValidObjectId, { message: 'Invalid categoryId format. Must be a valid MongoDB ObjectId' })).optional(),
     modelNumber: z.string().trim().min(1).max(100).optional(),
     model: z.string().trim().max(100).optional(),
     stockQuantity: z.coerce.number().min(0, { message: 'Stock quantity cannot be negative' }).optional(),
     variant: z.string().trim().max(100).optional(),
     warranty: z.string().trim().max(200).optional(),
-    informationPhone: z.string().trim().max(20).regex(/^\+?[0-9 ]*$/, 'Information phone must contain only digits, spaces, or a leading +').optional(),
+    informationPhone: z.string().trim().max(20).regex(/^\+?[0-9 ]*$/, 'Information phone must contain only digits, spaces, or a leading +').optional().nullable().or(z.literal('')),
     productUrl: productUrlSchema,
-    brandId: z.string().refine(isValidObjectId, { message: 'Invalid brandId format' }).optional(),
+    brandId: z.string().refine(isValidObjectId, { message: 'Invalid brandId format' }).optional().nullable(),
     description: z
       .string()
       .trim()
       .max(2000, { message: 'Description cannot exceed 2000 characters' })
-      .optional(),
+      .optional()
+      .nullable(),
     images: z.array(productImageSchema).optional(),
     specifications: z.array(productSpecificationSchema).optional(),
     standardPrice: z

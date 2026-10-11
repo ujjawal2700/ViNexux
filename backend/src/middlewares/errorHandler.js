@@ -7,11 +7,21 @@ export const errorHandler = (err, req, res, next) => {
   let message = err.message || 'Something went wrong';
   let errorCode = err.errorCode || ERROR_CODES.INTERNAL_SERVER_ERROR;
 
+  let errorDetails = undefined;
+
   // Handle Zod Error
   if (err.name === 'ZodError') {
     statusCode = HTTP_STATUS.BAD_REQUEST;
     errorCode = ERROR_CODES.VALIDATION_ERROR;
-    message = 'Validation failed';
+    const issues = err.errors || err.issues || [];
+    errorDetails = issues.map((item) => ({
+      path: Array.isArray(item.path) ? item.path.join('.') : String(item.path || ''),
+      message: item.message,
+    }));
+    const issueMessages = errorDetails
+      .map((item) => (item.path ? `${item.path}: ${item.message}` : item.message))
+      .filter(Boolean);
+    message = issueMessages.length > 0 ? issueMessages.join(', ') : 'Validation failed';
   }
 
   // Handle Mongoose CastError (Invalid ID)
@@ -32,9 +42,12 @@ export const errorHandler = (err, req, res, next) => {
   if (err.name === 'ValidationError') {
     statusCode = HTTP_STATUS.BAD_REQUEST;
     errorCode = ERROR_CODES.VALIDATION_ERROR;
-    message = Object.values(err.errors)
-      .map((item) => item.message)
-      .join(', ');
+    const errorsList = Object.entries(err.errors || {});
+    errorDetails = errorsList.map(([key, val]) => ({
+      path: key,
+      message: val.message,
+    }));
+    message = errorsList.map(([, val]) => val.message).join(', ');
   }
 
   // Log error details for server diagnostics
@@ -49,7 +62,9 @@ export const errorHandler = (err, req, res, next) => {
     message,
     error: {
       code: errorCode,
+      ...(errorDetails ? { details: errorDetails } : {}),
     },
+    ...(errorDetails ? { details: errorDetails } : {}),
   };
 
   if (Number.isFinite(err.retryAfterSeconds)) {

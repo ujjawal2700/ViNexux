@@ -123,11 +123,7 @@ export const adminService = {
       formData.append('altText', altText);
     }
 
-    const response = await apiClient.post(`/admin/products/${id}/images`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const response = await apiClient.post(`/admin/products/${id}/images`, formData);
     return response.data;
   },
 

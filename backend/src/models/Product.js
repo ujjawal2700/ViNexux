@@ -33,13 +33,13 @@ const productSpecificationSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Specification key is required'],
       trim: true,
-      maxlength: [50, 'Specification key cannot exceed 50 characters'],
+      maxlength: [100, 'Specification key cannot exceed 100 characters'],
     },
     value: {
       type: String,
       required: [true, 'Specification value is required'],
       trim: true,
-      maxlength: [255, 'Specification value cannot exceed 255 characters'],
+      maxlength: [2000, 'Specification value cannot exceed 2000 characters'],
     },
   },
   { _id: false }

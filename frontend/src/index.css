@@ -520,3 +520,29 @@ body:has(.admin-panel) :is(
   .product-card-actions > div { justify-content: center; margin-inline: auto; }
   .product-card-actions > button { flex-basis: 100%; }
 }
+
+/* Product Form Error Highlight & Shake Animation */
+@keyframes errorShakePulse {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20%, 60% {
+    transform: translateX(-6px);
+  }
+  40%, 80% {
+    transform: translateX(6px);
+  }
+}
+
+.error-shake-pulse {
+  animation: errorShakePulse 0.5s ease-in-out !important;
+  border-color: #e11d48 !important;
+  box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.25) !important;
+  border-radius: 0.5rem;
+}
+
+.error-field-wrapper {
+  position: relative;
+  transition: all 0.2s ease-in-out;
+}
+

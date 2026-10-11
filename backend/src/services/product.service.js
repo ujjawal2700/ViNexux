@@ -435,7 +435,9 @@ isActive,
       ];
     }
 
-    await validateCategorySpecifications(product.categoryId, product.specifications);
+    if (product.categoryId) {
+      await validateCategorySpecifications(product.categoryId, product.specifications);
+    }
     await product.save();
 
     return product;
@@ -493,13 +495,13 @@ isActive,
       sortOrder: (product.images || []).length,
     };
 
-    if (!Array.isArray(product.images)) {
-      product.images = [];
-    }
-    product.images.push(imageData);
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      { $push: { images: imageData } },
+      { new: true, runValidators: false }
+    );
 
-    await product.save();
-    return product;
+    return updatedProduct || product;
   },
 
   /**
@@ -525,9 +527,13 @@ isActive,
       await storageService.deleteFile(targetPublicId);
     }
 
-    product.images.splice(imgIndex, 1);
-    await product.save();
-    return product;
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      { $pull: { images: { publicId } } },
+      { new: true, runValidators: false }
+    );
+
+    return updatedProduct || product;
   },
 };
 
