@@ -321,6 +321,10 @@ export const getPublicActiveTrustBadges = async () => {
 const normalizeFooter = (footer) => {
   if (!footer) return null;
   const doc = typeof footer.toObject === 'function' ? footer.toObject() : { ...footer };
+  const defaultSectionOrder = ['contact', 'about', 'information', 'support', 'bank'];
+  const suppliedOrder = Array.isArray(doc.sectionOrder) ? doc.sectionOrder : [];
+  doc.sectionOrder = [...new Set(suppliedOrder.filter((key) => defaultSectionOrder.includes(key)))];
+  for (const key of defaultSectionOrder) if (!doc.sectionOrder.includes(key)) doc.sectionOrder.push(key);
 
   // Backwards compatibility fallbacks
   if ((!doc.phoneNumbers || doc.phoneNumbers.length === 0) && doc.phone) {

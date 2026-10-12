@@ -2,6 +2,15 @@ import mongoose from 'mongoose';
 import { randomBytes } from 'node:crypto';
 import { CATALOG_FIELDS_VERSION, CATALOG_SOURCE_PATHS, computeCatalogFields } from '../utils/productCatalogFields.js';
 
+const priceHistoryEntrySchema = new mongoose.Schema({
+  priceType: { type: String, enum: ['standard', 'dealer'], required: true },
+  previousPrice: { type: Number, min: 0, required: true },
+  newPrice: { type: Number, min: 0, required: true },
+  changedAt: { type: Date, required: true },
+  changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  changedByName: { type: String, trim: true, default: 'System' },
+}, { _id: false });
+
 const productImageSchema = new mongoose.Schema(
   {
     url: {
@@ -100,7 +109,7 @@ const productSchema = new mongoose.Schema(
     warranty: {
       type: String,
       trim: true,
-      default: '1 Year ON-SITE / Direct Replacement Warranty',
+      default: '',
       maxlength: [200, 'Warranty cannot exceed 200 characters'],
     },
     informationPhone: {
@@ -125,6 +134,8 @@ const productSchema = new mongoose.Schema(
       maxlength: [2000, 'Description cannot exceed 2000 characters'],
     },
     images: [productImageSchema],
+    // Retain cleanup work across storage failures so a later save can retry.
+    pendingImageDeletions: { type: [String], default: [] },
     specifications: [productSpecificationSchema],
     standardPrice: {
       type: Number,
@@ -136,6 +147,7 @@ const productSchema = new mongoose.Schema(
       default: 0,
       min: [0, 'Dealer price cannot be negative'],
     },
+    priceHistory: { type: [priceHistoryEntrySchema], default: [], select: false },
     isActive: {
       type: Boolean,
       default: true,

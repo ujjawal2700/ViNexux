@@ -81,6 +81,21 @@ export const adminService = {
     return response.data;
   },
 
+  async searchStockProducts(params = {}, config = {}) {
+    const response = await apiClient.get('/admin/products/stock-search', { ...config, params });
+    return response.data;
+  },
+
+  async addProductStock(id, quantity) {
+    const response = await apiClient.post(`/admin/products/${id}/stock`, { quantity });
+    return response.data;
+  },
+
+  async permanentlyDeleteProduct(id) {
+    const response = await apiClient.delete(`/admin/products/${id}/permanent`);
+    return response.data;
+  },
+
   /**
    * Create a new product entry.
    */

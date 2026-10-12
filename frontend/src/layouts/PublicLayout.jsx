@@ -170,6 +170,11 @@ const PublicLayout = () => {
   }, [footerData]);
 
   const hasBankDetails = bankAccountList.length > 0;
+  const defaultFooterSectionOrder = ['contact', 'about', 'information', 'support', 'bank'];
+  const footerSectionOrder = Array.isArray(footerData?.sectionOrder)
+    ? [...new Set(footerData.sectionOrder.filter((key) => defaultFooterSectionOrder.includes(key))), ...defaultFooterSectionOrder.filter((key) => !footerData.sectionOrder.includes(key))]
+    : defaultFooterSectionOrder;
+  const footerSectionPosition = (section) => ({ order: footerSectionOrder.indexOf(section) });
   const copyBankDetails = async () => {
     const fields = [
       ['Name', 'accountName'], ['A/c Number', 'accountNumber'],
@@ -804,7 +809,7 @@ const PublicLayout = () => {
                           {stockText}
                         </span>
                       </div>
-                      {(prod.modelNumber || prod.specifications?.find((s) => s.key?.toLowerCase().includes('model'))?.value) && <div className="text-[11px] text-[var(--store-muted)] mt-0.5">Model: {prod.modelNumber || prod.specifications.find((s) => s.key?.toLowerCase().includes('model'))?.value}</div>}
+                      {(prod.modelNumber || prod.specifications?.find((s) => s.key?.toLowerCase().includes('model'))?.value) && <div className="text-[11px] text-[var(--store-muted)] mt-0.5">Model Number: {prod.modelNumber || prod.specifications.find((s) => s.key?.toLowerCase().includes('model'))?.value}</div>}
                     </div>
                   </div>
                 );
@@ -1224,7 +1229,7 @@ const PublicLayout = () => {
                                   >
                                     {product.name || 'Product'}
                                   </Link>
-                                  {(product.modelNumber || product.specifications?.find((s) => s.key?.toLowerCase().includes('model'))?.value) && <p className="text-[11px] text-[var(--store-muted)] mt-1">Model: {product.modelNumber || product.specifications.find((s) => s.key?.toLowerCase().includes('model'))?.value}</p>}
+                                  {(product.modelNumber || product.specifications?.find((s) => s.key?.toLowerCase().includes('model'))?.value) && <p className="text-[11px] text-[var(--store-muted)] mt-1">Model Number: {product.modelNumber || product.specifications.find((s) => s.key?.toLowerCase().includes('model'))?.value}</p>}
                                 </div>
                                 <div className="text-right shrink-0 flex flex-col items-end justify-between self-stretch">
                                   <span className="text-[11px] text-[var(--store-muted)] font-medium">
@@ -1330,6 +1335,14 @@ const PublicLayout = () => {
                   title="Browse low stock products">
                   <Flame className="w-3.5 h-3.5 text-red-700" />
                   <span>Low Stock</span>
+                </Link>
+              </div>
+              <div className="shrink-0 h-full flex items-center relative mr-1 sm:mr-1.5">
+                <Link to="/trending" onClick={handleHeaderClick}
+                  className="flex items-center gap-1.5 font-bold text-xs sm:text-[13px] px-2.5 h-[29px] rounded shadow-2xs bg-rose-100 hover:bg-rose-200 text-rose-900 transition-colors whitespace-nowrap"
+                  title="Browse trending products">
+                  <Flame className="w-3.5 h-3.5 text-rose-700" />
+                  <span>Trending</span>
                 </Link>
               </div>
 
@@ -1588,13 +1601,14 @@ const PublicLayout = () => {
               </div>
             )}
           </div>
-          <div className="grid grid-cols-5 gap-1 border-b border-[var(--store-border)] p-2.5">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 border-b border-[var(--store-border)] p-2.5">
             {[
               { to: '/cart', label: 'Cart', icon: ShoppingCart },
               { to: '/wishlist', label: 'Wishlist', icon: Heart },
               { to: '/account/enquiries', label: 'Enquiries', icon: FileText },
               { to: '/brands', label: 'Brands', icon: Store },
               { to: '/low-stock', label: 'Low Stock', icon: Flame, highlight: true },
+              { to: '/trending', label: 'Trending', icon: Flame, highlight: false },
             ].map(({ to, label, icon: Icon, highlight }) => (
               <Link
                 key={to}
@@ -1695,7 +1709,7 @@ const PublicLayout = () => {
 
       {footerData && <footer className="store-footer w-full bg-[#111111] px-5 sm:px-6 pt-9 text-left text-white/90 border-t border-[#2b2b2b]">
         <div className={`store-footer-grid storefront-container grid grid-cols-1 sm:grid-cols-2 ${hasBankDetails && whatsappList.length > 0 ? 'xl:grid-cols-5' : hasBankDetails || whatsappList.length > 0 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-x-8 gap-y-9 pb-9`}>
-          <div className="footer-contact space-y-3 text-[15px]">
+          <div className="footer-contact space-y-3 text-[15px]" style={footerSectionPosition('contact')}>
             <div className="mb-4">
               <h4 className="font-bold text-xl text-white">{footerData.contactHeading || 'Contact Us'}</h4>
             </div>
@@ -1731,7 +1745,7 @@ const PublicLayout = () => {
               );
             })}
           </div>
-          <div className="footer-about">
+          <div className="footer-about" style={footerSectionPosition('about')}>
             <div className="mb-4">
               <h4 className="font-bold text-xl text-white">{footerData.aboutHeading || 'About'}</h4>
             </div>
@@ -1768,7 +1782,7 @@ const PublicLayout = () => {
               </div>
             )}
           </div>
-          <div className="footer-information text-[15px]">
+          <div className="footer-information text-[15px]" style={footerSectionPosition('information')}>
             <div className="mb-4">
               <h4 className="font-bold text-xl text-white">{footerData.quickLinksHeading || 'Information'}</h4>
             </div>
@@ -1799,7 +1813,7 @@ const PublicLayout = () => {
 
 
           {hasBankDetails && (
-            <div className="footer-bank text-[15px]">
+            <div className="footer-bank text-[15px]" style={footerSectionPosition('bank')}>
               <div className="mb-4 flex items-center gap-2">
                 <h4 className="font-bold text-xl text-white">
                   {footerData.bankDetailsHeading || 'Bank Details'}
@@ -1848,11 +1862,11 @@ const PublicLayout = () => {
           )}
 
           {whatsappList.length > 0 && (
-            <div className="footer-support text-[15px]">
+            <div className="footer-support text-[15px]" style={footerSectionPosition('support')}>
               <div className="mb-4">
                 <h4 className="font-bold text-xl text-white">Sales &amp; Support</h4>
               </div>
-              <div className="space-y-2">
+              <div className="flex w-full max-w-[16rem] flex-col gap-2">
                 {whatsappList.map((item, idx) => {
                   const raw = item.number || '';
                   const cleaned = raw.replace(/\D/g, '');
@@ -1861,13 +1875,13 @@ const PublicLayout = () => {
                   return (
                     <a
                       key={`wa-${idx}`}
-                      className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 hover:text-[var(--store-primary)] hover:underline"
+                      className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 hover:text-[var(--store-primary)] hover:underline"
                       href={`https://wa.me/${waLink}`}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
                       <span className="min-w-0 break-words">{item.label || `WhatsApp ${idx + 1}`}</span>
-                      <span className="tabular-nums whitespace-nowrap">{displayNum}</span>
+                      <span className="shrink-0 tabular-nums whitespace-nowrap">{displayNum}</span>
                       <WhatsAppIcon className="h-4 w-4 shrink-0 text-[#25D366]" />
                     </a>
                   );

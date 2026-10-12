@@ -200,9 +200,9 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
           {modelNumber && (
             <span
               className="block min-w-0 max-w-full truncate text-[10.5px] sm:text-[11px] font-medium text-[var(--store-muted)]"
-              title={`Model: ${modelNumber}`}
+              title={`Model Number: ${modelNumber}`}
             >
-              Model: {modelNumber}
+              Model Number: {modelNumber}
             </span>
           )}
         </div>

@@ -21,13 +21,13 @@ const HEADERS = [
   'Variant (Optional)', 'Specifications (Optional)', 'Image Files (Optional)',
 ];
 const PREVIOUS_CURRENT_HEADERS = [
-  'Model Number', 'Model', 'Product Name', 'Brand', 'Header Category (Optional)',
+  'Model Number', 'Model Name', 'Product Name', 'Brand', 'Header Category (Optional)',
   'Main Category (Optional)', 'Sub Category (Optional)', 'Standard Price',
   'Dealer Price', 'Stock Quantity', 'Product URL', 'Warranty', 'Variant', 'Specifications',
 ];
 const OLDER_CURRENT_HEADERS = PREVIOUS_CURRENT_HEADERS.map((header) => header === 'Header Category (Optional)' ? 'Header Category' : header);
 const PREVIOUS_HEADERS = [
-  'SKU', 'Model Number', 'Model', 'Product Name', 'Brand', 'Header Category',
+  'SKU', 'Model Number', 'Model Name', 'Product Name', 'Brand', 'Header Category',
   'Main Category', 'Sub Category', 'Standard Price', 'Dealer Price',
   'Stock Quantity', 'Description', 'Information Phone', 'Product URL', 'Warranty',
   'Country of Origin', 'HSN Code', 'Variant', 'Specifications JSON',
@@ -309,7 +309,7 @@ export const prepareProductImport = async (workbookBuffer, archiveBuffer) => {
     specifications.push({ key: 'Stock', value: String(stockQuantity) });
     const payload = {
       sku, modelNumber,
-      model: fields['Product Name / Model'] ?? fields.Model,
+      model: fields['Model Name'] ?? fields.Model ?? fields['Product Name / Model'],
       name: fields['Product Name / Model'] ?? fields['Product Name'],
       categoryId: category ? String(category._id) : undefined, brandId: String(brand?._id || ''),
       standardPrice: numeric(fields['Standard Price'], 'Standard Price', errors),

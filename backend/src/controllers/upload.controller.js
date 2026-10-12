@@ -98,6 +98,12 @@ export const deleteImage = async (req, res, next) => {
     }
 
     const result = await storageService.deleteFile(publicId);
+    if (!result.success) {
+      return res.status(HTTP_STATUS.BAD_GATEWAY).json({
+        success: false,
+        message: 'Image storage deletion failed. Please try again.',
+      });
+    }
 
     return res.status(HTTP_STATUS.OK).json({
       success: true,

@@ -3,6 +3,19 @@ import mongoose from 'mongoose';
 
 const isValidObjectId = (val) => mongoose.Types.ObjectId.isValid(val);
 
+export const addProductStockSchema = {
+  params: z.object({ id: z.string().refine(isValidObjectId, 'Invalid product ID') }),
+  body: z.object({ quantity: z.number().int().positive().max(Number.MAX_SAFE_INTEGER) }),
+};
+
+export const stockSearchSchema = {
+  query: z.object({
+    search: z.string().trim().max(100).optional().default(''),
+    page: z.coerce.number().int().positive().optional().default(1),
+    limit: z.coerce.number().int().min(1).max(50).optional().default(10),
+  }),
+};
+
 const productImageSchema = z.object({
   url: z.string({ required_error: 'Image URL is required' }).trim().min(1, { message: 'Image URL cannot be empty' }),
   publicId: z.string().trim().optional(),
@@ -37,7 +50,7 @@ export const createProductSchema = {
     model: z.string().trim().max(100).optional().default('Standard Model'),
     stockQuantity: z.coerce.number().min(0, { message: 'Stock quantity cannot be negative' }).default(0).optional(),
     variant: z.string().trim().max(100).optional().default(''),
-    warranty: z.string().trim().max(200).optional().default('1 Year ON-SITE / Direct Replacement Warranty'),
+    warranty: z.string().trim().max(200).optional().default(''),
     informationPhone: z.string().trim().max(20).regex(/^\+?[0-9 ]*$/, 'Information phone must contain only digits, spaces, or a leading +').optional().nullable().or(z.literal('')),
     productUrl: productUrlSchema,
     categoryId: z

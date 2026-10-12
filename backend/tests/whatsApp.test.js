@@ -261,13 +261,13 @@ describe('Phase 8.5 — WhatsApp Integration Test Suite', () => {
         enquiryNumber: 'VNX-100200',
       };
 
-      const res = await whatsAppService.sendEnquiryStatusUpdatedNotification(enquiryMock, 'new', 'contacted');
+      const res = await whatsAppService.sendEnquiryStatusUpdatedNotification(enquiryMock, 'new', 'in-progress');
       assert.strictEqual(res.success, true);
 
       const sent = devProvider.getSentMessages();
       assert.strictEqual(sent.length, 1);
       assert.strictEqual(sent[0].event, 'ENQUIRY_STATUS_UPDATED');
-      assert.strictEqual(sent[0].variables.new_status, 'contacted');
+      assert.strictEqual(sent[0].variables.new_status, 'in-progress');
     });
 
     test('9. sendDealerKycApprovedNotification constructs correct KYC payload', async () => {

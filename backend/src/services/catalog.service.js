@@ -368,7 +368,7 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
       { $limit: limit },
       ...(priceNeededBeforePaging ? [] : pricingStages),
       { $set: { brand: '$brandKey', stockQuantity: '$stockLevel' } },
-      { $unset: ['_pricing', '__v', ...INTERNAL_CATALOG_FIELDS] },
+      { $unset: ['_pricing', '__v', 'priceHistory', ...INTERNAL_CATALOG_FIELDS] },
     ],
     total: [...facetFilters, { $count: 'count' }],
   };
@@ -451,7 +451,7 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
       model: product.model || product.specifications?.find((specification) => specification.key?.trim().toLowerCase() === 'model')?.value || 'Standard Model',
       productUrl: product.productUrl || '',
       variant: product.variant || '',
-      warranty: product.warranty || '1 Year ON-SITE / Direct Replacement Warranty',
+      warranty: product.warranty === '1 Year ON-SITE / Direct Replacement Warranty' ? '' : (product.warranty || ''),
       specifications: (product.specifications || []).filter((specification) => !isInventorySpecification(specification.key)),
       availableStock: resolvedStock,
       stockQuantity: resolvedStock,

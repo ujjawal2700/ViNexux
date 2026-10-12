@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import mongoose from 'mongoose';
+import { ENQUIRY_STATUSES } from '../../../shared/enquiryStatuses.js';
 
 const isValidObjectId = (val) => mongoose.Types.ObjectId.isValid(val);
 
@@ -59,8 +60,8 @@ export const adminUpdateEnquiryStatusSchema = {
   }),
   body: z.object({
     status: z
-      .enum(['new', 'contacted', 'in-progress', 'closed', 'spam'], {
-        invalid_type_error: 'Status must be one of: new, contacted, in-progress, closed, spam',
+      .enum(ENQUIRY_STATUSES, {
+        invalid_type_error: 'Status must be one of: new, in-progress, completed, closed, spam',
       })
       .optional(),
     note: z
@@ -100,7 +101,7 @@ export const getEnquiriesQuerySchema = {
       .optional()
       .transform((val) => (val ? parseInt(val, 10) : 20))
       .refine((val) => !isNaN(val) && val >= 1 && val <= 100, { message: 'Limit must be between 1 and 100' }),
-    status: z.enum(['new', 'contacted', 'in-progress', 'closed', 'spam']).optional(),
+    status: z.enum(ENQUIRY_STATUSES).optional(),
     userType: z.enum(['customer', 'dealer']).optional(),
     search: z.string().trim().optional(),
     sortBy: z.enum(['createdAt', 'status', 'enquiryNumber']).optional().default('createdAt'),

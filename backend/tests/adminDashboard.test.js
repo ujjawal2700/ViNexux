@@ -174,7 +174,7 @@ const runAdminDashboardTests = async () => {
     assert(typeof data.categories?.inactive === 'number', 'categories.inactive is a number');
     assert(typeof data.enquiries?.total === 'number', 'enquiries.total is a number');
     assert(typeof data.enquiries?.new === 'number', 'enquiries.new is a number');
-    assert(typeof data.enquiries?.contacted === 'number', 'enquiries.contacted is a number');
+    assert(typeof data.enquiries?.completed === 'number', 'enquiries.completed is a number');
     assert(typeof data.enquiries?.inProgress === 'number', 'enquiries.inProgress is a number');
     assert(typeof data.enquiries?.closed === 'number', 'enquiries.closed is a number');
     assert(typeof data.enquiries?.spam === 'number', 'enquiries.spam is a number');
@@ -192,7 +192,7 @@ const runAdminDashboardTests = async () => {
     const expectedInactiveCategories = await Category.countDocuments({ isActive: false });
     const expectedTotalEnquiries = await Enquiry.countDocuments({});
     const expectedNewEnquiries = await Enquiry.countDocuments({ status: 'new' });
-    const expectedContactedEnquiries = await Enquiry.countDocuments({ status: 'contacted' });
+    const expectedCompletedEnquiries = await Enquiry.countDocuments({ status: 'completed' });
     const expectedInProgressEnquiries = await Enquiry.countDocuments({ status: 'in-progress' });
     const expectedClosedEnquiries = await Enquiry.countDocuments({ status: 'closed' });
     const expectedSpamEnquiries = await Enquiry.countDocuments({ status: 'spam' });
@@ -209,7 +209,7 @@ const runAdminDashboardTests = async () => {
     assert(data.categories.inactive === expectedInactiveCategories, `categories.inactive matches DB count (${expectedInactiveCategories})`);
     assert(data.enquiries.total === expectedTotalEnquiries, `enquiries.total matches DB count (${expectedTotalEnquiries})`);
     assert(data.enquiries.new === expectedNewEnquiries, `enquiries.new matches DB count (${expectedNewEnquiries})`);
-    assert(data.enquiries.contacted === expectedContactedEnquiries, `enquiries.contacted matches DB count (${expectedContactedEnquiries})`);
+    assert(data.enquiries.completed === expectedCompletedEnquiries, `enquiries.completed matches DB count (${expectedCompletedEnquiries})`);
     assert(data.enquiries.inProgress === expectedInProgressEnquiries, `enquiries.inProgress matches DB count (${expectedInProgressEnquiries})`);
     assert(data.enquiries.closed === expectedClosedEnquiries, `enquiries.closed matches DB count (${expectedClosedEnquiries})`);
     assert(data.enquiries.spam === expectedSpamEnquiries, `enquiries.spam matches DB count (${expectedSpamEnquiries})`);

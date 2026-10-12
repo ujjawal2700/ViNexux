@@ -5,6 +5,21 @@ import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { Product } from '../models/Product.js';
 import { Category } from '../models/Category.js';
 
+export const searchStockProducts = asyncHandler(async (req, res) => {
+  const result = await productService.searchStockProducts(req.query);
+  return ApiResponse.success(res, 'Products fetched for stock update', result, HTTP_STATUS.OK);
+});
+
+export const addProductStock = asyncHandler(async (req, res) => {
+  const product = await productService.addProductStock(req.params.id, req.body.quantity);
+  return ApiResponse.success(res, `Product stock updated. Total stock quantity is ${product.stockQuantity}.`, product, HTTP_STATUS.OK);
+});
+
+export const permanentlyDeleteProduct = asyncHandler(async (req, res) => {
+  const result = await productService.permanentlyDeleteProduct(req.params.id);
+  return ApiResponse.success(res, result.message, result, HTTP_STATUS.OK);
+});
+
 export const downloadProductImportTemplate = asyncHandler(async (req, res) => {
   const { createProductImportTemplate } = await import('../services/productImport.service.js');
   const buffer = await createProductImportTemplate();
@@ -73,7 +88,7 @@ export const getProductById = asyncHandler(async (req, res) => {
  */
 export const updateProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const product = await productService.updateProduct(id, req.body);
+  const product = await productService.updateProduct(id, req.body, req.user);
 
   return ApiResponse.success(
     res,

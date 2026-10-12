@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ENQUIRY_STATUSES } from '../../../shared/enquiryStatuses.js';
 import mongoose from 'mongoose';
 
 const isValidObjectId = (val) => mongoose.Types.ObjectId.isValid(val);
@@ -19,7 +20,7 @@ export const getEnquiryReportQuerySchema = {
       .optional()
       .transform((val) => (val ? parseInt(val, 10) : 20))
       .refine((val) => !isNaN(val) && val >= 1 && val <= 100, { message: 'Limit must be between 1 and 100' }),
-    status: z.enum(['new', 'contacted', 'in-progress', 'closed', 'spam']).optional(),
+    status: z.enum(ENQUIRY_STATUSES).optional(),
     userType: z.enum(['customer', 'dealer']).optional(),
     assignedTo: z
       .string()

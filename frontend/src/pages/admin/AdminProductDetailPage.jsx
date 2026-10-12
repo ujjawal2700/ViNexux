@@ -16,6 +16,7 @@ import FormField from "../../components/ui/FormField";
 import FormError from "../../components/ui/FormError";
 import Toast from "../../components/ui/Toast";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import ProductPriceHistory from "../../components/admin/ProductPriceHistory";
 import { SkeletonCard } from "../../components/ui/Skeleton";
 import ErrorState from "../../components/ui/ErrorState";
 import { getEffectiveFilterDefinitions } from "../../utils/categoryFilters";
@@ -113,7 +114,7 @@ const AdminProductDetailPage = () => {
   const [stockQuantity, setStockQuantity] = useState("0");
   const [isTrending, setIsTrending] = useState(false);
   const [variant, setVariant] = useState("");
-  const [warranty, setWarranty] = useState("1 Year ON-SITE / Direct Replacement Warranty");
+  const [warranty, setWarranty] = useState("");
   const [productUrl, setProductUrl] = useState("");
 
   // Pricing
@@ -142,8 +143,8 @@ const AdminProductDetailPage = () => {
   const [imagesList, setImagesList] = useState([]);
   const [stagedImages, setStagedImages] = useState([]);
   const stagedImagesRef = useRef([]);
+  const createdDraftIdRef = useRef(null);
   const [imageDeleteTarget, setImageDeleteTarget] = useState(null);
-  const [imageDeleteLoading, setImageDeleteLoading] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
@@ -155,8 +156,8 @@ const AdminProductDetailPage = () => {
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
-    stagedImagesRef.current = stagedImages;
-  }, [stagedImages]);
+    stagedImagesRef.current = [...stagedImages, ...imagesList.filter((img) => img.file)];
+  }, [stagedImages, imagesList]);
 
   useEffect(() => {
     return () => {
@@ -279,7 +280,7 @@ const AdminProductDetailPage = () => {
       setModel(prod.model || "");
       setStockQuantity(prod.stockQuantity !== undefined ? String(prod.stockQuantity) : "0");
       setVariant(prod.variant || "");
-      setWarranty(prod.warranty || "1 Year ON-SITE / Direct Replacement Warranty");
+      setWarranty(prod.warranty === "1 Year ON-SITE / Direct Replacement Warranty" ? "" : (prod.warranty || ""));
       setProductUrl(prod.productUrl || "");
       setSelectedBrandId(String(prod.brandId?._id || prod.brandId || ""));
       setStandardPrice(
@@ -494,6 +495,7 @@ const AdminProductDetailPage = () => {
 
   // Staging / Adding Images
   const handleStageFile = (file) => {
+    if (formSubmitting) return;
     if (!file) return;
     if (
       !["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(
@@ -514,18 +516,8 @@ const AdminProductDetailPage = () => {
       return;
     }
     const previewUrl = URL.createObjectURL(file);
-    setStagedImages((prev) => [
-      ...prev,
-      { file, previewUrl, altText: name.trim() || "Product image" },
-    ]);
-  };
-
-  const handleRemoveStagedImage = (index) => {
-    setStagedImages((prev) => {
-      const removed = prev[index];
-      if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
-      return prev.filter((_, i) => i !== index);
-    });
+    const setGallery = isCreateMode ? setStagedImages : setImagesList;
+    setGallery((prev) => [...prev, { file, previewUrl, altText: name.trim() || "Product image" }]);
   };
 
   // Clear specific field error on user edit
@@ -617,7 +609,7 @@ const AdminProductDetailPage = () => {
   const handleDrop = (e, targetIndex) => {
     e.preventDefault();
     setDragOverIndex(null);
-    if (draggedIndex === null || draggedIndex === targetIndex) return;
+    if (formSubmitting || draggedIndex === null || draggedIndex === targetIndex) return;
 
     if (isCreateMode) {
       setStagedImages((prev) => {
@@ -643,6 +635,7 @@ const AdminProductDetailPage = () => {
   };
 
   const handleSetPrimaryImage = (index) => {
+    if (formSubmitting) return;
     if (index === 0) return;
     if (isCreateMode) {
       setStagedImages((prev) => {
@@ -663,6 +656,7 @@ const AdminProductDetailPage = () => {
   };
 
   const handleMoveImage = (fromIndex, toIndex) => {
+    if (formSubmitting) return;
     if (toIndex < 0) return;
     if (isCreateMode) {
       setStagedImages((prev) => {
@@ -683,90 +677,19 @@ const AdminProductDetailPage = () => {
     }
   };
 
-  // Direct upload for edit mode
-  const handleEditModeUpload = async (file) => {
-    if (!file || !id) return;
-    if (
-      !["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(
-        file.type,
-      )
-    ) {
-      setToast({
-        message: "Only JPEG, PNG and WebP product images are allowed.",
-        type: "error",
-      });
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setToast({
-        message: "Product image size must be under 5MB.",
-        type: "error",
-      });
-      return;
-    }
-    clearFieldError("images");
-    setImageUploading(true);
-    try {
-      const res = await adminService.uploadProductImage(
-        id,
-        file,
-        name.trim() || "Product image",
-      );
-      const updatedImages = res.data?.images || [];
-      if (updatedImages.length > 0) {
-        const newest = updatedImages[updatedImages.length - 1];
-        setImagesList((prev) => {
-          const exists = prev.some((p) => p.publicId && p.publicId === newest.publicId);
-          if (exists) return updatedImages;
-          return [...prev, newest].map((img, idx) => ({ ...img, sortOrder: idx }));
-        });
-      } else {
-        setImagesList(updatedImages);
-      }
-      setToast({ message: "Image uploaded successfully!", type: "success" });
-    } catch (err) {
-      console.error("Failed to upload image:", err);
-      const errMsg =
-        err.response?.data?.message || "Failed to upload image. Please try again.";
-      setToast({
-        message: errMsg,
-        type: "error",
-      });
-      setFormError(errMsg);
-    } finally {
-      setImageUploading(false);
-    }
-  };
-
-  // Delete uploaded Cloudinary image in edit mode
-  const handleImageDeleteConfirm = async () => {
-    if (!imageDeleteTarget || !id) return;
-    setImageDeleteLoading(true);
-    try {
-      const res = await adminService.deleteProductImage(
-        id,
-        imageDeleteTarget.publicId,
-      );
-      setImagesList(res.data?.images || []);
-      setToast({ message: "Image removed successfully", type: "success" });
-      setImageDeleteTarget(null);
-    } catch (err) {
-      console.error("Failed to delete image:", err);
-      setToast({
-        message: err.response?.data?.message || "Failed to delete image",
-        type: "error",
-      });
-    } finally {
-      setImageDeleteLoading(false);
-    }
-  };
-
-  const handleRemoveUrlImage = (index) => {
-    setImagesList((prev) => prev.filter((_, i) => i !== index));
+  // Gallery changes stay local until Save & Publish.
+  const handleImageDeleteConfirm = () => {
+    if (formSubmitting) return;
+    if (!imageDeleteTarget) return;
+    const setGallery = isCreateMode ? setStagedImages : setImagesList;
+    setGallery((prev) => prev.filter((img) => img !== imageDeleteTarget));
+    if (imageDeleteTarget.previewUrl) URL.revokeObjectURL(imageDeleteTarget.previewUrl);
+    setImageDeleteTarget(null);
   };
 
   // --- SAVE & PUBLISH HANDLER ---
   const handleSaveAndPublish = async () => {
+    if (formSubmitting) return;
     setFormError("");
     setFieldErrors({});
 
@@ -946,39 +869,50 @@ const AdminProductDetailPage = () => {
         })),
       };
 
+      let productId = id;
       if (isCreateMode) {
-        const res = await adminService.createProduct(payload);
-        const newId = res.data?._id;
-
-        // Upload any staged files in order
-        if (newId && stagedImages.length > 0) {
-          for (const staged of stagedImages) {
-            await adminService.uploadProductImage(
-              newId,
-              staged.file,
-              staged.altText || name,
-            );
-          }
+        productId = createdDraftIdRef.current;
+        if (!productId) {
+          const res = await adminService.createProduct(payload);
+          productId = res.data?._id;
+          if (!productId) throw new Error("Product was created without an ID.");
+          createdDraftIdRef.current = productId;
         }
+      }
 
-        if (!newId) throw new Error("Product was created without an ID.");
-        await adminService.updateProduct(newId, {
-          isActive: status === "published",
+      const savedImages = [];
+      const gallery = isCreateMode ? stagedImages : imagesList;
+      const setGallery = isCreateMode ? setStagedImages : setImagesList;
+      setImageUploading(true);
+      for (const img of gallery) {
+        let savedImage = img;
+        if (img.file) {
+          const res = await adminService.uploadProductImage(productId, img.file, img.altText || name);
+          savedImage = res.data?.images?.at(-1);
+          if (!savedImage?.publicId) throw new Error("Image upload returned no image.");
+          // Retain completed uploads for retry if a later upload or save fails.
+          setGallery((prev) => prev.map((item) => item === img ? savedImage : item));
+          URL.revokeObjectURL(img.previewUrl);
+        }
+        savedImages.push({
+          url: savedImage.url,
+          ...(savedImage.publicId ? { publicId: savedImage.publicId } : {}),
+          altText: savedImage.altText || name.trim(),
+          sortOrder: savedImages.length,
         });
-
-        setToast({
-          message: "Product created and published successfully!",
-          type: "success",
-        });
-        setTimeout(() => {
-          handleBackToProducts();
-        }, 1200);
+      }
+      await adminService.updateProduct(productId, {
+        ...payload, images: savedImages, isActive: status === "published",
+      });
+      setToast({
+        message: isCreateMode
+          ? "Product created and published successfully!"
+          : "Product updated and published successfully!",
+        type: "success",
+      });
+      if (isCreateMode) {
+        setTimeout(() => handleBackToProducts(), 1200);
       } else {
-        await adminService.updateProduct(id, payload);
-        setToast({
-          message: "Product updated and published successfully!",
-          type: "success",
-        });
         loadProduct();
       }
     } catch (err) {
@@ -1080,6 +1014,7 @@ const AdminProductDetailPage = () => {
         }
       }
     } finally {
+      setImageUploading(false);
       setFormSubmitting(false);
     }
   };
@@ -1386,7 +1321,7 @@ const AdminProductDetailPage = () => {
                   </FormField>
                 </div>
 
-                <FormField label="MODEL (OPTIONAL)" helperText="Specific model line">
+                <FormField label="MODEL NAME (OPTIONAL)" helperText="Specific model line">
                   <Input
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
@@ -1427,7 +1362,7 @@ const AdminProductDetailPage = () => {
                   <Input
                     value={warranty}
                     onChange={(e) => setWarranty(e.target.value)}
-                    placeholder="e.g. 1 Year ON-SITE / Direct Replacement Warranty"
+                    placeholder="Enter warranty details (optional)"
                   />
                 </FormField>
 
@@ -1565,18 +1500,13 @@ const AdminProductDetailPage = () => {
                       type="file"
                       accept="image/*"
                       multiple
+                      disabled={formSubmitting}
                       className="hidden"
                       onChange={async (e) => {
                         const files = Array.from(e.target.files || []);
                         if (!files.length) return;
                         clearFieldError("images");
-                        if (isCreateMode) {
-                          files.forEach(handleStageFile);
-                        } else {
-                          for (const file of files) {
-                            await handleEditModeUpload(file);
-                          }
-                        }
+                        files.forEach(handleStageFile);
                         e.target.value = "";
                       }}
                     />
@@ -1606,7 +1536,6 @@ const AdminProductDetailPage = () => {
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3">
                   {(isCreateMode ? stagedImages : imagesList).map((img, idx) => {
                     const src = img.previewUrl || img.url;
-                    const isStaged = Boolean(img.file);
                     const isDraggingThis = draggedIndex === idx;
                     const isDragOverThis = dragOverIndex === idx;
                     const isPrimary = idx === 0;
@@ -1614,7 +1543,7 @@ const AdminProductDetailPage = () => {
                     return (
                       <div
                         key={img.publicId || img.previewUrl || idx}
-                        draggable={!imageUploading}
+                        draggable={!formSubmitting}
                         onDragStart={(e) => handleDragStart(e, idx)}
                         onDragOver={(e) => handleDragOver(e, idx)}
                         onDragLeave={handleDragLeave}
@@ -1659,16 +1588,7 @@ const AdminProductDetailPage = () => {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (isStaged) {
-                              const stagedIndex = stagedImages.findIndex(
-                                (s) => s.previewUrl === img.previewUrl,
-                              );
-                              handleRemoveStagedImage(stagedIndex >= 0 ? stagedIndex : idx);
-                            } else if (img.publicId) {
-                              setImageDeleteTarget(img);
-                            } else {
-                              handleRemoveUrlImage(idx);
-                            }
+                            if (!formSubmitting) setImageDeleteTarget(img);
                           }}
                           className="absolute top-2 right-2 z-10 p-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-sm cursor-pointer"
                           title="Remove Image">
@@ -2404,15 +2324,18 @@ const AdminProductDetailPage = () => {
         </div>
       </div>
 
+      {!isCreateMode && <ProductPriceHistory entries={product?.priceHistory || []} />}
+
       {/* Image Delete Confirm Dialog */}
       <ConfirmDialog
         isOpen={!!imageDeleteTarget}
         onClose={() => setImageDeleteTarget(null)}
         onConfirm={handleImageDeleteConfirm}
         title="Remove Image"
-        message="Are you sure you want to remove this image from the product gallery? This cannot be undone."
+        message={imageDeleteTarget?.file
+          ? "Remove this selected image? It has not been uploaded yet."
+          : "Remove this image from the gallery? Save & Publish will permanently delete it from storage."}
         confirmText="Remove"
-        isLoading={imageDeleteLoading}
         variant="danger"
       />
     </div>

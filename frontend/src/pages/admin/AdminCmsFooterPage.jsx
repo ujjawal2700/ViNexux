@@ -24,7 +24,18 @@ import {
   Mail,
   Plus,
   Trash2,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
+
+const FOOTER_SECTIONS = [
+  { key: 'contact', label: 'Contact' },
+  { key: 'about', label: 'About' },
+  { key: 'information', label: 'Information' },
+  { key: 'support', label: 'Sales & Support' },
+  { key: 'bank', label: 'Bank Details' },
+];
+const DEFAULT_FOOTER_ORDER = ['contact', 'about', 'information', 'support', 'bank'];
 
 /**
  * AdminCmsFooterPage Component
@@ -60,6 +71,7 @@ const AdminCmsFooterPage = () => {
     quickLinksHeading: 'Information',
     legalLinksHeading: 'Legal',
     contactHeading: 'Contact Us',
+    sectionOrder: DEFAULT_FOOTER_ORDER,
     quickLinks: [],
     legalLinks: [],
     socialLinks: [],
@@ -68,6 +80,16 @@ const AdminCmsFooterPage = () => {
   });
 
   const [formErrors, setFormErrors] = useState({});
+
+  const moveFooterSection = (index, direction) => {
+    setFormData((current) => {
+      const sectionOrder = Array.isArray(current.sectionOrder) ? [...current.sectionOrder] : [...DEFAULT_FOOTER_ORDER];
+      const target = index + direction;
+      if (target < 0 || target >= sectionOrder.length) return current;
+      [sectionOrder[index], sectionOrder[target]] = [sectionOrder[target], sectionOrder[index]];
+      return { ...current, sectionOrder };
+    });
+  };
 
   const fetchFooterContent = async () => {
     try {
@@ -125,6 +147,7 @@ const AdminCmsFooterPage = () => {
         quickLinksHeading: data.quickLinksHeading || 'Information',
         legalLinksHeading: data.legalLinksHeading || 'Legal',
         contactHeading: data.contactHeading || 'Contact Us',
+        sectionOrder: Array.isArray(data.sectionOrder) ? data.sectionOrder : DEFAULT_FOOTER_ORDER,
         quickLinks: [
           ...(Array.isArray(data.quickLinks) ? data.quickLinks.map((link) => ({ label: link.label || '', url: link.url || '' })) : []),
           ...(Array.isArray(data.legalLinks) ? data.legalLinks.map((link) => ({ label: link.label || '', url: link.url || '' })) : []),
@@ -448,6 +471,7 @@ const AdminCmsFooterPage = () => {
         quickLinksHeading: formData.quickLinksHeading.trim(),
         legalLinksHeading: formData.legalLinksHeading.trim(),
         contactHeading: formData.contactHeading.trim(),
+        sectionOrder: formData.sectionOrder,
         quickLinks: cleanedQuickLinks,
         legalLinks: cleanedLegalLinks,
         socialLinks: cleanedSocialLinks,
@@ -488,6 +512,7 @@ const AdminCmsFooterPage = () => {
         quickLinksHeading: updated.quickLinksHeading || 'Information',
         legalLinksHeading: updated.legalLinksHeading || 'Legal',
         contactHeading: updated.contactHeading || 'Contact Us',
+        sectionOrder: Array.isArray(updated.sectionOrder) ? updated.sectionOrder : formData.sectionOrder,
         quickLinks: Array.isArray(updated.quickLinks) ? updated.quickLinks : cleanedQuickLinks,
         legalLinks: [],
         socialLinks: Array.isArray(updated.socialLinks)
@@ -546,6 +571,27 @@ const AdminCmsFooterPage = () => {
           )}
 
           {formErrors.submit && <FormError message={formErrors.submit} />}
+
+          <Card className="p-6 space-y-4">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Footer Section Order</h3>
+              <p className="text-xs text-gray-500">Use the arrows to choose the order of the footer columns shown on the storefront.</p>
+            </div>
+            <ol className="space-y-2">
+              {(formData.sectionOrder || DEFAULT_FOOTER_ORDER).map((key, index) => {
+                const section = FOOTER_SECTIONS.find((item) => item.key === key);
+                return (
+                  <li key={key} className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5">
+                    <span className="text-sm font-medium text-gray-800">{index + 1}. {section?.label || key}</span>
+                    <span className="flex gap-1">
+                      <Button type="button" variant="outline" size="sm" aria-label={`Move ${section?.label} up`} disabled={index === 0} onClick={() => moveFooterSection(index, -1)}><ChevronUp className="h-4 w-4" /></Button>
+                      <Button type="button" variant="outline" size="sm" aria-label={`Move ${section?.label} down`} disabled={index === formData.sectionOrder.length - 1} onClick={() => moveFooterSection(index, 1)}><ChevronDown className="h-4 w-4" /></Button>
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </Card>
 
           {/* Company Info */}
           <Card className="p-6 space-y-4">

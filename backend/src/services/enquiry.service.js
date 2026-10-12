@@ -1,3 +1,6 @@
+import mongoose from 'mongoose';
+import { Product } from '../models/Product.js';
+import { ALLOWED_ENQUIRY_TRANSITIONS, canonicalEnquiryStatus } from '../../../shared/enquiryStatuses.js';
 import { Enquiry } from '../models/Enquiry.js';
 import { Cart } from '../models/Cart.js';
 import { User } from '../models/User.js';
@@ -12,22 +15,6 @@ import { FooterContent } from '../models/FooterContent.js';
 
 const escapeRegex = (string) => {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-};
-
-/**
- * Allowed enquiry status transition matrix for PRD workflow
- * new -> contacted -> in-progress -> closed (and spam)
- */
-const ALLOWED_STATUS_TRANSITIONS = {
-  new: ['contacted', 'in-progress', 'closed', 'spam'],
-  pending: ['new', 'contacted', 'in-progress', 'closed', 'spam'], // backward compatibility
-  contacted: ['in-progress', 'closed', 'spam'],
-  'in-progress': ['closed', 'spam'],
-  processing: ['in-progress', 'closed', 'spam'], // backward compatibility
-  closed: ['closed'],
-  completed: ['closed'], // backward compatibility
-  cancelled: ['closed', 'spam'], // backward compatibility
-  spam: ['spam'],
 };
 
 /**
@@ -141,6 +128,9 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
     enquiryItems.push({
       productId: item.productId,
       productName,
+      sku: product?.sku || '',
+      modelNumber: product?.modelNumber || '',
+      modelName: product?.model || '',
       productImageUrl: product?.images?.[0]?.url || '',
       quantity: item.quantity,
       priceShown,
@@ -402,58 +392,79 @@ export const getEnquiryById = async (enquiryId) => {
  * Update enquiry status, append internal note history, or assign owner (Admin only)
  */
 export const updateEnquiryStatus = async (enquiryId, updateData = {}, adminUserId) => {
-  const enquiry = await Enquiry.findById(enquiryId);
-  if (!enquiry) {
-    throw new AppError('Enquiry not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
-  }
-
   const { status, note, adminNote, customerReply, assignedTo } = updateData;
-  const oldStatus = enquiry.status;
+  let enquiry;
+  let oldStatus;
+  const session = await mongoose.startSession();
+  try {
+    // Status, stock quantities and the deduction marker commit together. MongoDB
+    // retries concurrent writes against fresh records, avoiding double deduction.
+    await session.withTransaction(async () => {
+      enquiry = await Enquiry.findById(enquiryId).session(session);
+      if (!enquiry) throw new AppError('Enquiry not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
+      oldStatus = canonicalEnquiryStatus(enquiry.status);
+      enquiry.status = oldStatus;
+      if (status && status !== oldStatus) {
+        const allowed = ALLOWED_ENQUIRY_TRANSITIONS[oldStatus] || [];
+        if (!allowed.includes(status)) {
+          throw new AppError(`Invalid status transition from '${oldStatus}' to '${status}'`, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
+        }
+        enquiry.status = status;
+      }
 
-  // 1. Validate status transition if status is being updated
-  if (status && enquiry.status !== status) {
-    const currentStatus = enquiry.status;
-    const allowedNextStatuses = ALLOWED_STATUS_TRANSITIONS[currentStatus] || [];
-    if (!allowedNextStatuses.includes(status)) {
-      throw new AppError(
-        `Invalid status transition from '${currentStatus}' to '${status}'`,
-        HTTP_STATUS.BAD_REQUEST,
-        ERROR_CODES.BAD_REQUEST
-      );
-    }
-    enquiry.status = status;
-  }
+      const noteText = note || adminNote;
+      if (noteText?.trim()) {
+        enquiry.notes.push({ adminId: adminUserId, note: noteText.trim(), createdAt: new Date() });
+      }
+      if (customerReply?.trim()) {
+        enquiry.customerReplies.push({ adminId: adminUserId, message: customerReply.trim(), createdAt: new Date() });
+      }
+      if (assignedTo) {
+        const adminUser = await User.findById(assignedTo).session(session);
+        if (!adminUser || adminUser.role !== 'admin') {
+          throw new AppError('Please assign an existing admin user.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
+        }
+        enquiry.assignedTo = assignedTo;
+      }
 
-  // 2. Append internal note to notes array if note text is provided
-  const noteText = note || adminNote;
-  if (noteText && noteText.trim()) {
-    if (!Array.isArray(enquiry.notes)) {
-      enquiry.notes = [];
-    }
-    enquiry.notes.push({
-      adminId: adminUserId,
-      note: noteText.trim(),
-      createdAt: new Date(),
+      // Only a new transition into Completed fulfils the order. Historical
+      // completed enquiries are never deducted retrospectively.
+      if (status === 'completed' && oldStatus !== 'completed' && !enquiry.stockDeductedAt) {
+        const quantities = new Map();
+        for (const item of enquiry.items) {
+          const productId = String(item.productId);
+          const quantity = (quantities.get(productId)?.quantity || 0) + item.quantity;
+          if (!Number.isSafeInteger(quantity) || quantity <= 0) {
+            throw new AppError('Cannot complete an enquiry with invalid item quantities.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+          }
+          quantities.set(productId, { quantity, name: item.productName });
+        }
+        if (!quantities.size) throw new AppError('No product items to complete.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
+        const deductedAt = new Date();
+        for (const [productId, item] of quantities) {
+          const product = await Product.findOneAndUpdate({ _id: productId, stockQuantity: { $gte: item.quantity } }, {
+            $inc: { stockQuantity: -item.quantity },
+            $set: { stockUpdatedAt: deductedAt },
+            // Remove legacy inventory specs so a zero balance cannot fall back
+            // to an old positive specification on the storefront.
+            $pull: { specifications: { key: /^\s*(stock|inventory)\s*$/i } },
+          }, { new: true, runValidators: true, session });
+          if (!product) {
+            const existing = await Product.findById(productId).session(session);
+            const message = existing
+              ? `Cannot complete: ${item.name} needs ${item.quantity} units; current stock is ${existing.stockQuantity || 0}. Restock the product first.`
+              : `Cannot complete: ${item.name} has been removed from the catalog.`;
+            throw new AppError(message, HTTP_STATUS.CONFLICT, ERROR_CODES.BAD_REQUEST);
+          }
+        }
+        enquiry.stockDeductedAt = deductedAt;
+      }
+      await enquiry.save({ session });
     });
+  } finally {
+    await session.endSession();
   }
-
-  if (customerReply && customerReply.trim()) {
-    enquiry.customerReplies.push({ adminId: adminUserId, message: customerReply.trim(), createdAt: new Date() });
-  }
-
-  // 3. Update assignedTo admin reference if provided
-  if (assignedTo) {
-    const adminUser = await User.findById(assignedTo);
-    if (!adminUser) {
-      throw new AppError('Assigned admin user not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
-    }
-    if (adminUser.role !== 'admin') {
-      throw new AppError('Assigned user must have admin role', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
-    }
-    enquiry.assignedTo = assignedTo;
-  }
-
-  await enquiry.save();
+  enquiry.$session(null);
 
   // 4. Attempt WhatsApp status update notification (Isolated operation; does not throw if fails)
   if (status && oldStatus !== status) {

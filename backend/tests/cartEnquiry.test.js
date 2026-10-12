@@ -164,6 +164,7 @@ const runCartEnquiryPRDTests = async () => {
 
     // Product 1: Has custom DealerPricing (300)
     const productWithCustomPricing = await Product.create({
+      stockQuantity: 50,
       sku: `PIPE-CUST-${timestamp.toString().slice(-4)}`,
       name: 'PVC Pipe 110mm Heavy Duty',
       categoryId: category._id,
@@ -182,6 +183,7 @@ const runCartEnquiryPRDTests = async () => {
 
     // Product 2: No custom DealerPricing, falls back to dealerPrice (350)
     const productWithoutCustomPricing = await Product.create({
+      stockQuantity: 50,
       sku: `PIPE-GEN-${timestamp.toString().slice(-4)}`,
       name: 'Standard PVC Elbow 90deg',
       categoryId: category._id,
@@ -313,32 +315,32 @@ const runCartEnquiryPRDTests = async () => {
     // CHECKLIST 8 & 9: Enquiry status workflow & Admin note
     // -------------------------------------------------------------
     console.log('8 & 9. Testing: [ ] Enquiry status workflow & [ ] Admin note...');
-    // Step A: status new -> contacted + admin note
+    // Step A: status new -> in-progress + admin note
     const s1 = await request(`/api/admin/enquiries/${enq._id}/status`, { method: 'PUT', headers: adminHeaders }, {
-      status: 'contacted',
+      status: 'in-progress',
       note: 'Admin Note 1: Called customer on mobile.',
     });
-    console.log(`   Status Update 1 (new -> contacted): ${s1.status}, status: ${s1.body.data?.enquiry?.status}`);
-    if (s1.status !== 200 || s1.body.data?.enquiry?.status !== 'contacted' || s1.body.data?.enquiry?.notes[0]?.note !== 'Admin Note 1: Called customer on mobile.') {
+    console.log(`   Status Update 1 (new -> in-progress): ${s1.status}, status: ${s1.body.data?.enquiry?.status}`);
+    if (s1.status !== 200 || s1.body.data?.enquiry?.status !== 'in-progress' || s1.body.data?.enquiry?.notes[0]?.note !== 'Admin Note 1: Called customer on mobile.') {
       throw new Error(`Admin note 1 or status failed: ${JSON.stringify(s1.body)}`);
     }
 
-    // Step B: status contacted -> in-progress + admin note 2
+    // Step B: status in-progress -> completed + admin note 2
     const s2 = await request(`/api/admin/enquiries/${enq._id}/status`, { method: 'PUT', headers: adminHeaders }, {
-      status: 'in-progress',
+      status: 'completed',
       note: 'Admin Note 2: Calculating bulk shipping cost.',
     });
-    console.log(`   Status Update 2 (contacted -> in-progress): ${s2.status}, status: ${s2.body.data?.enquiry?.status}`);
-    if (s2.status !== 200 || s2.body.data?.enquiry?.status !== 'in-progress' || s2.body.data?.enquiry?.notes.length !== 2) {
+    console.log(`   Status Update 2 (in-progress -> completed): ${s2.status}, status: ${s2.body.data?.enquiry?.status}`);
+    if (s2.status !== 200 || s2.body.data?.enquiry?.status !== 'completed' || s2.body.data?.enquiry?.notes.length !== 2) {
       throw new Error(`Admin note 2 or status failed: ${JSON.stringify(s2.body)}`);
     }
 
-    // Step C: status in-progress -> closed + admin note 3
+    // Step C: status completed -> closed + admin note 3
     const s3 = await request(`/api/admin/enquiries/${enq._id}/status`, { method: 'PUT', headers: adminHeaders }, {
       status: 'closed',
       note: 'Admin Note 3: Pricing shared and deal closed.',
     });
-    console.log(`   Status Update 3 (in-progress -> closed): ${s3.status}, status: ${s3.body.data?.enquiry?.status}`);
+    console.log(`   Status Update 3 (completed -> closed): ${s3.status}, status: ${s3.body.data?.enquiry?.status}`);
     if (s3.status !== 200 || s3.body.data?.enquiry?.status !== 'closed' || s3.body.data?.enquiry?.notes.length !== 3) {
       throw new Error(`Admin note 3 or status failed: ${JSON.stringify(s3.body)}`);
     }

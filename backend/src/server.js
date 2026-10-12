@@ -4,6 +4,7 @@ import { connectDB, disconnectDB } from './config/db.js';
 import { backfillProductModels } from './services/productModelBackfill.service.js';
 import { refreshCatalogFields } from './models/Product.js';
 import { CATALOG_FIELDS_VERSION } from './utils/productCatalogFields.js';
+import { backfillEnquiryStatuses } from './services/enquiryStatusBackfill.service.js';
 
 let server;
 
@@ -39,6 +40,8 @@ const startServer = async () => {
     // One-off data maintenance runs on a single instance only; under PM2
     // cluster mode the other instances would race it.
     if (!config.isPrimaryInstance) return;
+    const enquiryStatusesUpdated = await backfillEnquiryStatuses();
+    if (enquiryStatusesUpdated) console.log(`[Server] Updated legacy statuses for ${enquiryStatusesUpdated} enquiries.`);
     const modelBackfill = await backfillProductModels();
     if (modelBackfill.updated > 0) {
       console.log(`[Server] Assigned unique model data to ${modelBackfill.updated} existing products.`);

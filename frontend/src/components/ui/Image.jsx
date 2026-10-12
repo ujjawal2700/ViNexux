@@ -8,6 +8,7 @@ const ImageContent = ({
   className = '',
   aspectRatio = 'aspect-auto',
   objectFit = 'object-cover',
+  imgClassName = '',
   fallbackSrc = null,
   ...props
 }) => {
@@ -42,7 +43,7 @@ const ImageContent = ({
           decoding="async"
           onLoad={handleLoad}
           onError={handleError}
-          className={`w-full h-full ${objectFit} transition-opacity duration-300 ${
+          className={`w-full h-full ${objectFit} transition-opacity duration-300 ${imgClassName} ${
             isLoading ? 'opacity-0' : 'opacity-100'
           }`}
           {...props}

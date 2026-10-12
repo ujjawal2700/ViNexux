@@ -16,8 +16,8 @@ const formatCurrency = (amount) => new Intl.NumberFormat('en-IN', {
 const statusOptions = [
   { value: '', label: 'All Statuses' },
   { value: 'new', label: 'New' },
-  { value: 'contacted', label: 'Contacted' },
   { value: 'in-progress', label: 'In Progress' },
+  { value: 'completed', label: 'Completed' },
   { value: 'closed', label: 'Closed' },
   { value: 'spam', label: 'Spam' },
 ];

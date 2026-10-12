@@ -100,6 +100,8 @@ const AppRoutes = () => {
         <Route path="/wishlist" element={<WishlistPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/low-stock" element={<LowStockProductsPage />} />
+        <Route path="/trending" element={<ProductsPage key="trending-catalog" trendingOnly />} />
+        <Route path="/trending" element={<ProductsPage key="trending-catalog" trendingOnly />} />
         <Route path="/limited-stock" element={<Navigate to="/low-stock" replace />} />
         <Route path="/categories" element={<Navigate to="/" replace />} />
         <Route path="/brands" element={<BrandsPage />} />

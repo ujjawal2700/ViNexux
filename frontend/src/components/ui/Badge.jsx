@@ -1,9 +1,10 @@
+import { canonicalEnquiryStatus, ENQUIRY_STATUS_LABELS } from '../../../../shared/enquiryStatuses.js';
 import React from 'react';
 
 const statusStyles = {
   // Enquiry Statuses
   new: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-  contacted: 'bg-blue-50 text-blue-800 border-blue-200',
+  completed: 'bg-emerald-50 text-emerald-800 border-emerald-200',
   'in-progress': 'bg-amber-50 text-amber-800 border-amber-200',
   closed: 'bg-muted text-muted-foreground border-border',
   spam: 'bg-rose-50 text-rose-800 border-rose-200',
@@ -50,7 +51,8 @@ export const Badge = ({
 };
 
 export const StatusBadge = ({ status = 'pending', className = '' }) => {
-  const normalized = String(status).toLowerCase().replace(/\s+/g, '-');
+  const rawStatus = String(status).toLowerCase().replace(/\s+/g, '-');
+  const normalized = rawStatus === 'pending' ? rawStatus : canonicalEnquiryStatus(rawStatus);
   const style = statusStyles[normalized] || 'bg-muted text-foreground border-border';
 
   return (
@@ -58,7 +60,7 @@ export const StatusBadge = ({ status = 'pending', className = '' }) => {
       className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wider uppercase border ${style} ${className}`}
     >
       <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-      {status}
+      {ENQUIRY_STATUS_LABELS[normalized] || status}
     </span>
   );
 };

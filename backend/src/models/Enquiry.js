@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { ENQUIRY_STATUSES } from '../../../shared/enquiryStatuses.js';
 
 const enquiryItemSchema = new mongoose.Schema(
   {
@@ -13,6 +14,9 @@ const enquiryItemSchema = new mongoose.Schema(
       trim: true,
     },
     productImageUrl: { type: String, trim: true, default: '' },
+    sku: { type: String, trim: true, default: '' },
+    modelNumber: { type: String, trim: true, default: '' },
+    modelName: { type: String, trim: true, default: '' },
     quantity: {
       type: Number,
       required: [true, 'Quantity is required'],
@@ -135,10 +139,11 @@ const enquirySchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['new', 'contacted', 'in-progress', 'closed', 'spam'],
+      enum: ENQUIRY_STATUSES,
       default: 'new',
       required: [true, 'Enquiry status is required'],
     },
+    stockDeductedAt: { type: Date, default: null },
     notes: {
       type: [enquiryNoteSchema],
       default: [],

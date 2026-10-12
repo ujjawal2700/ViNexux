@@ -170,7 +170,7 @@ export const EnquiryDetailPage = () => {
                       <Image src={item.imageUrl} alt={item.productName} aspectRatio="aspect-square" objectFit="object-contain" className="w-14 h-14 rounded-lg border border-slate-300 bg-white shrink-0" />
                       <div className="truncate space-y-0.5">
                         <span className="font-bold text-foreground block truncate">{item.productName || 'Equipment'}</span>
-                        {prod.sku && <span className="font-mono text-xs text-slate-700 block">SKU: {prod.sku}</span>}
+                        {(item.sku || prod.sku) && <span className="font-mono text-xs text-slate-700 block">SKU: {item.sku || prod.sku}</span>}
                         <span className="text-xs text-slate-700">Qty: {item.quantity} × {formatCurrency(price)}</span>
                       </div>
                     </div>

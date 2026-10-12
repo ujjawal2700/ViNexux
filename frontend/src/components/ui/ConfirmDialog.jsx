@@ -1,7 +1,7 @@
 import React from 'react';
 import Modal from './Modal';
-import Button from './Button';
 import { AlertTriangle, Info } from 'lucide-react';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 
 export const ConfirmDialog = ({
   isOpen,
@@ -49,7 +49,9 @@ export const ConfirmDialog = ({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={isLoading ? undefined : onClose}
+      title={title}
+      closeOnOutsideClick={!isLoading}
       size="sm"
       footer={footer}
     >
@@ -59,10 +61,9 @@ export const ConfirmDialog = ({
         }`}>
           {resolvedIsDanger ? <AlertTriangle className="w-5 h-5" /> : <Info className="w-5 h-5" />}
         </div>
-        <div className="text-left">
-          <h4 className="font-bold text-gray-900 text-sm">{title}</h4>
-          <p className="text-xs text-gray-600 mt-1 leading-relaxed">{resolvedDescription}</p>
-        </div>
+        <DialogPrimitive.Description className="text-sm text-gray-600 leading-relaxed">
+          {resolvedDescription}
+        </DialogPrimitive.Description>
       </div>
     </Modal>
   );

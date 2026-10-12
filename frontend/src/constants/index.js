@@ -19,8 +19,8 @@ export const DEALER_STATUS = {
 
 export const ENQUIRY_STATUS = {
   NEW: 'new',
-  CONTACTED: 'contacted',
   IN_PROGRESS: 'in-progress',
+  COMPLETED: 'completed',
   CLOSED: 'closed',
   SPAM: 'spam',
 };

@@ -1,3 +1,4 @@
+import { ALLOWED_ENQUIRY_TRANSITIONS as ALLOWED_STATUS_TRANSITIONS, ENQUIRY_STATUS_LABELS, canonicalEnquiryStatus } from '../../../../shared/enquiryStatuses.js';
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import adminService from '../../services/adminService';
@@ -29,13 +30,7 @@ import {
   UserCheck
 } from 'lucide-react';
 
-const ALLOWED_STATUS_TRANSITIONS = {
-  new: ['contacted', 'in-progress', 'closed', 'spam'],
-  contacted: ['in-progress', 'closed', 'spam'],
-  'in-progress': ['closed', 'spam'],
-  closed: ['closed'],
-  spam: ['spam'],
-};
+
 
 const AdminEnquiryDetailPage = () => {
   const { id } = useParams();
@@ -62,6 +57,7 @@ const AdminEnquiryDetailPage = () => {
     try {
       const res = await adminService.getEnquiryById(id);
       const enqObj = res.data?.enquiry || res.enquiry;
+      if (enqObj) enqObj.status = canonicalEnquiryStatus(enqObj.status);
       setEnquiry(enqObj);
       if (enqObj) setSelectedStatus(enqObj.status);
     } catch (err) {
@@ -79,7 +75,7 @@ const AdminEnquiryDetailPage = () => {
   const handleUpdateStatus = async (targetStatus) => {
     try {
       await adminService.updateEnquiryStatus(id, { status: targetStatus });
-      setToast({ message: `Enquiry status updated to '${targetStatus}'`, type: 'success' });
+      setToast({ message: targetStatus === 'completed' ? 'Enquiry completed. Product stock updated.' : `Enquiry status updated to ${ENQUIRY_STATUS_LABELS[targetStatus]}.`, type: 'success' });
       setSelectedStatus(targetStatus);
       fetchEnquiryDetails();
     } catch (err) {
@@ -174,10 +170,10 @@ const AdminEnquiryDetailPage = () => {
 
   const allowedNext = ALLOWED_STATUS_TRANSITIONS[enquiry.status] || [enquiry.status];
   const statusOptions = [
-    { value: enquiry.status, label: enquiry.status.toUpperCase() },
+    { value: enquiry.status, label: ENQUIRY_STATUS_LABELS[enquiry.status] || enquiry.status },
     ...allowedNext
       .filter((s) => s !== enquiry.status)
-      .map((s) => ({ value: s, label: s.toUpperCase() })),
+      .map((s) => ({ value: s, label: ENQUIRY_STATUS_LABELS[s] || s })),
   ];
 
   return (
@@ -318,7 +314,7 @@ const AdminEnquiryDetailPage = () => {
                         </div>
                       </Table.Cell>
                       <Table.Cell className="font-mono text-[11px] text-muted-foreground">
-                        {prod.sku || 'N/A'}
+                        {item.sku || prod.sku || 'N/A'}
                       </Table.Cell>
                       <Table.Cell className="text-center font-mono text-xs font-bold text-foreground">
                         {qty}
@@ -353,6 +349,9 @@ const AdminEnquiryDetailPage = () => {
             <h3 className="text-xs font-extrabold text-foreground uppercase tracking-wider pb-2 border-b border-border">
               Lead Workflow Control
             </h3>
+
+            <p className="text-xs text-muted-foreground">Stock is deducted once when the enquiry is marked Completed. Closed and Spam do not deduct stock.</p>
+            {enquiry.stockDeductedAt && <p className="text-xs text-emerald-700">Stock deducted on {new Date(enquiry.stockDeductedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}.</p>}
 
             <FormField label="Change Status">
               <Select

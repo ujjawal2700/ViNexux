@@ -51,7 +51,7 @@ export const getProductById = asyncHandler(async (req, res) => {
 
 export const updateProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const product = await productService.updateProduct(id, req.body);
+  const product = await productService.updateProduct(id, req.body, req.user);
 
   return ApiResponse.success(
     res,

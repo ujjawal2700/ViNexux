@@ -8,6 +8,7 @@ import { StatusBadge } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Skeleton from '../../components/ui/Skeleton';
 import ErrorState from '../../components/ui/ErrorState';
+import QuickStockUpdater from '../../components/admin/QuickStockUpdater';
 import { 
   Inbox, 
   Users, 
@@ -16,7 +17,8 @@ import {
   FolderTree, 
   Clock, 
   ArrowRight,
-  Sparkles
+  Sparkles,
+  PackagePlus,
 } from 'lucide-react';
 
 const AdminDashboardPage = () => {
@@ -140,6 +142,10 @@ const AdminDashboardPage = () => {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" className="text-xs" onClick={() => {
+            document.getElementById('dashboard-stock-updater')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            document.getElementById('dashboard-stock-search')?.focus({ preventScroll: true });
+          }}><PackagePlus className="w-3.5 h-3.5 mr-1.5 text-primary" /> Update Stock</Button>
           <Link to="/admin/categories">
             <Button variant="outline" size="sm" className="text-xs">
               <FolderTree className="w-3.5 h-3.5 mr-1.5 text-primary" />
@@ -160,6 +166,8 @@ const AdminDashboardPage = () => {
           </Link>
         </div>
       </div>
+
+      <QuickStockUpdater />
 
       {/* Two Column Layout: Recent Enquiries & Pending Dealer KYC Queue */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -31,6 +31,7 @@ import {
   Minus,
   Plus,
   ExternalLink,
+  X,
 } from 'lucide-react';
 
 export const ProductDetailPage = () => {
@@ -46,6 +47,7 @@ export const ProductDetailPage = () => {
   const [categories, setCategories] = useState([]);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [isImageLightboxOpen, setIsImageLightboxOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState(null);
@@ -391,7 +393,7 @@ export const ProductDetailPage = () => {
   )?.value || 'Standard Model';
 
   const warrantyText = useMemo(() => {
-    return product?.warranty || product?.specifications?.find((s) => s.key.toLowerCase().includes('warranty'))?.value || '1 Year ON-SITE / Direct Replacement Warranty';
+    return product?.warranty || product?.specifications?.find((s) => s.key.toLowerCase().includes('warranty'))?.value || 'Not specified';
   }, [product]);
 
   // Structured Full Specifications List
@@ -432,6 +434,17 @@ export const ProductDetailPage = () => {
   }, [product]);
 
   const currentImage = images[selectedImageIndex]?.url || images[0]?.url || '';
+
+  useEffect(() => {
+    if (!isImageLightboxOpen) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setIsImageLightboxOpen(false);
+      if (event.key === 'ArrowLeft') setSelectedImageIndex((index) => (index - 1 + images.length) % images.length);
+      if (event.key === 'ArrowRight') setSelectedImageIndex((index) => (index + 1) % images.length);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isImageLightboxOpen, images.length]);
 
   if (isLoading) {
     return (
@@ -493,13 +506,31 @@ export const ProductDetailPage = () => {
             COLUMN 1: PRODUCT IMAGE & THUMBNAILS (Left - No empty margin)
            ========================================= */}
         <div className="xl:col-span-4 space-y-3">
-          <div className="bg-[var(--store-surface)] p-4 rounded-xl border border-[var(--store-border)] overflow-hidden relative shadow-2xs group flex items-center justify-center min-h-[360px] sm:min-h-[420px] xl:min-h-[clamp(460px,34vw,660px)]">
+          <div
+            className="bg-[var(--store-surface)] p-4 rounded-xl border border-[var(--store-border)] overflow-hidden relative shadow-2xs group flex items-center justify-center min-h-[360px] sm:min-h-[420px] xl:min-h-[clamp(460px,34vw,660px)]"
+            onMouseMove={(event) => {
+              const image = event.currentTarget.querySelector('img');
+              if (!image) return;
+              const bounds = image.getBoundingClientRect();
+              const x = Math.max(0, Math.min(100, ((event.clientX - bounds.left) / bounds.width) * 100));
+              const y = Math.max(0, Math.min(100, ((event.clientY - bounds.top) / bounds.height) * 100));
+              image.style.transformOrigin = `${x}% ${y}%`;
+            }}
+            onMouseLeave={(event) => {
+              const image = event.currentTarget.querySelector('img');
+              if (image) image.style.transformOrigin = 'center center';
+            }}
+          >
+            <button type="button" aria-label="Open full size product image" onClick={() => currentImage && setIsImageLightboxOpen(true)} className="w-full cursor-zoom-in">
             <Image
               src={currentImage}
               alt={product.name}
               aspectRatio="aspect-square"
-              className="rounded-lg object-contain w-full max-h-[620px] transition-transform duration-300 group-hover:scale-102"
+              objectFit="object-contain"
+              className="rounded-lg w-full max-h-[620px]"
+              imgClassName="transition-transform duration-100 group-hover:scale-200"
             />
+            </button>
 
             {/* Left and Right navigation arrows over main photo */}
             {images.length > 1 && (
@@ -529,6 +560,27 @@ export const ProductDetailPage = () => {
               </>
             )}
           </div>
+
+          {isImageLightboxOpen && (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Product image viewer"
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 sm:p-8"
+              onClick={() => setIsImageLightboxOpen(false)}
+            >
+              <span className="absolute left-4 top-4 rounded-full bg-white/15 px-3 py-1.5 text-sm font-semibold text-white">
+                {selectedImageIndex + 1} / {images.length}
+              </span>
+              <button type="button" aria-label="Close image viewer" onClick={() => setIsImageLightboxOpen(false)} className="absolute right-4 top-4 z-10 rounded-full bg-white/15 p-3 text-white hover:bg-white/25">
+                <X className="h-6 w-6" />
+              </button>
+              {images.length > 1 && <button type="button" aria-label="Previous image" onClick={(event) => { event.stopPropagation(); setSelectedImageIndex((index) => (index - 1 + images.length) % images.length); }} className="absolute left-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/15 p-3 text-white hover:bg-white/25"><ChevronLeft className="h-7 w-7" /></button>}
+              <img src={currentImage} alt={product.name} onClick={(event) => event.stopPropagation()} className="max-h-[86vh] max-w-[92vw] select-none object-contain" />
+              {images.length > 1 && <button type="button" aria-label="Next image" onClick={(event) => { event.stopPropagation(); setSelectedImageIndex((index) => (index + 1) % images.length); }} className="absolute right-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/15 p-3 text-white hover:bg-white/25"><ChevronRight className="h-7 w-7" /></button>}
+              {images.length > 1 && <div className="absolute bottom-4 left-1/2 flex max-w-[90vw] -translate-x-1/2 gap-2 overflow-x-auto rounded-lg bg-black/40 p-2" onClick={(event) => event.stopPropagation()}>{images.map((img, index) => <button key={img.publicId || img.url || index} type="button" aria-label={`Show image ${index + 1}`} onClick={() => setSelectedImageIndex(index)} className={`h-14 w-14 shrink-0 overflow-hidden rounded border-2 bg-white ${selectedImageIndex === index ? 'border-white' : 'border-white/30 opacity-70'}`}><img src={img.url} alt="" className="h-full w-full object-contain" /></button>)}</div>}
+            </div>
+          )}
 
           {/* Thumbnails Row below photo (Matching Mega Jaipur Image) */}
           {images.length > 1 && (
@@ -645,7 +697,7 @@ export const ProductDetailPage = () => {
                 <tr className="border-b border-[var(--store-border)] hover:bg-[var(--store-background)]/50">
                   <td className="px-4 py-2.5 font-medium text-[var(--store-muted)] flex items-center gap-2">
                     <span className="text-[var(--store-muted)] font-bold">▣</span>
-                    <span>Model</span>
+                    <span>Model Name</span>
                   </td>
                   <td className="px-4 py-2.5 font-semibold text-[var(--store-text)]">
                     {modelName}

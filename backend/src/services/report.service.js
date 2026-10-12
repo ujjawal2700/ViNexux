@@ -54,7 +54,7 @@ export const getReportSummary = async () => {
   const activeCategories = categoryCounts.active || 0;
   const totalEnquiries = enquiryRows.reduce((sum, row) => sum + row.count, 0);
   const newEnquiries = enquiryByStatus.get('new') || 0;
-  const contactedEnquiries = enquiryByStatus.get('contacted') || 0;
+  const completedEnquiries = enquiryByStatus.get('completed') || 0;
   const inProgressEnquiries = enquiryByStatus.get('in-progress') || 0;
   const closedEnquiries = enquiryByStatus.get('closed') || 0;
   const spamEnquiries = enquiryByStatus.get('spam') || 0;
@@ -85,7 +85,7 @@ export const getReportSummary = async () => {
     enquiries: {
       total: totalEnquiries,
       new: newEnquiries,
-      contacted: contactedEnquiries,
+      completed: completedEnquiries,
       inProgress: inProgressEnquiries,
       closed: closedEnquiries,
       spam: spamEnquiries,
@@ -157,7 +157,7 @@ export const getEnquiryReport = async (query = {}) => {
   const statusCounts = countBy(statusRows);
   const userTypeCounts = countBy(userTypeRows);
   const newCount = statusCounts.get('new') || 0;
-  const contactedCount = statusCounts.get('contacted') || 0;
+  const completedCount = statusCounts.get('completed') || 0;
   const inProgressCount = statusCounts.get('in-progress') || 0;
   const closedCount = statusCounts.get('closed') || 0;
   const spamCount = statusCounts.get('spam') || 0;
@@ -169,7 +169,7 @@ export const getEnquiryReport = async (query = {}) => {
     filteredCount,
     statusBreakdown: {
       new: newCount,
-      contacted: contactedCount,
+      completed: completedCount,
       inProgress: inProgressCount,
       closed: closedCount,
       spam: spamCount,

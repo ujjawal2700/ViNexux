@@ -55,7 +55,6 @@ const SORT_OPTIONS = [
   { value: "default", label: "Default" },
   { value: "newest", label: "Newest First" },
   { value: "stock_updated", label: "Stock Updated" },
-  { value: "trending", label: "Trending" },
   { value: "price_asc", label: "Price (Low > High)" },
   { value: "price_desc", label: "Price (High > Low)" },
 ];
@@ -67,7 +66,7 @@ const DEFAULT_AVAILABILITY = [
   "out-of-stock",
 ];
 
-export const ProductsPage = ({ lowStockOnly = false }) => {
+export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -229,7 +228,7 @@ export const ProductsPage = ({ lowStockOnly = false }) => {
           sortOrder,
         };
 
-        if (sortOption === "trending") query.isTrending = true;
+        if (trendingOnly) query.isTrending = true;
 
         if (searchTerm.trim()) {
           query.search = searchTerm.trim();
@@ -308,6 +307,7 @@ export const ProductsPage = ({ lowStockOnly = false }) => {
     },
     [
       lowStockOnly,
+      trendingOnly,
       currentPage,
       itemsPerPage,
       searchTerm,
@@ -333,7 +333,7 @@ export const ProductsPage = ({ lowStockOnly = false }) => {
     return () => controller.abort();
   }, [fetchProducts]);
 
-  const isAllProductsRoute = lowStockOnly || location.pathname.startsWith("/products");
+  const isAllProductsRoute = lowStockOnly || trendingOnly || location.pathname.startsWith("/products");
 
   const availableCategories = facets.categories || [];
   const displayCategories = useMemo(() => {
@@ -494,6 +494,7 @@ export const ProductsPage = ({ lowStockOnly = false }) => {
   // Compute Breadcrumb Trail (Supports Brand view like "Home > Brands > ACER" & Category hierarchy like "Home > Laptop > Branded Laptop")
   const breadcrumbTrail = useMemo(() => {
     if (lowStockOnly) return [{ label: "Home", path: "/" }, { label: "Low Stock", path: null }];
+    if (trendingOnly) return [{ label: "Home", path: "/" }, { label: "Trending", path: null }];
     const brandName =
       resolvedBrand ||
       (selectedBrands.length === 1 && !selectedCategoryId
@@ -530,6 +531,7 @@ export const ProductsPage = ({ lowStockOnly = false }) => {
     ];
   }, [
     lowStockOnly,
+    trendingOnly,
     resolvedBrand,
     selectedBrands,
     selectedCategoryId,
@@ -582,7 +584,7 @@ export const ProductsPage = ({ lowStockOnly = false }) => {
       navigate(`/brands/${brandSlug}`);
       return;
     }
-    const destination = lowStockOnly ? "/low-stock" : location.pathname.startsWith("/products")
+    const destination = lowStockOnly ? "/low-stock" : trendingOnly ? "/trending" : location.pathname.startsWith("/products")
       ? "/products"
       : activeCategory
         ? buildCategoryPath(activeCategory, categories)
@@ -595,6 +597,7 @@ export const ProductsPage = ({ lowStockOnly = false }) => {
   // Compute Page Header Title (Matching Mega Jaipur: "Branded Laptop", "Laptop Hinges", "ACER")
   const pageTitle = useMemo(() => {
     if (lowStockOnly) return "Low Stock Products";
+    if (trendingOnly) return "Trending Products";
     if (isAllProductsRoute) {
       if (searchTerm) return `Search: "${searchTerm}"`;
       return "All Products";
@@ -609,11 +612,12 @@ export const ProductsPage = ({ lowStockOnly = false }) => {
       return `Search: "${searchTerm}"`;
     }
     return "All Products";
-  }, [lowStockOnly, isAllProductsRoute, activeCategory, brandSlug, routeBrand, searchTerm]);
+  }, [lowStockOnly, trendingOnly, isAllProductsRoute, activeCategory, brandSlug, routeBrand, searchTerm]);
 
   // Dynamic SEO metadata targeting Networking & IT Search Ranking
   const seoTitle = useMemo(() => {
     if (lowStockOnly) return "Low Stock Products | Vinexus";
+    if (trendingOnly) return "Trending Products | Vinexus";
     if (headerSlug === "networking" || activeCategory?.slug === "networking") {
       return "Networking Products, Enterprise PoE Switches, Routers & Racks | Vinexus";
     }
@@ -631,7 +635,7 @@ export const ProductsPage = ({ lowStockOnly = false }) => {
       return `Search: "${searchTerm}" — Products | Vinexus`;
     }
     return "All Products — Enterprise Networking, CCTV & IT Hardware | Vinexus";
-  }, [lowStockOnly, headerSlug, activeCategory, brandSlug, routeBrand, searchTerm]);
+  }, [lowStockOnly, trendingOnly, headerSlug, activeCategory, brandSlug, routeBrand, searchTerm]);
 
   const seoDescription = useMemo(() => {
     if (headerSlug === "networking" || activeCategory?.slug === "networking") {

@@ -227,15 +227,15 @@ const AdminReportsPage = () => {
                       <span className="font-bold text-emerald-700">{summaryData?.enquiries?.new || 0}</span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-border">
-                      <span className="text-muted-foreground">Contacted Leads</span>
-                      <span className="font-bold text-blue-700">{summaryData?.enquiries?.contacted || 0}</span>
+                      <span className="text-muted-foreground">In Progress</span>
+                      <span className="font-bold text-blue-700">{summaryData?.enquiries?.inProgress || 0}</span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-border">
-                      <span className="text-muted-foreground">In-Progress</span>
-                      <span className="font-bold text-amber-800">{summaryData?.enquiries?.inProgress || 0}</span>
+                      <span className="text-muted-foreground">Completed</span>
+                      <span className="font-bold text-emerald-700">{summaryData?.enquiries?.completed || 0}</span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-border">
-                      <span className="text-muted-foreground">Closed / Converted</span>
+                      <span className="text-muted-foreground">Closed</span>
                       <span className="font-bold text-foreground">{summaryData?.enquiries?.closed || 0}</span>
                     </div>
                     <div className="flex justify-between py-1">
@@ -303,8 +303,8 @@ const AdminReportsPage = () => {
                 options: [
                   { value: '', label: 'All Statuses' },
                   { value: 'new', label: 'New' },
-                  { value: 'contacted', label: 'Contacted' },
-                  { value: 'in-progress', label: 'In-Progress' },
+                  { value: 'in-progress', label: 'In Progress' },
+                  { value: 'completed', label: 'Completed' },
                   { value: 'closed', label: 'Closed' },
                   { value: 'spam', label: 'Spam' },
                 ],

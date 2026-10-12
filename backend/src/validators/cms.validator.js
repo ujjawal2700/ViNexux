@@ -156,6 +156,7 @@ export const footerContentSchema = {
     quickLinksHeading: z.string().trim().max(80).optional(),
     legalLinksHeading: z.string().trim().max(80).optional(),
     contactHeading: z.string().trim().max(80).optional(),
+    sectionOrder: z.array(z.enum(['contact', 'about', 'information', 'support', 'bank'])).length(5).optional(),
     quickLinks: z
       .array(
         z.object({

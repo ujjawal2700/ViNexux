@@ -282,19 +282,19 @@ const runAdminEnquiryTests = async () => {
     // -------------------------------------------------------------
     console.log('\n--- SECTION D: Status Transitions & Validation ---');
 
-    // 13. new -> contacted
-    const step1Res = await request(`/api/admin/enquiries/${testEnquiryId}`, { method: 'PUT', headers: adminHeaders }, { status: 'contacted' });
-    assert(step1Res.status === 200, '13. Update status new -> contacted returns 200');
-    assert(step1Res.body.data.enquiry.status === 'contacted', 'Status updated to contacted');
+    // 13. new -> in-progress
+    const step1Res = await request(`/api/admin/enquiries/${testEnquiryId}`, { method: 'PUT', headers: adminHeaders }, { status: 'in-progress' });
+    assert(step1Res.status === 200, '13. Update status new -> in-progress returns 200');
+    assert(step1Res.body.data.enquiry.status === 'in-progress', 'Status updated to in-progress');
 
-    // 14. contacted -> in-progress
-    const step2Res = await request(`/api/admin/enquiries/${testEnquiryId}`, { method: 'PUT', headers: adminHeaders }, { status: 'in-progress' });
-    assert(step2Res.status === 200, '14. Update status contacted -> in-progress returns 200');
-    assert(step2Res.body.data.enquiry.status === 'in-progress', 'Status updated to in-progress');
+    // 14. in-progress -> completed
+    const step2Res = await request(`/api/admin/enquiries/${testEnquiryId}`, { method: 'PUT', headers: adminHeaders }, { status: 'completed' });
+    assert(step2Res.status === 200, '14. Update status in-progress -> completed returns 200');
+    assert(step2Res.body.data.enquiry.status === 'completed', 'Status updated to completed');
 
-    // 15. in-progress -> closed
+    // 15. completed -> closed
     const step3Res = await request(`/api/admin/enquiries/${testEnquiryId}`, { method: 'PUT', headers: adminHeaders }, { status: 'closed' });
-    assert(step3Res.status === 200, '15. Update status in-progress -> closed returns 200');
+    assert(step3Res.status === 200, '15. Update status completed -> closed returns 200');
     assert(step3Res.body.data.enquiry.status === 'closed', 'Status updated to closed');
 
     // Create a second enquiry for testing new -> spam transition

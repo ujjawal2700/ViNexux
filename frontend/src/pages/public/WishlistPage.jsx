@@ -215,7 +215,7 @@ export const WishlistPage = () => {
                           </span>
                         </div>
 
-                        {product.modelNumber && <div className="text-[10px] text-[var(--store-muted)]">Model: {product.modelNumber}</div>}
+                        {product.modelNumber && <div className="text-[10px] text-[var(--store-muted)]">Model Number: {product.modelNumber}</div>}
                       </div>
                     </div>
 

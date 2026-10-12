@@ -168,6 +168,11 @@ const footerContentSchema = new mongoose.Schema(
     quickLinksHeading: { type: String, trim: true, default: 'Information' },
     legalLinksHeading: { type: String, trim: true, default: 'Legal' },
     contactHeading: { type: String, trim: true, default: 'Contact Us' },
+    sectionOrder: {
+      type: [String],
+      enum: ['contact', 'about', 'information', 'support', 'bank'],
+      default: ['contact', 'about', 'information', 'support', 'bank'],
+    },
     quickLinks: [footerLinkSchema],
     legalLinks: [footerLinkSchema],
     socialLinks: [footerLinkSchema],

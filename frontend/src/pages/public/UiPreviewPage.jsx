@@ -59,7 +59,7 @@ const UiPreviewPage = () => {
 
   const tableData = [
     { id: 'ORD-9821', customer: 'Apex Security Systems', date: '2026-09-04', status: 'new', total: '₹14,250.00' },
-    { id: 'ORD-9822', customer: 'Global Surveillance Corp', date: '2026-09-04', status: 'contacted', total: '₹8,900.00' },
+    { id: 'ORD-9822', customer: 'Global Surveillance Corp', date: '2026-09-04', status: 'completed', total: '₹8,900.00' },
     { id: 'ORD-9823', customer: 'Vanguard Electronics', date: '2026-09-03', status: 'in-progress', total: '₹22,100.00' },
     { id: 'ORD-9824', customer: 'Titan Security Ltd', date: '2026-09-02', status: 'closed', total: '₹5,400.00' },
   ];
@@ -163,7 +163,7 @@ const UiPreviewPage = () => {
             <h4 className="text-sm font-bold text-foreground">Status Badges Taxonomy</h4>
             <div className="flex flex-wrap gap-2">
               <StatusBadge status="new" />
-              <StatusBadge status="contacted" />
+              <StatusBadge status="completed" />
               <StatusBadge status="in-progress" />
               <StatusBadge status="closed" />
               <StatusBadge status="spam" />

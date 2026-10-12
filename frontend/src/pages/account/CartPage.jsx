@@ -567,7 +567,7 @@ export const CartPage = () => {
       const itemTotal = unitPrice * qty;
 
       text += `${itemIndex}. *${name}*\n`;
-      if (model) text += `   • Model: ${model}\n`;
+      if (model) text += `   • Model Number: ${model}\n`;
       text += `   • Qty: *${qty}* | Unit: ${formatCurrency(unitPrice)} | Total: *${formatCurrency(itemTotal)}*\n\n`;
     });
 
@@ -688,7 +688,7 @@ export const CartPage = () => {
                         </Link>
                         <div className="min-w-0 flex-1">
                           <Link to={buildProductPath(prod)} className="line-clamp-2 text-xs font-semibold leading-snug text-gray-900">{prod.name || 'Vinexus Product'}</Link>
-                          <p className="mt-1 truncate text-[10px] text-gray-600">Model: {prod.modelNumber || prod.model || '—'}</p>
+                          <p className="mt-1 truncate text-[10px] text-gray-600">Model Number: {prod.modelNumber || prod.model || '—'}</p>
                           <p className="mt-1 text-[11px] font-semibold text-gray-800">{formatCurrency(unitPrice)} each</p>
                         </div>
                         <button type="button" onClick={() => handleRemoveItem(prodId, prod.name)} disabled={updatingItemId === prodId} aria-label={`Remove ${prod.name || 'product'}`} className="p-1 text-gray-500 hover:text-rose-600"><Trash2 className="h-4 w-4" /></button>

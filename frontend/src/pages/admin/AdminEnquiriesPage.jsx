@@ -1,3 +1,4 @@
+import { ALLOWED_ENQUIRY_TRANSITIONS as ALLOWED_STATUS_TRANSITIONS, ENQUIRY_STATUS_LABELS, canonicalEnquiryStatus } from '../../../../shared/enquiryStatuses.js';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import adminService from '../../services/adminService';
@@ -16,13 +17,7 @@ import { Inbox, Eye, FileSpreadsheet, MessageCircle, ChevronDown } from 'lucide-
 import { buildEnquiryWhatsAppLink } from '../../lib/whatsapp';
 import { groupEnquiryItems } from '../../lib/enquiryItems';
 
-const ALLOWED_STATUS_TRANSITIONS = {
-  new: ['contacted', 'in-progress', 'closed', 'spam'],
-  contacted: ['in-progress', 'closed', 'spam'],
-  'in-progress': ['closed', 'spam'],
-  closed: ['closed'],
-  spam: ['spam'],
-};
+
 
 /**
  * `forcedUserType` ('customer' | 'dealer') locks this page to one side of
@@ -74,7 +69,7 @@ const AdminEnquiriesPage = ({ forcedUserType }) => {
       if (userTypeFilter) params.userType = userTypeFilter;
 
       const res = await adminService.getEnquiries(params);
-      setEnquiries(res.data?.enquiries || []);
+      setEnquiries((res.data?.enquiries || []).map((enquiry) => ({ ...enquiry, status: canonicalEnquiryStatus(enquiry.status) })));
       const p = res.data?.pagination || {};
       const total = p.total ?? p.totalItems ?? p.totalCount ?? 0;
       setPagination({
@@ -101,7 +96,7 @@ const AdminEnquiriesPage = ({ forcedUserType }) => {
 
     try {
       await adminService.updateEnquiryStatus(enquiryId, { status: newStatus });
-      setToast({ message: `Enquiry status updated to '${newStatus}'`, type: 'success' });
+      setToast({ message: newStatus === 'completed' ? 'Enquiry completed. Product stock updated.' : `Enquiry status updated to ${ENQUIRY_STATUS_LABELS[newStatus]}.`, type: 'success' });
       fetchEnquiries();
     } catch (err) {
       console.error('Status update error:', err);
@@ -156,11 +151,11 @@ const AdminEnquiriesPage = ({ forcedUserType }) => {
             },
             options: [
               { value: '', label: 'All Lead Statuses' },
-              { value: 'new', label: 'New Unprocessed' },
-              { value: 'contacted', label: 'Contacted' },
+              { value: 'new', label: 'New' },
               { value: 'in-progress', label: 'In Progress' },
-              { value: 'closed', label: 'Closed / Converted' },
-              { value: 'spam', label: 'Marked as Spam' },
+              { value: 'completed', label: 'Completed' },
+              { value: 'closed', label: 'Closed' },
+              { value: 'spam', label: 'Spam' },
             ],
           },
           ...(forcedUserType
@@ -234,10 +229,10 @@ const AdminEnquiriesPage = ({ forcedUserType }) => {
               {enquiries.map((enq) => {
                 const allowedNext = ALLOWED_STATUS_TRANSITIONS[enq.status] || [enq.status];
                 const statusOptions = [
-                  { value: enq.status, label: enq.status.toUpperCase() },
+                  { value: enq.status, label: ENQUIRY_STATUS_LABELS[enq.status] || enq.status },
                   ...allowedNext
                     .filter((s) => s !== enq.status)
-                    .map((s) => ({ value: s, label: s.toUpperCase() })),
+                    .map((s) => ({ value: s, label: ENQUIRY_STATUS_LABELS[s] || s })),
                 ];
 
                 const totalItemsCount = enq.items ? enq.items.reduce((acc, item) => acc + (item.quantity || 1), 0) : 0;
@@ -281,11 +276,11 @@ const AdminEnquiriesPage = ({ forcedUserType }) => {
                           value={enq.status}
                           onChange={(e) => handleStatusChange(enq._id, enq.status, e.target.value)}
                           className={`w-full appearance-none text-[11px] font-bold uppercase tracking-wider rounded-lg pl-3 pr-7 py-2 border cursor-pointer transition-all shadow-xs focus:outline-none focus:ring-2 focus:ring-primary/20 ${
-                            enq.status === 'closed'
+                            enq.status === 'completed'
                               ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
                               : enq.status === 'in-progress'
                               ? 'bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100'
-                              : enq.status === 'contacted'
+                              : enq.status === 'closed'
                               ? 'bg-purple-50 text-purple-800 border-purple-300 hover:bg-purple-100'
                               : enq.status === 'spam'
                               ? 'bg-rose-50 text-rose-800 border-rose-300 hover:bg-rose-100'
