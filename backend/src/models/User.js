@@ -66,7 +66,7 @@ const userSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      required: [true, 'Email address is required'],
+      required: [function () { return this.role !== 'customer' || this.createdVia !== 'pos'; }, 'Email address is required'],
       trim: true,
       lowercase: true,
       match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email address'],
@@ -74,6 +74,15 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
       trim: true,
+    },
+    createdVia: { type: String, enum: ['signup', 'pos'], default: 'signup' },
+    posBillingProfile: {
+      type: new mongoose.Schema({
+        whatsappNumber: { type: String, trim: true }, address: { type: String, trim: true, maxlength: 500 },
+        city: { type: String, trim: true, maxlength: 100 }, state: { type: String, trim: true, maxlength: 100 },
+        stateCode: { type: String, trim: true }, pincode: { type: String, trim: true }, gstin: { type: String, trim: true },
+      }, { _id: false }),
+      default: undefined,
     },
     dob: {
       type: Date,

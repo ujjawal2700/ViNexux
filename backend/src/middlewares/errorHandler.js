@@ -7,7 +7,7 @@ export const errorHandler = (err, req, res, next) => {
   let message = err.message || 'Something went wrong';
   let errorCode = err.errorCode || ERROR_CODES.INTERNAL_SERVER_ERROR;
 
-  let errorDetails = undefined;
+  let errorDetails = Array.isArray(err.details) ? err.details : undefined;
 
   // Handle Zod Error
   if (err.name === 'ZodError') {
@@ -47,7 +47,7 @@ export const errorHandler = (err, req, res, next) => {
       path: key,
       message: val.message,
     }));
-    message = errorsList.map(([, val]) => val.message).join(', ');
+    message = errorDetails.map(detail => `${detail.path}: ${detail.message}`).join(', ');
   }
 
   // Log error details for server diagnostics

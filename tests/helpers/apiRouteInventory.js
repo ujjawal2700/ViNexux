@@ -17,6 +17,7 @@ export const materializeApiPath = (routePath) => routePath
   .replace(/:field/g, 'logo')
   .replace(/:slug/g, 'test-page')
   .replace(/:type/g, 'gst')
+  .replace(/:token/g, 'invalid-share-token')
   .replace(/:id/g, '507f1f77bcf86cd799439011');
 
 export const discoverApiRoutes = () => {

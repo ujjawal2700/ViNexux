@@ -199,7 +199,7 @@ const PromotionalOfferModal = () => {
       role="dialog"
     >
       <div
-        className="relative w-full max-w-[760px] md:max-w-[850px] lg:max-w-[920px] rounded-2xl bg-white shadow-[0_25px_70px_rgba(0,0,0,0.45)] overflow-hidden border border-gray-100 animate-in zoom-in-95 duration-200"
+        className="relative w-fit max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] rounded-2xl bg-white shadow-[0_25px_70px_rgba(0,0,0,0.45)] overflow-hidden border border-gray-100 animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -232,7 +232,8 @@ const PromotionalOfferModal = () => {
           <img
             src={currentBanner.image.url}
             alt={currentBanner.title || 'Promotional Offer'}
-            className="w-full h-auto max-h-[80vh] object-contain sm:object-cover transition-transform duration-300 group-hover:scale-[1.01]"
+            className="block w-auto h-auto object-contain"
+            style={{ maxWidth: 'min(920px, calc(100vw - 2rem - 2px))', maxHeight: 'calc(100dvh - 2rem - 2px)' }}
           />
 
           {/* Transparent Slide Buttons for Multiple Banners */}

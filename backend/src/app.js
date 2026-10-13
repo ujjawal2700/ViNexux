@@ -9,6 +9,7 @@ import { notFoundHandler } from './middlewares/notFoundHandler.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { mongoSanitize } from './middlewares/mongoSanitize.js';
 import { apiRateLimiter } from './middlewares/rateLimiter.js';
+import { isDevelopmentLoopbackAlias } from './utils/corsOrigin.util.js';
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use(
         !origin ||
         config.corsOrigin.includes('*') ||
         config.corsOrigin.includes(origin) ||
+        isDevelopmentLoopbackAlias(origin, config.corsOrigin, config.nodeEnv) ||
         origin.endsWith('.vercel.app')
       ) {
         return callback(null, true);

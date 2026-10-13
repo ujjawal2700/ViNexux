@@ -4,6 +4,7 @@ import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
 import dealerService from '../../services/dealerService';
 import EnquiriesPage from './EnquiriesPage';
+import InvoicesPage from './InvoicesPage';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { AddressBookSection } from '../../components/address/AddressBookSection';
@@ -43,7 +44,7 @@ export const ProfilePage = () => {
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  const activeTab = location.pathname === '/account/enquiries' ? 'enquiries' : 'profile';
+  const activeTab = location.pathname === '/account/enquiries' ? 'enquiries' : location.pathname === '/account/invoices' ? 'invoices' : 'profile';
 
   // Modals state
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -163,6 +164,9 @@ export const ProfilePage = () => {
                 <span>My Enquiries</span>
               </Link>
 
+              <Link to="/account/invoices" className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-semibold border-l-4 ${activeTab === 'invoices' ? 'border-[var(--store-primary)] bg-[var(--store-primary)]/5 text-[var(--store-primary)]' : 'border-transparent text-gray-700 hover:bg-gray-50'}`}>
+                <FileText className="w-5 h-5 shrink-0" /><span>My Invoices</span>
+              </Link>
               {/* 3. Delete Account (Opens warning confirmation dialog) */}
               <button
                 type="button"
@@ -421,6 +425,7 @@ export const ProfilePage = () => {
           {/* TAB 2: MY ENQUIRIES */}
           {/* ========================================================= */}
           {activeTab === 'enquiries' && <EnquiriesPage embedded />}
+          {activeTab === 'invoices' && <InvoicesPage embedded />}
 
         </main>
       </div>

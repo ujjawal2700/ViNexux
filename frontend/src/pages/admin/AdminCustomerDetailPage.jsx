@@ -146,6 +146,9 @@ const AdminCustomerDetailPage = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <Link to={`/admin/pos?customer=${encodeURIComponent(customer.phone || nameStr)}`} className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs font-semibold hover:bg-muted">
+            <FileText className="h-4 w-4" />View customer invoices
+          </Link>
           {isBlocked ? (
             <Button
               variant="success"
@@ -196,6 +199,14 @@ const AdminCustomerDetailPage = () => {
       </div>
 
       {/* Enquiry History */}
+      {customer.posBillingProfile && <div className="space-y-3 pt-3 border-t border-border">
+        <h4 className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider">Saved POS billing details</h4>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{[
+          ['WhatsApp', customer.posBillingProfile.whatsappNumber], ['Billing address', customer.posBillingProfile.address],
+          ['City', customer.posBillingProfile.city], ['State', customer.posBillingProfile.state],
+          ['PIN code', customer.posBillingProfile.pincode], ['GST state code', customer.posBillingProfile.stateCode], ['GSTIN', customer.posBillingProfile.gstin],
+        ].map(([label, value]) => <div key={label} className="rounded-xl border border-border bg-card p-4"><p className="text-[10px] font-semibold uppercase text-muted-foreground">{label}</p><p className="mt-1 text-xs font-medium">{value || 'Not provided'}</p></div>)}</div>
+      </div>}
       <div className="space-y-3 pt-3 border-t border-border">
         <div className="flex items-center justify-between">
           <h4 className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">

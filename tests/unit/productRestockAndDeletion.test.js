@@ -55,6 +55,18 @@ describe('Atomic restock', () => {
     jest.spyOn(Product, 'exists').mockResolvedValue(null);
     await expect(productService.addProductStock(id, 7)).rejects.toThrow('Product not found');
   });
+  test('removes stock atomically and clears stale inventory specifications', async () => {
+    const update = jest.spyOn(Product, 'findOneAndUpdate').mockResolvedValue({ ...product, stockQuantity: 3 });
+    expect((await productService.addProductStock(id, 7, 'remove')).stockQuantity).toBe(3);
+    expect(update).toHaveBeenCalledWith({ _id: id, stockQuantity: { $gte: 7 } }, expect.objectContaining({ $inc: { stockQuantity: -7 }, $pull: { specifications: { $or: [{ key: expect.any(RegExp) }] } } }), { new: true, runValidators: true });
+  });
+  test('cannot remove more stock than is available', async () => {
+    jest.spyOn(Product, 'findOneAndUpdate').mockResolvedValue(null);
+    jest.spyOn(Product, 'exists').mockResolvedValue({ _id: id });
+    await expect(productService.addProductStock(id, 11, 'remove')).rejects.toMatchObject({ statusCode: 409 });
+    expect(addProductStockSchema.body.safeParse({ quantity: 2, operation: 'remove' }).success).toBe(true);
+    expect(addProductStockSchema.body.safeParse({ quantity: 2, operation: 'set' }).success).toBe(false);
+  });
 });
 
 const setupDelete = () => {

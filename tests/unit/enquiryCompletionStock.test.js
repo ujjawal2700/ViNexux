@@ -62,7 +62,7 @@ const setup = ({ status = 'in-progress', items, stock = 10, retry = false } = {}
     const product = products.get(filter._id);
     if (!product || product.stockQuantity < filter.stockQuantity.$gte) return null;
     product.stockQuantity += update.$inc.stockQuantity;
-    product.specifications = product.specifications.filter((specification) => !update.$pull.specifications.key.test(specification.key));
+    product.specifications = product.specifications.filter((specification) => !update.$pull.specifications.$or[0].key.test(specification.key));
     return product;
   });
   jest.spyOn(Product, 'findById').mockImplementation((id) => ({ session: async (used) => {

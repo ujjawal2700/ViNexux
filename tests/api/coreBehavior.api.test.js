@@ -11,6 +11,14 @@ beforeAll(async () => {
 });
 
 describe('core API behavior', () => {
+  test('development invoice links on numeric loopback pass API CORS preflight', async () => {
+    const response = await request.options('/api/auth/send-otp')
+      .set('Origin', 'http://127.0.0.1:3000')
+      .set('Access-Control-Request-Method', 'POST');
+    expect(response.status).toBe(204);
+    expect(response.headers['access-control-allow-origin']).toBe('http://127.0.0.1:3000');
+    expect(response.headers['access-control-allow-credentials']).toBe('true');
+  });
   test('root and health endpoints report the service as available', async () => {
     const [root, health] = await Promise.all([request.get('/'), request.get('/api/health')]);
     expect(root.status).toBe(200);

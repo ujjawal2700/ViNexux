@@ -1606,6 +1606,7 @@ const PublicLayout = () => {
               { to: '/cart', label: 'Cart', icon: ShoppingCart },
               { to: '/wishlist', label: 'Wishlist', icon: Heart },
               { to: '/account/enquiries', label: 'Enquiries', icon: FileText },
+              { to: '/invoices', label: 'Invoices', icon: FileText },
               { to: '/brands', label: 'Brands', icon: Store },
               { to: '/low-stock', label: 'Low Stock', icon: Flame, highlight: true },
               { to: '/trending', label: 'Trending', icon: Flame, highlight: false },

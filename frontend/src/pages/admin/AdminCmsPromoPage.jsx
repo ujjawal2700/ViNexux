@@ -1,3 +1,4 @@
+import NumberInput from '../../components/ui/NumberInput';
 import React, { useState, useEffect } from 'react';
 import adminService from '../../services/adminService';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
@@ -284,7 +285,7 @@ const AdminCmsPromoPage = () => {
               <label htmlFor="popupIntervalInput" className="text-xs font-semibold text-foreground whitespace-nowrap">
                 Repeat Every:
               </label>
-              <input
+              <NumberInput
                 id="popupIntervalInput"
                 type="number"
                 min="1"

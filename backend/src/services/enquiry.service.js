@@ -1,3 +1,4 @@
+import { stockUpdate } from '../utils/productStockUpdate.js';
 import mongoose from 'mongoose';
 import { Product } from '../models/Product.js';
 import { ALLOWED_ENQUIRY_TRANSITIONS, canonicalEnquiryStatus } from '../../../shared/enquiryStatuses.js';
@@ -442,13 +443,8 @@ export const updateEnquiryStatus = async (enquiryId, updateData = {}, adminUserI
         if (!quantities.size) throw new AppError('No product items to complete.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
         const deductedAt = new Date();
         for (const [productId, item] of quantities) {
-          const product = await Product.findOneAndUpdate({ _id: productId, stockQuantity: { $gte: item.quantity } }, {
-            $inc: { stockQuantity: -item.quantity },
-            $set: { stockUpdatedAt: deductedAt },
-            // Remove legacy inventory specs so a zero balance cannot fall back
-            // to an old positive specification on the storefront.
-            $pull: { specifications: { key: /^\s*(stock|inventory)\s*$/i } },
-          }, { new: true, runValidators: true, session });
+          const product = await Product.findOneAndUpdate({ _id: productId, stockQuantity: { $gte: item.quantity } },
+            stockUpdate(-item.quantity, deductedAt), { new: true, runValidators: true, session });
           if (!product) {
             const existing = await Product.findById(productId).session(session);
             const message = existing

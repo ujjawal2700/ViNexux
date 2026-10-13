@@ -2,6 +2,7 @@ import multer from 'multer';
 import { AppError } from '../utils/AppError.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../constants/errorCodes.js';
+import { getProductImageMimeType } from '../../../shared/productImageTypes.js';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
@@ -84,7 +85,9 @@ export const uploadSingle = (fieldName = 'file', category = 'general') => {
 
 
       // Check allowed MIME type
-      const mimetype = (file.mimetype || '').toLowerCase();
+      const mimetype = category === 'product'
+        ? getProductImageMimeType(file.originalname, file.mimetype)
+        : (file.mimetype || '').toLowerCase();
       if (!allowedMimes.includes(mimetype)) {
         return cb(
           new AppError(
@@ -96,6 +99,8 @@ export const uploadSingle = (fieldName = 'file', category = 'general') => {
         );
       }
 
+      // Storage needs the canonical image MIME type for compression and routing.
+      file.mimetype = mimetype;
       cb(null, true);
     },
   }).single(fieldName);

@@ -1,9 +1,11 @@
 import React, { Suspense, useState, useEffect } from 'react';
 import RouteFallback from '../components/ui/RouteFallback';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 import adminService from '../services/adminService';
 import Logo from '../components/ui/Logo';
+import ErrorBoundary from '../components/ui/ErrorBoundary';
+import { AdminNumberInputContext } from '../context/AdminNumberInputContext';
 import { 
   LayoutDashboard, 
   FolderTree, 
@@ -28,12 +30,14 @@ import {
   Tags,
   Settings2,
   RefreshCw,
+  Receipt,
 } from 'lucide-react';
 
 const AdminLayout = () => {
   const { user, adminUser, adminLogout, logout } = useAuth();
   const currentAdmin = adminUser || (user?.role === 'admin' ? user : null);
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pendingKycCount, setPendingKycCount] = useState(0);
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
@@ -68,6 +72,7 @@ const AdminLayout = () => {
     { label: 'Overview Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
     { label: 'Category Management', path: '/admin/categories', icon: FolderTree },
     { label: 'Product Catalog', path: '/admin/products', icon: Package },
+    { label: 'Offline POS Billing', path: '/admin/pos', icon: Receipt },
     { label: 'Brand Management', path: '/admin/brands', icon: Tags },
     { label: 'Dealer Verification', path: '/admin/dealers', icon: Users, badgeCount: pendingKycCount },
     { label: 'Customer Accounts', path: '/admin/customers', icon: UserCheck },
@@ -88,6 +93,7 @@ const AdminLayout = () => {
   ];
 
   return (
+    <AdminNumberInputContext.Provider value={true}>
     <div className="admin-panel h-screen overflow-hidden bg-background text-foreground flex flex-col md:flex-row font-sans relative">
       {/* Mobile Backdrop */}
       {mobileOpen && (
@@ -329,11 +335,15 @@ const AdminLayout = () => {
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-background">
           <Suspense fallback={<RouteFallback />}>
-            <Outlet />
+            <ErrorBoundary key={location.pathname} pathname={location.pathname} embedded onBack={() => {
+              if (window.history.length > 1) navigate(-1);
+              else navigate('/admin/dashboard', { replace: true });
+            }}><Outlet /></ErrorBoundary>
           </Suspense>
         </main>
       </div>
     </div>
+    </AdminNumberInputContext.Provider>
   );
 };
 

@@ -1,3 +1,4 @@
+import { stockUpdate } from '../utils/productStockUpdate.js';
 import mongoose from 'mongoose';
 import { config } from '../config/env.js';
 import { Product } from '../models/Product.js';
@@ -119,20 +120,18 @@ export const productService = {
     return { products, pagination: { total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) } };
   },
 
-  async addProductStock(id, quantity) {
-    if (!mongoose.Types.ObjectId.isValid(id) || !Number.isSafeInteger(quantity) || quantity <= 0) {
-      throw new AppError('Enter a positive whole number of units to add.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+  async addProductStock(id, quantity, operation = 'add') {
+    if (!mongoose.Types.ObjectId.isValid(id) || !Number.isSafeInteger(quantity) || quantity <= 0 || !['add', 'remove'].includes(operation)) {
+      throw new AppError('Choose add or remove and enter a positive whole number of units.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
     }
     const product = await Product.findOneAndUpdate({
       _id: id,
-      $or: [{ stockQuantity: { $lte: Number.MAX_SAFE_INTEGER - quantity } }, { stockQuantity: { $exists: false } }],
-    }, {
-      $inc: { stockQuantity: quantity },
-      $set: { stockUpdatedAt: new Date() },
-    }, { new: true, runValidators: true });
+      ...(operation === 'remove' ? { stockQuantity: { $gte: quantity } }
+        : { $or: [{ stockQuantity: { $lte: Number.MAX_SAFE_INTEGER - quantity } }, { stockQuantity: { $exists: false } }] }),
+    }, stockUpdate(operation === 'remove' ? -quantity : quantity, new Date(), operation === 'remove'), { new: true, runValidators: true });
     if (!product) {
       if (!await Product.exists({ _id: id })) throw new AppError('Product not found.', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
-      throw new AppError('Total stock quantity is too large.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+      throw new AppError(operation === 'remove' ? 'Cannot remove more units than the available stock. Refresh and try again.' : 'Total stock quantity is too large.', operation === 'remove' ? HTTP_STATUS.CONFLICT : HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
     }
     return product;
   },

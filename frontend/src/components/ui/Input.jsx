@@ -1,5 +1,7 @@
 import React from 'react';
 import FormField from './FormField';
+import NumberInput from './NumberInput';
+import { AdminNumberInputContext } from '../../context/AdminNumberInputContext';
 
 export const Input = React.forwardRef(({
   label,
@@ -14,6 +16,8 @@ export const Input = React.forwardRef(({
   type = 'text',
   ...props
 }, ref) => {
+  const inAdmin = React.useContext(AdminNumberInputContext);
+  const Control = inAdmin && type === 'number' ? NumberInput : 'input';
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
 
   return (
@@ -24,7 +28,7 @@ export const Input = React.forwardRef(({
             {leftIcon}
           </span>
         )}
-        <input
+        <Control
           ref={ref}
           id={inputId}
           type={type}

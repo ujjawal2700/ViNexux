@@ -5,7 +5,7 @@ const isValidObjectId = (val) => mongoose.Types.ObjectId.isValid(val);
 
 export const addProductStockSchema = {
   params: z.object({ id: z.string().refine(isValidObjectId, 'Invalid product ID') }),
-  body: z.object({ quantity: z.number().int().positive().max(Number.MAX_SAFE_INTEGER) }),
+  body: z.object({ quantity: z.number().int().positive().max(Number.MAX_SAFE_INTEGER), operation: z.enum(['add', 'remove']).default('add') }),
 };
 
 export const stockSearchSchema = {

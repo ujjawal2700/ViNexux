@@ -20,6 +20,8 @@ import publicCmsRoutes from './publicCms.routes.js';
 import uploadRoutes from './upload.routes.js';
 import pushRoutes from './push.routes.js';
 import adminBrandRoutes from './adminBrand.routes.js';
+import posRoutes from './pos.routes.js';
+import publicPosRoutes from './publicPos.routes.js';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 
 const router = Router();
@@ -39,6 +41,8 @@ router.use('/content', publicCmsRoutes);
 
 // Mount admin core & catalog/dealer management modules
 router.use('/admin', adminRoutes);
+router.use('/admin/pos', posRoutes);
+router.use('/pos', publicPosRoutes);
 router.use('/admin/categories', adminCategoryRoutes);
 router.use('/admin/products', adminProductRoutes);
 router.use('/admin/brands', adminBrandRoutes);

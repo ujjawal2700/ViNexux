@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { DEFAULT_QUICK_SPEC_KEYS } from "../../../../shared/productSpecifications";
+import { getProductImageMimeType, PRODUCT_IMAGE_ACCEPT } from "../../../../shared/productImageTypes.js";
 import adminService from "../../services/adminService";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
@@ -497,13 +498,9 @@ const AdminProductDetailPage = () => {
   const handleStageFile = (file) => {
     if (formSubmitting) return;
     if (!file) return;
-    if (
-      !["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(
-        file.type,
-      )
-    ) {
+    if (!getProductImageMimeType(file.name, file.type)) {
       setToast({
-        message: "Only JPEG, PNG and WebP product images are allowed.",
+        message: "Only JPG, JPEG, PNG and WebP product images are allowed.",
         type: "error",
       });
       return;
@@ -1498,7 +1495,7 @@ const AdminProductDetailPage = () => {
                     <input
                       id="variant-file-input"
                       type="file"
-                      accept="image/*"
+                      accept={PRODUCT_IMAGE_ACCEPT}
                       multiple
                       disabled={formSubmitting}
                       className="hidden"
@@ -1524,6 +1521,7 @@ const AdminProductDetailPage = () => {
                     </Button>
                   </div>
                 </div>
+                <p className="text-[11px] text-gray-500">JPG, JPEG, PNG or WebP, up to 5MB per image. Images upload when you save the product.</p>
 
                 {fieldErrors.images && (
                   <div className="flex items-center gap-2 p-3 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl font-bold animate-pulse">

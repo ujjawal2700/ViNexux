@@ -28,6 +28,7 @@ import {
 } from './HierarchicalCategoryRoutes';
 
 const AdminLayout = lazyWithRetry(() => import('../layouts/AdminLayout'));
+const InvoicesPage = lazyWithRetry(() => import('../pages/account/InvoicesPage'));
 
 // Public Pages
 const LoginPage = lazyWithRetry(() => import('../pages/auth/LoginPage'));
@@ -58,6 +59,7 @@ const AdminHeaderCategoriesPage = lazyWithRetry(() => import('../pages/admin/Adm
 const AdminMainCategoriesPage = lazyWithRetry(() => import('../pages/admin/AdminMainCategoriesPage'));
 const AdminSubCategoriesPage = lazyWithRetry(() => import('../pages/admin/AdminSubCategoriesPage'));
 const AdminProductsPage = lazyWithRetry(() => import('../pages/admin/AdminProductsPage'));
+const AdminPosPage = lazyWithRetry(() => import('../pages/admin/AdminPosPage'));
 const AdminBrandsPage = lazyWithRetry(() => import('../pages/admin/AdminBrandsPage'));
 const AdminProductDetailPage = lazyWithRetry(() => import('../pages/admin/AdminProductDetailPage'));
 const AdminProductImportPage = lazyWithRetry(() => import('../pages/admin/AdminProductImportPage'));
@@ -98,6 +100,8 @@ const AppRoutes = () => {
         <Route path="/products/:id" element={<ProductDetailPage />} />
         <Route path="/search" element={<ProductsPage />} />
         <Route path="/wishlist" element={<WishlistPage />} />
+        <Route path="/invoices" element={<InvoicesPage />} />
+        <Route path="/invoices/:token" element={<InvoicesPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/low-stock" element={<LowStockProductsPage />} />
         <Route path="/trending" element={<ProductsPage key="trending-catalog" trendingOnly />} />
@@ -133,6 +137,7 @@ const AppRoutes = () => {
           <Route element={<RoleRoute allowedRoles={[ROLES.CUSTOMER, ROLES.DEALER]} portal="customer" />}>
             <Route path="/account/checkout-enquiry" element={<CheckoutEnquiryPage />} />
             <Route path="/account/enquiries" element={<ProfilePage />} />
+            <Route path="/account/invoices" element={<ProfilePage />} />
             <Route path="/account/enquiries/:id" element={<EnquiryDetailPage />} />
             <Route path="/account/profile" element={<ProfilePage />} />
             <Route path="/account/profile/update" element={<ProfileUpdatePage />} />
@@ -195,6 +200,7 @@ const AppRoutes = () => {
             <Route path="/admin/categories/main" element={<AdminMainCategoriesPage />} />
             <Route path="/admin/categories/sub" element={<AdminSubCategoriesPage />} />
             <Route path="/admin/products" element={<AdminProductsPage />} />
+            <Route path="/admin/pos" element={<AdminPosPage />} />
             <Route path="/admin/brands" element={<AdminBrandsPage />} />
             <Route path="/admin/products/new" element={<AdminProductDetailPage />} />
             <Route path="/admin/products/import" element={<AdminProductImportPage />} />

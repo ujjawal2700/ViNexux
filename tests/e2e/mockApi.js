@@ -1,4 +1,5 @@
 import { presetConfig } from '../../shared/seasonalThemes.js';
+import { POS_SELLER_DEFAULTS, calculatePosBill } from '../../shared/posBilling.js';
 const objectId = '507f1f77bcf86cd799439011';
 const testTheme = { _id: objectId, name: 'E2E Diwali', preset: 'diwali', draft: presetConfig('diwali'), schedule: { enabled: false, startAt: null, endAt: null, priority: 0 }, revision: 0 };
 
@@ -25,6 +26,18 @@ const pagination = { page: 1, limit: 20, total: 0, pages: 0, totalPages: 0 };
 
 const responseFor = (url, method, postData) => {
   const pathname = new URL(url).pathname;
+  if (pathname.endsWith('/pos/my-invoices')) return { success: true, data: { invoices: [], total: 0, pages: 0, page: 1, selected: null } };
+  if (pathname.endsWith('/admin/pos/settings')) return { success: true, data: POS_SELLER_DEFAULTS };
+  if (pathname.endsWith('/admin/pos/sales/validate')) {
+    const data = JSON.parse(postData);
+    return { success: true, data: { ready: true, seller: POS_SELLER_DEFAULTS, ...calculatePosBill(data.items, data) } };
+  }
+  if (pathname.endsWith('/admin/pos/customer')) return { success: true, data: method === 'PUT' ? { customer: JSON.parse(postData), found: true, needsVerification: false } : { found: false, needsVerification: true } };
+  if (pathname.endsWith('/admin/pos/customer/otp')) return { success: true, data: { mockOtp: '123456', resendAvailableInSeconds: 0 } };
+  if (pathname.endsWith('/admin/pos/customer/verify')) return { success: true, data: { verified: true } };
+  if (pathname.endsWith('/admin/pos/products')) return { success: true, data: [{ ...product, stockQuantity: 10, specifications: [{ key: 'HSN', value: '85258900' }] }] };
+  if (pathname.endsWith('/admin/pos/held') || pathname.endsWith('/admin/pos/customers')) return { success: true, data: [] };
+  if (pathname.endsWith('/admin/pos/sales')) return { success: true, data: { sales: [], total: 0, pages: 0, summary: {} } };
   if (pathname.endsWith('/content/theme')) return { success: true, data: { theme: { id: null, name: 'Store default', config: presetConfig(), nextChangeAt: null } } };
   if (pathname.endsWith('/admin/cms/themes')) return { success: true, data: { themes: [testTheme], active: { id: null, name: 'Store default' } } };
   if (pathname.includes('/admin/cms/themes/')) return { success: true, data: { theme: testTheme } };
