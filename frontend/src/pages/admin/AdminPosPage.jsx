@@ -1,3 +1,4 @@
+import { getProductHsnCode } from '../../../../shared/productHsn.js';
 import { useLocation } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Search, Plus, Minus, Trash2, Receipt, Pause, Printer, Download, MessageCircle, Package, X, ArrowRight, RotateCcw, Settings2, History, ShoppingCart, UserRound, ChevronLeft, ChevronRight, ScanLine, CheckCircle2 } from 'lucide-react';
@@ -237,7 +238,7 @@ export default function AdminPosPage() {
       const spec = key => product.specifications?.find(s => key.test(s.key))?.value || '';
       patch({ items: [...draft.items, { productId: product._id, productName: product.name, sku: product.sku, modelNumber: product.modelNumber,
         quantity: 1, unitPrice: product.standardPrice, stockQuantity: product.stockQuantity, discountPercent: 0,
-        gstRate: Number.isFinite(Number.parseFloat(spec(/^gst(?:\s*rate)?$/i))) ? Number.parseFloat(spec(/^gst(?:\s*rate)?$/i)) : 18, hsn: spec(/^hsn(?:\/sac|\s*code)?$/i).replace(/\D/g, ''), unit: 'NOS', serialNumbers: [] }] });
+        gstRate: Number.isFinite(Number.parseFloat(spec(/^gst(?:\s*rate)?$/i))) ? Number.parseFloat(spec(/^gst(?:\s*rate)?$/i)) : 18, hsn: getProductHsnCode(product), unit: 'NOS', serialNumbers: [] }] });
     }
   };
   const salePayload = (payment = payments[0]) => ({ ...draft, requestId,

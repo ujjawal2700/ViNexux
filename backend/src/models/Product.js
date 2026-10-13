@@ -87,6 +87,10 @@ const productSchema = new mongoose.Schema(
       default: () => `VNX-${randomBytes(5).toString('hex').toUpperCase()}`,
       maxlength: [100, 'Model number cannot exceed 100 characters'],
     },
+    hsnCode: {
+      type: String, trim: true, default: '',
+      match: [/^(?:\d{4,8})?$/, 'Enter a 4 to 8 digit HSN/SAC code'],
+    },
     model: {
       type: String,
       trim: true,

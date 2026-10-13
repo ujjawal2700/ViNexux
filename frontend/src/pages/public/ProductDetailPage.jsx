@@ -1,3 +1,4 @@
+import { getProductHsnCode } from '../../../../shared/productHsn.js';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import productService from '../../services/productService';
@@ -403,6 +404,8 @@ export const ProductDetailPage = () => {
 
     // 1. Brand
     list.push({ key: 'Brand', value: brandName });
+    const hsnCode = getProductHsnCode(product);
+    if (hsnCode) list.push({ key: 'HSN Code', value: hsnCode });
 
     // Variant (if provided)
     if (product.variant && product.variant.trim()) {
@@ -413,7 +416,7 @@ export const ProductDetailPage = () => {
     if (product.specifications && Array.isArray(product.specifications)) {
       product.specifications.forEach((s) => {
         const keyLower = s.key?.trim().toLowerCase();
-        if (s.key && s.value && !isInventorySpecification(s.key) && !['brand', 'variant'].includes(keyLower)) {
+        if (s.key && s.value && !isInventorySpecification(s.key) && !['brand', 'variant'].includes(keyLower) && !/^hsn(?:\/sac|\s*code)?$/i.test(keyLower)) {
           list.push({ key: s.key.trim(), value: s.value.trim() });
         }
       });

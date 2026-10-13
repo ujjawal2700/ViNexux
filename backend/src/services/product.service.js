@@ -173,6 +173,7 @@ export const productService = {
     stockQuantity = 0,
     variant = '',
     warranty = '',
+    hsnCode = '',
     informationPhone,
     productUrl,
     categoryId,
@@ -249,6 +250,7 @@ export const productService = {
       stockQuantity: Number(stockQuantity) >= 0 ? Number(stockQuantity) : 0,
       variant: variant?.trim() || '',
       warranty: warranty?.trim() || '',
+      hsnCode: hsnCode.trim(),
       informationPhone: informationPhone?.trim() || undefined,
       productUrl: productUrl?.trim() || '',
       categoryId: primaryCategoryId,
@@ -527,6 +529,7 @@ isActive,
       }
     }
     if (updateData.variant !== undefined) product.variant = updateData.variant.trim();
+    if (updateData.hsnCode !== undefined) product.hsnCode = updateData.hsnCode.trim();
     if (updateData.warranty !== undefined) product.warranty = updateData.warranty.trim();
     if (updateData.informationPhone !== undefined) product.informationPhone = updateData.informationPhone.trim();
     if (updateData.productUrl !== undefined) product.productUrl = updateData.productUrl.trim();

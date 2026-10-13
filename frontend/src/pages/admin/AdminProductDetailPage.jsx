@@ -1,3 +1,4 @@
+import { getProductHsnCode } from '../../../../shared/productHsn.js';
 import React, {
   useState,
   useEffect,
@@ -115,6 +116,7 @@ const AdminProductDetailPage = () => {
   const [stockQuantity, setStockQuantity] = useState("0");
   const [isTrending, setIsTrending] = useState(false);
   const [variant, setVariant] = useState("");
+  const [hsnCode, setHsnCode] = useState("");
   const [warranty, setWarranty] = useState("");
   const [productUrl, setProductUrl] = useState("");
 
@@ -281,6 +283,7 @@ const AdminProductDetailPage = () => {
       setModel(prod.model || "");
       setStockQuantity(prod.stockQuantity !== undefined ? String(prod.stockQuantity) : "0");
       setVariant(prod.variant || "");
+      setHsnCode(getProductHsnCode(prod));
       setWarranty(prod.warranty === "1 Year ON-SITE / Direct Replacement Warranty" ? "" : (prod.warranty || ""));
       setProductUrl(prod.productUrl || "");
       setSelectedBrandId(String(prod.brandId?._id || prod.brandId || ""));
@@ -564,6 +567,7 @@ const AdminProductDetailPage = () => {
         fieldErrors.brandId ||
         fieldErrors.sku ||
         fieldErrors.modelNumber ||
+        fieldErrors.hsnCode ||
         fieldErrors.stockQuantity ||
         fieldErrors.productUrl
       );
@@ -722,6 +726,10 @@ const AdminProductDetailPage = () => {
       return;
     }
 
+    if (hsnCode.trim() && !/^\d{4,8}$/.test(hsnCode.trim())) {
+      scrollToAndHighlightField("hsnCode", "general", "Enter a 4 to 8 digit HSN/SAC code.");
+      return;
+    }
     if (!modelNumber.trim()) {
       scrollToAndHighlightField("modelNumber", "general", "Model Number is required.");
       return;
@@ -848,6 +856,7 @@ const AdminProductDetailPage = () => {
         stockQuantity: Number(stockQuantity) >= 0 ? Number(stockQuantity) : 0,
         variant: variant.trim(),
         warranty: warranty.trim(),
+        hsnCode: hsnCode.trim(),
         productUrl: productUrl.trim(),
         sku: sku.trim().toUpperCase(),
         ...(primaryCategoryId ? { categoryId: primaryCategoryId } : {}),
@@ -931,6 +940,11 @@ const AdminProductDetailPage = () => {
         const path = String(item.path || "").toLowerCase();
         if (path.includes("sku")) {
           scrollToAndHighlightField("sku", "general", item.message);
+          mapped = true;
+          break;
+        }
+        if (path.includes("hsncode")) {
+          scrollToAndHighlightField("hsnCode", "general", item.message);
           mapped = true;
           break;
         }
@@ -1344,6 +1358,15 @@ const AdminProductDetailPage = () => {
                       placeholder="e.g. 25"
                       required
                     />
+                  </FormField>
+                </div>
+
+                <div id="field-hsnCode" data-field="hsnCode" className="rounded-xl transition-all">
+                  <FormField label="HSN CODE (OPTIONAL)" error={fieldErrors.hsnCode}
+                    helperText="4 to 8 digits. Automatically filled in offline POS billing.">
+                    <Input value={hsnCode} inputMode="numeric" maxLength={8}
+                      error={Boolean(fieldErrors.hsnCode)} placeholder="Enter HSN code"
+                      onChange={(e) => { setHsnCode(e.target.value); clearFieldError("hsnCode"); }} />
                   </FormField>
                 </div>
 

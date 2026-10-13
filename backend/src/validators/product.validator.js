@@ -46,6 +46,7 @@ export const createProductSchema = {
       .trim()
       .min(2, { message: 'Product name must be at least 2 characters' })
       .max(150, { message: 'Product name cannot exceed 150 characters' }),
+    hsnCode: z.string().trim().regex(/^(?:\d{4,8})?$/, 'Enter a 4 to 8 digit HSN/SAC code').optional(),
     modelNumber: z.string({ required_error: 'Model number is required' }).trim().min(1).max(100),
     model: z.string().trim().max(100).optional().default('Standard Model'),
     stockQuantity: z.coerce.number().min(0, { message: 'Stock quantity cannot be negative' }).default(0).optional(),
@@ -107,6 +108,7 @@ export const updateProductSchema = {
       .optional()
       .nullable(),
     categoryIds: z.array(z.string().refine(isValidObjectId, { message: 'Invalid categoryId format. Must be a valid MongoDB ObjectId' })).optional(),
+    hsnCode: z.string().trim().regex(/^(?:\d{4,8})?$/, 'Enter a 4 to 8 digit HSN/SAC code').optional(),
     modelNumber: z.string().trim().min(1).max(100).optional(),
     model: z.string().trim().max(100).optional(),
     stockQuantity: z.coerce.number().min(0, { message: 'Stock quantity cannot be negative' }).optional(),

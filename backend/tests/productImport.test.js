@@ -32,7 +32,7 @@ setStorageProvider({
 const makeWorkbook = async (values) => {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Products');
-  sheet.addRow(['SKU', 'Model Number', 'Model', 'Product Name', 'Brand', 'Header Category',
+  sheet.addRow(['SKU', 'Model Number', 'Model Name', 'Product Name', 'Brand', 'Header Category',
     'Main Category', 'Sub Category', 'Standard Price', 'Dealer Price', 'Stock Quantity',
     'Description', 'Information Phone', 'Product URL', 'Warranty', 'Country of Origin',
     'HSN Code', 'Variant', 'Specifications JSON', 'Featured', 'Publish', 'Image Files']);
@@ -54,7 +54,7 @@ try {
   const imageZip = await archive.generateAsync({ type: 'nodebuffer' });
   const row = (sku, modelNumber, name, mainName, quantity, imageName, productUrl = '') => [
     sku, modelNumber, 'IdeaPad', name, 'ACER', 'Laptop', mainName, '', 45999, 42999,
-    quantity, 'A laptop with warranty', '', productUrl, '1 Year', 'India', '', '', '{"RAM":"16GB"}',
+    quantity, 'A laptop with warranty', '', productUrl, '1 Year', 'India', '012345', '', '{"RAM":"16GB"}',
     'No', 'Yes', imageName,
   ];
   const workbook = await makeWorkbook([
@@ -73,6 +73,7 @@ try {
   const headerProduct = await Product.findOne({ sku: 'LAP-HEADER' }).lean();
   assert.equal(String(headerProduct.categoryId), String(header._id));
   assert.equal(headerProduct.modelNumber, 'MODEL-HEADER');
+  assert.equal(headerProduct.hsnCode, '012345', 'Legacy HSN columns populate the dedicated field');
   assert.equal(headerProduct.standardPrice, 45999);
   assert.equal(headerProduct.dealerPrice, 42999);
   assert.equal(headerProduct.productUrl, 'https://example.test/products/header');
@@ -220,7 +221,7 @@ try {
     'Model Number', 'Product Name / Model', 'Brand', 'Header Category (Optional)',
     'Main Category (Optional)', 'Sub Category (Optional)', 'Standard Price',
     'Dealer Price', 'Stock Quantity', 'Product URL (Optional)', 'Warranty (Optional)',
-    'Variant (Optional)', 'Specifications (Optional)', 'Image Files (Optional)',
+    'Variant (Optional)', 'Specifications (Optional)', 'Image Files (Optional)', 'HSN Code (Optional)',
   ]);
   assert.equal(currentSheet.rowCount, 1, 'Products sheet starts empty');
   assert.equal(currentTemplate.getWorksheet('Examples').rowCount, 4, 'Three examples are separate from imported products');
@@ -236,8 +237,17 @@ try {
   };
   const currentRow = (number, specs = 'RAM: 16GB\nStorage: 512GB SSD') => [
     number, `Current format ${number}`, 'Lenovo', 'Laptop', 'Branded Laptop', '',
-    45999, 42999, 2, 'https://www.lenovo.com/in/en/', '1 Year', '', specs, '',
+    45999, 42999, 2, 'https://www.lenovo.com/in/en/', '1 Year', '', specs, '', '012345',
   ];
+  const invalidHsnRow = currentRow('CURRENT-INVALID-HSN');
+  invalidHsnRow[14] = '12AB';
+  assert.match((await previewProductImport(await makeCurrentWorkbook([invalidHsnRow]))).rows[0].errors.join(' '), /hsnCode/);
+  const oldBook = new ExcelJS.Workbook();
+  const oldSheet = oldBook.addWorksheet('Products');
+  oldSheet.addRow(currentHeaders.slice(0, -1));
+  oldSheet.addRow(currentRow('PRE-HSN-TEMPLATE').slice(0, -1));
+  assert.equal((await previewProductImport(Buffer.from(await oldBook.xlsx.writeBuffer()))).valid, 1,
+    'The previous template without an HSN column is still accepted');
   const currentWorkbook = await makeCurrentWorkbook([
     currentRow('CURRENT-001'), currentRow('CURRENT-002', 'RAM: 8GB; Storage: 256GB SSD'),
     currentRow('CURRENT-003', 'RAM: 16GB  Storage: 1TB SSD'),
@@ -256,6 +266,8 @@ try {
   assert.equal(currentImport.created, 3, 'Only Products sheet rows are imported');
   const currentProduct = await Product.findOne({ modelNumber: 'CURRENT-001' }).lean();
   assert.match(currentProduct.sku, /^VNX-/);
+  assert.equal(currentProduct.hsnCode, '012345');
+  assert.equal(currentSheet.getColumn('O').numFmt, '@');
   assert.equal(currentProduct.images.length, 0);
   assert.equal(currentProduct.isActive, true);
   assert.equal(currentProduct.name, `Current format CURRENT-001`);

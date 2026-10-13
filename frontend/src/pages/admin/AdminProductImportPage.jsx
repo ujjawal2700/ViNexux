@@ -112,7 +112,8 @@ export default function AdminProductImportPage() {
           </h2>
           <p className="mt-2 text-sm text-slate-700">
             Enter one product per row on the Products sheet. Name and model
-            share one column. Specifications, variant, images, and all category
+            share one column. HSN codes fill automatically in POS billing.
+            Specifications, variant, images, and all category
             levels are optional; add them now or later by editing the product.
           </p>
           <Button

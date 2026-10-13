@@ -18,8 +18,9 @@ const HEADERS = [
   'Model Number', 'Product Name / Model', 'Brand', 'Header Category (Optional)',
   'Main Category (Optional)', 'Sub Category (Optional)', 'Standard Price',
   'Dealer Price', 'Stock Quantity', 'Product URL (Optional)', 'Warranty (Optional)',
-  'Variant (Optional)', 'Specifications (Optional)', 'Image Files (Optional)',
+  'Variant (Optional)', 'Specifications (Optional)', 'Image Files (Optional)', 'HSN Code (Optional)',
 ];
+const PRE_HSN_HEADERS = HEADERS.filter((header) => header !== 'HSN Code (Optional)');
 const PREVIOUS_CURRENT_HEADERS = [
   'Model Number', 'Model Name', 'Product Name', 'Brand', 'Header Category (Optional)',
   'Main Category (Optional)', 'Sub Category (Optional)', 'Standard Price',
@@ -92,7 +93,8 @@ export const createProductImportTemplate = async () => {
   sheet.getRow(1).height = 34;
   sheet.columns.forEach((column, index) => { column.width = index === 1 ? 38 : index === 12 ? 46 : index === 13 ? 32 : 24; });
   sheet.views = [{ state: 'frozen', ySplit: 1 }];
-  sheet.autoFilter = { from: 'A1', to: 'N1' };
+  sheet.autoFilter = { from: 'A1', to: 'O1' };
+  sheet.getColumn('O').numFmt = '@';
   sheet.getColumn('A').numFmt = '@';
   const examples = workbook.addWorksheet('Examples');
   examples.addRow(HEADERS);
@@ -102,6 +104,7 @@ export const createProductImportTemplate = async () => {
   examples.getRow(1).alignment = { vertical: 'middle', wrapText: true };
   examples.columns.forEach((column, index) => { column.width = index === 1 ? 38 : index === 12 ? 46 : index === 13 ? 32 : 24; });
   examples.getColumn('A').numFmt = '@';
+  examples.getColumn('O').numFmt = '@';
   [
     ['LAP-001', 'Lenovo IdeaPad Slim 3 Laptop', 'Lenovo', 'Laptop', 'Branded Laptop', '', 45999, 42999, 8, 'https://www.lenovo.com/in/en/', '1 Year', 'Standard', 'RAM: 16GB\nStorage: 512GB SSD\nScreen: 15.6 inch', ''],
     ['TAB-001', 'Samsung Galaxy Tab A9 Tablet', 'Samsung', 'Tablets', 'Full Size Tablet', '', 18999, 16999, 3, '', '1 Year', '', 'Display: 8.7 inch\nStorage: 64GB', ''],
@@ -124,6 +127,7 @@ export const createProductImportTemplate = async () => {
     ['6. Standard Price customer ke liye aur Dealer Price dealer ke liye hai. Dono me sirf number likhein. Stock nahi hai to Stock Quantity me 0 likhein.'],
     ['7. Specifications (Optional) me har detail "Name: Value" likhein, jaise RAM: 16GB. Agli line ke liye Alt+Enter dabayein. Semicolon (;) ya do spaces se bhi details alag kar sakte hain.'],
     ['8. Product URL, Warranty, Variant aur Image Files sab optional hain. Product photo aur brand/category logo upload ke baad admin panel se bhi laga sakte hain.'],
+    ['9. HSN Code (Optional) me 4 se 8 digits ka code text ke roop me bharein. Yeh POS billing me apne aap aa jayega. Leading zero ko na hatayein.'],
     ['10. Pehle Preview Products dabayein. Error ho to Excel me theek karke phir Preview karein. Import tabhi karein jab sab rows sahi hon; error par koi product add nahi hoga.'],
   ].forEach((row) => instructions.addRow(row));
   instructions.getColumn(1).width = 125;
@@ -139,7 +143,7 @@ const parseWorkbook = async (buffer) => {
   const sheet = workbook.getWorksheet('Products');
   if (!sheet) throw invalid('The workbook must contain a Products sheet.');
   const headers = sheet.getRow(1).values.slice(1).map(clean);
-  const expectedHeaders = [HEADERS, PREVIOUS_CURRENT_HEADERS, OLDER_CURRENT_HEADERS, PREVIOUS_HEADERS, LEGACY_HEADERS]
+  const expectedHeaders = [HEADERS, PRE_HSN_HEADERS, PREVIOUS_CURRENT_HEADERS, OLDER_CURRENT_HEADERS, PREVIOUS_HEADERS, LEGACY_HEADERS]
     .find((candidate) => headers.length === candidate.length && candidate.every((header, index) => headers[index] === header));
   if (!expectedHeaders) throw invalid('The Products sheet headers differ from the downloaded template.');
   const rows = [];
@@ -290,7 +294,7 @@ export const prepareProductImport = async (workbookBuffer, archiveBuffer) => {
       }
     }
     const specifications = [];
-    for (const [columns, key] of [[['Warranty (Optional)', 'Warranty'], 'Warranty'], [['Country of Origin'], 'Country of Origin'], [['HSN Code'], 'HSN Code'], [['Variant (Optional)', 'Variant'], 'Variant']]) {
+    for (const [columns, key] of [[['Warranty (Optional)', 'Warranty'], 'Warranty'], [['Country of Origin'], 'Country of Origin'], [['Variant (Optional)', 'Variant'], 'Variant']]) {
       const value = columns.map((column) => fields[column]).find((entry) => entry !== undefined);
       if (value) specifications.push({ key, value });
     }
@@ -315,6 +319,8 @@ export const prepareProductImport = async (workbookBuffer, archiveBuffer) => {
       standardPrice: numeric(fields['Standard Price'], 'Standard Price', errors),
       dealerPrice: numeric(fields['Dealer Price'], 'Dealer Price', errors),
       stockQuantity,
+      hsnCode: clean(fields['HSN Code (Optional)'] ?? fields['HSN Code']) ||
+        specifications.find((spec) => /^hsn(?:\/sac|\s*code)?$/i.test(spec.key))?.value || '',
       description: fields.Description || '', informationPhone: fields['Information Phone'] || '',
       productUrl: fields['Product URL (Optional)'] ?? fields['Product URL'],
       specifications: [...specifications, ...(brand ? [{ key: 'Brand', value: brand.name }] : [])],
