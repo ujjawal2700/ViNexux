@@ -4,6 +4,8 @@ import { Search, Plus, Minus, Trash2, Receipt, Pause, Printer, Download, Message
 import Modal from '../../components/ui/Modal';
 import NumberInput from '../../components/ui/NumberInput';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import useAuth from '../../hooks/useAuth';
+import { readSessionDraft, saveSessionDraft, clearSessionDraft } from '../../utils/sessionDraft';
 import { validatePosDraft, validatePosCustomer, validatePosItems, posFieldLabel } from '../../../../shared/posValidation.js';
 import posService, { saveBlob } from '../../services/posService';
 import { calculatePosBill, buildPosWhatsAppLink, POS_SELLER_DEFAULTS } from '../../../../shared/posBilling.js';
@@ -44,12 +46,19 @@ const paymentMethods = ['cash', 'upi', 'bank'];
 const Status = ({ sale }) => <span className={`inline-flex rounded-md px-2 py-1 text-[11px] font-semibold ${sale.status === 'voided' ? 'bg-rose-50 text-rose-700' : sale.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'}`}>{sale.status === 'voided' ? 'Voided' : sale.paymentStatus === 'paid' ? 'Paid' : sale.paymentStatus === 'partial' ? 'Part paid' : 'Unpaid'}</span>;
 
 export default function AdminPosPage() {
+  const { adminUser } = useAuth();
+  const recoveryKey = `vinexus-pos-draft:${adminUser?._id}`;
+  const [recovered] = useState(() => {
+    const value = readSessionDraft(recoveryKey);
+    return value?.draft?.customer && Array.isArray(value.draft.items) && value.draft.items.every(item => item && typeof item.productId === 'string') &&
+      typeof value.requestId === 'string' && /^[a-f\d]{8}-[a-f\d]{4}-[1-8][a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/i.test(value.requestId) ? value : null;
+  });
   const location = useLocation();
   const customerSearch = new URLSearchParams(location.search).get('customer') || '';
   const [tab, setTab] = useState(customerSearch ? 'sales' : 'checkout');
   const [seller, setSeller] = useState(POS_SELLER_DEFAULTS);
-  const [draft, setDraft] = useState(blankDraft);
-  const [requestId, setRequestId] = useState(() => crypto.randomUUID());
+  const [draft, setDraft] = useState(() => recovered?.draft || blankDraft());
+  const [requestId, setRequestId] = useState(() => recovered?.requestId || crypto.randomUUID());
   const [search, setSearch] = useState('');
   const [products, setProducts] = useState([]);
   const [productLoading, setProductLoading] = useState(false);
@@ -158,10 +167,9 @@ export default function AdminPosPage() {
     return () => clearTimeout(timer);
   }, [otpCooldown]);
   useEffect(() => {
-    const protect = event => { if (draft.items.length) { event.preventDefault(); event.returnValue = ''; } };
-    window.addEventListener('beforeunload', protect);
-    return () => window.removeEventListener('beforeunload', protect);
-  }, [draft.items.length]);
+    if (draft.items.length) saveSessionDraft(recoveryKey, { draft, requestId });
+    else clearSessionDraft(recoveryKey);
+  }, [draft, requestId, recoveryKey]);
   const patch = values => setDraft(prev => ({ ...prev, ...values }));
   const changeCustomer = customer => {
     if (busy) return;

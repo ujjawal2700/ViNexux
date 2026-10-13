@@ -1,12 +1,18 @@
 # Seasonal themes
 
-Open **Admin → CMS → Seasonal Themes** (`/admin/cms/themes`). Create a campaign, choose a preset, customize colors/announcement/decorations, and inspect the live desktop/tablet/mobile preview. The preview is read-only and never changes the live store. **Apply to store** saves, publishes and activates the current design in one action, including a new unsaved campaign.
+Open **Admin → CMS → Seasonal Themes** (`/admin/cms/themes`). The editor has three main sections:
 
-1. **Save draft** persists private changes. Upload buttons are available immediately; uploading automatically creates/saves a private campaign draft with the image.
-2. **Publish draft** snapshots both the design and its schedule. Further draft edits do not affect that snapshot.
-3. **Activate now** pins a published theme immediately, overriding schedules until **Resume schedules** or **Restore default** is clicked.
-4. Alternatively, enable a schedule, enter start/end in **India time (Asia/Kolkata)**, save and publish. With schedules resumed, the server resolves the active theme on every public request. Start is inclusive; end is exclusive. Priority wins overlaps, then publication time, then campaign ID.
-5. **Restore default** immediately restores the existing burgundy store/black footer and pauses scheduled activation. **Resume schedules** clears that override. Archiving removes a campaign from eligibility. After the last scheduled campaign expires, the default returns.
+1. **Choose your theme**: select a festival and give the theme a name. Matching colors and pictures are included.
+2. **Add your message and pictures**: edit the announcement and optionally replace the top, background or bottom picture.
+3. **Preview your website**: switch between desktop, tablet and mobile. Each view renders the real device width and scales to fit the panel; the preview is read-only.
+
+**Save draft** keeps changes private. **Apply to store** saves and applies the design in one action after a styled in-app confirmation popup. Browser confirmation boxes are not used. Uploading a picture saves a private draft automatically. Edits never appear on the live store until applied or published through scheduling.
+
+**More design options** is collapsed by default and loads the detailed style controls only when opened. **Schedule for later** contains optional India-time dates and priority. **Save schedule** publishes the design and dates; if the theme is already live, its changes become public. **Resume schedules** clears a manual override. Highest priority wins overlapping dates, followed by publication time and campaign ID. Start is inclusive and end is exclusive.
+
+**Saved themes and store settings** contains existing themes, duplicate/archive, earlier designs, activation and **Restore default**. Restoring the default brings back the burgundy store and black footer and pauses automatic activation.
+
+The editor normalizes incomplete legacy records, invalid dates, colors, image slots and style settings. Load failures show a retry action; failed saves retain edits on the page. Unsaved theme edits are recovered from tab-local session storage after a refresh, scoped to the signed-in admin. Preview updates are debounced while typing, and only one save/upload/apply operation runs at a time.
 
 Built-in presets: Store default, Diwali, Holi, Eid, Christmas, Independence Day, Republic Day, Raksha Bandhan. They are editable starting points, not annual calendar rules. Create dates for each year's festival explicitly.
 
@@ -16,7 +22,7 @@ Selecting a different preset replaces bundled festival artwork and the preset gr
 
 **Advanced styling** adds original/minimal/elegant/playful quick looks, system/serif/rounded fonts, page heading accents, button shapes, product-card corners/shadows/borders, homepage spacing, generated background patterns and spacing, uploaded background sizing/fit, navigation gradients, announcement finishes, footer tint, and decoration placement/size/density/strip heights. Garland, flower, snowflake and lantern decorations are also available. Existing campaigns without these settings retain the original defaults. Options are validated choices and bounded numbers, never arbitrary CSS or scripts. Save/Apply persists these settings in the same draft/published workflow.
 
-Uploads accept PNG/JPG/WebP up to 5 MB through the existing authenticated CMS upload pipeline. Header/footer images are decorative strips; background images repeat at 600 px. Upload transparent decorations as PNG/WebP. Existing hero banners can be assigned to a campaign; unavailable/inactive selections fall back to regular banners.
+Uploads accept PNG/JPG/WebP up to 5 MB through the existing authenticated CMS upload pipeline. Header/footer pictures fill the full website width without stretching. The Diwali preset trims empty cream margins and repeats the artwork at a fixed compact height: 48px header / 64px footer on desktop and 32px / 40px on mobile. The garland and flames keep their proportions and remain vertically intact. Custom pictures also repeat across the compact band, preserving their proportions and showing the complete image; background images repeat at 600 px. Upload transparent decorations as PNG/WebP. Homepage banners are managed separately under Homepage Banners.
 
 When the storage provider is `development`, theme images are decoded and stored as real WebP files in `backend/var/theme-assets/`, served through `/api/content/theme-assets/`. Keep this folder on persistent storage if using it on a server. Cloudinary configurations continue to use Cloudinary. Previously generated `mock.storage.vinexus.dev` URLs cannot be recovered; upload those images again.
 

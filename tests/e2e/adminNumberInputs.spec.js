@@ -67,6 +67,7 @@ test('shared number fields in admin portal dialogs use the same editing behavior
 
 test('native theme number fields keep a blank edit instead of restoring zero on each keystroke', async ({ page }) => {
   await page.goto('/admin/cms/themes/507f1f77bcf86cd799439011');
+  await page.getByText('Schedule for later', { exact: true }).click();
   const priority = page.getByLabel('Priority (0–100)', { exact: true });
   await expect(priority).toHaveValue('0');
   await priority.click();

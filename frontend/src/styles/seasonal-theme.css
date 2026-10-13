@@ -27,10 +27,17 @@
 .theme-decoration span { font-size: var(--store-decoration-size, 24px); line-height: 1; flex-shrink: 0; }
 .theme-decoration span svg { width: var(--store-decoration-size, 24px); height: var(--store-decoration-size, 24px); }
 .theme-decoration img { width: 100%; height: 100%; object-fit: cover; }
-.theme-decoration-asset { height: auto; }
-.theme-decoration-asset img { height: auto; object-fit: contain; }
-.theme-decoration-asset.theme-decoration-header img { max-height: var(--store-header-image-height, 96px); }
-.theme-decoration-asset.theme-decoration-footer img { max-height: var(--store-footer-image-height, 160px); }
+.theme-decoration-asset { width: 100%; height: auto; gap: 0; }
+.theme-decoration-asset img { display: block; flex: 0 0 100%; width: 100%; height: auto; max-height: none; object-fit: contain; }
+.theme-decoration-framed { height: var(--theme-band-height); background-repeat: repeat-x; }
+.theme-decoration-framed.theme-decoration-header { --theme-band-height: 48px; }
+.theme-decoration-framed.theme-decoration-footer { --theme-band-height: 64px; }
+/* Preload the same artwork used by the repeating background. */
+.theme-decoration-framed img { display: none; }
+@media (max-width: 640px) {
+  .theme-decoration-framed.theme-decoration-header { --theme-band-height: 32px; }
+  .theme-decoration-framed.theme-decoration-footer { --theme-band-height: 40px; }
+}
 .storefront-theme[data-theme] > main, .storefront-theme[data-theme] > main > div {
   background-image: var(--store-background-image, var(--store-pattern-image, none));
   background-size: var(--store-pattern-size, 32px);

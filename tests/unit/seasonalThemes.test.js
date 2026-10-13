@@ -1,9 +1,29 @@
 import { describe, expect, test } from '@jest/globals';
-import { DEFAULT_THEME, THEME_PRESETS, presetConfig, applyThemePreset, contrastRatio, resolveTheme, themeVariables } from '../../shared/seasonalThemes.js';
+import { DEFAULT_THEME, THEME_PRESETS, presetConfig, normalizeThemeConfig, applyThemePreset, contrastRatio, resolveTheme, themeVariables } from '../../shared/seasonalThemes.js';
 import { existsSync } from 'node:fs';
 import { themeInputSchema, themeStylesSchema } from '../../backend/src/validators/theme.validator.js';
 const now = Date.parse('2026-10-20T12:00:00Z');
 const campaign = (id, priority = 0) => ({ _id: id, name: id, published: presetConfig('diwali'), publishedAt: '2026-10-01T00:00:00Z', schedule: { enabled: true, priority, startAt: '2026-10-20T00:00:00Z', endAt: '2026-10-21T00:00:00Z' } });
+test('legacy campaigns without image slots normalize without restoring removed artwork', () => {
+  const legacy = { colors: { primary: '#123456' }, announcement: 'Custom announcement' };
+  const result = normalizeThemeConfig(legacy, 'diwali');
+  expect(result.assets).toEqual({}); expect(result.assets.header).toBeUndefined();
+  expect(result.colors.primary).toBe('#123456'); expect(result.colors.footer).toBe(presetConfig('diwali').colors.footer);
+  expect(result.announcement).toBe('Custom announcement'); expect(result.styles).toEqual(presetConfig('diwali').styles);
+  expect(legacy.assets).toBeUndefined();
+});
+test('normalizing campaigns preserves custom images and intentional empty asset slots', () => {
+  expect(normalizeThemeConfig({ assets: { header: { url: '/custom.png' } } }).assets).toEqual({ header: { url: '/custom.png' } });
+  for (const assets of [undefined, null, {}]) expect(normalizeThemeConfig({ assets }, 'diwali').assets).toEqual({});
+});
+test('malformed saved design values fall back to a valid renderable configuration', () => {
+  const config = normalizeThemeConfig({ colors: { text: null, background: 'invalid' }, assets: { header: { url: null }, footer: { url: 'javascript:alert(1)' } },
+    styles: { font: 'missing-font', decorationCount: 100000, patternSize: null }, announcement: {}, motion: 'yes', bannerIds: [null, {}] });
+  expect(config.assets).toEqual({}); expect(config.colors).toEqual(presetConfig().colors);
+  expect(config.styles.font).toBe('system'); expect(config.styles.decorationCount).toBe(24);
+  expect(config.styles.patternSize).toBe(32); expect(config.announcement).toBe(''); expect(config.motion).toBe(false);
+  expect(themeInputSchema.safeParse({ name: 'Recovered design', preset: 'default', draft: config, schedule: { enabled: false, startAt: null, endAt: null, priority: 0 } }).success).toBe(true);
+});
 describe('seasonal theme resolution', () => {
   test('bundled presets share all color tokens and do not mutate defaults', () => {
     for (const key of Object.keys(THEME_PRESETS)) expect(Object.keys(presetConfig(key).colors)).toEqual(Object.keys(DEFAULT_THEME));

@@ -1845,7 +1845,7 @@ const PublicLayout = () => {
                           href={bank.qrCodeUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-md border border-white/30 bg-[var(--store-surface)] p-2 shadow-xs transition hover:border-[var(--store-primary)]"
+                          className="flex h-24 w-24 items-center justify-center transition-opacity hover:opacity-90"
                           title="Click to view QR code"
                         >
                           <img

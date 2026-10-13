@@ -7,6 +7,12 @@ export const DEFAULT_THEME_STYLES = {
   navigation: 'solid', announcement: 'solid', footer: 'solid',
   decorationPlacement: 'both', decorationSize: 24, decorationCount: 16, headerHeight: 24, footerHeight: 36, headerImageHeight: 96, footerImageHeight: 160,
 };
+const STYLE_CHOICES = {
+  font: ['system', 'serif', 'rounded'], heading: ['plain', 'accent', 'underline'], buttons: ['default', 'square', 'rounded', 'pill'],
+  cardRadius: ['default', 'square', 'soft', 'round'], cardShadow: ['default', 'none', 'subtle', 'lifted'], cardBorder: ['default', 'none', 'accent'], spacing: ['default', 'compact', 'airy'],
+  pattern: ['auto', 'none', 'dots', 'stars', 'diagonal', 'grid'], backgroundFit: ['tile', 'cover', 'contain'], navigation: ['solid', 'gradient'], announcement: ['solid', 'soft', 'outline'], footer: ['solid', 'tinted'], decorationPlacement: ['both', 'header', 'footer', 'off'],
+};
+const STYLE_RANGES = { patternSize: [16, 120], backgroundSize: [120, 1200], decorationSize: [12, 40], decorationCount: [6, 24], headerHeight: [16, 96], footerHeight: [24, 160], headerImageHeight: [24, 200], footerImageHeight: [24, 320] };
 export const THEME_STYLE_LOOKS = {
   original: { label: 'Store original', styles: DEFAULT_THEME_STYLES },
   minimal: { label: 'Clean minimal', styles: { ...DEFAULT_THEME_STYLES, buttons: 'square', cardRadius: 'square', cardShadow: 'none', pattern: 'none', spacing: 'compact' } },
@@ -14,6 +20,14 @@ export const THEME_STYLE_LOOKS = {
   playful: { label: 'Playful celebration', styles: { ...DEFAULT_THEME_STYLES, font: 'rounded', heading: 'accent', buttons: 'pill', cardRadius: 'round', cardShadow: 'lifted', cardBorder: 'accent', pattern: 'dots', decorationSize: 32, headerHeight: 40, footerHeight: 56 } },
 };
 export const themeStyles = config => ({ ...DEFAULT_THEME_STYLES, ...config?.styles });
+// The Diwali PNGs include large cream margins. Frame their artwork instead
+// of scaling that empty canvas into the website header/footer.
+export function themeArtworkFrame(url) {
+  const path = typeof url === 'string' ? url.split(/[?#]/)[0] : '';
+  if (path.endsWith('/theme-assets/diwali/header-marigold.png')) return { width: 2172, top: 240, bottom: 452 };
+  if (path.endsWith('/theme-assets/diwali/footer-diyas.png')) return { width: 2172, top: 200, bottom: 472 };
+  return null;
+}
 export function themeStyleAttributes(config) {
   return Object.fromEntries(Object.entries(themeStyles(config)).map(([key, value]) => [`data-style-${key.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`)}`, value]));
 }
@@ -30,8 +44,35 @@ export const THEME_PRESETS = {
   raksha: { name: 'Raksha Bandhan', colors: { ...DEFAULT_THEME, primary: '#9b2447', primaryHover: '#7b1d38', background: '#fff5f3', surface: '#fffcfa', border: '#ebcbbd', footer: '#fff5f3', footerText: '#542c34', muted: '#79565e', accent: '#b58031' }, decoration: 'flowers', styles: festiveStyles, announcement: 'Celebrating the beautiful bond of Raksha Bandhan.', assets: bundledAssets('raksha') },
 };
 export function presetConfig(key = 'default') {
-  const preset = THEME_PRESETS[key] || THEME_PRESETS.default;
+  const preset = Object.hasOwn(THEME_PRESETS, key) ? THEME_PRESETS[key] : THEME_PRESETS.default;
   return { colors: { ...preset.colors }, styles: { ...DEFAULT_THEME_STYLES, ...preset.styles }, decoration: preset.decoration, announcement: preset.announcement || '', motion: false, assets: Object.fromEntries(Object.entries(preset.assets || {}).map(([slot, asset]) => [slot, { ...asset }])), bannerIds: [] };
+}
+// Older saved campaigns may predate image slots or styling controls. Fill
+// structural defaults without restoring artwork the admin removed.
+export function normalizeThemeConfig(config, key = 'default') {
+  const defaults = presetConfig(key);
+  const source = config && typeof config === 'object' && !Array.isArray(config) ? config : {};
+  const colors = Object.fromEntries(Object.entries(defaults.colors).map(([name, value]) =>
+    [name, typeof source.colors?.[name] === 'string' && /^#[0-9a-f]{6}$/i.test(source.colors[name]) ? source.colors[name] : value]));
+  const styles = Object.fromEntries(Object.entries(defaults.styles).map(([name, value]) => {
+    const candidate = source.styles?.[name];
+    if (STYLE_RANGES[name]) {
+      const [min, max] = STYLE_RANGES[name];
+      return [name, Number.isFinite(candidate) ? Math.max(min, Math.min(max, Math.round(candidate))) : value];
+    }
+    return [name, STYLE_CHOICES[name]?.includes(candidate) ? candidate : value];
+  }));
+  const assets = Object.fromEntries(['header', 'background', 'footer'].flatMap(slot => {
+    const asset = source.assets?.[slot];
+    return typeof asset?.url === 'string' && asset.url.length <= 2000 && /^(https?:\/\/|\/(?!\/))/.test(asset.url)
+      ? [[slot, { url: asset.url, ...(typeof asset.publicId === 'string' ? { publicId: asset.publicId } : {}) }]] : [];
+  }));
+  return { colors, styles, assets,
+    decoration: ['none', 'diyas', 'stars', 'confetti', 'garland', 'flowers', 'snowflakes', 'lanterns'].includes(source.decoration) ? source.decoration : defaults.decoration,
+    announcement: typeof source.announcement === 'string' ? source.announcement.slice(0, 200) : defaults.announcement,
+    motion: typeof source.motion === 'boolean' ? source.motion : false,
+    bannerIds: Array.isArray(source.bannerIds) ? source.bannerIds.filter(id => typeof id === 'string' && /^[a-f\d]{24}$/i.test(id)).slice(0, 20) : [],
+  };
 }
 // Preset artwork changes with the festival; admin-uploaded overrides survive.
 // Removing a preset image remains intentional until another preset is selected.

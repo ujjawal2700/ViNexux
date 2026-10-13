@@ -14,7 +14,6 @@ const sliders = [
   ['patternSize', 'Pattern spacing', 16, 120, 'px'], ['backgroundSize', 'Background tile size', 120, 1200, 'px'],
   ['decorationSize', 'Decoration icon size', 12, 40, 'px'], ['decorationCount', 'Decoration density', 6, 24, 'icons'],
   ['headerHeight', 'Header decoration height', 16, 96, 'px'], ['footerHeight', 'Footer decoration height', 24, 160, 'px'],
-  ['headerImageHeight', 'Header image max height', 24, 200, 'px'], ['footerImageHeight', 'Footer image max height', 24, 320, 'px'],
 ];
 export default function ThemeStyleControls({ config, onChange }) {
   const styles = themeStyles(config);

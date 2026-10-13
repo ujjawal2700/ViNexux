@@ -2,6 +2,7 @@ import React from 'react';
 import { SeasonalThemeProvider, StorefrontOverlayScope } from './context/SeasonalThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
+import { ConfirmationProvider } from './context/ConfirmationContext';
 import { ThemeProvider } from './context/ThemeContext';
 import AppRoutes from './routes/AppRoutes';
 import { WebsiteSettingsProvider } from './context/WebsiteSettingsProvider';
@@ -16,12 +17,14 @@ function App() {
         <SeasonalThemeProvider>
         <AuthProvider>
           <ToastProvider>
+            <ConfirmationProvider>
             <ScrollToTop />
             <AppRoutes />
             <StorefrontOverlayScope>
               <StorageConsentBanner />
               <PromotionalOfferModal />
             </StorefrontOverlayScope>
+            </ConfirmationProvider>
           </ToastProvider>
         </AuthProvider>
         </SeasonalThemeProvider>

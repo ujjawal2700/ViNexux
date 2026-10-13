@@ -2,13 +2,106 @@ import { test, expect } from '@playwright/test';
 import { mockApi, seedBrowserSession } from './mockApi.js';
 import { presetConfig } from '../../shared/seasonalThemes.js';
 
+test('header and footer artwork fills full-width strips on desktop and mobile', async ({ page }, testInfo) => {
+  await mockApi(page); await seedBrowserSession(page, 'storefront');
+  await page.route('**/api/content/theme', route => route.fulfill({ json: { success: true, data: { theme: { id: 'diwali', config: presetConfig('diwali') } } } }));
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 }); await page.goto('/');
+    for (const slot of ['header', 'footer']) {
+      const strip = page.locator(`.theme-decoration-asset.theme-decoration-${slot}`);
+      await strip.scrollIntoViewIfNeeded();
+      const img = strip.locator('img');
+      await expect.poll(() => img.evaluate(el => el.naturalWidth)).toBeGreaterThan(0);
+      await expect(img).toHaveCSS('object-fit', 'contain');
+      const bounds = await strip.boundingBox();
+      expect(Math.abs(bounds.width - width)).toBeLessThan(1);
+      expect(bounds.height).toBe(width > 640 ? (slot === 'header' ? 48 : 64) : (slot === 'header' ? 32 : 40));
+      await strip.screenshot({ path: testInfo.outputPath(`${slot}-full-width-${width}.png`) });
+    }
+  }
+});
+
+test('simple editor recovers from malformed saved settings without exposing advanced controls', async ({ page }, testInfo) => {
+  await mockApi(page); await seedBrowserSession(page, 'admin');
+  const id = '507f1f77bcf86cd799439011';
+  await page.route('**/api/admin/cms/themes**', route => route.fulfill({ json: { success: true, data: {
+    themes: null, active: { name: {} }, theme: { _id: id, name: null, preset: 'diwali', revision: null,
+      draft: { colors: { text: null }, styles: { decorationCount: 99999 }, assets: { header: { url: null } } },
+      schedule: { enabled: true, startAt: 'bad-date', endAt: 'bad-date' }, history: [null, {}] },
+  } } }));
+  await page.goto(`/admin/cms/themes/${id}`);
+  await expect(page.getByRole('heading', { name: '1. Choose your theme' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '2. Add your message and pictures' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '3. Preview your website' })).toBeVisible();
+  await expect(page.getByLabel('Font family', { exact: true })).toHaveCount(0);
+  await page.getByText('Schedule for later', { exact: true }).click();
+  await expect(page.getByLabel('Start (India time)', { exact: true })).toHaveValue('');
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  await expect(page.getByRole('alert').first()).toContainText('Choose a start and an end date');
+  await expect(page.getByRole('heading', { name: 'This page ran into a problem' })).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(async () => (await page.locator('aside').boundingBox()).x).toBeLessThanOrEqual(-255);
+  await page.getByRole('heading', { name: 'Seasonal Themes', exact: true }).scrollIntoViewIfNeeded();
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({ path: testInfo.outputPath('simple-editor-mobile.png'), fullPage: true });
+});
+
+test('loading can be retried and failed saves keep the admin edits on the page', async ({ page }) => {
+  await mockApi(page); await seedBrowserSession(page, 'admin'); let failed = true;
+  await page.route('**/api/admin/cms/themes**', route => {
+    if (route.request().method() === 'POST') return route.fulfill({ status: 409, json: { success: false, message: 'The theme was changed by another admin. Your edits are still here.' } });
+    if (failed) { return route.fulfill({ status: 503, json: { success: false, message: 'Could not load themes.' } }); }
+    return route.fulfill({ json: { success: true, data: { themes: [], active: null } } });
+  });
+  await page.goto('/admin/cms/themes');
+  await expect(page.getByRole('alert')).toContainText('Could not load themes');
+  failed = false;
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await page.getByLabel('Announcement', { exact: true }).fill('My festival offer');
+  await page.getByRole('button', { name: /Save draft/ }).click();
+  await expect(page.getByRole('alert').first()).toContainText('changed by another admin');
+  await expect(page.getByLabel('Announcement', { exact: true })).toHaveValue('My festival offer');
+  await expect(page.getByRole('heading', { name: 'This page ran into a problem' })).toHaveCount(0);
+});
+
+test('legacy saved campaigns and versions without image slots open and save without crashing', async ({ page }) => {
+  await mockApi(page); await seedBrowserSession(page, 'admin');
+  const id = '507f1f77bcf86cd799439011';
+  const draft = presetConfig('diwali'); delete draft.assets; delete draft.styles;
+  const legacy = { _id: id, name: 'Legacy Diwali', preset: 'diwali', revision: 0, draft,
+    history: [{ publishedAt: '2026-10-01T00:00:00Z', config: { ...draft, assets: null } }] };
+  let saved;
+  await page.route('**/api/admin/cms/themes**', route => {
+    const request = route.request();
+    if (request.method() === 'PUT') {
+      saved = request.postDataJSON();
+      return route.fulfill({ json: { success: true, data: { theme: legacy } } });
+    }
+    return route.fulfill({ json: { success: true, data: new URL(request.url()).pathname.endsWith(id)
+      ? { theme: legacy } : { themes: [legacy], active: { id: null, name: 'Store default' } } } });
+  });
+  await page.goto('/admin/cms/themes');
+  await page.getByText('Saved themes and store settings', { exact: true }).click();
+  await page.getByRole('button', { name: /Legacy Diwali/ }).click();
+  await page.getByText('Saved themes and store settings', { exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Seasonal Themes', exact: true })).toBeVisible();
+  await expect(page.getByLabel('Upload header image', { exact: true })).toBeAttached();
+  await expect(page.getByRole('heading', { name: 'This page ran into a problem' })).toHaveCount(0);
+  await page.getByLabel('Restore an earlier published design to draft').selectOption('0');
+  await page.getByRole('button', { name: /Save draft/ }).click();
+  await expect.poll(() => saved?.draft.assets).toEqual({});
+  expect(saved.draft.styles).toEqual(presetConfig('diwali').styles);
+  await expect(page.getByLabel('Upload header image', { exact: true })).toBeAttached();
+  await expect(page.getByRole('heading', { name: 'This page ran into a problem' })).toHaveCount(0);
+});
+
 test('festival presets load matching artwork and restore bundled images', async ({ page }, testInfo) => {
   await mockApi(page); await seedBrowserSession(page, 'admin');
   await page.route('**/api/admin/cms/themes**', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: true, data: { themes: [], active: { id: null, config: presetConfig() } } }) }));
   await page.goto('/admin/cms/themes/new');
   const preview = page.frameLocator('iframe');
   for (const key of ['diwali', 'holi', 'eid', 'christmas', 'independence', 'republic', 'raksha', 'default']) {
-    await page.getByLabel('Preset', { exact: true }).selectOption(key);
+    await page.getByLabel('Festival', { exact: true }).selectOption(key);
     const config = presetConfig(key);
     if (key === 'default') {
       await expect(preview.locator('.theme-decoration-asset')).toHaveCount(0);
@@ -19,13 +112,14 @@ test('festival presets load matching artwork and restore bundled images', async 
       await expect(preview.locator('.theme-announcement')).toHaveText(config.announcement);
     }
   }
-  await page.getByLabel('Preset', { exact: true }).selectOption('holi');
-  await page.getByRole('button', { name: 'Remove from draft', exact: true }).first().click();
+  await page.getByLabel('Festival', { exact: true }).selectOption('holi');
+  await page.getByRole('button', { name: 'Remove picture', exact: true }).first().click();
   await expect(page.getByAltText('header decoration')).toHaveCount(0);
   await page.getByRole('button', { name: 'Restore preset artwork', exact: true }).click();
   await expect(page.getByAltText('header decoration')).toHaveAttribute('src', '/theme-assets/holi/header.svg');
   await page.getByRole('button', { name: 'Mobile', exact: true }).click();
   await expect(preview.locator('.theme-decoration-header img')).toHaveJSProperty('naturalWidth', 1440);
+  await page.getByRole('heading', { name: 'Seasonal Themes', exact: true }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath('holi-preset-mobile-preview.png'), fullPage: true });
 });
 
@@ -55,6 +149,7 @@ test('admin edits an isolated festival preview, saves, publishes and activates',
   await expect(preview.locator('.theme-announcement')).toHaveText('Happy Diwali!');
   await page.getByRole('button', { name: 'Mobile', exact: true }).click();
   await expect(page.locator('iframe')).toHaveCSS('width', '390px');
+  await page.getByText('More design options', { exact: true }).click();
   await page.getByRole('button', { name: 'Playful celebration', exact: true }).click();
   await expect(preview.locator('.storefront-theme[data-theme]')).toHaveAttribute('data-style-buttons', 'pill');
   await expect(preview.locator('.theme-product-card').first()).toHaveCSS('border-radius', '22px');
@@ -66,10 +161,13 @@ test('admin edits an isolated festival preview, saves, publishes and activates',
   await expect(preview.locator('.storefront-theme[data-theme]')).toHaveCSS('font-family', /Georgia/);
   await page.getByRole('button', { name: /Save draft/ }).click();
   await expect(page).toHaveURL(new RegExp(`/admin/cms/themes/${id}$`));
-  page.on('dialog', dialog => dialog.accept());
-  await page.getByRole('button', { name: 'Publish draft', exact: true }).click();
+  await page.getByText('Schedule for later', { exact: true }).click();
+  await page.getByRole('button', { name: 'Save schedule', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Save schedule', exact: true }).click();
+  await page.getByText('Saved themes and store settings', { exact: true }).click();
   await expect(page.getByRole('button', { name: 'Activate now', exact: true })).toBeEnabled();
   await page.getByRole('button', { name: 'Activate now', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Activate theme', exact: true }).click();
   await expect(page.getByText('Live: Diwali campaign.', { exact: false })).toBeVisible();
   await page.goto('/');
   await expect(page.locator('.storefront-theme[data-theme]')).toHaveAttribute('data-theme', id);
@@ -118,8 +216,8 @@ test('new campaigns upload all three images immediately and apply without a sepa
   await expect(preview.locator('.theme-decoration-header img')).toHaveAttribute('src', '/theme-test/header.png');
   await expect(preview.locator('.theme-decoration-footer img')).toHaveAttribute('src', '/theme-test/footer.png');
   await page.getByLabel('Announcement', { exact: true }).fill('Festival images ready');
-  page.on('dialog', dialog => dialog.accept());
   await page.getByRole('button', { name: 'Apply to store', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apply theme', exact: true }).click();
   await expect(page.getByText('Live: Diwali campaign.', { exact: false })).toBeVisible();
   expect(Object.keys(stored.published.assets).sort()).toEqual(['background', 'footer', 'header']);
   expect(stored.published.announcement).toBe('Festival images ready');

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import adminService from '../../services/adminService';
+import useToast from '../../hooks/useToast';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -20,6 +21,7 @@ import FormError from '../../components/ui/FormError';
  * Manages trust badges (icons, title, description, display order, active status).
  */
 const AdminCmsBadgesPage = () => {
+  const toast = useToast();
   const [badges, setBadges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -192,7 +194,7 @@ const AdminCmsBadgesPage = () => {
       fetchBadges();
     } catch (err) {
       console.error('Error deleting badge:', err);
-      alert(err.response?.data?.message || 'Failed to delete trust badge.');
+      toast.error(err.response?.data?.message || 'Failed to delete trust badge.');
     } finally {
       setDeleting(false);
     }
