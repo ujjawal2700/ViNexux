@@ -1,3 +1,4 @@
+import pushService from '../services/pushService';
 import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
 import authService from '../services/authService';
 import cartService from '../services/cartService';
@@ -353,6 +354,7 @@ export const AuthProvider = ({ children }) => {
   // Logout (supports portal: 'admin' vs customer default)
   const logout = async (portal) => {
     try {
+      await pushService.unregisterToken(undefined, portal || 'customer').catch(() => {});
       await authService.logout(portal);
     } catch (err) {
       console.warn('Logout API error:', err);

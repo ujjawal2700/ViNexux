@@ -14,7 +14,10 @@
     "backfill:product-models": "node scripts/backfill_product_models.js",
     "backfill:catalog-fields": "node scripts/backfill_catalog_fields.js",
     "cleanup:business-data": "node scripts/delete_business_data.js",
-    "seed:admin": "node scripts/seed_admin.js"
+    "seed:admin": "node scripts/seed_admin.js",
+    "test:admin-access": "NODE_ENV=test node tests/adminAccess.test.js",
+    "test:campaigns": "NODE_ENV=test node tests/campaigns.test.js",
+    "test:all": "node tests/runAll.js"
   },
   "keywords": [
     "vinexus",
@@ -44,6 +47,7 @@
     "multer": "^2.3.0",
     "nodemailer": "^10.0.0",
     "pdfkit": "^0.20.2",
+    "sanitize-html": "^2.18.0",
     "sharp": "^0.35.4",
     "zod": "^3.24.1"
   },

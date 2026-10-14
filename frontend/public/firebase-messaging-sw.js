@@ -1,51 +1,36 @@
-// Firebase Cloud Messaging background service worker.
-//
-// This worker is a static asset and cannot read Vite environment variables.
-// The values below are Firebase's public browser configuration, not credentials.
-// Keep service-account keys and provider secrets out of this file and all VITE_* variables.
+/* Firebase public browser configuration is passed by the registration URL. */
+const safeUrl = value => { try { const url = new URL(value || '/', self.location.origin); return ['https:', 'http:'].includes(url.protocol) ? url.href : self.location.origin; } catch { return self.location.origin; } };
+// Register before importing Firebase so our action links handle notification clicks.
+self.addEventListener('notificationclick', event => {
+  if (event.notification.data?.FCM_MSG) return; // Firebase handles automatically displayed transactional notifications.
+  event.notification.close();
+  const data = event.notification.data || {};
+  const target = safeUrl(data.actions?.find(action => action.action === event.action)?.url || data.link);
+  event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async windows => {
+    const existing = windows.find(client => client.url === target);
+    if (existing) return existing.focus();
+    return clients.openWindow(target);
+  }));
+});
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', event => event.waitUntil(clients.claim()));
 importScripts('https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.13.1/firebase-messaging-compat.js');
-
-firebase.initializeApp({
-  apiKey: 'REPLACE_WITH_VITE_FIREBASE_API_KEY',
-  authDomain: 'REPLACE_WITH_VITE_FIREBASE_AUTH_DOMAIN',
-  projectId: 'REPLACE_WITH_VITE_FIREBASE_PROJECT_ID',
-  storageBucket: 'REPLACE_WITH_VITE_FIREBASE_STORAGE_BUCKET',
-  messagingSenderId: 'REPLACE_WITH_VITE_FIREBASE_MESSAGING_SENDER_ID',
-  appId: 'REPLACE_WITH_VITE_FIREBASE_APP_ID',
-});
-
-const messaging = firebase.messaging();
-
-// Handles notifications that arrive while the site is closed/backgrounded.
-// Foreground messages (tab open & focused) are handled in src/lib/firebase.js instead.
-messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title || payload.data?.title || 'Vinexus';
-  const body = payload.notification?.body || payload.data?.body || '';
-  const link = payload.data?.link || '/';
-
-  self.registration.showNotification(title, {
-    body,
-    icon: '/logo.png',
-    badge: '/logo.png',
-    data: { link },
+const config = JSON.parse(new URL(self.location.href).searchParams.get('config') || '{}');
+if (config.apiKey && config.projectId) {
+  firebase.initializeApp(config);
+  firebase.messaging().onBackgroundMessage(payload => {
+    // FCM automatically displays notification payloads. Campaigns use data-only messages.
+    if (payload.notification) return;
+    const data = payload.data || {};
+    if (data.expiresAt && Number(data.expiresAt) < Date.now()) return;
+    let actions = [];
+    try { actions = JSON.parse(data.actions || '[]').slice(0, 2).map((action, i) => ({ action: `action-${i}`, title: action.label, url: safeUrl(action.url) })); } catch { /* optional actions */ }
+    return self.registration.showNotification(data.title || 'ViNexus', {
+      body: data.body || '', icon: data.iconUrl ? safeUrl(data.iconUrl) : '/logo.png',
+      ...(data.badgeUrl ? { badge: safeUrl(data.badgeUrl) } : {}), ...(data.imageUrl ? { image: safeUrl(data.imageUrl) } : {}),
+      tag: data.tag || undefined, requireInteraction: data.requireInteraction === 'true',
+      actions: actions.map(({ action, title }) => ({ action, title })), data: { link: safeUrl(data.link), actions },
+    });
   });
-});
-
-// Focus/open the relevant page when the user clicks the notification
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  const link = event.notification.data?.link || '/';
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
-        if (client.url.includes(link) && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      if (clients.openWindow) {
-        return clients.openWindow(link);
-      }
-    })
-  );
-});
+}

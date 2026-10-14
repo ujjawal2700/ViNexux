@@ -1214,8 +1214,8 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
 };
 
 // URL changes start a fresh query and reset pagination/spec filters.
-const CatalogRoutePage = ({ lowStockOnly = false }) => {
+const CatalogRoutePage = ({ lowStockOnly = false, trendingOnly = false }) => {
   const location = useLocation();
-  return <ProductsPage key={location.pathname + location.search} lowStockOnly={lowStockOnly} />;
+  return <ProductsPage key={location.pathname + location.search} lowStockOnly={lowStockOnly} trendingOnly={trendingOnly} />;
 };
 export default CatalogRoutePage;

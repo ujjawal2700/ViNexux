@@ -1,3 +1,4 @@
+import { loginFixture, accountRequests } from './helpers/accounts.js';
 import test, { before, after, describe } from 'node:test';
 import assert from 'node:assert';
 import http from 'http';
@@ -18,7 +19,7 @@ import { DevWhatsAppProvider } from '../src/integrations/whatsapp/DevWhatsAppPro
 let server;
 const PORT = 5096;
 
-const request = (endpointPath, options = {}, body = null) => {
+const rawRequest = (endpointPath, options = {}, body = null) => {
   return new Promise((resolve, reject) => {
     const reqOptions = {
       hostname: '127.0.0.1',
@@ -112,6 +113,8 @@ const sendMultipartRequest = (endpointPath, token, fields = {}, file = null, met
   });
 };
 
+const request = accountRequests(rawRequest);
+
 describe('Phase 8.6 — Security + Production Hardening Test Suite', () => {
   let customerUser;
   let customerToken;
@@ -196,8 +199,7 @@ describe('Phase 8.6 — Security + Production Hardening Test Suite', () => {
       accountStatus: 'active',
       status: 'active',
     });
-    await authService.sendOtp({ identifier: aEmail, purpose: 'login' });
-    const aRes = await authService.verifyOtp({ identifier: aEmail, otp: '123456', purpose: 'login' });
+    const aRes = await loginFixture(adminUser);
     adminToken = aRes.accessToken;
 
     // Category & Product
@@ -218,6 +220,7 @@ describe('Phase 8.6 — Security + Production Hardening Test Suite', () => {
 
     // Enquiry owned by Customer
     enquiry = await Enquiry.create({
+        whatsappNumber: '9876543210',
       enquiryNumber: `VNX-SEC-${ts.toString().slice(-6)}`,
       userId: customerUser._id,
       userType: 'customer',
@@ -418,7 +421,8 @@ describe('Phase 8.6 — Security + Production Hardening Test Suite', () => {
       );
 
       assert.strictEqual(res.status, 400);
-      assert.ok(res.body.message.includes('Validation failed'));
+      assert.strictEqual(res.body.error.code, 'VALIDATION_ERROR');
+      assert.ok(/script|unsafe|content/i.test(JSON.stringify(res.body)));
     });
   });
 
@@ -447,3 +451,6 @@ describe('Phase 8.6 — Security + Production Hardening Test Suite', () => {
     });
   });
 });
+
+// Close database handles after all nested suites, including failed fixtures.
+after(async () => { await mongoose.disconnect(); });

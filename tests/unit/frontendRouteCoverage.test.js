@@ -1,11 +1,15 @@
 import { describe, expect, test } from '@jest/globals';
 import {
-  discoverFrontendRoutes,
+  discoverFrontendRoutes, declaredFrontendRoutes,
   frontendRouteCases,
   materializeFrontendPath,
 } from '../helpers/frontendRouteInventory.js';
 
 describe('website section coverage manifest', () => {
+  test('route declarations do not silently shadow duplicate paths', () => {
+    const paths = declaredFrontendRoutes();
+    expect(paths.length).toBe(new Set(paths).size);
+  });
   test('includes every route declared by the application', () => {
     const declared = discoverFrontendRoutes();
     const covered = frontendRouteCases().map(({ pattern }) => pattern);

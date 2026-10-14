@@ -82,6 +82,7 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
+  const [marketingEmailOptIn, setMarketingEmailOptIn] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [agreedPrivacy, setAgreedPrivacy] = useState(false);
 
@@ -285,6 +286,7 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
           password: `VNX@${dealerPhone.trim()}`,
           role: 'dealer',
           acceptPrivacyPolicy: agreedPrivacy,
+          marketingEmailOptIn,
           acceptTerms: agreedTerms,
           companyName,
           organisationType,
@@ -306,6 +308,7 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
           password: `VNX@${custPhone.trim()}`,
           role: 'customer',
           acceptPrivacyPolicy: agreedPrivacy,
+          marketingEmailOptIn,
           acceptTerms: agreedTerms,
         };
 
@@ -533,6 +536,7 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
 
           </div>
 
+          <label className="flex items-start gap-2 text-left text-xs text-gray-600"><input type="checkbox" checked={marketingEmailOptIn} onChange={e => setMarketingEmailOptIn(e.target.checked)} />Email me product updates and offers (optional).</label>
           <LegalAcceptances prefix="customer" agreedTerms={agreedTerms} setAgreedTerms={setAgreedTerms} agreedPrivacy={agreedPrivacy} setAgreedPrivacy={setAgreedPrivacy} />
 
           {/* Submit Button */}
@@ -829,6 +833,7 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
             </div>
           </div>
 
+          <label className="flex items-start gap-2 text-left text-xs text-gray-600"><input type="checkbox" checked={marketingEmailOptIn} onChange={e => setMarketingEmailOptIn(e.target.checked)} />Email me product updates and offers (optional).</label>
           <LegalAcceptances prefix="dealer" agreedTerms={agreedTerms} setAgreedTerms={setAgreedTerms} agreedPrivacy={agreedPrivacy} setAgreedPrivacy={setAgreedPrivacy} />
 
           {/* Submit Dealer Registration */}

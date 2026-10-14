@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Receipt, Download, ExternalLink, Phone, ArrowRight } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
+import useLogoutConfirmation from '../../hooks/useLogoutConfirmation';
 import customerInvoiceService from '../../services/customerInvoiceService';
 import { saveBlob } from '../../services/posService';
 
@@ -10,7 +11,8 @@ const date = value => new Date(value).toLocaleDateString('en-IN', { timeZone: 'A
 const button = 'inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold disabled:opacity-50';
 
 export default function InvoicesPage({ embedded = false }) {
-  const { user, isAuthenticated, isLoading, sendOtp, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, sendOtp } = useAuth();
+  const confirmLogout = useLogoutConfirmation();
   const navigate = useNavigate(), location = useLocation(), { token } = useParams();
   const [phone, setPhone] = useState('');
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
@@ -69,7 +71,7 @@ export default function InvoicesPage({ embedded = false }) {
         <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">{isAuthenticated ? 'My invoices' : 'Find your invoices'}</h1>
         <p className="mt-2 text-sm text-gray-500">{isAuthenticated ? `Purchase history for ${user?.name || 'your account'}. View or download your original invoices.` : 'Enter the mobile number used at the store. Verify the SMS code to access your invoices.'}</p></div>
       {isAuthenticated && !embedded && <div className="flex flex-wrap gap-2"><Link className={button} to="/account/profile">My account <ArrowRight size={16} /></Link>
-        <button className={button} disabled={busy} onClick={async () => { setBusy(true); await logout('customer'); setPage(1); setData({ invoices: [], pages: 0, total: 0 }); setError(''); setBusy(false); }}>Use another number</button></div>}
+        <button className={button} disabled={busy} onClick={async () => { if (!await confirmLogout()) return; setPage(1); setData({ invoices: [], pages: 0, total: 0 }); setError(''); }}>Use another number</button></div>}
     </header>
     {error && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{error}
       {isAuthenticated && <button onClick={() => setVersion(v => v + 1)} className="ml-3 font-semibold underline">Retry</button>}</div>}

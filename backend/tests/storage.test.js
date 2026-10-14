@@ -1,3 +1,4 @@
+import { loginFixture } from './helpers/accounts.js';
 import test, { before, after, describe } from 'node:test';
 import assert from 'node:assert';
 import http from 'http';
@@ -216,8 +217,7 @@ describe('Phase 8.4 — Cloudinary / S3 File Upload Integration Test Suite', () 
       accountStatus: 'active',
       status: 'active',
     });
-    await authService.sendOtp({ identifier: aEmail, purpose: 'login' });
-    const aRes = await authService.verifyOtp({ identifier: aEmail, otp: '123456', purpose: 'login' });
+    const aRes = await loginFixture(adminUser);
     adminToken = aRes.accessToken;
 
     // Category & Product
@@ -529,3 +529,6 @@ describe('Phase 8.4 — Cloudinary / S3 File Upload Integration Test Suite', () 
     });
   });
 });
+
+// Close database handles after all nested suites, including failed fixtures.
+after(async () => { await mongoose.disconnect(); });

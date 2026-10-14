@@ -1,3 +1,4 @@
+import '../audit/audit.js';
 import mongoose from 'mongoose';
 
 // A user's saved delivery address book. Unlike Enquiry.deliveryAddress (a
@@ -53,6 +54,7 @@ const savedAddressSchema = new mongoose.Schema(
 
 const userSchema = new mongoose.Schema(
   {
+    marketingPreferences: { email: { type: Boolean, default: false }, push: { type: Boolean, default: false }, updatedAt: Date },
     fullName: {
       type: String,
       required: [true, 'Full name is required'],
@@ -101,6 +103,9 @@ const userSchema = new mongoose.Schema(
       default: 'customer',
       required: [true, 'User role is required'],
     },
+    isEmployee: { type: Boolean, default: false },
+    accessRoleId: { type: mongoose.Schema.Types.ObjectId, ref: 'AccessRole', default: null },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     isPhoneVerified: {
       type: Boolean,
       default: false,

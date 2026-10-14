@@ -25,6 +25,7 @@ export const signup = asyncHandler(async (req, res) => {
     officeLocation,
     acceptPrivacyPolicy,
     acceptTerms,
+    marketingEmailOptIn,
   } = req.body;
 
   const reqInfo = {
@@ -57,6 +58,7 @@ export const signup = asyncHandler(async (req, res) => {
     officeLocation,
     acceptPrivacyPolicy,
     acceptTerms,
+    marketingEmailOptIn,
     reqInfo,
   });
 

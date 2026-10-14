@@ -1,3 +1,4 @@
+import '../audit/audit.js';
 import mongoose from 'mongoose';
 
 const payment = new mongoose.Schema({ method: String, amount: Number, reference: String, requestId: String, createdAt: Date, createdBy: mongoose.Schema.Types.ObjectId }, { _id: false });

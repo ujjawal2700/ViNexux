@@ -3,6 +3,7 @@ import React, { Suspense, useState, useEffect, useRef, useMemo, useCallback } fr
 import RouteFallback from '../components/ui/RouteFallback';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
+import useLogoutConfirmation from '../hooks/useLogoutConfirmation';
 import useToast from '../hooks/useToast';
 import contentService from '../services/contentService';
 import cartService from '../services/cartService';
@@ -89,7 +90,8 @@ const getHeaderCategoryIcon = (name = '', slug = '') => {
 const PublicLayout = () => {
   const { theme } = useSeasonalTheme();
   const toast = useToast();
-  const { user, isAuthenticated, adminUser, isAdminAuthenticated, logout, isLoading } = useAuth();
+  const { user, isAuthenticated, adminUser, isAdminAuthenticated, isLoading } = useAuth();
+  const confirmLogout = useLogoutConfirmation();
   const navigate = useNavigate();
   const location = useLocation();
   const { settings: websiteSettings } = useWebsiteSettings();
@@ -170,7 +172,7 @@ const PublicLayout = () => {
   }, [footerData]);
 
   const hasBankDetails = bankAccountList.length > 0;
-  const defaultFooterSectionOrder = ['contact', 'about', 'information', 'support', 'bank'];
+  const defaultFooterSectionOrder = ['contact', 'about', 'information', 'bank', 'support'];
   const footerSectionOrder = Array.isArray(footerData?.sectionOrder)
     ? [...new Set(footerData.sectionOrder.filter((key) => defaultFooterSectionOrder.includes(key))), ...defaultFooterSectionOrder.filter((key) => !footerData.sectionOrder.includes(key))]
     : defaultFooterSectionOrder;
@@ -833,7 +835,8 @@ const PublicLayout = () => {
 
   const handleLogout = async () => {
     try {
-      await logout();
+      if (!await confirmLogout()) return;
+      setIsMobileMenuOpen(false);
       navigate('/');
     } catch (err) {
       console.error('Logout error:', err);

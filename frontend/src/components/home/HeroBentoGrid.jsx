@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useId, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, ArrowUpRight } from 'lucide-react';
-import { bannerFramingStyle, BENTO_IMAGE_LIMIT, BENTO_SECTION_COUNT, BENTO_TRANSITIONS } from '../../../../shared/bannerGrid';
+import { bannerFramingStyle, BENTO_IMAGE_LIMIT, BENTO_SECTION_COUNT, BENTO_TRANSITIONS, visibleBannerSections } from '../../../../shared/bannerGrid';
 
 function BannerTile({ images = [], section, transition = 'fade' }) {
   const filterId = `banner-pixel-${useId().replace(/:/g, '')}`;
@@ -45,7 +45,7 @@ function BannerTile({ images = [], section, transition = 'fade' }) {
     <svg aria-hidden="true" width="0" height="0" className="absolute"><defs><filter id={filterId} x="0" y="0" width="100%" height="100%"><feFlood x="0" y="0" width="1" height="1" result="sample" /><feComposite in="sample" in2="sample" operator="over" x="0" y="0" width="12" height="12" /><feTile result="grid" /><feComposite in="SourceGraphic" in2="grid" operator="in" /><feMorphology operator="dilate" radius="6" /></filter></defs></svg>
     {images.map((image, i) => <div key={image._id || image.url} className={`bento-banner-slide effect-${effect} ${i === index ? `is-current ${previous !== null ? 'is-entering' : ''}` : i === previous ? 'is-leaving' : ''}`} onAnimationEnd={e => { if (e.target === e.currentTarget && i === index) setSlide(slide => ({ ...slide, previous: null })); }} style={{ '--banner-pixel-filter': `url(#${filterId})` }}><img key={image._id || image.url} src={image.url} alt={image.title || `Featured banner in section ${section + 1}`} aria-hidden={i !== index} loading={i === 0 ? 'eager' : 'lazy'} draggable={false} className={`bento-banner-image ${i === index ? 'is-active' : ''}`} style={bannerFramingStyle(image)} /></div>)}
     {(current.title || current.buttonText) && <div className="bento-banner-caption"><span>{current.title || current.buttonText}</span><ArrowUpRight size={18} /></div>}
-  </> : <div className="bento-banner-empty"><span className="text-xs uppercase tracking-[.2em] text-[var(--store-muted)]">ViNexus collections</span><span className="text-xl font-semibold text-[var(--store-text)]">{['Explore our range', 'Discover more', 'New arrivals', 'Find your essentials'][section]}</span><span className="inline-flex items-center gap-2 text-sm text-[var(--store-primary)]">Shop products <ArrowUpRight size={16} /></span></div>;
+  </> : <div className="bento-banner-empty"><span className="text-xs uppercase tracking-[.2em] text-[var(--store-muted)]">ViNexus collections</span><span className="text-xl font-semibold text-[var(--store-text)]">{['Explore our range', 'Find your essentials'][section]}</span><span className="inline-flex items-center gap-2 text-sm text-[var(--store-primary)]">Shop products <ArrowUpRight size={16} /></span></div>;
   const link = current?.link || (!current ? '/products' : '');
   const external = /^https?:\/\//i.test(link);
   const validLink = external || /^\/(?!\/)/.test(link);
@@ -58,7 +58,7 @@ function BannerTile({ images = [], section, transition = 'fade' }) {
   </div>;
 }
 export default function HeroBentoGrid({ grid }) {
-  const sections = grid?.configured ? grid.sections : [];
+  const sections = grid?.configured ? visibleBannerSections(grid.sections) : [];
   return <section className="hero-bento-grid storefront-container" aria-label="Featured collections">
     {Array.from({ length: BENTO_SECTION_COUNT }, (_, section) => { const images = (sections?.[section]?.images || []).slice(0, BENTO_IMAGE_LIMIT); return <BannerTile key={`${section}:${images.map(i => `${i._id}:${i.url}`).join('|')}`} section={section} images={images} transition={sections?.[section]?.transition || 'fade'} />; })}
   </section>;

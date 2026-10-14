@@ -1,9 +1,7 @@
-.hero-bento-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 2px; height: clamp(320px, 29vw, 520px); padding: 12px 24px 0; }
+.hero-bento-grid { display: grid; grid-template-columns: 3fr 1fr; grid-template-rows: minmax(0, 1fr); gap: 2px; height: clamp(320px, 29vw, 520px); padding: 12px 24px 0; }
 .bento-banner-tile { position: relative; min-width: 0; overflow: hidden; border-radius: 10px; background: var(--store-surface); border: 1px solid var(--store-border); isolation: isolate; }
-.bento-banner-tile-1 { grid-row: span 2; }
-.bento-banner-tile-2 { grid-column: 2; grid-row: 1; }
-.bento-banner-tile-3 { grid-column: 2; grid-row: 2; }
-.bento-banner-tile-4 { grid-column: 3; grid-row: 1 / span 2; }
+.bento-banner-tile-1 { grid-column: 1; }
+.bento-banner-tile-2 { grid-column: 2; }
 .bento-banner-content { position: absolute; inset: 0; display: block; }
 .bento-banner-content:focus-visible { outline: 3px solid var(--store-accent); outline-offset: -4px; }
 .bento-banner-image { position: absolute; inset: 0; width: 100%; height: 100%; object-position: center; }
@@ -40,7 +38,7 @@
 .bento-banner-controls button svg { width: 24px; height: 24px; }
 .bento-banner-controls button:hover { color: var(--store-primary); transform: scale(1.1); }
 .bento-banner-controls button:focus-visible { outline: 2px solid white; outline-offset: -2px; }
-@media (max-width: 1023px) { .hero-bento-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); height: auto; padding: 10px 16px 0; gap: 2px; } .bento-banner-tile { grid-column: auto; grid-row: auto; aspect-ratio: 4 / 3; } }
+@media (max-width: 1023px) { .hero-bento-grid { grid-template-columns: 3fr 1fr; height: clamp(120px, 29vw, 320px); padding: 10px 16px 0; gap: 2px; } .bento-banner-tile { grid-row: auto; } }
 @media (max-width: 639px) { .hero-bento-grid { padding: 8px 12px 0; gap: 2px; } .bento-banner-tile { border-radius: 8px; } .bento-banner-empty { padding: 12px; gap: 6px; } .bento-banner-empty > :first-child { font-size: 9px; letter-spacing: .05em; } .bento-banner-empty > :nth-child(2) { font-size: 15px; } .bento-banner-empty > :last-child { font-size: 11px; } .bento-banner-caption { font-size: 11px; padding: 5px 7px; bottom: 48px; left: 6px; right: 6px; max-width: calc(100% - 12px); }  }
 @media (prefers-reduced-motion: reduce) { .bento-banner-slide, .bento-banner-slide.is-current, .bento-banner-slide.is-leaving { transition: none; animation: none; }
   .bento-banner-slide.is-leaving { opacity: 0; } }

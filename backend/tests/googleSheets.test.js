@@ -1,3 +1,4 @@
+import { loginFixture, accountRequests } from './helpers/accounts.js';
 import test, { before, after, describe } from 'node:test';
 import assert from 'node:assert';
 import http from 'http';
@@ -20,7 +21,7 @@ import { authService } from '../src/services/auth.service.js';
 let server;
 const PORT = 5093;
 
-const request = (endpointPath, options = {}, body = null) => {
+const rawRequest = (endpointPath, options = {}, body = null) => {
   return new Promise((resolve, reject) => {
     const reqOptions = {
       hostname: '127.0.0.1',
@@ -56,6 +57,8 @@ const request = (endpointPath, options = {}, body = null) => {
     req.end();
   });
 };
+
+const request = accountRequests(rawRequest);
 
 describe('Phase 8.3 — Google Sheets Integration Test Suite', () => {
   let customerUser;
@@ -111,8 +114,7 @@ describe('Phase 8.3 — Google Sheets Integration Test Suite', () => {
       status: 'active',
     });
 
-    await authService.sendOtp({ identifier: adminEmail, purpose: 'login' });
-    const adminRes = await authService.verifyOtp({ identifier: adminEmail, otp: '123456', purpose: 'login' });
+    const adminRes = await loginFixture(adminUser);
     adminToken = adminRes.accessToken;
 
     category = await Category.create({
@@ -185,7 +187,7 @@ describe('Phase 8.3 — Google Sheets Integration Test Suite', () => {
       assert.strictEqual(row[3], 'Jane Doe');
       assert.strictEqual(row[4], 'jane@acme.com');
       assert.strictEqual(row[7], 3);
-      assert.strictEqual(row[6], 'Item A (Qty: 2); Item B (Qty: 1)');
+      assert.strictEqual(row[6], 'Item A (Qty: 2, Unit: ₹100, Total: ₹200); Item B (Qty: 1, Unit: ₹200, Total: ₹200)');
 
       const result = await provider.appendRow({ rowValues: row });
       assert.strictEqual(result.success, true);
@@ -237,7 +239,7 @@ describe('Phase 8.3 — Google Sheets Integration Test Suite', () => {
       assert.strictEqual(row[3], 'Test Contact');
       assert.strictEqual(row[4], 'test@contact.com');
       assert.strictEqual(row[5], '9876543210');
-      assert.strictEqual(row[6], 'Custom Product Name (Qty: 5)');
+      assert.strictEqual(row[6], 'Custom Product Name (Qty: 5, Unit: ₹50, Total: ₹250)');
       assert.strictEqual(row[7], 5);
       assert.strictEqual(row[8], 'Urgent enquiry');
       assert.strictEqual(row[10], 'new');
@@ -253,6 +255,7 @@ describe('Phase 8.3 — Google Sheets Integration Test Suite', () => {
       setGoogleSheetsProvider(failingProvider);
 
       const dummyEnquiryDoc = await Enquiry.create({
+        whatsappNumber: '9876543210',
         enquiryNumber: `ENQ-FAIL-${Date.now()}`,
         userId: customerUser._id,
         userType: 'customer',
@@ -350,6 +353,7 @@ describe('Phase 8.3 — Google Sheets Integration Test Suite', () => {
 
     before(async () => {
       unSyncedEnquiry = await Enquiry.create({
+        whatsappNumber: '9876543210',
         enquiryNumber: `ENQ-UNSYNCED-${Date.now()}`,
         userId: customerUser._id,
         userType: 'customer',
@@ -416,3 +420,6 @@ describe('Phase 8.3 — Google Sheets Integration Test Suite', () => {
     });
   });
 });
+
+// Close database handles after all nested suites, including failed fixtures.
+after(async () => { await mongoose.disconnect(); });

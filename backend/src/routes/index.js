@@ -1,3 +1,6 @@
+import campaignRoutes from './campaign.routes.js';
+import communicationsRoutes from './communications.routes.js';
+import adminAccessRoutes from './adminAccess.routes.js';
 import { Router } from 'express';
 import healthRoutes from './health.routes.js';
 import authRoutes from './auth.routes.js';
@@ -40,6 +43,9 @@ router.use('/products', productRoutes);
 router.use('/content', publicCmsRoutes);
 
 // Mount admin core & catalog/dealer management modules
+router.use('/admin/campaigns', campaignRoutes);
+router.use('/communications', communicationsRoutes);
+router.use('/admin/access', adminAccessRoutes);
 router.use('/admin', adminRoutes);
 router.use('/admin/pos', posRoutes);
 router.use('/pos', publicPosRoutes);

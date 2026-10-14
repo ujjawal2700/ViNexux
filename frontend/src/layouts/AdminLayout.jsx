@@ -1,46 +1,47 @@
+import AdminSidebarNav from '../components/admin/AdminSidebarNav';
+import Modal from '../components/ui/Modal';
+import { visibleAdminNavigation } from '../../../shared/adminNavigation.js';
+import { canAdmin, canVisitAdmin, sectionForAdminPath, isSuperAdmin } from '../../../shared/adminAccess.js';
+import apiClient from '../api/axios';
+import AdminLocationNotice from '../components/admin/AdminLocationNotice';
+import { setAdminAccessState } from '../utils/adminAccessState';
 import React, { Suspense, useState, useEffect } from 'react';
 import RouteFallback from '../components/ui/RouteFallback';
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
+import useLogoutConfirmation from '../hooks/useLogoutConfirmation';
 import adminService from '../services/adminService';
 import Logo from '../components/ui/Logo';
 import ErrorBoundary from '../components/ui/ErrorBoundary';
 import { AdminNumberInputContext } from '../context/AdminNumberInputContext';
-import { 
-  LayoutDashboard, 
-  FolderTree, 
-  Package, 
-  Users, 
-  UserCheck, 
-  Inbox,
-  Building2,
-  ShieldAlert,
-  BarChart3, 
-  Image, 
-  Sparkles, 
-  FileText, 
-  LayoutList,
-  LogOut,
-  Menu,
-  X,
-  ChevronDown,
-  ChevronRight,
-  Layers,
-  GitBranch,
-  Tags,
-  Settings2,
-  RefreshCw,
-  Receipt,
-} from 'lucide-react';
+import { LogOut, Menu, X, RefreshCw } from 'lucide-react';
 
 const AdminLayout = () => {
-  const { user, adminUser, adminLogout, logout } = useAuth();
+  const { user, adminUser } = useAuth();
+  const confirmLogout = useLogoutConfirmation();
   const currentAdmin = adminUser || (user?.role === 'admin' ? user : null);
+  const [access, setAccess] = useState(currentAdmin);
+  useEffect(() => {
+    let active = true;
+    const refresh = async () => {
+      try { const response = await apiClient.get('/admin/access/self', { skipGlobalLoader: true });
+        if (active && response.data?.data?.access) { const next = { ...currentAdmin, ...response.data.data.access }; setAccess(next); setAdminAccessState(next); }
+      } catch { /* Server authorization still checks every request. */ }
+    };
+    setAccess(currentAdmin); setAdminAccessState(currentAdmin); refresh();
+    const timer = setInterval(refresh, 60000); window.addEventListener('focus', refresh);
+    return () => { active = false; clearInterval(timer); window.removeEventListener('focus', refresh); setAdminAccessState(null); };
+  }, [currentAdmin]);
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pendingKycCount, setPendingKycCount] = useState(0);
-  const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
+  const [writeDenied, setWriteDenied] = useState(false);
+  useEffect(() => {
+    const denied = () => setWriteDenied(true);
+    window.addEventListener('admin-write-denied', denied);
+    return () => window.removeEventListener('admin-write-denied', denied);
+  }, []);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefreshPanel = () => {
@@ -49,6 +50,7 @@ const AdminLayout = () => {
   };
 
   useEffect(() => {
+    if (!canAdmin(access, 'dashboard', 'read')) return undefined;
     let cancelled = false;
     const fetchPendingCount = async () => {
       try {
@@ -66,31 +68,9 @@ const AdminLayout = () => {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [location.pathname]);
+  }, [location.pathname, access]);
 
-  const mainNav = [
-    { label: 'Overview Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
-    { label: 'Category Management', path: '/admin/categories', icon: FolderTree },
-    { label: 'Product Catalog', path: '/admin/products', icon: Package },
-    { label: 'Offline POS Billing', path: '/admin/pos', icon: Receipt },
-    { label: 'Brand Management', path: '/admin/brands', icon: Tags },
-    { label: 'Dealer Verification', path: '/admin/dealers', icon: Users, badgeCount: pendingKycCount },
-    { label: 'Customer Accounts', path: '/admin/customers', icon: UserCheck },
-    { label: 'B2C Enquiries', path: '/admin/enquiries/customers', icon: Inbox },
-    { label: 'B2B Enquiries', path: '/admin/enquiries/dealers', icon: Building2 },
-    { label: 'Active User Sessions', path: '/admin/sessions', icon: ShieldAlert },
-    { label: 'Analytics Reports', path: '/admin/reports', icon: BarChart3 },
-    { label: 'My Admin Profile', path: '/admin/profile', icon: UserCheck },
-  ];
-
-  const cmsNav = [
-    { label: 'Seasonal Themes', path: '/admin/cms/themes', icon: Sparkles },
-    { label: 'Website / SEO Settings', path: '/admin/cms/website-settings', icon: Settings2 },
-    { label: 'Homepage Banners', path: '/admin/cms/banners', icon: Image },
-    { label: 'Promotional Cards', path: '/admin/cms/promotional-banners', icon: Sparkles },
-    { label: 'CMS Static Pages', path: '/admin/cms/pages', icon: FileText },
-    { label: 'Footer Content', path: '/admin/cms/footer-content', icon: LayoutList },
-  ];
+  const availableNav = visibleAdminNavigation(access).flatMap(group => group.items);
 
   return (
     <AdminNumberInputContext.Provider value={true}>
@@ -105,11 +85,11 @@ const AdminLayout = () => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed md:static inset-y-0 left-0 z-50 w-64 bg-card border-r border-border flex flex-col p-6 shadow-sm transition-transform duration-300 ${
+        className={`fixed md:static inset-y-0 left-0 z-50 w-64 bg-card border-r border-border flex flex-col p-4 shadow-sm transition-transform duration-300 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-border/60">
+        <div className="flex items-center justify-between mb-4 pb-4 border-b border-border/60">
           <Link to="/admin/dashboard" className="flex-1 flex items-center justify-center py-1 group" aria-label="Admin Dashboard">
             <Logo className="h-10 sm:h-11 w-auto max-w-[200px] object-contain mx-auto transition-transform group-hover:scale-105" />
           </Link>
@@ -122,171 +102,11 @@ const AdminLayout = () => {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-6 pr-1">
-          <div>
-            <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 px-3">
-              Core Operations
-            </h3>
-            <div className="space-y-1">
-              {mainNav.map((item) => {
-                const Icon = item.icon;
-                const isCatManagement = item.path === '/admin/categories';
-
-                if (isCatManagement) {
-                  const isCatRoute = location.pathname.startsWith('/admin/categories');
-                  return (
-                    <div key={item.path} className="space-y-1">
-                      {/* Main Category Management Header with Dropdown Chevron */}
-                      <div
-                        className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all duration-200 select-none ${
-                          isCatRoute
-                            ? 'bg-muted text-primary border border-border font-bold shadow-xs'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                        }`}
-                        onClick={() => setIsCategoryMenuOpen((prev) => !prev)}
-                      >
-                        <Link
-                          to="/admin/categories"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsCategoryMenuOpen((prev) => !prev);
-                            setMobileOpen(false);
-                          }}
-                          className="flex items-center gap-3 flex-1"
-                        >
-                          <Icon className={`w-4 h-4 ${isCatRoute ? 'text-primary' : 'text-muted-foreground'}`} />
-                          <span>{item.label}</span>
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsCategoryMenuOpen((prev) => !prev);
-                          }}
-                          className="p-0.5 hover:text-primary transition-colors cursor-pointer"
-                          aria-label="Toggle category hierarchy sub-menu"
-                        >
-                          {isCategoryMenuOpen ? (
-                            <ChevronDown className="w-3.5 h-3.5 text-primary" />
-                          ) : (
-                            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-                          )}
-                        </button>
-                      </div>
-
-                      {/* Dropdown Hierarchy Sub-Items: Header Category -> Main Category -> Sub Category */}
-                      {isCategoryMenuOpen && (
-                        <div className="pl-5 pr-1 py-1 space-y-1 border-l-2 border-primary/20 ml-4 my-1">
-                          {/* 1. Header Category */}
-                          <Link
-                            to="/admin/categories/header"
-                            onClick={() => setMobileOpen(false)}
-                            className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-colors ${
-                              location.pathname === '/admin/categories/header'
-                                ? 'bg-primary text-white font-bold shadow-xs'
-                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                            }`}
-                          >
-                            <Layers className="w-3.5 h-3.5 shrink-0" />
-                            <span className="flex-1">Header Category</span>
-                          </Link>
-
-                          {/* 2. Main Category */}
-                          <Link
-                            to="/admin/categories/main"
-                            onClick={() => setMobileOpen(false)}
-                            className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-colors ${
-                              location.pathname === '/admin/categories/main'
-                                ? 'bg-primary text-white font-bold shadow-xs'
-                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                            }`}
-                          >
-                            <FolderTree className="w-3.5 h-3.5 shrink-0" />
-                            <span className="flex-1">Main Category</span>
-                          </Link>
-
-                          {/* 3. Sub Category */}
-                          <Link
-                            to="/admin/categories/sub"
-                            onClick={() => setMobileOpen(false)}
-                            className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-colors ${
-                              location.pathname === '/admin/categories/sub'
-                                ? 'bg-primary text-white font-bold shadow-xs'
-                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                            }`}
-                          >
-                            <GitBranch className="w-3.5 h-3.5 shrink-0" />
-                            <span className="flex-1">Sub Category</span>
-                          </Link>
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
-
-                // If Product Catalog is already shown in category hierarchy, we can still keep or show standard items
-                const isActive =
-                  location.pathname === item.path ||
-                  (item.path !== '/admin/dashboard' && location.pathname.startsWith(item.path));
-
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setMobileOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
-                      isActive
-                        ? 'bg-muted text-primary border border-border font-bold shadow-xs'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    }`}
-                  >
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
-                    <span className="flex-1">{item.label}</span>
-                    {!!item.badgeCount && (
-                      <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] font-bold animate-pulse">
-                        {item.badgeCount > 99 ? '99+' : item.badgeCount}
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 px-3">
-              CMS Content Manager
-            </h3>
-            <div className="space-y-1">
-              {cmsNav.map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.path;
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setMobileOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
-                      isActive
-                        ? 'bg-muted text-primary border border-border font-bold shadow-xs'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    }`}
-                  >
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+        <AdminSidebarNav access={access} pendingKycCount={pendingKycCount} onNavigate={() => setMobileOpen(false)} />
 
         <div className="pt-4 border-t border-border flex flex-col gap-2">
           <button
-            onClick={() => {
-              if (adminLogout) adminLogout();
-              else logout('admin');
-            }}
+            onClick={() => confirmLogout('admin')}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors w-full text-left cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
@@ -328,7 +148,7 @@ const AdminLayout = () => {
             </button>
             <div className="h-4 w-px bg-border hidden sm:block" />
             <Link to="/admin/profile" className="hover:text-primary transition-colors">
-              Admin: <strong className="text-foreground font-bold underline decoration-primary/30 underline-offset-4">{currentAdmin?.fullName || currentAdmin?.name || currentAdmin?.email || 'Administrator'}</strong>
+              {isSuperAdmin(access) ? 'Super admin' : access?.accessRoleName || 'Employee'}: <strong className="text-foreground font-bold underline decoration-primary/30 underline-offset-4">{currentAdmin?.fullName || currentAdmin?.name || currentAdmin?.email || 'Administrator'}</strong>
             </Link>
           </div>
         </header>
@@ -338,11 +158,21 @@ const AdminLayout = () => {
             <ErrorBoundary key={location.pathname} pathname={location.pathname} embedded onBack={() => {
               if (window.history.length > 1) navigate(-1);
               else navigate('/admin/dashboard', { replace: true });
-            }}><Outlet /></ErrorBoundary>
+            }}>
+              <AdminLocationNotice />
+              {canVisitAdmin(access, location.pathname) ? <>
+                {access?.isEmployee && !canAdmin(access, sectionForAdminPath(location.pathname), 'write') && <p className="mb-4 rounded-lg bg-primary/5 p-3 text-sm text-primary">Read-only access · your role can view this section. Changes are disabled.</p>}
+                {access?.isEmployee && !canAdmin(access, sectionForAdminPath(location.pathname), 'read') ? <div className="rounded-xl border bg-card p-6"><h2 className="font-bold">Write-only access</h2><p className="mt-2 text-sm text-muted-foreground">Your role can submit changes through authorized actions, but cannot browse existing records. Ask your super admin for read access to use this section’s management screens.</p></div> : <Outlet context={{ adminAccess: access }} />}
+              </> : location.pathname === '/admin/dashboard' && availableNav.some(item => canVisitAdmin(access, item.path) && item.path !== '/admin/dashboard') ? <Navigate replace to={availableNav.find(item => canVisitAdmin(access, item.path) && item.path !== '/admin/dashboard').path} /> : <div className="rounded-xl border bg-card p-6"><h2 className="text-lg font-bold">This section is outside your role</h2><p className="mt-2 text-sm text-muted-foreground">Choose an available section in the sidebar or ask your super admin to update your access.</p><Link to="/admin/profile" className="mt-4 inline-block font-semibold text-primary">Open my profile</Link></div>}
+            </ErrorBoundary>
           </Suspense>
         </main>
       </div>
     </div>
+      <Modal isOpen={writeDenied} onClose={() => setWriteDenied(false)} title="Write access required" description="You don't have write access to this section." size="sm"
+        footer={<button type="button" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white" onClick={() => setWriteDenied(false)}>Got it</button>}>
+        <p className="text-sm text-muted-foreground">You can view the sections included in your role. Ask your super admin to grant write access before making changes here.</p>
+      </Modal>
     </AdminNumberInputContext.Provider>
   );
 };

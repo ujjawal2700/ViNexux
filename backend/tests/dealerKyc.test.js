@@ -1,3 +1,4 @@
+import { accountRequests } from './helpers/accounts.js';
 import http from 'http';
 import mongoose from 'mongoose';
 import app from '../src/app.js';
@@ -8,7 +9,7 @@ import { DealerProfile } from '../src/models/DealerProfile.js';
 let server;
 const PORT = 5012;
 
-const request = (path, options = {}, body = null) => {
+const rawRequest = (path, options = {}, body = null) => {
   return new Promise((resolve, reject) => {
     const reqOptions = {
       hostname: '127.0.0.1',
@@ -44,6 +45,7 @@ const request = (path, options = {}, body = null) => {
     req.end();
   });
 };
+const request = accountRequests(rawRequest);
 
 const runDealerKycTests = async () => {
   try {
@@ -135,6 +137,8 @@ const runDealerKycTests = async () => {
     // -------------------------------------------------------------
     // TEST 1: Dealer Profile Create
     // -------------------------------------------------------------
+    // Remove signup fixtures to exercise the explicit profile creation endpoint.
+    await DealerProfile.deleteMany({ userId: { $in: [d1Verify.body.data.user.id, d2Verify.body.data.user.id] } });
     const d1Gstin = `27AAACV${timestamp.toString().slice(-4)}F1Z5`;
     const d1Pan = `AAACV${timestamp.toString().slice(-4)}F`;
     console.log('1. Testing: Dealer 1 profile creation (POST /api/dealers/profile)...');

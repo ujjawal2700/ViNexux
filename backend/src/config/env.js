@@ -1,6 +1,8 @@
 import dotenv from 'dotenv';
+import { parseFirebaseServiceAccount } from './firebaseCredentials.js';
 
 dotenv.config();
+const firebaseAccount = parseFirebaseServiceAccount(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
 
 // TRUST_PROXY: unset/false (direct traffic), a hop count ("1"), "true", or an
 // Express preset/subnet list such as "loopback" (nginx on the same server).
@@ -75,10 +77,10 @@ export const config = {
   cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || '',
   // Auto-selects 'firebase' once FIREBASE_PROJECT_ID is set, so adding the
   // service account credentials alone is enough to enable real push.
-  pushProvider: process.env.PUSH_PROVIDER || (process.env.FIREBASE_PROJECT_ID ? 'firebase' : 'development'),
-  firebaseProjectId: process.env.FIREBASE_PROJECT_ID || '',
-  firebaseClientEmail: process.env.FIREBASE_CLIENT_EMAIL || '',
-  firebasePrivateKey: process.env.FIREBASE_PRIVATE_KEY || '',
+  pushProvider: process.env.PUSH_PROVIDER || (firebaseAccount.projectId || process.env.FIREBASE_PROJECT_ID ? 'firebase' : 'development'),
+  firebaseProjectId: firebaseAccount.projectId || process.env.FIREBASE_PROJECT_ID || '',
+  firebaseClientEmail: firebaseAccount.clientEmail || process.env.FIREBASE_CLIENT_EMAIL || '',
+  firebasePrivateKey: firebaseAccount.privateKey || process.env.FIREBASE_PRIVATE_KEY || '',
 };
 
 export const validateProductionConfig = () => {

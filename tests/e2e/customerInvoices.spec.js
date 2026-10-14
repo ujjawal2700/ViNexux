@@ -62,6 +62,7 @@ test('an invoice shared for a different account is not shown as owned', async ({
   await expect(page.getByText(/The shared invoice is not associated with this account/)).toBeVisible();
   await expect(page.getByRole('heading', { name: invoice.invoiceNumber })).toBeVisible();
   await page.getByRole('button', { name: 'Use another number' }).click();
+  await page.getByRole('button', { name: 'Yes, log out' }).click();
   await expect(page.getByRole('heading', { name: 'Find your invoices' })).toBeVisible();
   await expect(page.getByRole('heading', { name: invoice.invoiceNumber })).toHaveCount(0);
 });

@@ -7,6 +7,7 @@ import categoryService from '../../services/categoryService';
 import productService from '../../services/productService';
 import ProductCard from '../../components/products/ProductCard';
 import BrandCarousel from '../../components/home/BrandCarousel';
+import TrendingProducts from '../../components/home/TrendingProducts';
 import HeroBentoGrid from '../../components/home/HeroBentoGrid';
 import '../../styles/banner-grid.css';
 import Skeleton, { BrandCarouselSkeleton, ProductCardSkeleton } from '../../components/ui/Skeleton';
@@ -15,7 +16,7 @@ import { ChevronRight } from 'lucide-react';
 
 const HomePageSkeleton = () => (
   <div className="w-full min-h-screen bg-[var(--store-background)] pb-16 space-y-6 sm:space-y-8" role="status" aria-label="Loading storefront">
-    <div className="hero-bento-grid storefront-container">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className={`bento-banner-tile bento-banner-tile-${i + 1}`} />)}</div>
+    <div className="hero-bento-grid storefront-container">{Array.from({ length: 2 }, (_, i) => <Skeleton key={i} className={`bento-banner-tile bento-banner-tile-${i + 1}`} />)}</div>
 
     <div className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12">
       <BrandCarouselSkeleton count={8} className="px-0" />
@@ -41,7 +42,7 @@ export const HomePage = () => {
   const [categories, setCategories] = useState([]);
 
   // Products state
-  const [updatedProducts, setUpdatedProducts] = useState([]);
+  const [trendingProducts, setTrendingProducts] = useState([]);
   const [newArrivals, setNewArrivals] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,7 +64,7 @@ export const HomePage = () => {
     try {
       const [catRes, featured, newest, allRes, gridResponse] = await Promise.all([
         categoryService.getCategoryTree(),
-        productService.getProducts({ sortBy: 'stockUpdatedAt', stockUpdatedOnly: true, sortOrder: 'desc', limit: 8, includeFacets: false }),
+        productService.getProducts({ isTrending: true, sortBy: 'updatedAt', sortOrder: 'desc', limit: 20, includeFacets: false }),
         productService.getProducts({ sortBy: 'createdAt', sortOrder: 'desc', limit: 8, includeFacets: false }),
         productService.getProducts({ page: 1, limit: 16, includeFacets: false }),
         contentService.getBannerGrid().catch(() => ({ data: { grid: null } })),
@@ -71,7 +72,7 @@ export const HomePage = () => {
       setBannerGrid(gridResponse.data?.grid || null);
       const rootCats = (catRes.data?.categories || []).filter((category) => !category.parentId);
       setCategories(rootCats);
-      setUpdatedProducts(featured.data?.products || []);
+      setTrendingProducts(featured.data?.products || []);
       setNewArrivals(newest.data?.products || []);
       setAllProducts(allRes.data?.products || []);
     } catch (err) {
@@ -92,7 +93,7 @@ export const HomePage = () => {
   return (
     <div className="theme-home w-full max-w-full bg-[var(--store-background)] pb-16 space-y-6 sm:space-y-8 overflow-x-hidden">
       
-      {/* Four independently rotating collections, not a full-width carousel. */}
+      {/* Two independently rotating banner areas. */}
       <HeroBentoGrid grid={bannerGrid} />
 
       {/* 2. ALL BRANDS WITH LOGOS SLIDING RIGHT TO LEFT */}
@@ -100,22 +101,7 @@ export const HomePage = () => {
         <BrandCarousel />
       </section>
 
-      {/* 3. UPDATED PRODUCTS SECTION */}
-      {updatedProducts.length > 0 && (
-        <section className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3">
-          <div className="border-b border-[var(--store-border)] pb-2">
-            <h2 className="text-lg sm:text-xl font-bold text-[var(--store-text)] tracking-tight text-left">
-              Updated Products
-            </h2>
-          </div>
-
-          <div className="home-product-grid gap-3 sm:gap-4">
-            {updatedProducts.slice(0, 8).map((product) => (
-              <ProductCard key={product._id} product={product} />
-            ))}
-          </div>
-        </section>
-      )}
+      <TrendingProducts products={trendingProducts} />
 
       {/* 4. NEW ARRIVALS SECTION */}
       {newArrivals.length > 0 && (

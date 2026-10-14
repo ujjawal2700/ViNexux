@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+import { accessProfile } from './adminAccess.service.js';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { User } from '../models/User.js';
@@ -71,6 +73,7 @@ export const authService = {
     officeLocation,
     acceptPrivacyPolicy,
     acceptTerms,
+    marketingEmailOptIn = false,
     reqInfo,
   }) {
     if (acceptPrivacyPolicy !== true || acceptTerms !== true) {
@@ -200,6 +203,7 @@ export const authService = {
       accountStatus: 'active',
       status: 'active',
       legalConsent,
+      marketingPreferences: { email: marketingEmailOptIn === true, push: false, updatedAt: new Date() },
     });
 
     let dealerProfile = null;
@@ -766,14 +770,14 @@ export const authService = {
   /**
    * Helper to create session and issue Access Token + Refresh Token.
    */
-  async createSessionAndIssueTokens(user, reqInfo) {
+  async createSessionAndIssueTokens(user, reqInfo, databaseSession = null) {
     const sessionId = crypto.randomUUID();
     const refreshToken = generateRefreshToken();
     const refreshTokenHash = hashToken(refreshToken);
     const issuedAt = new Date();
     const sessionExpiresAt = getSessionExpiryForRole(user.role, issuedAt);
 
-    const session = await Session.create({
+    const sessionFields = {
       userId: user._id,
       userType: user.role,
       sessionId,
@@ -784,11 +788,15 @@ export const authService = {
       issuedAt,
       lastActiveAt: issuedAt,
       expiresAt: sessionExpiresAt,
-    });
+    };
+    const session = databaseSession
+      ? (await Session.create([sessionFields], { session: databaseSession }))[0]
+      : await Session.create(sessionFields);
 
     // Update user's currentSessionId
     user.currentSessionId = sessionId;
-    await user.save();
+    if (databaseSession) await user.save({ session: databaseSession });
+    else await user.save();
 
     const accessToken = generateAccessToken({
       userId: user._id,
@@ -813,6 +821,7 @@ export const authService = {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        ...await accessProfile(user),
         isPhoneVerified: user.isPhoneVerified,
         accountStatus: user.accountStatus,
         dealerStatus,
@@ -837,27 +846,21 @@ export const authService = {
       throw new AppError('Invalid or expired conflict ticket. Please log in again.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
     }
 
-    const user = await User.findById(decoded.userId);
-    if (!user || user.accountStatus === 'blocked' || user.status === 'blocked') {
-      throw new AppError('Account not active or authorized.', HTTP_STATUS.FORBIDDEN, ERROR_CODES.FORBIDDEN);
-    }
-
-    // If conflicting session is specified, revoke it; if already resolved/expired, proceed seamlessly
-    if (decoded.existingSessionId) {
-      await Session.updateOne(
-        { sessionId: decoded.existingSessionId, userId: user._id },
-        { isActive: false, revokedAt: new Date() }
+    return mongoose.connection.transaction(async session => {
+      const user = await User.findById(decoded.userId).session(session);
+      if (!user || user.accountStatus === 'blocked' || user.status === 'blocked') {
+        throw new AppError('Account not active or authorized.', HTTP_STATUS.FORBIDDEN, ERROR_CODES.FORBIDDEN);
+      }
+      // Consume the exact conflicting active session atomically. A replay or
+      // concurrent takeover must never revoke the new replacement session.
+      const consumed = decoded.existingSessionId && await Session.findOneAndUpdate(
+        { sessionId: decoded.existingSessionId, userId: user._id, isActive: true },
+        { $set: { isActive: false, revokedAt: new Date() } }, { session }
       );
-    }
-
-    // Revoke all existing active sessions for this user
-    await Session.updateMany(
-      { userId: user._id, isActive: true },
-      { isActive: false, revokedAt: new Date() }
-    );
-
-    // Create new session and issue new tokens
-    return await this.createSessionAndIssueTokens(user, reqInfo);
+      if (!consumed) throw new AppError('This login conflict has already been resolved. Please sign in again.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
+      await Session.updateMany({ userId: user._id, isActive: true }, { $set: { isActive: false, revokedAt: new Date() } }, { session });
+      return this.createSessionAndIssueTokens(user, reqInfo, session);
+    });
   },
 
   /**
@@ -919,6 +922,7 @@ export const authService = {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        ...await accessProfile(user),
         accountStatus: user.accountStatus,
         status: user.status,
         dealerStatus: user.dealerStatus,
@@ -975,6 +979,7 @@ export const authService = {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        ...await accessProfile(user),
         isPhoneVerified: user.isPhoneVerified,
         accountStatus: user.accountStatus,
         dealerStatus,
@@ -1085,6 +1090,7 @@ export const authService = {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        ...await accessProfile(user),
         isPhoneVerified: user.isPhoneVerified,
         accountStatus: user.accountStatus,
         dealerStatus,

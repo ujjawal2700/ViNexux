@@ -1,4 +1,5 @@
-import test, { before, after, describe } from 'node:test';
+import { loginFixture } from './helpers/accounts.js';
+import test, { before, after, beforeEach, describe } from 'node:test';
 import assert from 'node:assert';
 import http from 'http';
 import mongoose from 'mongoose';
@@ -140,8 +141,7 @@ describe('Phase 8.1 — SMS / OTP Provider Integration Test Suite', () => {
     const dealerRes = await authService.verifyOtp({ identifier: dealerPhone, otp: '123456', purpose: 'login' });
     dealerToken = dealerRes.accessToken;
 
-    await authService.sendOtp({ identifier: adminPhone, purpose: 'login' });
-    const adminRes = await authService.verifyOtp({ identifier: adminPhone, otp: '123456', purpose: 'login' });
+    const adminRes = await loginFixture(adminUser);
     adminToken = adminRes.accessToken;
   });
 
@@ -261,11 +261,12 @@ describe('Phase 8.1 — SMS / OTP Provider Integration Test Suite', () => {
 
       const defaultProvider = createOtpProvider('unknown_provider');
       assert.ok(defaultProvider instanceof SmsIndiaHubOtpProvider);
-      assert.ok(createOtpProvider() instanceof SmsIndiaHubOtpProvider);
+      assert.strictEqual(createOtpProvider().constructor, createOtpProvider(config.smsProvider).constructor);
     });
   });
 
   describe('SECTION C: OTP Security', () => {
+    beforeEach(async () => { await OtpVerification.deleteMany({ identifier: customerPhone }); });
     test('1. devOtp is omitted when NODE_ENV is production', async () => {
       const originalEnv = config.nodeEnv;
       config.nodeEnv = 'production';
@@ -427,3 +428,6 @@ describe('Phase 8.1 — SMS / OTP Provider Integration Test Suite', () => {
     });
   });
 });
+
+// Close database handles after all nested suites, including failed fixtures.
+after(async () => { await mongoose.disconnect(); });

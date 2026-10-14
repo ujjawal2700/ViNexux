@@ -1,3 +1,4 @@
+import { auditContext } from '../audit/audit.js';
 import mongoose from 'mongoose';
 import { Session } from '../models/Session.js';
 import { User } from '../models/User.js';
@@ -39,6 +40,11 @@ export const listSessions = async (query = {}) => {
 
   if (isActive !== undefined && typeof isActive === 'boolean') {
     filter.isActive = isActive;
+  }
+
+  if (auditContext.getStore()?.actor?.isEmployee) {
+    if (targetRole === 'admin') throw new AppError('Administrator sessions are restricted to super admins.', 403, ERROR_CODES.FORBIDDEN);
+    filter.userType = targetRole || { $ne: 'admin' };
   }
 
   const now = new Date();
@@ -130,6 +136,10 @@ export const getSessionById = async (id) => {
     );
   }
 
+  if (session?.userType === 'admin' && auditContext.getStore()?.actor?.isEmployee) {
+    throw new AppError('Administrator sessions are restricted to super admins.', 403, ERROR_CODES.FORBIDDEN);
+  }
+
   if (!session) {
     throw new AppError('Session not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
   }
@@ -147,6 +157,10 @@ export const revokeSession = async (id) => {
   }
   if (!session) {
     session = await Session.findOne({ sessionId: id });
+  }
+
+  if (session?.userType === 'admin' && auditContext.getStore()?.actor?.isEmployee) {
+    throw new AppError('Administrator sessions are restricted to super admins.', 403, ERROR_CODES.FORBIDDEN);
   }
 
   if (!session) {
@@ -181,6 +195,10 @@ export const deleteSession = async (id) => {
   }
   if (!session) {
     session = await Session.findOne({ sessionId: id });
+  }
+
+  if (session?.userType === 'admin' && auditContext.getStore()?.actor?.isEmployee) {
+    throw new AppError('Administrator sessions are restricted to super admins.', 403, ERROR_CODES.FORBIDDEN);
   }
 
   if (!session) {

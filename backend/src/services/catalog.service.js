@@ -321,6 +321,8 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
     : '$standardPrice' } });
 
   const extraFilters = [];
+  if (query.inStock === 'true' || query.inStock === true) extraFilters.push({ stockLevel: { $gt: 0 } });
+  if (query.inStock === 'false' || query.inStock === false) extraFilters.push({ stockLevel: { $lte: 0 } });
   const specs = query.specs ? JSON.parse(query.specs) : {};
   for (const [key, values] of Object.entries(specs)) {
     if (values.length) extraFilters.push({ specifications: { $elemMatch: { key: new RegExp(`^${escapeRegex(key)}$`, 'i'), value: { $in: values } } } });

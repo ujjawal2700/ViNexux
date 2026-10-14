@@ -50,7 +50,7 @@ export const FilterSidebarSkeleton = ({ className = '' }) => (
 
 export const BrandCarouselSkeleton = ({ count = 10, className = '' }) => (
   <div className={`flex gap-3 overflow-hidden px-8 py-4 ${className}`} role="status" aria-label="Loading brands">
-    {Array.from({ length: count }).map((_, index) => <Skeleton key={index} className="h-24 w-24 shrink-0 rounded-lg border border-gray-200" />)}
+    {Array.from({ length: count }).map((_, index) => <Skeleton key={index} className="h-10 sm:h-12 w-28 shrink-0 rounded" />)}
   </div>
 );
 

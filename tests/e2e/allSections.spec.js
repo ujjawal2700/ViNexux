@@ -40,6 +40,7 @@ test('dealer registration exposes compliance, contact, location, and one legal a
   await expect(page.getByText(/^WHATSAPP NUMBER \*$/)).toBeVisible();
   await expect(page.getByText(/MSME Certificate \(Optional\)/)).toBeVisible();
   await expect(page.getByText(/Location of Your Office/i)).toBeVisible();
-  await expect(page.getByRole('checkbox')).toHaveCount(1);
+  await expect(page.getByRole('checkbox')).toHaveCount(2);
+  await expect(page.getByRole('checkbox', { name: /Email me product updates and offers/ })).not.toBeChecked();
   await expect(page.getByText(/I accept the Terms & Conditions and Privacy Policy/i)).toBeVisible();
 });

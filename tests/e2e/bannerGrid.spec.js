@@ -2,10 +2,10 @@ import { test, expect } from '@playwright/test';
 import { mockApi, seedBrowserSession } from './mockApi.js';
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jY9kAAAAASUVORK5CYII=', 'base64');
-const emptyGrid = () => ({ revision: 0, configured: false, sections: Array.from({ length: 4 }, () => ({ images: [] })) });
+const emptyGrid = () => ({ revision: 0, configured: false, sections: Array.from({ length: 2 }, () => ({ images: [] })) });
 const artwork = (section, n) => `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600"><defs><linearGradient id="g"><stop stop-color="${['#143049', '#234b47', '#542a48', '#493823'][section]}"/><stop offset="1" stop-color="#101c29"/></linearGradient></defs><rect width="900" height="600" fill="url(#g)"/><circle cx="750" cy="140" r="200" fill="white" opacity=".07"/><circle cx="710" cy="450" r="140" fill="white" opacity=".08"/><text x="60" y="220" font-family="sans-serif" font-size="22" fill="#ffffff" opacity=".65">VINEXUS COLLECTIONS</text><text x="60" y="290" font-family="sans-serif" font-size="48" fill="#ffffff">${['Security solutions', 'Network essentials', 'New arrivals', 'Smart accessories'][section]}</text><text x="60" y="345" font-family="sans-serif" font-size="22" fill="#ffffff" opacity=".8">Banner ${n + 1}</text></svg>`;
 
-test('admin uploads three images per section, edits and replaces; independent bento carousels render', async ({ page }, testInfo) => {
+test('admin uploads five images per section, edits and replaces; independent bento carousels render', async ({ page }, testInfo) => {
   test.setTimeout(60000);
   await page.clock.install(); await mockApi(page); await seedBrowserSession(page, 'admin');
   let grid = emptyGrid(), counter = 0;
@@ -32,12 +32,12 @@ test('admin uploads three images per section, edits and replaces; independent be
   await page.goto('/admin/cms/banners');
   await expect(page.getByRole('heading', { name: 'Homepage bento grid', exact: true })).toBeVisible();
   const files = n => Array.from({ length: n }, (_, i) => ({ name: `banner-${i}.png`, mimeType: 'image/png', buffer: png }));
-  for (let section = 0; section < 4; section++) {
-    await page.getByLabel(`Upload images for section ${section + 1}`, { exact: true }).setInputFiles(files(section === 0 ? 3 : section === 1 ? 2 : 1));
+  for (let section = 0; section < 2; section++) {
+    await page.getByLabel(`Upload images for section ${section + 1}`, { exact: true }).setInputFiles(files(section === 0 ? 5 : 2));
     await page.getByRole('button', { name: /^Upload \d banners?$/ }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     const panel = page.getByRole('group', { name: `Manage banner section ${section + 1}`, exact: true });
-    await expect(panel.getByText(`${section === 0 ? 3 : section === 1 ? 2 : 1}/3 images`, { exact: true })).toBeVisible();
+    await expect(panel.getByText(`${section === 0 ? 5 : 2}/5 images`, { exact: true })).toBeVisible();
   }
   await expect(page.getByLabel('Upload images for section 1', { exact: true })).toBeDisabled();
   const firstPanel = page.locator('[aria-label="Manage banner section 1"]');
@@ -77,7 +77,7 @@ test('admin uploads three images per section, edits and replaces; independent be
   await expect(page.locator('.bento-banner-tile-2 .bento-banner-slide.is-current')).toHaveClass(/effect-blur/);
 
   const hero = page.getByRole('region', { name: 'Featured collections', exact: true });
-  await expect(hero.locator('.bento-banner-tile')).toHaveCount(4);
+  await expect(hero.locator('.bento-banner-tile')).toHaveCount(2);
   await expect(hero.locator('.bento-banner-tile-1 .is-active')).toHaveAttribute('src', '/bento-test/0-9.svg');
   await expect(hero.locator('.bento-banner-tile-1 img').first()).toHaveCSS('object-position', '0% 100%');
   await page.clock.fastForward(6500);
@@ -97,14 +97,15 @@ test('admin uploads three images per section, edits and replaces; independent be
   const tiles = await hero.locator('.bento-banner-tile').all();
   const boxes = await Promise.all(tiles.map(t => t.boundingBox()));
   expect(Math.abs(boxes[0].y - boxes[1].y)).toBeLessThan(2);
-  expect(boxes[2].y).toBeGreaterThan(boxes[0].y);
+  expect(boxes[0].width).toBeGreaterThan(boxes[1].width * 2.8);
+  expect(Math.abs(boxes[0].height - boxes[1].height)).toBeLessThan(2);
   expect(boxes[1].x).toBeGreaterThan(boxes[0].x);
   expect(await hero.evaluate(el => el.scrollWidth)).toBeLessThanOrEqual(390);
   await expect(tiles[0]).toHaveCSS('border-radius', '8px');
   await hero.screenshot({ path: testInfo.outputPath('bento-mobile.png') });
 });
 
-test('homepage ignores legacy CMS banners and displays four empty collection tiles', async ({ page }) => {
+test('homepage ignores legacy CMS banners and displays two empty collection tiles', async ({ page }) => {
   await page.clock.install(); await page.emulateMedia({ reducedMotion: 'reduce' });
   await mockApi(page); await seedBrowserSession(page, 'storefront');
   let legacyBannerRequests = 0;
@@ -112,7 +113,7 @@ test('homepage ignores legacy CMS banners and displays four empty collection til
   page.on('request', request => { if (new URL(request.url()).pathname.endsWith('/api/content/banners')) legacyBannerRequests++; });
   await page.goto('/');
   const hero = page.locator('.hero-bento-grid');
-  await expect(hero.locator('.bento-banner-tile')).toHaveCount(4);
+  await expect(hero.locator('.bento-banner-tile')).toHaveCount(2);
   await expect(hero.locator('img')).toHaveCount(0);
   await expect(hero.getByText('Explore our range', { exact: true })).toBeVisible();
   await expect(hero.getByLabel('Next image in section 1')).toHaveCount(0);

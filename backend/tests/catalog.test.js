@@ -1,3 +1,4 @@
+import { accountRequests } from './helpers/accounts.js';
 import http from 'http';
 import mongoose from 'mongoose';
 import app from '../src/app.js';
@@ -8,7 +9,7 @@ import { Category } from '../src/models/Category.js';
 let server;
 const PORT = 5011;
 
-const request = (path, options = {}, body = null) => {
+const rawRequest = (path, options = {}, body = null) => {
   return new Promise((resolve, reject) => {
     const reqOptions = {
       hostname: '127.0.0.1',
@@ -44,6 +45,7 @@ const request = (path, options = {}, body = null) => {
     req.end();
   });
 };
+const request = accountRequests(rawRequest);
 
 const runCatalogTests = async () => {
   console.log('===========================================================');
@@ -209,13 +211,13 @@ const runCatalogTests = async () => {
     console.log(`7. Testing: Category soft delete (DELETE /api/categories/${catId2})...`);
     const catDeleteRes = await request(`/api/categories/${catId2}`, { method: 'DELETE', headers: adminHeaders });
     console.log(`   Response Status: ${catDeleteRes.status}`);
-    if (catDeleteRes.status !== 200 || catDeleteRes.body.data?.category?.isActive !== false) {
+    if (catDeleteRes.status !== 200 || catDeleteRes.body.data?.deleted !== true) {
       throw new Error(`Category soft delete failed: ${JSON.stringify(catDeleteRes.body)}`);
     }
     console.log(`   ✅ Category soft delete PASSED (isActive = false)\n`);
 
     // Re-activate child category for product tests
-    await Category.updateOne({ _id: catId2 }, { isActive: true });
+    await Category.create({ _id: catId2, name: 'Restored fixture child', slug: `restored-${timestamp}`, parentId: catId1, isActive: true });
 
     // -------------------------------------------------------------
     // TEST 8: Product Create
@@ -229,7 +231,7 @@ const runCatalogTests = async () => {
       description: 'High pressure PVC pipe for drainage and water transport',
       images: [{ url: 'https://example.com/pvc1.jpg', altText: 'PVC Pipe', sortOrder: 1 }],
       specifications: [{ key: 'Diameter', value: '100mm' }, { key: 'Length', value: '6 Meters' }],
-      isFeatured: true,
+      isTrending: true,
       isActive: true,
     });
     console.log(`   Response Status: ${prodCreateRes.status}`);
@@ -264,8 +266,8 @@ const runCatalogTests = async () => {
     // -------------------------------------------------------------
     // TEST 11: Product Filter
     // -------------------------------------------------------------
-    console.log(`11. Testing: Product Filter (GET /api/products?categoryId=${catId2}&isFeatured=true&isActive=true)...`);
-    const prodFilterRes = await request(`/api/products?categoryId=${catId2}&isFeatured=true&isActive=true`);
+    console.log(`11. Testing: Product Filter (GET /api/products?categoryId=${catId2}&isTrending=true&isActive=true)...`);
+    const prodFilterRes = await request(`/api/products?categoryId=${catId2}&isTrending=true&isActive=true`);
     console.log(`   Response Status: ${prodFilterRes.status}`);
     if (prodFilterRes.status !== 200 || prodFilterRes.body.data?.products?.length < 1) {
       throw new Error(`Product Filter failed: ${JSON.stringify(prodFilterRes.body)}`);
@@ -289,10 +291,10 @@ const runCatalogTests = async () => {
     console.log(`13. Testing: Product Update (PUT /api/products/${productId1})...`);
     const prodUpdateRes = await request(`/api/products/${productId1}`, { method: 'PUT', headers: adminHeaders }, {
       description: 'Updated PVC pipe specifications',
-      isFeatured: false,
+      isTrending: false,
     });
     console.log(`   Response Status: ${prodUpdateRes.status}`);
-    if (prodUpdateRes.status !== 200 || prodUpdateRes.body.data?.isFeatured !== false) {
+    if (prodUpdateRes.status !== 200 || prodUpdateRes.body.data?.isTrending !== false) {
       throw new Error(`Product Update failed: ${JSON.stringify(prodUpdateRes.body)}`);
     }
     console.log(`   ✅ Product Update PASSED\n`);
@@ -362,6 +364,7 @@ const runCatalogTests = async () => {
     const adminProdRes = await request('/api/products', { method: 'POST', headers: adminHeaders }, {
       sku: `ADMIN-SKU-${timestamp.toString().slice(-4)}`,
       name: `Admin Product ${timestamp}`,
+      images: [{ url: 'https://example.com/admin-product.jpg' }],
       categoryId: catId1,
     });
 

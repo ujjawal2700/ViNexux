@@ -1,3 +1,4 @@
+import { accountRequests } from './helpers/accounts.js';
 import http from 'http';
 import mongoose from 'mongoose';
 import app from '../src/app.js';
@@ -11,7 +12,7 @@ import { Enquiry } from '../src/models/Enquiry.js';
 let server;
 const PORT = 5013;
 
-const request = (path, options = {}, body = null) => {
+const rawRequest = (path, options = {}, body = null) => {
   return new Promise((resolve, reject) => {
     const reqOptions = {
       hostname: '127.0.0.1',
@@ -47,6 +48,7 @@ const request = (path, options = {}, body = null) => {
     req.end();
   });
 };
+const request = accountRequests(rawRequest);
 
 const assert = (condition, message) => {
   if (!condition) {

@@ -8,7 +8,7 @@ test('catalog sort menu requests newest, updated stock and trending products fro
   const sort = page.getByRole('button', { name: 'Sort products', exact: true });
   await sort.click();
   await expect(page.getByRole('menuitem', { name: /Name \(/ })).toHaveCount(0);
-  for (const [name, field, trending] of [['Newest First', 'createdAt', false], ['Stock Updated', 'stockUpdatedAt', false], ['Trending', 'createdAt', true], ['Default', 'createdAt', false]]) {
+  for (const [name, field, trending] of [['Newest First', 'createdAt', false], ['Stock Updated', 'stockUpdatedAt', false], ['Default', 'createdAt', false]]) {
     if (name !== 'Newest First') await sort.click();
     const request = page.waitForRequest(req => {
       const url = new URL(req.url());
@@ -19,6 +19,9 @@ test('catalog sort menu requests newest, updated stock and trending products fro
     expect(url.searchParams.get('sortOrder')).toBe('desc');
     expect(url.searchParams.get('page')).toBe('1');
   }
+  const trendingRequest = page.waitForRequest(req => { const url = new URL(req.url()); return url.pathname === '/api/products' && url.searchParams.get('isTrending') === 'true'; });
+  await page.goto('/trending');
+  expect(new URL((await trendingRequest).url()).searchParams.get('page')).toBe('1');
 });
 
 test('admin catalog trending checkbox saves immediately and remains checked after reload', async ({ page }) => {

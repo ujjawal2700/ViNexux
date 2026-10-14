@@ -65,7 +65,7 @@ const responseFor = (url, method, postData) => {
   if (pathname.includes('/dashboard')) return { success: true, data: { stats: {}, recentEnquiries: [], pendingDealers: [] } };
   if (pathname.endsWith('/content/banners') || pathname.endsWith('/admin/cms/banners')) return { success: true, data: { banners: [] } };
   if (pathname.endsWith('/content/banner-grid')) return { success: true, data: { grid: null } };
-  if (pathname.endsWith('/admin/cms/banner-grid')) return { success: true, data: { grid: { sections: Array.from({ length: 4 }, () => ({ images: [] })), revision: 0, configured: false } } };
+  if (pathname.endsWith('/admin/cms/banner-grid')) return { success: true, data: { grid: { sections: Array.from({ length: 2 }, () => ({ images: [] })), revision: 0, configured: false } } };
   if (pathname.includes('promotional')) return { success: true, data: { promotionalBanners: [], settings: {} } };
   if (pathname.includes('footer')) return { success: true, data: { footer: { quickLinks: [], legalLinks: [], socialLinks: [], isActive: true } } };
   if (pathname.includes('website-settings')) return { success: true, data: { settings: {} } };

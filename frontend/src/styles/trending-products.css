@@ -1,0 +1,12 @@
+.trending-track { display: flex; overflow-x: auto; scrollbar-width: none; border-radius: 18px; padding: 2px 0; }
+.trending-track:focus-visible { outline: 2px solid var(--store-primary); outline-offset: 4px; }
+.trending-group { display: flex; flex: none; gap: 20px; padding-right: 20px; }
+.trending-card { display: flex; flex-direction: column; flex: none; width: clamp(245px, 25vw, 350px); overflow: hidden; border-radius: 18px; background: var(--store-surface); border: 1px solid var(--store-border); }
+.trending-card:focus-visible { outline: 3px solid var(--store-primary); outline-offset: -3px; }
+.trending-artwork { position: relative; height: clamp(180px, 18vw, 240px); background: radial-gradient(ellipse at top right, color-mix(in srgb, var(--store-primary) 12%, var(--store-surface)), var(--store-surface)); }
+.trending-brand { position: absolute; top: 16px; left: 18px; z-index: 1; max-width: calc(100% - 36px); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; font-weight: 700; letter-spacing: .03em; color: var(--store-primary); }
+.trending-caption { min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; font-size: 13px; color: white; background: linear-gradient(110deg, var(--store-primary), color-mix(in srgb, var(--store-primary) 78%, #211321)); }
+.trending-arrow { position: absolute; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: var(--store-surface); color: var(--store-primary); border: 1px solid var(--store-border); box-shadow: 0 3px 12px #0001; cursor: pointer; }
+.trending-arrow:hover { background: var(--store-primary); color: white; }
+@media (max-width: 639px) { .trending-group { gap: 12px; padding-right: 12px; } .trending-card { width: 76vw; max-width: 300px; } .trending-arrow { width: 34px; height: 34px; } }
+@media (prefers-reduced-motion: reduce) { .trending-artwork img { transition: none; } }

@@ -1,3 +1,4 @@
+import '../audit/audit.js';
 import mongoose from 'mongoose';
 
 const footerLinkSchema = new mongoose.Schema(
@@ -171,7 +172,7 @@ const footerContentSchema = new mongoose.Schema(
     sectionOrder: {
       type: [String],
       enum: ['contact', 'about', 'information', 'support', 'bank'],
-      default: ['contact', 'about', 'information', 'support', 'bank'],
+      default: ['contact', 'about', 'information', 'bank', 'support'],
     },
     quickLinks: [footerLinkSchema],
     legalLinks: [footerLinkSchema],

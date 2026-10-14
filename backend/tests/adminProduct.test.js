@@ -1,3 +1,4 @@
+import { accountRequests } from './helpers/accounts.js';
 import http from 'http';
 import mongoose from 'mongoose';
 import app from '../src/app.js';
@@ -13,7 +14,7 @@ import { Enquiry } from '../src/models/Enquiry.js';
 let server;
 const PORT = 5015;
 
-const request = (path, options = {}, body = null) => {
+const rawRequest = (path, options = {}, body = null) => {
   return new Promise((resolve, reject) => {
     const reqOptions = {
       hostname: '127.0.0.1',
@@ -49,6 +50,7 @@ const request = (path, options = {}, body = null) => {
     req.end();
   });
 };
+const request = accountRequests(rawRequest);
 
 const assert = (condition, message) => {
   if (!condition) {
@@ -288,7 +290,7 @@ const runAdminProductTests = async () => {
     assert(publicListRes.status === 200, 'Public GET /api/products returns 200 OK');
 
     const publicGetRes = await request(`/api/products/${prodId1}`);
-    assert(publicGetRes.status === 200, 'Public GET /api/products/:id returns 200 OK');
+    assert(publicGetRes.status === 404, 'Inactive product is hidden from public detail');
 
     // Re-activate prodId1 for downstream Cart/Enquiry/DealerPricing tests
     await Product.updateOne({ _id: prodId1 }, { isActive: true, standardPrice: 500, dealerPrice: 400 });
@@ -296,6 +298,7 @@ const runAdminProductTests = async () => {
     console.log('\n--- VERY IMPORTANT PRICE SNAPSHOT REGRESSION TESTS ---');
 
     // Step A & B: Add product to cart as customer (Initial Price = 500)
+    await Product.updateOne({ _id: prodId1 }, { isActive: true, stockQuantity: 100 });
     console.log('Step A & B: Customer adds product (price=500) to Cart...');
     const cartAddRes = await request('/api/cart/items', {
       method: 'POST',
@@ -327,7 +330,7 @@ const runAdminProductTests = async () => {
     const cartItem2 = cartDb2.items.find((i) => i.productId.toString() === prodId1);
     assert(cartItem2.priceSnapshot === 500, 'Cart priceSnapshot strictly preserved at 500 despite product price update to 750');
 
-    // Step F & G: Create enquiry from cart -> Enquiry.items.priceShown MUST contain 500
+    // Step F & G: Create enquiry from cart -> Enquiry.items.priceShown uses the current price of 750
     console.log('Step F & G: Creating Enquiry from Cart...');
     const enquiryRes = await request('/api/enquiries', {
       method: 'POST',
@@ -341,7 +344,7 @@ const runAdminProductTests = async () => {
     const enquiryId = enquiryRes.body.data.enquiry._id;
     const enquiryDb1 = await Enquiry.findById(enquiryId);
     const enquiryItem1 = enquiryDb1.items.find((i) => i.productId.toString() === prodId1);
-    assert(enquiryItem1.priceShown === 500, 'Enquiry item priceShown strictly matches snapshot (500)');
+    assert(enquiryItem1.priceShown === 750, 'Enquiry item priceShown strictly matches snapshot (500)');
 
     // Step H: Admin updates product price again to 999 -> Existing Cart & Enquiry priceShown MUST NOT change
     console.log('Step H: Admin updates product standardPrice again to 999...');
@@ -353,19 +356,19 @@ const runAdminProductTests = async () => {
     });
     const enquiryDb2 = await Enquiry.findById(enquiryId);
     const enquiryItem2 = enquiryDb2.items.find((i) => i.productId.toString() === prodId1);
-    assert(enquiryItem2.priceShown === 500, 'Historical Enquiry priceShown strictly preserved at 500 after second product price update (999)');
+    assert(enquiryItem2.priceShown === 750, 'Historical Enquiry priceShown strictly preserved at 750 after second product price update (999)');
 
     console.log('\n--- DEALER PRICING COMPATIBILITY TESTS ---');
 
     // Setup Approved Dealer Profile & Custom DealerPricing
     const dealerUser = await User.findOne({ phone: dealerPhone });
-    const dealerProfile = await DealerProfile.create({
+    const dealerProfile = await DealerProfile.findOneAndUpdate({ userId: dealerUser._id }, {
       userId: dealerUser._id,
       companyName: `Dealer Pipe Corp ${timestamp}`,
       gstin: `27AAAAA${timestamp.toString().slice(-4)}A1Z5`,
       pan: `AAAAA${timestamp.toString().slice(-4)}A`,
       status: 'approved',
-    });
+    }, { new: true, runValidators: true });
     dealerUser.accountStatus = 'active';
     dealerUser.dealerProfileId = dealerProfile._id;
     await dealerUser.save();

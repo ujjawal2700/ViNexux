@@ -29,7 +29,7 @@ router.put('/settings', validate({ body: posSellerSchema }), asyncHandler(async 
 router.get('/products', validate(searchSchema), asyncHandler(async (req, res) => {
   const filter = { isActive: true };
   if (req.query.search) filter.$or = ['name', 'sku', 'modelNumber'].map(key => ({ [key]: escapedRegex(req.query.search) }));
-  const products = await Product.find(filter).select('name sku modelNumber standardPrice stockQuantity images specifications').sort({ name: 1 }).limit(40).lean();
+  const products = await Product.find(filter).select('name sku modelNumber hsnCode standardPrice stockQuantity images specifications').sort({ name: 1 }).limit(40).lean();
   reply(res, products);
 }));
 router.get('/customers', validate(searchSchema), asyncHandler(async (req, res) => {

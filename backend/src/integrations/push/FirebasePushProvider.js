@@ -5,7 +5,7 @@ import { HTTP_STATUS } from '../../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../../constants/errorCodes.js';
 
 let firebaseApp = null;
-let firebaseAdmin = null;
+
 
 const getFirebaseApp = async () => {
   if (firebaseApp) return firebaseApp;
@@ -19,50 +19,40 @@ const getFirebaseApp = async () => {
   }
 
   const formattedPrivateKey = config.firebasePrivateKey.replace(/\\n/g, '\n');
-  if (!firebaseAdmin) {
-    ({ default: firebaseAdmin } = await import('firebase-admin'));
-  }
-
-  firebaseApp = firebaseAdmin.apps.length
-    ? firebaseAdmin.app()
-    : firebaseAdmin.initializeApp({
-        credential: firebaseAdmin.credential.cert({
-          projectId: config.firebaseProjectId,
-          clientEmail: config.firebaseClientEmail,
-          privateKey: formattedPrivateKey,
-        }),
-      });
+  const { cert, getApps, initializeApp } = await import('firebase-admin/app');
+  firebaseApp = getApps().find(app => app.name === 'vinexus-push') || initializeApp({
+    credential: cert({ projectId: config.firebaseProjectId, clientEmail: config.firebaseClientEmail, privateKey: formattedPrivateKey }),
+  }, 'vinexus-push');
 
   return firebaseApp;
 };
+
+export const firebaseMessage = ({ tokens, title, body, data = {}, campaign = false, ttl = 86400 }) => ({
+  tokens,
+  ...(campaign ? {} : { notification: { title, body } }),
+  data: Object.fromEntries(Object.entries(data).map(([key, value]) => [key, String(value)])),
+  webpush: campaign ? { headers: { TTL: String(ttl) } } : {
+    notification: { title, body, icon: '/logo.png' },
+    ...(data.link?.startsWith('https://') ? { fcmOptions: { link: data.link } } : {}),
+  },
+});
 
 /**
  * Firebase Cloud Messaging (FCM) Push Provider implementation.
  * Sends notifications to browser/device registration tokens via firebase-admin.
  */
 export class FirebasePushProvider extends PushProvider {
-  async sendToTokens({ tokens = [], title, body, data = {} }) {
+  async sendToTokens({ tokens = [], title, body, data = {}, campaign = false, ttl = 86400 }) {
     if (!tokens.length) {
       return { success: true, provider: 'firebase', invalidTokens: [] };
     }
 
     try {
-      await getFirebaseApp();
-
-      // Stringify all data values - FCM requires a flat map of strings
-      const stringData = Object.fromEntries(
-        Object.entries(data).map(([key, value]) => [key, String(value)])
+      const app = await getFirebaseApp();
+      const { getMessaging } = await import('firebase-admin/messaging');
+      const response = await getMessaging(app).sendEachForMulticast(
+        firebaseMessage({ tokens, title, body, data, campaign, ttl })
       );
-
-      const response = await firebaseAdmin.messaging().sendEachForMulticast({
-        tokens,
-        notification: { title, body },
-        data: stringData,
-        webpush: {
-          notification: { title, body, icon: '/logo.png' },
-          fcmOptions: { link: data?.link || '/' },
-        },
-      });
 
       // Collect tokens Firebase reports as invalid/unregistered so callers can prune them
       const invalidTokens = [];

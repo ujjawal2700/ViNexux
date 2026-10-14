@@ -1,3 +1,4 @@
+import { accountRequests } from './helpers/accounts.js';
 import http from 'http';
 import mongoose from 'mongoose';
 import app from '../src/app.js';
@@ -8,7 +9,7 @@ import { Session } from '../src/models/Session.js';
 let server;
 const PORT = 5018;
 
-const request = (path, options = {}, body = null) => {
+const rawRequest = (path, options = {}, body = null) => {
   return new Promise((resolve, reject) => {
     const reqOptions = {
       hostname: '127.0.0.1',
@@ -44,6 +45,7 @@ const request = (path, options = {}, body = null) => {
     req.end();
   });
 };
+const request = accountRequests(rawRequest);
 
 let totalTests = 0;
 let passed = 0;

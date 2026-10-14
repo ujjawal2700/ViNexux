@@ -43,11 +43,12 @@ try {
   await Category.insertMany(Array.from({ length: 505 }, (_, i) => ({ name: `Extra ${i}`, slug: `extra-${i}`, parentId: security._id })));
   const makeProduct = (sku, categoryId, price, specs = [], isActive = true) => Product.create({
     sku, name: `Product ${sku}`, categoryId, standardPrice: price, dealerPrice: price / 2,
+    stockQuantity: Math.max(0, Number(specs.find(spec => spec.key === 'Stock')?.value || 0)),
     specifications: [{ key: 'Brand', value: 'Unlisted Brand' }, ...specs], isActive,
   });
   const first = await makeProduct('LAP-A', main._id, 100, [{ key: 'RAM', value: '8GB' }, { key: 'Stock', value: '0' }]);
   const second = await makeProduct('LAP-B', sub._id, 200, [{ key: 'RAM', value: '16GB' }, { key: 'Stock', value: '5' }]);
-  await makeProduct('DEEP', deep._id, 300);
+  await makeProduct('DEEP', deep._id, 300, [{ key: 'Stock', value: '-1' }]);
   await makeProduct('CAMERA', security._id, 400);
   await makeProduct('HIDDEN', hiddenChild._id, 500);
   await makeProduct('ORPHAN', orphan._id, 600);

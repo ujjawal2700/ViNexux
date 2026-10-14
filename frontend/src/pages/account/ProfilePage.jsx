@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
+import useLogoutConfirmation from '../../hooks/useLogoutConfirmation';
 import useToast from '../../hooks/useToast';
 import dealerService from '../../services/dealerService';
 import EnquiriesPage from './EnquiriesPage';
@@ -42,6 +43,7 @@ const KYC_DOC_TYPES = [
 export const ProfilePage = () => {
   const { user, logout } = useAuth();
   const toast = useToast();
+  const confirmLogout = useLogoutConfirmation();
   const navigate = useNavigate();
   const location = useLocation();
   const activeTab = location.pathname === '/account/enquiries' ? 'enquiries' : location.pathname === '/account/invoices' ? 'invoices' : 'profile';
@@ -80,10 +82,10 @@ export const ProfilePage = () => {
     fetchDealerProfile();
   }, [fetchDealerProfile]);
 
-  // Direct Logout Action
-  const handleDirectLogout = async () => {
+  // Confirm before ending the current account session
+  const handleLogout = async () => {
     try {
-      await logout();
+      if (!await confirmLogout()) return;
       toast.success('Logged out successfully.');
       navigate('/login');
     } catch (err) {
@@ -167,6 +169,7 @@ export const ProfilePage = () => {
               <Link to="/account/invoices" className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-semibold border-l-4 ${activeTab === 'invoices' ? 'border-[var(--store-primary)] bg-[var(--store-primary)]/5 text-[var(--store-primary)]' : 'border-transparent text-gray-700 hover:bg-gray-50'}`}>
                 <FileText className="w-5 h-5 shrink-0" /><span>My Invoices</span>
               </Link>
+              <Link to="/account/notifications" className="block rounded-lg px-3.5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50">Notification preferences</Link>
               {/* 3. Delete Account (Opens warning confirmation dialog) */}
               <button
                 type="button"
@@ -177,10 +180,10 @@ export const ProfilePage = () => {
                 <span>Delete Account</span>
               </button>
 
-              {/* 4. Log Out (Directly logs out user and navigates to /login) */}
+              {/* 4. Log Out (confirm before navigating to /login) */}
               <button
                 type="button"
-                onClick={handleDirectLogout}
+                onClick={handleLogout}
                 className="w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-semibold text-gray-700 hover:text-[var(--store-primary)] hover:bg-gray-50 border-l-4 border-transparent transition-all text-left cursor-pointer"
               >
                 <LogOut className="w-5 h-5 shrink-0 text-gray-400" />

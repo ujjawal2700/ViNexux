@@ -1,3 +1,4 @@
+import '../audit/audit.js';
 import mongoose from 'mongoose';
 import { DEFAULT_QUICK_SPEC_KEYS } from '../../../shared/productSpecifications.js';
 

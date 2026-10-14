@@ -1,8 +1,6 @@
 const BANNER_SIZES = [
-  { section: '1 · Large left', size: '1400 × 820 px', shape: 'Landscape · about 1.7:1' },
-  { section: '2 · Upper middle', size: '700 × 410 px', shape: 'Landscape · about 1.7:1' },
-  { section: '3 · Lower middle', size: '700 × 410 px', shape: 'Landscape · about 1.7:1' },
-  { section: '4 · Tall right', size: '700 × 820 px', shape: 'Portrait · about 0.85:1' },
+  { section: '1 · Horizontal', size: '2100 × 820 px', shape: 'Landscape · about 2.6:1' },
+  { section: '2 · Vertical', size: '700 × 820 px', shape: 'Portrait · about 0.85:1' },
 ];
 
 export default function BannerSizeGuide() {
@@ -12,11 +10,9 @@ export default function BannerSizeGuide() {
       <p className="mt-1 text-xs text-gray-600">Recommended artwork sizes, width × height, for a desktop screen around 1440 px wide. Larger images with the same proportions work too.</p>
     </div>
     <div className="grid gap-4 lg:grid-cols-[180px_1fr] items-start">
-      <div aria-label="Desktop banner section positions" className="grid grid-cols-[2fr_1fr_1fr] grid-rows-2 gap-1 h-24 text-xs font-bold text-primary">
-        <div className="row-span-2 rounded-md bg-primary/10 flex items-center justify-center">1</div>
-        <div className="col-start-2 row-start-1 rounded-md bg-primary/10 flex items-center justify-center">2</div>
-        <div className="col-start-2 row-start-2 rounded-md bg-primary/10 flex items-center justify-center">3</div>
-        <div className="col-start-3 row-start-1 row-span-2 rounded-md bg-primary/10 flex items-center justify-center">4</div>
+      <div aria-label="Desktop banner section positions" className="grid grid-cols-[3fr_1fr] gap-1 h-24 text-xs font-bold text-primary">
+        <div className="rounded-md bg-primary/10 flex items-center justify-center">1</div>
+        <div className="rounded-md bg-primary/10 flex items-center justify-center">2</div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
@@ -31,7 +27,7 @@ export default function BannerSizeGuide() {
         </table>
       </div>
     </div>
-    <p className="text-xs text-gray-600"><strong>Mobile & tablet:</strong> all four tiles use a 4:3 shape (for example, 1200 × 900 px). The same uploaded image is used on every device, so desktop artwork may crop differently on smaller screens.</p>
+    <p className="text-xs text-gray-600"><strong>Mobile & tablet:</strong> the horizontal and vertical banners stay side by side. The same uploaded artwork is used on every device; check text legibility on smaller screens.</p>
     <p className="text-xs text-gray-600">Keep important text and logos away from the edges. Check desktop, tablet and mobile previews in <strong>Preview / crop & adjust</strong>. Choose <strong>Show entire image</strong> to keep the full artwork visible; empty space may appear around it. Accepted formats: JPG, PNG and WebP.</p>
   </section>;
 }

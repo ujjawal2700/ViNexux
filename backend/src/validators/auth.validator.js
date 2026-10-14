@@ -56,6 +56,7 @@ export const signupSchema = {
         longitude: z.coerce.number().min(-180).max(180),
         formattedAddress: z.string().trim().max(500).optional(),
       }).optional(),
+      marketingEmailOptIn: z.boolean().default(false),
       acceptPrivacyPolicy: z.literal(true, { errorMap: () => ({ message: 'Please accept the Privacy Policy' }) }),
       acceptTerms: z.literal(true, { errorMap: () => ({ message: 'Please accept the Terms & Conditions' }) }),
     })

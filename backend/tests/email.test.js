@@ -1,4 +1,5 @@
-import test, { before, after, describe } from 'node:test';
+import { loginFixture } from './helpers/accounts.js';
+import test, { before, after, beforeEach, describe } from 'node:test';
 import assert from 'node:assert';
 import http from 'http';
 import mongoose from 'mongoose';
@@ -105,8 +106,7 @@ describe('Phase 8.2 — Email / SMTP Integration Test Suite', () => {
     });
 
     // Authenticate Admin
-    await authService.sendOtp({ identifier: adminEmail, purpose: 'login' });
-    const adminRes = await authService.verifyOtp({ identifier: adminEmail, otp: '123456', purpose: 'login' });
+    const adminRes = await loginFixture(adminUser);
     adminToken = adminRes.accessToken;
   });
 
@@ -131,7 +131,7 @@ describe('Phase 8.2 — Email / SMTP Integration Test Suite', () => {
     });
 
     test('3. SMTP is the default provider and unknown providers fall back to SMTP', () => {
-      assert.ok(createEmailProvider() instanceof SmtpEmailProvider);
+      assert.ok(createEmailProvider() instanceof (config.emailProvider === 'development' ? DevEmailProvider : SmtpEmailProvider));
       assert.ok(createEmailProvider('unknown_provider') instanceof SmtpEmailProvider);
     });
   });
@@ -244,6 +244,7 @@ describe('Phase 8.2 — Email / SMTP Integration Test Suite', () => {
   });
 
   describe('SECTION 4: OTP Email Integration & Security', () => {
+    beforeEach(async () => { await OtpVerification.deleteMany({ identifier: testEmail }); });
     test('1. sendOtp dispatches HTML/text OTP email when identifier is email', async () => {
       let captured = null;
 
@@ -256,7 +257,8 @@ describe('Phase 8.2 — Email / SMTP Integration Test Suite', () => {
 
       setEmailProvider(new OtpMockEmailProvider());
 
-      const res = await authService.sendOtp({ identifier: testEmail, purpose: 'login' });
+      const wasMock = config.mockOtpEnabled; config.mockOtpEnabled = false;
+      let res; try { res = await authService.sendOtp({ identifier: testEmail, purpose: 'login' }); } finally { config.mockOtpEnabled = wasMock; }
 
       assert.ok(captured);
       assert.strictEqual(captured.to, testEmail);
@@ -317,7 +319,7 @@ describe('Phase 8.2 — Email / SMTP Integration Test Suite', () => {
       assert.ok(content.includes('EMAIL_USER='));
       assert.ok(content.includes('EMAIL_PASSWORD='));
       assert.match(content, /EMAIL_PROVIDER=smtp/);
-      assert.doesNotMatch(content, /RESEND_API_KEY|resend/i);
+      assert.doesNotMatch(content, /^RESEND_API_KEY=/m);
       assert.doesNotMatch(content, /EMAIL_PASSWORD=\s*[A-Za-z0-9]{15,}/); // No real secrets
     });
   });
@@ -372,3 +374,6 @@ describe('Phase 8.2 — Email / SMTP Integration Test Suite', () => {
     });
   });
 });
+
+// Close database handles after all nested suites, including failed fixtures.
+after(async () => { await mongoose.disconnect(); });

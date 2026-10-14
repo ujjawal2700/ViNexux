@@ -1,3 +1,4 @@
+import { accountRequests } from './helpers/accounts.js';
 import http from 'http';
 import mongoose from 'mongoose';
 import app from '../src/app.js';
@@ -13,7 +14,7 @@ import { Enquiry } from '../src/models/Enquiry.js';
 let server;
 const PORT = 5013;
 
-const request = (path, options = {}, body = null) => {
+const rawRequest = (path, options = {}, body = null) => {
   return new Promise((resolve, reject) => {
     const reqOptions = {
       hostname: '127.0.0.1',
@@ -49,6 +50,7 @@ const request = (path, options = {}, body = null) => {
     req.end();
   });
 };
+const request = accountRequests(rawRequest);
 
 const runCartEnquiryPRDTests = async () => {
   try {
@@ -102,13 +104,13 @@ const runCartEnquiryPRDTests = async () => {
     const approvedDealerUserId = dealerVerify.body.data.user.id;
     const approvedDealerHeaders = { Authorization: `Bearer ${approvedDealerToken}` };
 
-    const dProfile = await DealerProfile.create({
+    const dProfile = await DealerProfile.findOneAndUpdate({ userId: approvedDealerUserId }, {
       userId: approvedDealerUserId,
       companyName: 'Vinexus Approved Dealer Ltd',
       gstin: `27AAACV${timestamp.toString().slice(-4)}F1Z5`,
       pan: `AAACV${timestamp.toString().slice(-4)}F`,
       status: 'approved',
-    });
+    }, { new: true, runValidators: true });
 
     // 3. Pending Dealer Setup
     const pendingSignup = await request('/api/auth/signup', { method: 'POST' }, {
@@ -127,13 +129,13 @@ const runCartEnquiryPRDTests = async () => {
     const pendingDealerUserId = pendingVerify.body.data.user.id;
     const pendingDealerHeaders = { Authorization: `Bearer ${pendingDealerToken}` };
 
-    await DealerProfile.create({
+    await DealerProfile.findOneAndUpdate({ userId: pendingDealerUserId }, {
       userId: pendingDealerUserId,
       companyName: 'Vinexus Pending Dealer Ltd',
       gstin: `27BBBCA${timestamp.toString().slice(-4)}F1Z9`,
       pan: `BBBCA${timestamp.toString().slice(-4)}F`,
       status: 'pending',
-    });
+    }, { new: true, runValidators: true });
 
     // 4. Admin Setup
     const adminSignup = await request('/api/auth/signup', { method: 'POST' }, {
@@ -252,19 +254,19 @@ const runCartEnquiryPRDTests = async () => {
     console.log('   ✅ Pending/rejected dealer -> standardPrice PASSED (priceSnapshot: 500)\n');
 
     // -------------------------------------------------------------
-    // CHECKLIST 7: Product price change -> old cart snapshot unchanged
+    // CHECKLIST 7: Product price change -> cart refresh uses current price
     // -------------------------------------------------------------
-    console.log('7. Testing: [ ] Product price change -> old cart snapshot unchanged...');
+    console.log('7. Testing: [ ] Product price change -> cart refresh uses current price...');
     // Update product.standardPrice in database from 500 to 999
     await Product.updateOne({ _id: productWithCustomPricing._id }, { standardPrice: 999 });
     
-    // View customer cart to verify existing item's priceSnapshot is still 500
+    // View customer cart to verify the cart uses the current price of 999
     const viewCartRes = await request('/api/cart', { method: 'GET', headers: customerHeaders });
     const cartItem = viewCartRes.body.data?.items[0];
-    if (viewCartRes.status !== 200 || cartItem?.priceSnapshot !== 500) {
-      throw new Error(`Product price change affected old cart snapshot! Expected 500, got ${cartItem?.priceSnapshot}`);
+    if (viewCartRes.status !== 200 || cartItem?.priceSnapshot !== 999) {
+      throw new Error(`Cart did not refresh the product price! Expected 999, got ${cartItem?.priceSnapshot}`);
     }
-    console.log('   ✅ Product price change -> old cart snapshot unchanged PASSED (priceSnapshot remained 500 despite product price update to 999)\n');
+    console.log('   ✅ Product price change -> cart refresh uses current price PASSED (priceSnapshot refreshed to 999 after product price update)\n');
 
     // -------------------------------------------------------------
     // CHECKLIST 5: Enquiry -> productName + priceShown snapshot
@@ -284,7 +286,7 @@ const runCartEnquiryPRDTests = async () => {
     console.log(`   Product Name  : ${enq.items[0]?.productName}`);
     console.log(`   Price Shown   : ${enq.items[0]?.priceShown}`);
 
-    if (!enq.enquiryNumber.startsWith('VNX-') || enq.items[0]?.productName !== 'PVC Pipe 110mm Heavy Duty' || enq.items[0]?.priceShown !== 500) {
+    if (!enq.enquiryNumber.startsWith('VNX-') || enq.items[0]?.productName !== 'PVC Pipe 110mm Heavy Duty' || enq.items[0]?.priceShown !== 999) {
       throw new Error(`Enquiry snapshot failed: ${JSON.stringify(enq)}`);
     }
     console.log('   ✅ Enquiry -> productName + priceShown snapshot PASSED\n');

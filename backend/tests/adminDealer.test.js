@@ -1,3 +1,5 @@
+import { loginFixture } from './helpers/accounts.js';
+import { accountRequests } from './helpers/accounts.js';
 import http from 'http';
 import mongoose from 'mongoose';
 import app from '../src/app.js';
@@ -11,7 +13,7 @@ import { DealerPricing } from '../src/models/DealerPricing.js';
 let server;
 const PORT = 5016;
 
-const request = (path, options = {}, body = null) => {
+const rawRequest = (path, options = {}, body = null) => {
   return new Promise((resolve, reject) => {
     const reqOptions = {
       hostname: '127.0.0.1',
@@ -47,6 +49,7 @@ const request = (path, options = {}, body = null) => {
     req.end();
   });
 };
+const request = accountRequests(rawRequest);
 
 let totalTests = 0;
 let passed = 0;
@@ -116,11 +119,11 @@ const runAdminDealerTests = async () => {
       purpose: 'signup',
     });
     const dealerToken = dealerVerify.body.data.accessToken;
-    const dealerHeaders = { Authorization: `Bearer ${dealerToken}` };
+    let dealerHeaders = { Authorization: `Bearer ${dealerToken}` };
     const dealerUserId = dealerVerify.body.data.user.id;
 
     // Create Dealer Profile (Status: pending)
-    const createProfileRes = await request('/api/dealers/profile', { method: 'POST', headers: dealerHeaders }, {
+    const createProfileRes = await request('/api/dealers/profile', { method: 'PUT', headers: dealerHeaders }, {
       companyName: `Apex Distro ${timestamp}`,
       gstin: `27AAAAA${timestamp.toString().slice(-4)}A1Z5`,
       pan: `ABCDE${timestamp.toString().slice(-4)}F`,
@@ -135,7 +138,7 @@ const runAdminDealerTests = async () => {
         { type: 'pan', url: 'https://cdn.vinexus.com/docs/pan_apex.pdf' },
       ],
     });
-    assert(createProfileRes.status === 201, 'Dealer profile creation returns 201');
+    assert(createProfileRes.status === 200, 'Signup-created dealer profile updated');
     const dealerProfileId = createProfileRes.body.data.profile._id;
 
     // 3. Admin Account Setup
@@ -361,6 +364,7 @@ const runAdminDealerTests = async () => {
     console.log('\n--- SECTION 7: Regression & Dealer Pricing Integration ---');
 
     // 1. Existing Dealer Self-Service APIs
+    dealerHeaders = { Authorization: `Bearer ${(await loginFixture(await User.findById(dealerUserId))).accessToken}` };
     const getProfileRes = await request('/api/dealers/profile', { method: 'GET', headers: dealerHeaders });
     assert(getProfileRes.status === 200, 'Dealer self-service GET /api/dealers/profile returns 200');
 
@@ -434,6 +438,7 @@ const runAdminDealerTests = async () => {
     // Revoke dealer -> price snapshot falls back strictly to standardPrice (1000)
     await request(`/api/admin/dealers/${dealerProfileId}/revoke`, { method: 'PUT', headers: adminHeaders });
 
+    dealerHeaders = { Authorization: `Bearer ${(await loginFixture(await User.findById(dealerUserId))).accessToken}` };
     const revokeCartRes = await request('/api/cart/items', { method: 'POST', headers: dealerHeaders }, {
       productId: product._id.toString(),
       quantity: 2,

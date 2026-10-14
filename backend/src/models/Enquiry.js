@@ -1,3 +1,4 @@
+import '../audit/audit.js';
 import mongoose from 'mongoose';
 import { ENQUIRY_STATUSES } from '../../../shared/enquiryStatuses.js';
 

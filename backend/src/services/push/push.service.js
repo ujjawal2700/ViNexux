@@ -1,3 +1,7 @@
+import { ensurePushDeviceIndexes } from './deviceIndexes.js';
+import { createHash } from 'node:crypto';
+import mongoose from 'mongoose';
+import { PushDevice } from '../../models/PushDevice.js';
 import { User } from '../../models/User.js';
 import { getPushProvider } from '../../integrations/push/index.js';
 
@@ -13,7 +17,16 @@ export const pushService = {
    */
   async registerToken(userId, token) {
     if (!token) return;
-    await User.updateOne({ _id: userId }, { $addToSet: { fcmTokens: token } });
+    await ensurePushDeviceIndexes();
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await mongoose.connection.transaction(async session => {
+          await PushDevice.findOneAndUpdate({ _id: createHash('sha256').update(token).digest('hex') }, { $set: { userId } }, { upsert: true, session });
+          await User.updateMany({ _id: { $ne: userId }, fcmTokens: token }, { $pull: { fcmTokens: token } }, { session });
+          await User.updateOne({ _id: userId }, { $addToSet: { fcmTokens: token } }, { session });
+        });
+      } catch (error) { if (error.code !== 11000 || attempt >= 2) throw error; }
+    }
   },
 
   /**
@@ -21,7 +34,10 @@ export const pushService = {
    */
   async unregisterToken(userId, token) {
     if (!token) return;
-    await User.updateOne({ _id: userId }, { $pull: { fcmTokens: token } });
+    await mongoose.connection.transaction(async session => {
+      await PushDevice.deleteOne({ _id: createHash('sha256').update(token).digest('hex'), userId }, { session });
+      await User.updateOne({ _id: userId }, { $pull: { fcmTokens: token } }, { session });
+    });
   },
 
   /**
@@ -51,7 +67,8 @@ export const pushService = {
       );
     }
 
-    return { success: true, sent: user.fcmTokens.length - (result.invalidTokens?.length || 0) };
+    const sent = result.successCount ?? (result.provider === 'development' ? 0 : result.success ? user.fcmTokens.length - (result.invalidTokens?.length || 0) : 0);
+    return { success: result.success, sent, failed: result.failureCount || 0, simulated: result.provider === 'development' };
   },
 };
 

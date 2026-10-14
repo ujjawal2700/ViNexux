@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { BENTO_TRANSITIONS } from '../../../shared/bannerGrid.js';
+import { BENTO_TRANSITIONS, BENTO_IMAGE_LIMIT, BENTO_SECTION_COUNT, visibleBannerSections } from '../../../shared/bannerGrid.js';
 import { z } from 'zod';
 import BannerGrid from '../models/BannerGrid.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -24,27 +24,37 @@ export const gridSectionInput = z.object({
   transition: z.enum(BENTO_TRANSITIONS),
   revision: z.coerce.number().int().min(0),
 });
-const emptySections = () => Array.from({ length: 4 }, () => ({ images: [], transition: 'fade' }));
+const emptySections = () => Array.from({ length: BENTO_SECTION_COUNT }, () => ({ images: [], transition: 'fade' }));
 const input = body => {
   const result = gridImageInput.safeParse(body);
   if (!result.success) throw new AppError(result.error.issues.map(i => i.message).join('; '), 400, ERROR_CODES.VALIDATION_ERROR);
   return result.data;
 };
 const sectionIndex = req => {
-  if (!/^[0-3]$/.test(req.params.section)) throw new AppError('Choose one of the four banner sections', 400, ERROR_CODES.VALIDATION_ERROR);
+  if (!/^[0-1]$/.test(req.params.section)) throw new AppError('Choose one of the two banner sections', 400, ERROR_CODES.VALIDATION_ERROR);
   if (req.params.id && !/^[a-f\d]{24}$/i.test(req.params.id)) throw new AppError('Invalid banner image ID', 400, ERROR_CODES.VALIDATION_ERROR);
   return Number(req.params.section);
 };
 const checked = grid => {
-  if (!grid) throw new AppError('This section is full or has changed. Refresh and try again (maximum 3 images).', 409, ERROR_CODES.VALIDATION_ERROR);
+  if (!grid) throw new AppError('This section is full or has changed. Refresh and try again (maximum 5 images).', 409, ERROR_CODES.VALIDATION_ERROR);
   return grid;
 };
 export const publicBannerGrid = asyncHandler(async (req, res) => {
   res.set('Cache-Control', 'no-store');
   const grid = await BannerGrid.findOne({ singletonKey: 'primary' }).lean();
-  return ApiResponse.success(res, 'Homepage banner grid', { grid: grid?.configured ? grid : null });
+  return ApiResponse.success(res, 'Homepage banner grid', { grid: grid?.configured ? { ...grid, sections: visibleBannerSections(grid.sections) } : null });
 });
 const router = Router(); // Mounted behind the admin authentication/authorization middleware.
+// Upgrade old grids once, retaining artwork and framing in the first and fourth slots.
+// Revision matching prevents overwriting an edit made while this request was loading.
+router.use(asyncHandler(async (req, res, next) => {
+  const legacy = await BannerGrid.findOne({ singletonKey: 'primary' }).lean();
+  if (legacy?.sections?.length === 4) {
+    await BannerGrid.updateOne({ singletonKey: 'primary', revision: legacy.revision, sections: { $size: 4 } },
+      { $set: { sections: visibleBannerSections(legacy.sections) }, $inc: { revision: 1 } }, { runValidators: true });
+  }
+  next();
+}));
 router.get('/', asyncHandler(async (req, res) => {
   const grid = await BannerGrid.findOne({ singletonKey: 'primary' }).lean();
   return ApiResponse.success(res, 'Banner grid', { grid: grid || { sections: emptySections(), revision: 0, configured: false } });
@@ -66,7 +76,7 @@ const uploadImage = asyncHandler(async (req, res) => {
   if (!req.file || !['image/png', 'image/jpeg', 'image/webp'].includes(req.file.mimetype) || req.file.size > 5 * 1024 * 1024) throw new AppError('Upload a PNG, JPG or WebP image up to 5 MB', 400, ERROR_CODES.VALIDATION_ERROR);
   await BannerGrid.updateOne({ singletonKey: 'primary' }, { $setOnInsert: { singletonKey: 'primary', sections: emptySections(), revision: 0, configured: false } }, { upsert: true });
   const replacing = Boolean(req.params.id);
-  const filter = { singletonKey: 'primary', revision: data.revision, ...(replacing ? { [`sections.${section}.images._id`]: req.params.id } : { [`sections.${section}.images.2`]: { $exists: false } }) };
+  const filter = { singletonKey: 'primary', revision: data.revision, ...(replacing ? { [`sections.${section}.images._id`]: req.params.id } : { [`sections.${section}.images.${BENTO_IMAGE_LIMIT - 1}`]: { $exists: false } }) };
   if (!await BannerGrid.exists(filter)) checked(null);
   let asset;
   if (config.storageProvider === 'development') {

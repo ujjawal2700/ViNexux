@@ -1,3 +1,4 @@
+import { accountRequests } from './helpers/accounts.js';
 import http from 'http';
 import mongoose from 'mongoose';
 import app from '../src/app.js';
@@ -9,7 +10,7 @@ import { Product } from '../src/models/Product.js';
 let server;
 const PORT = 5014;
 
-const request = (path, options = {}, body = null) => {
+const rawRequest = (path, options = {}, body = null) => {
   return new Promise((resolve, reject) => {
     const reqOptions = {
       hostname: '127.0.0.1',
@@ -45,6 +46,7 @@ const request = (path, options = {}, body = null) => {
     req.end();
   });
 };
+const request = accountRequests(rawRequest);
 
 const assert = (condition, message) => {
   if (!condition) {
@@ -210,7 +212,7 @@ const runAdminCategoryTests = async () => {
       name: 'Duplicate Equipment',
       slug: cat1Slug,
     });
-    assert(dupRes.status === 400, 'Returns HTTP 400 Bad Request for duplicate slug');
+    assert(dupRes.status === 201 && dupRes.body.data.slug !== cat1Slug, 'Duplicate category slugs are safely disambiguated');
 
     // 9. Invalid category ID -> rejected
     console.log('\nTest 9: Invalid category ID -> 400 Rejected');
@@ -273,8 +275,8 @@ const runAdminCategoryTests = async () => {
 
     // 14. Verify deactivated category has isActive=false
     console.log('\nTest 14: Verify deactivated category has isActive=false');
-    assert(deleteSubRes.body.data.deactivated === true, 'deactivated flag is true');
-    assert(deleteSubRes.body.data.category.isActive === false, 'category.isActive is false');
+    assert(deleteSubRes.body.data.deleted === true, 'Unused leaf category is deleted');
+    assert(await Category.findById(subCatId) === null, 'Deleted leaf is absent from database');
 
     // 15. Category having dependent product/subcategory is safely deactivated
     console.log('\nTest 15: Category having dependent product/subcategory is safely deactivated');
@@ -292,8 +294,9 @@ const runAdminCategoryTests = async () => {
       headers: { Authorization: `Bearer ${adminToken}` },
     });
     assert(deleteParentRes.status === 200, 'Returns HTTP 200 OK for category with dependencies');
-    assert(deleteParentRes.body.data.category.isActive === false, 'Dependent category isActive set to false safely');
-    assert(deleteParentRes.body.message.includes('safely deactivated'), 'Response message confirms safe deactivation');
+    assert(deleteParentRes.body.data.deleted === true, 'Category deletion cascades to dependent products');
+    assert(await Product.countDocuments({ categoryId: cat1Id }) === 0, 'Dependent products removed');
+    assert(await Category.findById(cat1Id) === null, 'Deleted parent is absent');
 
     // 16. Existing public category API still works
     console.log('\nTest 16: Existing public category API still works');
@@ -301,8 +304,7 @@ const runAdminCategoryTests = async () => {
     assert(publicListRes.status === 200, 'Public GET /api/categories returns 200 OK');
 
     const publicGetRes = await request(`/api/categories/${cat1Id}`);
-    assert(publicGetRes.status === 200, 'Public GET /api/categories/:id returns 200 OK');
-    assert(publicGetRes.body.data._id === cat1Id, 'Public category details match requested ID');
+    assert(publicGetRes.status === 404, 'Deleted category detail returns 404');
 
     console.log('\n===========================================================');
     console.log('🎉 ALL 16 ADMIN CATEGORY TEST CASES PASSED CLEANLY!');

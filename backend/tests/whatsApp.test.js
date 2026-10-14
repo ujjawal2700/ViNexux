@@ -1,3 +1,4 @@
+import { loginFixture, accountRequests } from './helpers/accounts.js';
 import test, { before, after, beforeEach, describe } from 'node:test';
 
 import assert from 'node:assert';
@@ -22,7 +23,7 @@ import { approveDealerKyc, rejectDealerKyc } from '../src/services/dealer.servic
 let server;
 const PORT = 5095;
 
-const request = (endpointPath, options = {}, body = null) => {
+const rawRequest = (endpointPath, options = {}, body = null) => {
   return new Promise((resolve, reject) => {
     const reqOptions = {
       hostname: '127.0.0.1',
@@ -59,6 +60,8 @@ const request = (endpointPath, options = {}, body = null) => {
   });
 };
 
+const request = accountRequests(rawRequest);
+
 describe('Phase 8.5 — WhatsApp Integration Test Suite', () => {
   let devProvider;
   let customerUser;
@@ -90,7 +93,7 @@ describe('Phase 8.5 — WhatsApp Integration Test Suite', () => {
       fullName: 'WhatsApp Customer',
       name: 'WhatsApp Customer',
       email: cEmail,
-      phone: `9198${ts.toString().slice(-8)}`,
+      phone: `98${ts.toString().slice(-8)}`,
       role: 'customer',
       isEmailVerified: true,
       accountStatus: 'active',
@@ -106,7 +109,7 @@ describe('Phase 8.5 — WhatsApp Integration Test Suite', () => {
       fullName: 'WhatsApp Dealer',
       name: 'WhatsApp Dealer',
       email: dEmail,
-      phone: `9197${ts.toString().slice(-8)}`,
+      phone: `97${ts.toString().slice(-8)}`,
       role: 'dealer',
       isEmailVerified: true,
       accountStatus: 'active',
@@ -127,14 +130,13 @@ describe('Phase 8.5 — WhatsApp Integration Test Suite', () => {
       fullName: 'WhatsApp Admin',
       name: 'WhatsApp Admin',
       email: aEmail,
-      phone: `9196${ts.toString().slice(-8)}`,
+      phone: `96${ts.toString().slice(-8)}`,
       role: 'admin',
       isEmailVerified: true,
       accountStatus: 'active',
       status: 'active',
     });
-    await authService.sendOtp({ identifier: aEmail, purpose: 'login' });
-    const aRes = await authService.verifyOtp({ identifier: aEmail, otp: '123456', purpose: 'login' });
+    const aRes = await loginFixture(adminUser);
     adminToken = aRes.accessToken;
 
     // Category & Product
@@ -378,6 +380,7 @@ describe('Phase 8.5 — WhatsApp Integration Test Suite', () => {
 
     before(async () => {
       testEnquiry = await Enquiry.create({
+        whatsappNumber: '9876543210',
         enquiryNumber: `VNX-WA-${Date.now().toString().slice(-6)}`,
         userId: customerUser._id,
         userType: 'customer',
@@ -426,3 +429,6 @@ describe('Phase 8.5 — WhatsApp Integration Test Suite', () => {
     });
   });
 });
+
+// Close database handles after all nested suites, including failed fixtures.
+after(async () => { await mongoose.disconnect(); });

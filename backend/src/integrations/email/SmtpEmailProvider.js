@@ -32,6 +32,9 @@ export class SmtpEmailProvider extends EmailProvider {
       host: config.emailHost,
       port: config.emailPort || 587,
       secure: config.emailSecure || false,
+      connectionTimeout: 30000,
+      greetingTimeout: 30000,
+      socketTimeout: 60000,
       auth: {
         user: config.emailUser,
         pass: config.emailPassword,
@@ -39,7 +42,7 @@ export class SmtpEmailProvider extends EmailProvider {
     });
   }
 
-  async sendEmail({ to, subject, html, text, from }) {
+  async sendEmail({ to, subject, html, text, from, replyTo, unsubscribeUrl, oneClickUrl }) {
     try {
       const transporter = await this.getTransporter();
       const sender = from || `"${config.emailFromName}" <${config.emailFrom}>`;
@@ -50,8 +53,11 @@ export class SmtpEmailProvider extends EmailProvider {
         subject,
         text,
         html,
+        replyTo,
+        ...(unsubscribeUrl ? { headers: { 'List-Unsubscribe': `<${oneClickUrl || unsubscribeUrl}>`, ...(oneClickUrl ? { 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } : {}) } } : {}),
       });
 
+      if (info.accepted && !info.accepted.length) throw new AppError('The mail server did not accept the recipient.', 502, ERROR_CODES.INTERNAL_ERROR);
       return {
         success: true,
         provider: 'smtp',

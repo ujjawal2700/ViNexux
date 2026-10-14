@@ -362,20 +362,20 @@ export const BrandCarousel = () => {
         <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
       </button>
 
-      {/* Brands Track (Clean SQUARE shape cards) */}
+      {/* Compact logo track */}
       <div
         ref={scrollRef}
-        className="brand-carousel-track flex items-center overflow-x-auto scrollbar-none py-3 sm:py-4 min-w-0 max-w-full"
+        className="brand-carousel-track flex items-center overflow-x-auto scrollbar-none py-1 sm:py-2 min-w-0 max-w-full"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {displayBrands.map((brand, index) => (
           <div key={`${brand._id || brand.slug || brand.name}-${index}`} className="brand-carousel-item relative group/brand shrink-0">
             <Link
               to={buildBrandUrl(brand.name)}
-              className="flex flex-col items-center justify-center w-full aspect-square p-3 bg-[var(--store-surface)] border border-[var(--store-border)] rounded-lg transition-all duration-200 ease-out hover:border-[var(--store-primary)] hover:shadow-md select-none relative"
+              className="flex flex-col items-center justify-center w-full h-14 sm:h-16 px-3 transition-all duration-200 ease-out focus-visible:outline-2 focus-visible:outline-[var(--store-primary)] select-none relative"
             >
               {/* Brand Logo Display */}
-              <div className="flex items-center justify-center w-full h-full p-1 transition-transform duration-200 group-hover/brand:scale-105">
+              <div className="flex items-center justify-center w-full h-10 sm:h-12 transition-transform duration-200 group-hover/brand:scale-105">
                 <BrandLogo brand={brand} />
               </div>
             </Link>

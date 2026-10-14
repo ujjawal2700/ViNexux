@@ -1,3 +1,4 @@
+import '../audit/audit.js';
 import mongoose from 'mongoose';
 import { randomBytes } from 'node:crypto';
 import { CATALOG_FIELDS_VERSION, CATALOG_SOURCE_PATHS, computeCatalogFields } from '../utils/productCatalogFields.js';

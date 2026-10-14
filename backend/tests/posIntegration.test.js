@@ -1,0 +1,63 @@
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import mongoose from 'mongoose';
+import supertest from '../../node_modules/supertest/index.js';
+import app from '../src/app.js';
+import { User } from '../src/models/User.js';
+import { Session } from '../src/models/Session.js';
+import { Product } from '../src/models/Product.js';
+import { Category } from '../src/models/Category.js';
+import { PosSale } from '../src/models/PosSale.js';
+import { AuditLog } from '../src/audit/audit.js';
+import { generateAccessToken } from '../src/utils/token.util.js';
+import { posInput } from '../../tests/helpers/posFixture.js';
+
+try {
+  await mongoose.connect(process.env.MONGODB_URI);
+  await Promise.all(Object.values(mongoose.models).map(model => model.init()));
+  const request = supertest(app);
+  const admin = await User.create({ fullName: 'POS Admin', email: 'pos-admin@example.test', phone: '9999999981', role: 'admin' });
+  const customer = await User.create({ fullName: 'Sample Customer', email: 'pos-customer@example.test', phone: '9876543210', role: 'customer' });
+  const other = await User.create({ fullName: 'Other Customer', email: 'other@example.test', phone: '9999999982', role: 'customer' });
+  async function token(user) {
+    const session = await Session.create({ userId: user._id, userType: user.role, sessionId: randomUUID(), expiresAt: new Date(Date.now() + 600000) });
+    return generateAccessToken({ userId: user._id, role: user.role, sessionId: session.sessionId });
+  }
+  const adminToken = await token(admin), customerToken = await token(customer), otherToken = await token(other);
+  const auth = (method, path, access = adminToken) => request[method](`/api${path}`).auth(access, { type: 'bearer' });
+  const category = await Category.create({ name: 'POS cameras', slug: 'pos-cameras' });
+  const product = await Product.create({ name: 'Camera', sku: 'POS-CAMERA', modelNumber: 'CAM-1', categoryId: category._id, standardPrice: 3008.47, hsnCode: '85258900', stockQuantity: 3, isActive: true });
+  const input = posInput(); input.items[0].productId = String(product._id);
+  const catalog = await auth('get', '/admin/pos/products'); assert.equal(catalog.status, 200); assert.equal(catalog.body.data[0].hsnCode, '85258900');
+  const validation = await auth('post', '/admin/pos/sales/validate').send(input); assert.equal(validation.status, 200, JSON.stringify(validation.body));
+  const results = await Promise.all([0, 1].map(() => auth('post', '/admin/pos/sales').send(input)));
+  results.forEach(result => assert.equal(result.status, 200, JSON.stringify(result.body)));
+  const sale = results[0].body.data;
+  assert.equal(results[1].body.data._id, sale._id, 'Concurrent replay returns the same invoice');
+  assert.equal(await PosSale.countDocuments(), 1); assert.equal((await Product.findById(product._id)).stockQuantity, 1);
+  assert.equal(sale.items[0].hsn, '85258900'); assert.equal(sale.total, 7100); assert.equal(sale.balanceDue, 0);
+  const overstock = posInput({ requestId: randomUUID() }); overstock.items[0].productId = String(product._id);
+  assert.equal((await auth('post', '/admin/pos/sales').send(overstock)).status, 409);
+  assert.equal(await PosSale.countDocuments(), 1, 'Failed checkout leaves no invoice');
+  assert.equal((await Product.findById(product._id)).stockQuantity, 1, 'Failed checkout rolls back stock');
+  const pdf = await auth('get', `/admin/pos/sales/${sale._id}/invoice`); assert.equal(pdf.status, 200); assert.equal(pdf.body.subarray(0, 5).toString(), '%PDF-');
+  const own = await auth('get', '/pos/my-invoices', customerToken); assert.equal(own.status, 200); assert.equal(own.body.data.invoices.length, 1);
+  assert.equal((await auth('get', `/pos/my-invoices/${sale._id}/pdf`, otherToken)).status, 404, 'Other customer cannot read the invoice');
+  const returned = { requestId: randomUUID(), reason: 'One camera returned', items: [{ productId: String(product._id), quantity: 1 }] };
+  const firstReturn = await auth('post', `/admin/pos/sales/${sale._id}/returns`).send(returned); assert.equal(firstReturn.status, 200, JSON.stringify(firstReturn.body));
+  assert.equal((await Product.findById(product._id)).stockQuantity, 2);
+  assert.equal((await auth('post', `/admin/pos/sales/${sale._id}/returns`).send(returned)).status, 200);
+  assert.equal((await Product.findById(product._id)).stockQuantity, 2, 'Return replay does not restock twice');
+  assert.equal((await auth('post', `/admin/pos/sales/${sale._id}/returns`).send({ ...returned, requestId: randomUUID(), items: [{ productId: String(product._id), quantity: 2 }] })).status, 400);
+  const voided = await auth('post', `/admin/pos/sales/${sale._id}/void`).send({ reason: 'Invoice cancelled after return' }); assert.equal(voided.status, 200);
+  assert.equal((await Product.findById(product._id)).stockQuantity, 3, 'Void restores only remaining sold stock');
+  assert.equal((await auth('post', `/admin/pos/sales/${sale._id}/void`).send({ reason: 'Repeated cancellation' })).status, 200);
+  assert.equal((await Product.findById(product._id)).stockQuantity, 3, 'Void replay does not restock twice');
+  const refund = { requestId: randomUUID(), amount: sale.total, method: 'cash', reference: '' };
+  assert.equal((await auth('post', `/admin/pos/sales/${sale._id}/refunds`).send(refund)).status, 200);
+  assert.equal((await auth('post', `/admin/pos/sales/${sale._id}/refunds`).send(refund)).status, 200);
+  assert.equal((await PosSale.findById(sale._id)).refunds.length, 1);
+  const exported = await auth('get', '/admin/pos/sales/export').buffer(true).parse((response, callback) => { const chunks = []; response.on('data', chunk => chunks.push(chunk)); response.on('end', () => callback(null, Buffer.concat(chunks))); }); assert.equal(exported.status, 200); assert.equal(exported.body.subarray(0, 2).toString(), 'PK');
+  assert.ok(await AuditLog.exists({ entity: 'PosSale', 'actor.id': String(admin._id) }), 'POS changes appear in the admin logbook');
+  console.log('POS integration passed: real MongoDB checkout transactions, idempotency, stock rollback, HSN, PDF, customer ownership, return, void, refund, Excel and auditing.');
+} finally { await mongoose.disconnect(); }

@@ -1,3 +1,7 @@
+import { randomUUID } from 'node:crypto';
+import { auditContext, readAuditLocation } from '../audit/audit.js';
+import { accessProfile } from '../services/adminAccess.service.js';
+import { canAdmin, sectionForAdminPath } from '../../../shared/adminAccess.js';
 import { verifyAccessToken } from '../utils/token.util.js';
 import { Session } from '../models/Session.js';
 import { User } from '../models/User.js';
@@ -89,7 +93,14 @@ export const authenticate = async (req, res, next) => {
 
     // Attach user and session to request object
     req.user = user;
+    req.adminAccess = await accessProfile(user);
     req.session = session;
+    if (user.role === 'admin') {
+      return auditContext.run({ actor: { id: String(user._id), name: user.fullName || user.name, email: user.email,
+        isEmployee: user.isEmployee === true, roleName: req.adminAccess.accessRoleName || 'Super admin' },
+        requestId: randomUUID(), section: sectionForAdminPath(req.originalUrl) || 'auth', method: req.method,
+        path: (req.originalUrl || req.url || '').split('?')[0], ip: req.ip, userAgent: req.headers['user-agent'], location: readAuditLocation(req.headers) }, next);
+    }
     next();
   } catch (error) {
     next(error);
@@ -118,6 +129,22 @@ export const authorize = (...allowedRoles) => {
       );
     }
 
+    if (req.user.role === 'admin' && req.user.isEmployee) {
+      const section = req.adminPermissionSection || sectionForAdminPath(req.originalUrl);
+      const action = ['GET', 'HEAD', 'OPTIONS'].includes(req.method) ? 'read' : 'write';
+      if (!canAdmin({ role: 'admin', ...req.adminAccess }, section, action)) {
+        return next(new AppError(action === 'write' ? "You don't have write access to this section." : 'Your role does not have read access to this section.',
+          403, action === 'write' ? 'WRITE_ACCESS_DENIED' : ERROR_CODES.FORBIDDEN));
+      }
+      // Write permission must not expose the updated record through a mutation response.
+      if (action === 'write' && !canAdmin({ role: 'admin', ...req.adminAccess }, section, 'read')) {
+        const json = res.json;
+        res.json = function (body) {
+          return json.call(this, body?.success === true && this.statusCode < 400
+            ? { success: true, message: 'Changes saved.', data: { saved: true } } : body);
+        };
+      }
+    }
     next();
   };
 };

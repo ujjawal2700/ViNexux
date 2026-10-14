@@ -1,3 +1,4 @@
+import { accountRequests } from './helpers/accounts.js';
 import http from 'http';
 import mongoose from 'mongoose';
 import app from '../src/app.js';
@@ -11,7 +12,7 @@ import { Enquiry } from '../src/models/Enquiry.js';
 let server;
 const PORT = 5020;
 
-const request = (path, options = {}, body = null) => {
+const rawRequest = (path, options = {}, body = null) => {
   return new Promise((resolve, reject) => {
     const reqOptions = {
       hostname: '127.0.0.1',
@@ -47,6 +48,7 @@ const request = (path, options = {}, body = null) => {
     req.end();
   });
 };
+const request = accountRequests(rawRequest);
 
 let totalTests = 0;
 let passed = 0;
@@ -118,7 +120,7 @@ const runAdminReportsTests = async () => {
     const dealerToken = dealerVerify.body.data.accessToken;
     const dealerHeaders = { Authorization: `Bearer ${dealerToken}` };
 
-    const createProfileRes = await request('/api/dealers/profile', { method: 'POST', headers: dealerHeaders }, {
+    const createProfileRes = await request('/api/dealers/profile', { method: 'PUT', headers: dealerHeaders }, {
       companyName: `Report Distro ${timestamp}`,
       gstin: `27AAAAA${timestamp.toString().slice(-4)}B1Z5`,
       pan: `ABCDE${timestamp.toString().slice(-4)}G`,

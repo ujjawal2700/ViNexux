@@ -6,6 +6,8 @@ import { refreshCatalogFields } from './models/Product.js';
 import { CATALOG_FIELDS_VERSION } from './utils/productCatalogFields.js';
 import { backfillEnquiryStatuses } from './services/enquiryStatusBackfill.service.js';
 
+import { startCampaignWorker } from './services/campaign.service.js';
+let stopCampaignWorker;
 let server;
 
 const startServer = async () => {
@@ -37,6 +39,7 @@ const startServer = async () => {
 
     // 2. Connect to MongoDB asynchronously after port binding
     await connectDB();
+    stopCampaignWorker = startCampaignWorker();
     // One-off data maintenance runs on a single instance only; under PM2
     // cluster mode the other instances would race it.
     if (!config.isPrimaryInstance) return;
@@ -62,6 +65,7 @@ const startServer = async () => {
 const gracefulShutdown = async (signal) => {
   console.log(`\n[Server] Received ${signal}. Starting graceful shutdown...`);
 
+  stopCampaignWorker?.();
   if (server) {
     server.close(async () => {
       console.log('[Server] HTTP server closed');

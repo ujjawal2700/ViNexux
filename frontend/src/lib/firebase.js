@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
+import { getMessaging, getToken, deleteToken, onMessage, isSupported } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -8,6 +8,7 @@ const firebaseConfig = {
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 const isFirebaseConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
@@ -20,9 +21,9 @@ if (isFirebaseConfigured) {
 /**
  * Requests notification permission, registers the service worker, and
  * returns an FCM device token - or null if unsupported/unconfigured/denied.
- * Never throws; push notifications are an enhancement, not a hard dependency.
+ * Explicit registration reports errors; automatic registration remains optional.
  */
-export const getPushToken = async () => {
+export const getPushToken = async (requestPermission = false) => {
   if (!isFirebaseConfigured || !app) return null;
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return null;
 
@@ -30,20 +31,34 @@ export const getPushToken = async () => {
     const supported = await isSupported();
     if (!supported) return null;
 
-    const permission = await Notification.requestPermission();
+    if (!('Notification' in window)) return null;
+    const permission = requestPermission ? await Notification.requestPermission() : Notification.permission;
     if (permission !== 'granted') return null;
 
-    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    const registration = await navigator.serviceWorker.register(`/firebase-messaging-sw.js?config=${encodeURIComponent(JSON.stringify(firebaseConfig))}`);
+    await navigator.serviceWorker.ready;
     const messaging = getMessaging(app);
 
-    const token = await getToken(messaging, {
+    const options = {
       vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
       serviceWorkerRegistration: registration,
-    });
+    };
+    // Attach our configured worker first. Calling deleteToken on a fresh
+    // messaging instance would otherwise install Firebase's default worker.
+    let token = await getToken(messaging, options);
+    if (requestPermission) {
+      await deleteToken(messaging);
+      token = await getToken(messaging, options);
+    }
 
     return token || null;
   } catch (err) {
     console.warn('[Push] Failed to acquire FCM token:', err.message);
+    if (requestPermission) {
+      if (/API key not valid|API_KEY_INVALID/i.test(err.message || '')) throw new Error('Firebase rejected the browser API key. Update the Firebase web app configuration.');
+      if (/SENDER_ID_MISMATCH|mismatched-credential/i.test(err.message || '')) throw new Error('The Firebase browser and server settings must use the same project.');
+      throw new Error('This browser could not register with Firebase. Check your connection and Firebase configuration, then try again.');
+    }
     return null;
   }
 };

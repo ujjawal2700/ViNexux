@@ -1,3 +1,4 @@
+import '../audit/audit.js';
 import mongoose from 'mongoose';
 
 const kycDocumentSchema = new mongoose.Schema(

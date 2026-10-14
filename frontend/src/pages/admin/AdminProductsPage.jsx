@@ -1,3 +1,6 @@
+import useAuth from '../../hooks/useAuth';
+import { canAdmin } from '../../../../shared/adminAccess.js';
+import { getAdminAccessState } from '../../utils/adminAccessState';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import adminService from '../../services/adminService';
@@ -29,6 +32,9 @@ import {
 
 const AdminProductsPage = () => {
   const navigate = useNavigate();
+  const { adminUser, user } = useAuth();
+  const [canReadCategories, setCanReadCategories] = useState(() => canAdmin(adminUser || user, 'categories', 'read'));
+  const categoriesLoaded = useRef(false);
   const toastApi = useToast();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -162,9 +168,21 @@ const AdminProductsPage = () => {
         totalItems: total,
       });
 
-      if (categoriesList.length === 0) {
-        const catRes = await adminService.getCategories({ limit: 500, sortBy: 'sortOrder', sortOrder: 'asc' });
-        setCategoriesList(catRes.data?.categories || []);
+      // Category management is a separate permission. Its optional lookup must
+      // never turn a successful product request into a failed catalog screen.
+      const categoryAccess = canAdmin(getAdminAccessState() || adminUser || user, 'categories', 'read');
+      setCanReadCategories(categoryAccess);
+      if (!categoryAccess) {
+        setCategoriesList([]);
+        categoriesLoaded.current = false;
+      } else if (!categoriesLoaded.current) {
+        try {
+          const catRes = await adminService.getCategories({ limit: 500, sortBy: 'sortOrder', sortOrder: 'asc' });
+          setCategoriesList(catRes.data?.categories || []);
+          categoriesLoaded.current = true;
+        } catch {
+          setCategoriesList([]);
+        }
       }
     } catch (err) {
       console.error('Error fetching admin products:', err);
@@ -260,7 +278,7 @@ const AdminProductsPage = () => {
         }}
         searchPlaceholder="Search by SKU or Product Name..."
         filters={[
-          {
+          ...(canReadCategories && categoriesList.length ? [{
             value: categoryIdFilter,
             onChange: (val) => {
               setCategoryIdFilter(val);
@@ -286,7 +304,7 @@ const AdminProductsPage = () => {
                 return { value: cat._id, label };
               }),
             ],
-          },
+          }] : []),
           {
             value: isActiveFilter,
             onChange: (val) => {
@@ -387,15 +405,15 @@ const AdminProductsPage = () => {
                       <div className="text-xs font-bold text-foreground max-w-xs truncate">{prod.name}</div>
                     </Table.Cell>
                     <Table.Cell className="text-xs text-muted-foreground" onClick={(event) => event.stopPropagation()}>
-                      <select value={headerId} disabled={Boolean(categoryBusy[prod._id]) || headerCategories.length === 0}
+                      {canReadCategories && headerCategories.length > 0 ? <select value={headerId} disabled={Boolean(categoryBusy[prod._id]) || headerCategories.length === 0}
                         aria-label={`Header category for ${prod.name}`}
                         title="Change header category. Main and sub-category assignments are cleared when changing headers."
                         onChange={(event) => updateHeaderCategory(prod, event.target.value)}
                         className="w-36 max-w-full rounded-md border border-border bg-card px-2 py-1 text-[11px] text-foreground disabled:opacity-50 cursor-pointer">
                         <option value="" disabled>Select header</option>
                         {headerCategories.map((header) => <option key={header._id} value={header._id} disabled={header.isActive === false}>{header.name}{header.isActive === false ? ' (inactive)' : ''}</option>)}
-                      </select>
-                      {categoryName !== categoryById.get(headerId)?.name && <p className="mt-0.5 text-[10px]">{categoryName}</p>}
+                      </select> : <span>{prod.categoryId?.name || 'Unassigned'}</span>}
+                      {canReadCategories && headerCategories.length > 0 && categoryName !== categoryById.get(headerId)?.name && <p className="mt-0.5 text-[10px]">{categoryName}</p>}
                     </Table.Cell>
                     <Table.Cell className="text-xs font-semibold text-foreground" onClick={(event) => event.stopPropagation()}>
                       <div className="flex items-center gap-1.5 whitespace-nowrap">

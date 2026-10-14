@@ -1,3 +1,6 @@
+import { adminLocation } from '../utils/adminLocation';
+import { getAdminAccessState } from '../utils/adminAccessState';
+import { canAdmin, sectionForAdminPath } from '../../../shared/adminAccess.js';
 import axios from 'axios';
 import { getStoredRefreshToken, setStoredRefreshToken, clearStoredRefreshToken, clearStoredUser } from '../utils/tokenStorage';
 import { loadingTracker } from '../utils/loadingTracker';
@@ -118,6 +121,15 @@ apiClient.interceptors.request.use(
     const method = (config.method || 'get').toLowerCase();
     const isMutation = ['post', 'put', 'patch', 'delete'].includes(method);
 
+    if (isMutation && isAdminEndpoint) {
+      config.headers['X-Admin-Location'] = JSON.stringify(adminLocation.get());
+      const access = getAdminAccessState();
+      const section = sectionForAdminPath(config.url);
+      if (access?.isEmployee && section && !canAdmin(access, section, 'write')) {
+        return Promise.reject(new axios.AxiosError("You don't have write access to this section.", 'ACCESS_DENIED', config, null,
+          { status: 403, data: { message: "You don't have write access to this section.", error: { code: 'WRITE_ACCESS_DENIED' } } }));
+      }
+    }
     if (isMutation && config.dedupe !== false) {
       const key = requestKey(config);
       if (inFlightRequests.has(key)) {
@@ -172,6 +184,9 @@ apiClient.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
+    if (error.response?.status === 403 && error.response?.data?.error?.code === 'WRITE_ACCESS_DENIED') {
+      window.dispatchEvent(new CustomEvent('admin-write-denied'));
+    }
     releaseRequest(originalRequest);
     if (originalRequest?._globalLoaderTracked) {
       originalRequest._globalLoaderTracked = false;

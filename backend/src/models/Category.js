@@ -1,3 +1,4 @@
+import '../audit/audit.js';
 import mongoose from 'mongoose';
 import { invalidateCategoryCache } from '../utils/categoryCache.js';
 

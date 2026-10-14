@@ -5,10 +5,12 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const ROUTES_FILE = path.join(ROOT, 'frontend/src/routes/AppRoutes.jsx');
 
-export const discoverFrontendRoutes = () => {
+export const declaredFrontendRoutes = () => {
   const source = fs.readFileSync(ROUTES_FILE, 'utf8');
-  return [...new Set([...source.matchAll(/<Route\s+path=["']([^"']+)["']/g)].map((match) => match[1]))];
+  return [...source.matchAll(/<Route\s+path=["']([^"']+)["']/g)].map((match) => match[1]);
 };
+
+export const discoverFrontendRoutes = () => [...new Set(declaredFrontendRoutes())];
 
 const SAMPLES = {
   '/invoices/:token': `/invoices/${'a'.repeat(64)}`,

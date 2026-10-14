@@ -7,7 +7,7 @@ import { config } from '../../backend/src/config/env.js';
 import { storageService } from '../../backend/src/services/storage/storage.service.js';
 let grid, request, previousProvider;
 const matches = filter => grid && grid.revision === filter.revision && Object.entries(filter).every(([key, value]) => {
-  if (key.endsWith('.images.2')) return grid.sections[Number(key.split('.')[1])].images.length < 3;
+  if (key.endsWith('.images.4')) return grid.sections[Number(key.split('.')[1])].images.length < 5;
   if (key.endsWith('.images._id')) return grid.sections[Number(key.split('.')[1])].images.some(i => String(i._id) === value);
   return true;
 });
@@ -15,7 +15,12 @@ beforeEach(() => {
   grid = null; previousProvider = config.storageProvider; config.storageProvider = 'cloudinary';
   jest.spyOn(storageService, 'uploadFile').mockResolvedValue({ url: 'https://images.example/banner.webp', publicId: 'bento/test' });
   jest.spyOn(BannerGrid, 'findOne').mockImplementation(() => ({ lean: async () => grid?.toObject() || null }));
-  jest.spyOn(BannerGrid, 'updateOne').mockImplementation(async (filter, update) => { if (!grid) grid = new BannerGrid(update.$setOnInsert); });
+  jest.spyOn(BannerGrid, 'updateOne').mockImplementation(async (filter, update) => {
+    if (!grid && update.$setOnInsert) grid = new BannerGrid(update.$setOnInsert);
+    else if (update.$set?.sections && grid.sections.length === 4 && grid.revision === filter.revision) {
+      grid.sections = update.$set.sections; grid.revision += update.$inc.revision;
+    }
+  });
   jest.spyOn(BannerGrid, 'exists').mockImplementation(async filter => matches(filter));
   jest.spyOn(BannerGrid, 'findOneAndUpdate').mockImplementation(async (filter, update) => {
     if (!matches(filter)) return null;
@@ -35,16 +40,16 @@ beforeEach(() => {
 });
 afterEach(() => { config.storageProvider = previousProvider; jest.restoreAllMocks(); });
 const upload = (section, revision) => request.post(`/grid/${section}/images`).field('revision', revision).attach('file', Buffer.from('test fixture'), { filename: 'banner.png', contentType: 'image/png' });
-test('four sections initialize; uploads are capped at three independently', async () => {
-  expect((await request.get('/grid')).body.data.grid.sections).toHaveLength(4);
+test('two sections initialize; uploads are capped at five independently', async () => {
+  expect((await request.get('/grid')).body.data.grid.sections).toHaveLength(2);
   expect((await request.get('/public')).body.data.grid).toBeNull();
-  for (let revision = 0; revision < 3; revision++) expect((await upload(0, revision)).status).toBe(200);
-  expect((await upload(0, 3)).status).toBe(409);
-  expect(storageService.uploadFile).toHaveBeenCalledTimes(3);
-  expect((await upload(1, 3)).status).toBe(200);
+  for (let revision = 0; revision < 5; revision++) expect((await upload(0, revision)).status).toBe(200);
+  expect((await upload(0, 5)).status).toBe(409);
+  expect(storageService.uploadFile).toHaveBeenCalledTimes(5);
+  expect((await upload(1, 5)).status).toBe(200);
   const publicResponse = await request.get('/public');
   expect(publicResponse.headers['cache-control']).toBe('no-store');
-  expect(publicResponse.body.data.grid.sections.map(s => s.images.length)).toEqual([3, 1, 0, 0]);
+  expect(publicResponse.body.data.grid.sections.map(s => s.images.length)).toEqual([5, 1]);
 });
 test('stale edits fail; replacement, metadata edits and removal preserve other sections', async () => {
   await upload(0, 0); await upload(1, 1); const id = String(grid.sections[0].images[0]._id);
@@ -59,9 +64,26 @@ test('stale edits fail; replacement, metadata edits and removal preserve other s
   expect(grid.sections[0].images).toHaveLength(0); expect(grid.sections[1].images).toHaveLength(1);
 });
 test('invalid sections, unsafe links, invalid IDs and SVG uploads are rejected', async () => {
+  expect((await upload(2, 0)).status).toBe(400);
   expect((await upload(4, 0)).status).toBe(400);
   expect((await request.post('/grid/0/images').field('revision', 0).attach('file', Buffer.from('<svg/>'), { filename: 'banner.svg', contentType: 'image/svg+xml' })).status).toBe(400);
   expect((await request.put('/grid/0/images/not-an-id').send({ revision: 0 })).status).toBe(400);
   expect((await request.put('/grid/0/images/507f1f77bcf86cd799439011').send({ revision: 0, link: 'javascript:alert(1)' })).status).toBe(400);
   expect(storageService.uploadFile).not.toHaveBeenCalled();
+});
+
+test('legacy grids retain first and fourth artwork and migrate admin revision once', async () => {
+  grid = new BannerGrid({ configured: true, revision: 7, sections: Array.from({ length: 4 }, (_, i) => ({
+    transition: i === 3 ? 'blur' : 'fade', images: [{ url: `https://example.com/${i}.png`, positionX: 25 + i, zoom: 1.5 }],
+  })) });
+  const original = grid.toObject();
+  const publicResponse = await request.get('/public');
+  expect(publicResponse.body.data.grid.sections.map(s => s.images[0].url)).toEqual(['https://example.com/0.png', 'https://example.com/3.png']);
+  expect(grid.sections).toHaveLength(4);
+  const adminResponse = await request.get('/grid');
+  expect(adminResponse.body.data.grid.revision).toBe(8);
+  expect(grid.sections[1].toObject()).toEqual(original.sections[3]);
+  expect((await request.get('/grid')).body.data.grid.revision).toBe(8);
+  expect((await upload(1, 7)).status).toBe(409);
+  expect((await upload(1, 8)).status).toBe(200);
 });
