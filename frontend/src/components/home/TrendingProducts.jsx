@@ -70,7 +70,7 @@ export default function TrendingProducts({ products = [] }) {
           {slides.map((product, index) => <Link key={`${product._id}-${index}`} to={buildProductPath(product)} className="trending-card group">
             <div className="trending-artwork">
               <span className="trending-brand">{product.brandId?.name || 'ViNexus'}</span>
-              <Image src={product.images?.[0]?.url || product.image} alt={product.name} className="h-full w-full !bg-transparent" objectFit="object-contain" imgClassName="p-7 pt-10 transition-transform duration-300 group-hover:scale-105" />
+              <Image src={product.images?.[0]?.url || product.image} alt={product.name} className="h-full w-full !bg-transparent" objectFit="object-contain" imgClassName="p-4 pt-8 transition-transform duration-300 group-hover:scale-105" />
             </div>
             <div className="trending-caption"><span className="line-clamp-2 font-semibold">{product.name}</span><ArrowUpRight size={18} className="shrink-0" /></div>
           </Link>)}

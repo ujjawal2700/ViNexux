@@ -216,8 +216,8 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
           sortBy = "createdAt";
           sortOrder = "desc";
         } else {
-          sortBy = "createdAt";
-          sortOrder = "desc";
+          sortBy = "categoryPriority";
+          sortOrder = "asc";
         }
 
         const query = {

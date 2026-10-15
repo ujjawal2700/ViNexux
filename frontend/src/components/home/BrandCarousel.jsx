@@ -295,7 +295,7 @@ export const BrandCarousel = () => {
     return [...base, ...base];
   }, [uniqueBrands]);
 
-  // Smooth continuous right-to-left marquee auto-scroll
+  // Smooth continuous left-to-right marquee auto-scroll
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || !displayBrands.length) return;
@@ -304,14 +304,12 @@ export const BrandCarousel = () => {
 
     const step = () => {
       if (!isPaused && el) {
-        // Increment scroll position (items move from right to left)
-        el.scrollLeft += 0.75;
-
-        // When we have scrolled past exactly half the track, wrap back seamlessly
-        const halfScroll = el.scrollWidth / 2;
-        if (el.scrollLeft >= halfScroll) {
-          el.scrollLeft -= halfScroll;
-        }
+        // Move toward the start so the logos travel to the right. Wrap to
+        // the identical second copy before reaching the left boundary.
+        const halfwayItem = el.children[displayBrands.length / 2];
+        const loopWidth = halfwayItem ? halfwayItem.offsetLeft - el.children[0].offsetLeft : 0;
+        if (loopWidth && el.scrollLeft <= 1) el.scrollLeft += loopWidth;
+        el.scrollLeft -= 0.75;
       }
       animId = requestAnimationFrame(step);
     };

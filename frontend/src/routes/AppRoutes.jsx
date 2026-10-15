@@ -61,6 +61,7 @@ const AdminCategoriesPage = lazyWithRetry(() => import('../pages/admin/AdminCate
 const AdminHeaderCategoriesPage = lazyWithRetry(() => import('../pages/admin/AdminHeaderCategoriesPage'));
 const AdminMainCategoriesPage = lazyWithRetry(() => import('../pages/admin/AdminMainCategoriesPage'));
 const AdminSubCategoriesPage = lazyWithRetry(() => import('../pages/admin/AdminSubCategoriesPage'));
+const AdminProductPositioningPage = lazyWithRetry(() => import('../pages/admin/AdminProductPositioningPage'));
 const AdminProductsPage = lazyWithRetry(() => import('../pages/admin/AdminProductsPage'));
 const AdminPosPage = lazyWithRetry(() => import('../pages/admin/AdminPosPage'));
 const AdminBrandsPage = lazyWithRetry(() => import('../pages/admin/AdminBrandsPage'));
@@ -208,6 +209,7 @@ const AppRoutes = () => {
             <Route path="/admin/categories/header" element={<AdminHeaderCategoriesPage />} />
             <Route path="/admin/categories/main" element={<AdminMainCategoriesPage />} />
             <Route path="/admin/categories/sub" element={<AdminSubCategoriesPage />} />
+            <Route path="/admin/products/positioning" element={<AdminProductPositioningPage />} />
             <Route path="/admin/products" element={<AdminProductsPage />} />
             <Route path="/admin/pos" element={<AdminPosPage />} />
             <Route path="/admin/brands" element={<AdminBrandsPage />} />

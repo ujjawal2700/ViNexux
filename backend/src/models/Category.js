@@ -60,6 +60,8 @@ const categorySchema = new mongoose.Schema(
       default: 0,
       min: [0, 'Sort order cannot be negative'],
     },
+    productPriority: { type: Number, default: null, min: 0, max: 1000000 },
+    productPositionSequence: { type: Number, default: null },
     // Admin-defined product fields for this category. Descendants inherit
     // definitions from every ancestor and may add/override fields by key.
     filterDefinitions: {

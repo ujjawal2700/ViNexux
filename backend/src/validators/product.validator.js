@@ -189,10 +189,15 @@ export const getProductsQuerySchema = {
       })
       .optional(),
     sortBy: z
-      .enum(['name', 'modelNumber', 'sku', 'createdAt', 'standardPrice', 'dealerPrice', 'stockQuantity', 'sortOrder', 'updatedAt', 'stockUpdatedAt'], {
+      .enum(['name', 'modelNumber', 'sku', 'createdAt', 'standardPrice', 'dealerPrice', 'stockQuantity', 'sortOrder', 'categoryPriority', 'updatedAt', 'stockUpdatedAt'], {
         invalid_type_error: 'Invalid sortBy field',
       })
       .optional(),
     sortOrder: z.enum(['asc', 'desc']).optional(),
   }),
+};
+
+export const productPositioningSchema = {
+  params: z.object({ id: z.string().refine(isValidObjectId, 'Invalid header category ID') }),
+  body: z.object({ productPriority: z.number().int().min(0).max(1000000).nullable() }).strict(),
 };
