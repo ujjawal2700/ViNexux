@@ -51,6 +51,15 @@ export const adminService = {
     return response.data;
   },
 
+  async getProductPositioning() {
+    const response = await apiClient.get('/admin/products/positioning');
+    return response.data;
+  },
+  async updateProductPositioning(id, productPriority) {
+    const response = await apiClient.put(`/admin/products/positioning/${id}`, { productPriority });
+    return response.data;
+  },
+
   // --- PRODUCT MANAGEMENT ---
   async downloadProductImportTemplate() {
     const response = await apiClient.get('/admin/products/import/template', { responseType: 'blob' });

@@ -8,7 +8,7 @@ test('catalog sort menu requests newest, updated stock and trending products fro
   const sort = page.getByRole('button', { name: 'Sort products', exact: true });
   await sort.click();
   await expect(page.getByRole('menuitem', { name: /Name \(/ })).toHaveCount(0);
-  for (const [name, field, trending] of [['Newest First', 'createdAt', false], ['Stock Updated', 'stockUpdatedAt', false], ['Default', 'createdAt', false]]) {
+  for (const [name, field, trending] of [['Newest First', 'createdAt', false], ['Stock Updated', 'stockUpdatedAt', false], ['Default', 'categoryPriority', false]]) {
     if (name !== 'Newest First') await sort.click();
     const request = page.waitForRequest(req => {
       const url = new URL(req.url());
@@ -16,7 +16,7 @@ test('catalog sort menu requests newest, updated stock and trending products fro
     });
     await page.getByRole('menuitem', { name, exact: true }).click();
     const url = new URL((await request).url());
-    expect(url.searchParams.get('sortOrder')).toBe('desc');
+    expect(url.searchParams.get('sortOrder')).toBe(name === 'Default' ? 'asc' : 'desc');
     expect(url.searchParams.get('page')).toBe('1');
   }
   const trendingRequest = page.waitForRequest(req => { const url = new URL(req.url()); return url.pathname === '/api/products' && url.searchParams.get('isTrending') === 'true'; });

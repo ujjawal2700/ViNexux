@@ -11,7 +11,9 @@ export const ADMIN_NAV_GROUPS = [
       { label: 'Main Category', path: '/admin/categories/main', icon: 'FolderTree' },
       { label: 'Sub Category', path: '/admin/categories/sub', icon: 'GitBranch' },
     ] },
-    { label: 'Product Catalog', path: '/admin/products', icon: 'Package', keywords: 'stock inventory import' },
+    { label: 'Product Catalog', path: '/admin/products', icon: 'Package', keywords: 'stock inventory import positioning', children: [
+      { label: 'Product Positioning', path: '/admin/products/positioning', icon: 'Layers' },
+    ] },
     { label: 'Brand Management', path: '/admin/brands', icon: 'Tags' },
   ] },
   { label: 'Sales & Enquiries', items: [

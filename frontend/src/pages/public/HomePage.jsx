@@ -66,7 +66,7 @@ export const HomePage = () => {
         categoryService.getCategoryTree(),
         productService.getProducts({ isTrending: true, sortBy: 'updatedAt', sortOrder: 'desc', limit: 20, includeFacets: false }),
         productService.getProducts({ sortBy: 'createdAt', sortOrder: 'desc', limit: 8, includeFacets: false }),
-        productService.getProducts({ page: 1, limit: 16, includeFacets: false }),
+        productService.getProducts({ page: 1, sortBy: 'categoryPriority', limit: 16, includeFacets: false }),
         contentService.getBannerGrid().catch(() => ({ data: { grid: null } })),
       ]);
       setBannerGrid(gridResponse.data?.grid || null);
@@ -96,7 +96,7 @@ export const HomePage = () => {
       {/* Two independently rotating banner areas. */}
       <HeroBentoGrid grid={bannerGrid} />
 
-      {/* 2. ALL BRANDS WITH LOGOS SLIDING RIGHT TO LEFT */}
+      {/* 2. ALL BRANDS WITH LOGOS SLIDING LEFT TO RIGHT */}
       <section className="w-full">
         <BrandCarousel />
       </section>

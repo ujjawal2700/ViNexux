@@ -1,3 +1,4 @@
+import { getProductPositioning, updateProductPositioning } from '../services/productPositioning.service.js';
 import { productService } from '../services/product.service.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -219,3 +220,11 @@ export default {
   deleteImage,
   seedTestStockQuantities,
 };
+
+export const listProductPositioning = asyncHandler(async (req, res) => {
+  return ApiResponse.success(res, 'Header category product positions fetched', { categories: await getProductPositioning() });
+});
+
+export const saveProductPositioning = asyncHandler(async (req, res) => {
+  return ApiResponse.success(res, 'Product position saved', await updateProductPositioning(req.params.id, req.body.productPriority));
+});

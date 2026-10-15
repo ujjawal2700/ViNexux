@@ -1,3 +1,4 @@
+import { storefrontOrderingStages } from '../utils/storefrontOrdering.js';
 import mongoose from 'mongoose';
 import { isInventorySpecification } from '../../../shared/productSpecifications.js';
 import { Category } from '../models/Category.js';
@@ -365,12 +366,14 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   const resultFacets = {
     products: [
       ...facetFilters,
-      { $sort: sortStage },
+      ...(!query.sortBy || query.sortBy === 'categoryPriority'
+        ? storefrontOrderingStages(categories)
+        : [{ $sort: sortStage }]),
       { $skip: (page - 1) * limit },
       { $limit: limit },
       ...(priceNeededBeforePaging ? [] : pricingStages),
       { $set: { brand: '$brandKey', stockQuantity: '$stockLevel' } },
-      { $unset: ['_pricing', '__v', 'priceHistory', ...INTERNAL_CATALOG_FIELDS] },
+      { $unset: ['_pricing', '_categoryPriority', '__v', 'priceHistory', ...INTERNAL_CATALOG_FIELDS] },
     ],
     total: [...facetFilters, { $count: 'count' }],
   };

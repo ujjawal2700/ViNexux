@@ -258,6 +258,7 @@ const AdminProductsPage = () => {
         subtitle="Manage hardware models, laptops, desktops, cameras, networking, SKUs, wholesale dealer pricing & specs"
         badge={`${pagination.total} Total Products`}
         action={<div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => navigate('/admin/products/positioning')}>Product Positioning</Button>
           <Button variant="outline" size="sm" onClick={() => navigate('/admin/products/import')}>
             <FileSpreadsheet className="w-4 h-4 mr-1.5" /> Bulk Import
           </Button>

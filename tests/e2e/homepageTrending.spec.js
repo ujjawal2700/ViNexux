@@ -10,9 +10,11 @@ test('homepage shows scrolling trending cards and compact unboxed brand logos', 
     stockQuantity: 20, isTrending: true, brandId: { name: 'ViNexus' }, images: [{ url: `/home-test/product-${i}.svg` }],
   }));
   let trendingRequested = false;
+  let homepageOrderingRequested = false;
   await page.route('**/api/products?*', route => {
     const url = new URL(route.request().url());
     if (url.searchParams.get('isTrending') === 'true') trendingRequested = true;
+    if (url.searchParams.get('sortBy') === 'categoryPriority') homepageOrderingRequested = true;
     return route.fulfill({ json: { success: true, data: { products, pagination: { total: 5, totalPages: 1 } } } });
   });
   await page.route('**/api/products/brands', route => route.fulfill({ json: { success: true, data: { brands:
@@ -26,12 +28,18 @@ test('homepage shows scrolling trending cards and compact unboxed brand logos', 
   await expect(section.getByRole('heading', { name: 'Trending Products', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Updated Products' })).toHaveCount(0);
   expect(trendingRequested).toBe(true);
+  expect(homepageOrderingRequested).toBe(true);
+  expect((await section.locator('.trending-card').first().boundingBox()).height).toBeLessThan(230);
   await expect(section.getByRole('link', { name: /View all/ })).toHaveAttribute('href', '/trending');
   const track = section.locator('.trending-track');
   await page.mouse.move(0, 0);
+  const brandsTrack = page.locator('.brand-carousel-track');
+  await page.clock.runFor(100);
+  const brandsStart = await brandsTrack.evaluate(el => el.scrollLeft);
   const start = await track.evaluate(el => el.scrollLeft);
   await page.clock.runFor(700);
   expect(await track.evaluate(el => el.scrollLeft)).toBeGreaterThan(start);
+  expect(await brandsTrack.evaluate(el => el.scrollLeft)).toBeLessThan(brandsStart);
   await track.focus();
   const paused = await track.evaluate(el => el.scrollLeft);
   await page.clock.runFor(300);
