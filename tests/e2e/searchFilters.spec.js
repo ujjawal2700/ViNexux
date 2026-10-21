@@ -23,7 +23,7 @@ async function select(page, name, checked = true) {
   if (await input.isChecked() !== checked) await input.click();
   if (checked) await expect(input).toBeChecked(); else await expect(input).not.toBeChecked();
 }
-async function setup(page, rows = products) {
+async function setup(page, rows = products, transformFacets = facets => facets) {
   await mockApi(page); await seedBrowserSession(page, 'storefront');
   const calls = [];
   await page.route('**/api/categories**', route => route.fulfill({ json: { success: true, data: { categories, categoryTree: categories } } }));
@@ -41,12 +41,12 @@ async function setup(page, rows = products) {
     });
     const pageNumber = Number(params.get('page') || 1), limit = Number(params.get('limit') || 28);
     const facets = {
-      categories: categories.map(category => ({ ...category, level: category.parentId ? [id(1), id(2)].includes(category.parentId) ? 2 : 3 : 1, count: params.has('headerCategory') && category._id === id(2) ? 0 : rows.filter(product => ancestry(product).includes(category._id)).length, availableCount: 1 })),
+      categories: categories.map(category => ({ ...category, level: category.parentId ? [id(1), id(2)].includes(category.parentId) ? 2 : 3 : 1, count: rows.filter(product => ancestry(product).includes(category._id)).length, availableCount: 1 })),
       brands: [...new Set(rows.map(product => product.specifications[0].value))].map(name => ({ name, count: 1 })),
       specs: [{ key: 'Resolution', label: 'Resolution', values: [{ val: '4 MP', count: 2 }, { val: '8 MP', count: 1 }] }, { key: 'Power', label: 'Power', values: [{ val: 'PoE', count: 3 }, { val: '12V', count: 1 }] }],
       availability: [{ status: 'in-stock', count: rows.length }],
     };
-    return route.fulfill({ json: { success: true, data: { resolvedBrand, products: filtered.slice((pageNumber - 1) * limit, pageNumber * limit), pagination: { page: pageNumber, limit, total: filtered.length, totalPages: Math.ceil(filtered.length / limit) }, ...(params.get('includeFacets') === 'false' ? {} : { facets }) } } });
+    return route.fulfill({ json: { success: true, data: { resolvedBrand, products: filtered.slice((pageNumber - 1) * limit, pageNumber * limit), pagination: { page: pageNumber, limit, total: filtered.length, totalPages: Math.ceil(filtered.length / limit) }, ...(params.get('includeFacets') === 'false' ? {} : { facets: transformFacets(facets) }) } } });
   });
   return calls;
 }
@@ -105,13 +105,39 @@ test('category-route filtering preserves search, brands and specs when adding a 
   await expect(checkbox(page, 'Resolution: 4 MP')).toBeChecked();
 });
 
-test('unchecking all availability statuses shows zero results while keeping options', async ({ page }) => {
-  await setup(page); await page.goto('/products');
-  for (const name of ['In Stock', 'Low Stock', 'On Order', 'Out of Stock']) await select(page, `Availability: ${name}`, false);
+test('availability hides empty statuses and supports clearing its populated status', async ({ page }) => {
+  await setup(page); await page.goto('/products?availability=in-stock');
+  for (const name of ['Low Stock', 'On Order', 'Out of Stock']) await expect(checkbox(page, `Availability: ${name}`)).toHaveCount(0);
+  await select(page, 'Availability: In Stock', false);
   await expect(page.getByRole('heading', { name: 'No Products Found', exact: true })).toBeVisible();
   await expect(checkbox(page, 'Header categories: CCTV')).toBeVisible();
   await select(page, 'Availability: In Stock'); await expect(names(page)).toHaveCount(4);
 });
+
+for (const mobile of [false, true]) {
+  test(`${mobile ? 'mobile' : 'desktop'} filters hide zero-count categories, brands and specification groups`, async ({ page }) => {
+    if (mobile) await page.setViewportSize({ width: 390, height: 844 });
+    await setup(page, products, facets => ({
+      ...facets,
+      categories: facets.categories.map(category => ({ ...category, count: [id(2), id(4), id(7)].includes(category._id) ? 0 : category.count })),
+      brands: facets.brands.map(brand => ({ ...brand, count: brand.name === 'BETA' ? 0 : brand.count })),
+      specs: facets.specs.map(spec => ({ ...spec, values: spec.values.map(value => ({ ...value, count: spec.key === 'Power' || value.val === '8 MP' ? 0 : value.count })) })),
+    }));
+    // Selected zero-count values must not be reinserted into the filter list.
+    await page.goto('/products?headerCategory=' + id(2) + '&brand=BETA&specs=' + encodeURIComponent(JSON.stringify({ Power: ['PoE'] })));
+    if (mobile) await page.getByRole('button', { name: 'Filters', exact: true }).click();
+    await expect(checkbox(page, 'Header categories: CCTV')).toBeVisible();
+    await expect(checkbox(page, 'Main categories: IP Cameras (CCTV)')).toBeVisible();
+    await expect(checkbox(page, 'Subcategories: Bullet (IP Cameras)')).toBeVisible();
+    for (const name of ['Header categories: Networking', 'Main categories: Switches (Networking)', 'Subcategories: PoE Switches (Switches)', 'Brand: BETA', 'Resolution: 8 MP', 'Power: PoE', 'Power: 12V']) {
+      await expect(checkbox(page, name)).toHaveCount(0);
+    }
+    await expect(checkbox(page, 'Brand: ACME')).toBeVisible();
+    await expect(checkbox(page, 'Resolution: 4 MP')).toBeVisible();
+    await page.getByRole('button', { name: 'Reset', exact: true }).filter({ visible: true }).click();
+    await expect(names(page)).toHaveCount(4);
+  });
+}
 
 test('pagination reuses facets and selecting a filter returns to page one', async ({ page }) => {
   const rows = Array.from({ length: 32 }, (_, index) => ({ ...products[index % 4], _id: id(50 + index), name: `Camera ${index}` }));

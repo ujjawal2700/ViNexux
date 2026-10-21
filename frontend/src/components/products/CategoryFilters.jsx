@@ -6,21 +6,11 @@ export default function CategoryFilters({ categories, facets, selections, onTogg
     const levels = categoryLevels(categories);
     const byId = new Map(categories.map(category => [String(category._id), category]));
     const counts = new Map((facets || []).map(category => [String(category._id), category]));
-    const visible = new Set(counts.keys());
-    // Keep selected rows and their ancestors visible even for a zero-result search.
-    for (const value of Object.values(selections).flat()) {
-      let current = byId.get(value);
-      const seen = new Set();
-      while (current && !seen.has(String(current._id))) {
-        const id = String(current._id); seen.add(id); visible.add(id);
-        current = byId.get(String(current.parentId?._id || current.parentId || ''));
-      }
-    }
-    return CATEGORY_FILTER_KEYS.map((key, index) => ({ key, label: labels[index], rows: categories.filter(category => levels.get(String(category._id)) === index + 1 && (facets === undefined || visible.has(String(category._id)))).map(category => ({
+    return CATEGORY_FILTER_KEYS.map((key, index) => ({ key, label: labels[index], rows: categories.filter(category => levels.get(String(category._id)) === index + 1 && counts.get(String(category._id))?.count > 0).map(category => ({
       ...category, count: counts.get(String(category._id))?.count || 0,
       parentName: byId.get(String(category.parentId?._id || category.parentId || ''))?.name || '',
     })) }));
-  }, [categories, facets, selections]);
+  }, [categories, facets]);
   const all = !Object.values(selections).some(values => values.length);
   return <div className="space-y-4">
     <label className="flex items-center gap-2 text-xs cursor-pointer"><input type="checkbox" checked={all} onChange={onClear} className="h-4 w-4 accent-[var(--store-primary)]" /><span>All Categories</span></label>

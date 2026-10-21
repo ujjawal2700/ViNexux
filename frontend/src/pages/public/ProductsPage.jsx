@@ -336,21 +336,11 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
 
   const isAllProductsRoute = lowStockOnly || trendingOnly || location.pathname.startsWith("/products");
 
-  const availableBrands = useMemo(() => {
-    const result = [...(facets.brands || [])];
-    for (const name of selectedBrands) if (!result.some(brand => brand.name.toUpperCase() === name)) result.push({ name, count: 0 });
-    return result;
-  }, [facets.brands, selectedBrands]);
-  const specsToRender = useMemo(() => {
-    const result = (facets.specs || []).map(spec => ({ ...spec, values: [...spec.values] }));
-    for (const [key, values] of Object.entries(selectedSpecs)) {
-      let spec = result.find(item => item.key.toLowerCase() === key.toLowerCase());
-      if (!spec && values.length) { spec = { key, label: key, values: [] }; result.push(spec); }
-      if (spec) for (const val of values) if (!spec.values.some(item => item.val === val)) spec.values.push({ val, count: 0 });
-    }
-    return result;
-  }, [facets.specs, selectedSpecs]);
-  const availabilityFacets = facets.availability || [];
+  const availableBrands = useMemo(() => (facets.brands || []).filter(brand => brand.count > 0), [facets.brands]);
+  const specsToRender = useMemo(() => (facets.specs || [])
+    .map(spec => ({ ...spec, values: spec.values.filter(value => value.count > 0) }))
+    .filter(spec => spec.values.length > 0), [facets.specs]);
+  const availabilityFacets = (facets.availability || []).filter(item => item.count > 0);
   // Filtering and pagination are performed together by MongoDB.
   const displayedProducts = products;
 
@@ -555,36 +545,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
       </div>
       <p className="text-xs text-[var(--store-muted)]">Choose multiple options in a group to include any of them. Combine groups to narrow your search.</p>
 
-      {/* 2. Categories Accordion (matching Availability checkbox pattern) */}
-      <div className="border-b border-[var(--store-border)] pb-3">
-        <button
-          type="button"
-          onClick={() =>
-            setOpenSections((prev) => ({
-              ...prev,
-              categories: !prev.categories,
-            }))
-          }
-          className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-[var(--store-text)] py-1.5 hover:text-primary transition-colors select-none">
-          <div className="flex items-center gap-2">
-            <LayoutGrid className="w-4 h-4 text-primary" />
-            <span>Categories</span>
-          </div>
-          <ChevronDown
-            className={`w-4 h-4 text-[var(--store-muted)] transition-transform duration-200 ${
-              openSections.categories ? "rotate-180" : ""
-            }`}
-          />
-        </button>
-
-        {openSections.categories && (
-          <div className="mt-2.5 space-y-1.5">
-            <CategoryFilters categories={categories} facets={facets.categories} selections={categorySelections} onToggle={handleToggleCategory} onClear={() => handleToggleCategory(null)} />
-          </div>
-        )}
-      </div>
-
-      {/* Brand options remain available as other groups narrow the results. */}
+      {/* Brands appear first; only show options that have products. */}
       {availableBrands.length > 0 && (
           <div className="border-b border-[var(--store-border)] pb-3">
             <button
@@ -642,7 +603,36 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
           </div>
         )}
 
-      {/* Specification options remain available for small and empty result sets. */}
+      {/* Categories */}
+      <div className="border-b border-[var(--store-border)] pb-3">
+        <button
+          type="button"
+          onClick={() =>
+            setOpenSections((prev) => ({
+              ...prev,
+              categories: !prev.categories,
+            }))
+          }
+          className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-[var(--store-text)] py-1.5 hover:text-primary transition-colors select-none">
+          <div className="flex items-center gap-2">
+            <LayoutGrid className="w-4 h-4 text-primary" />
+            <span>Categories</span>
+          </div>
+          <ChevronDown
+            className={`w-4 h-4 text-[var(--store-muted)] transition-transform duration-200 ${
+              openSections.categories ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+
+        {openSections.categories && (
+          <div className="mt-2.5 space-y-1.5">
+            <CategoryFilters categories={categories} facets={facets.categories} selections={categorySelections} onToggle={handleToggleCategory} onClear={() => handleToggleCategory(null)} />
+          </div>
+        )}
+      </div>
+
+      {/* Omit specification groups without any populated values. */}
       {specsToRender.length > 0 &&
         specsToRender.map((spec) => (
           <div key={spec.key} className="border-b border-[var(--store-border)] pb-3">
@@ -709,7 +699,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
         ))}
 
       {/* 4. Availability (last filter: as is) */}
-      {!lowStockOnly && <div className="border-b border-[var(--store-border)] pb-3">
+      {!lowStockOnly && availabilityFacets.length > 0 && <div className="border-b border-[var(--store-border)] pb-3">
         <button
           type="button"
           onClick={() =>
@@ -740,6 +730,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
               const count = availabilityFacets
                 .filter((item) => item.status === status)
                 .reduce((total, item) => total + (item.count || 0), 0);
+              if (count <= 0) return null;
               return (
                 <label
                   key={status}
@@ -911,21 +902,13 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
 
         {/* 2. TWO-COLUMN LAYOUT: SIDEBAR (lg:col-span-3) + PRODUCT GRID (lg:col-span-9) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start relative">
-          {/* DESKTOP SIDEBAR FILTERS (Sticky & Independently Scrollable) */}
-          <aside className="hidden lg:block lg:col-span-3 xl:col-span-3 2xl:col-span-2 sticky top-[148px] self-start select-none">
-            <div
-              className="bg-[var(--store-surface)] rounded-lg border border-[var(--store-border)] p-4 shadow-2xs max-h-[calc(100vh-165px)] overflow-y-auto overscroll-contain [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400"
-              style={{
-                scrollbarWidth: 'thin',
-                scrollbarColor: '#cbd5e1 transparent',
-              }}
-            >
+          {/* Desktop filters grow with their content and stretch alongside the catalog. */}
+          <aside className="hidden lg:block lg:col-span-3 xl:col-span-3 2xl:col-span-2 self-stretch min-h-80 select-none bg-[var(--store-surface)] rounded-lg border border-[var(--store-border)] p-4 shadow-2xs">
               {isLoading && !facetsLoaded ? (
                 <FilterSidebarSkeleton />
               ) : (
                 renderSidebarFilters()
               )}
-            </div>
           </aside>
 
           {/* MAIN PRODUCT CATALOG CONTENT */}
