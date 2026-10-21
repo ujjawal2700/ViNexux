@@ -53,6 +53,15 @@ import {
   ArrowUpDown,
 } from "lucide-react";
 
+// Descriptive product details stay on product pages rather than in the sidebar.
+const HIDDEN_SPECIFICATION_FILTERS = new Set([
+  "storage", "applications", "voice assistant", "lens & zoom", "material",
+  "product type", "pan & tilt", "audio", "protection", "smart features",
+  "storage support",
+]);
+const isHiddenSpecificationFilter = (name) =>
+  HIDDEN_SPECIFICATION_FILTERS.has(String(name || "").trim().toLowerCase());
+
 const SORT_OPTIONS = [
   { value: "default", label: "Default" },
   { value: "newest", label: "Newest First" },
@@ -338,6 +347,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
 
   const availableBrands = useMemo(() => (facets.brands || []).filter(brand => brand.count > 0), [facets.brands]);
   const specsToRender = useMemo(() => (facets.specs || [])
+    .filter(spec => !isHiddenSpecificationFilter(spec.key) && !isHiddenSpecificationFilter(spec.label))
     .map(spec => ({ ...spec, values: spec.values.filter(value => value.count > 0) }))
     .filter(spec => spec.values.length > 0), [facets.specs]);
   const availabilityFacets = (facets.availability || []).filter(item => item.count > 0);
