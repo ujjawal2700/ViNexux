@@ -5,6 +5,13 @@ import { buildProductPath } from '../../utils/categoryUrls';
 import Image from '../ui/Image';
 import '../../styles/trending-products.css';
 
+function TrendingBrandLogo({ brand }) {
+  const [failedSource, setFailedSource] = useState(null);
+  const source = brand?.logo?.url;
+  if (!source || failedSource === source) return null;
+  return <img src={source} alt={`${brand.name || 'Brand'} logo`} className="trending-brand" loading="lazy" decoding="async" onError={() => setFailedSource(source)} />;
+}
+
 export default function TrendingProducts({ products = [] }) {
   const track = useRef(null);
   const group = useRef(null);
@@ -52,7 +59,9 @@ export default function TrendingProducts({ products = [] }) {
     if (!el || !width) return;
     if (direction < 0 && el.scrollLeft < 1) el.scrollLeft = width;
     if (direction > 0 && el.scrollLeft >= width) el.scrollLeft -= width;
-    el.scrollBy({ left: direction * (el.querySelector('a')?.offsetWidth + 20 || 320), behavior: reducedMotion ? 'instant' : 'smooth' });
+    const gap = parseFloat(getComputedStyle(group.current).columnGap) || 0;
+    const cardWidth = el.querySelector('a')?.getBoundingClientRect().width || 0;
+    el.scrollBy({ left: direction * (cardWidth + gap || 320), behavior: reducedMotion ? 'instant' : 'smooth' });
   };
 
   if (!products.length) return null;
@@ -67,12 +76,12 @@ export default function TrendingProducts({ products = [] }) {
       onTouchStart={() => setPaused(true)} onTouchEnd={() => setPaused(false)} onTouchCancel={() => setPaused(false)}>
       <div ref={track} className="trending-track scrollbar-none" tabIndex={0} aria-label="Trending products, scroll horizontally">
         {(products.length > 1 ? [0, 1] : [0]).map(copy => <div key={copy} ref={copy === 0 ? group : undefined} className="trending-group" aria-hidden={copy === 1 ? true : undefined} inert={copy === 1 ? true : undefined}>
-          {slides.map((product, index) => <Link key={`${product._id}-${index}`} to={buildProductPath(product)} className="trending-card group">
+          {slides.map((product, index) => <Link key={`${product._id}-${index}`} to={buildProductPath(product)} className="trending-card group" title={product.name}>
             <div className="trending-artwork">
-              <span className="trending-brand">{product.brandId?.name || 'ViNexus'}</span>
-              <Image src={product.images?.[0]?.url || product.image} alt={product.name} className="h-full w-full !bg-transparent" objectFit="object-contain" imgClassName="p-4 pt-8 transition-transform duration-300 group-hover:scale-105" />
+              <TrendingBrandLogo brand={product.brandId} />
+              <Image src={product.images?.[0]?.url || product.image} alt={product.name} className="h-full w-full !bg-transparent" objectFit="object-contain" imgClassName="px-3 pb-2 pt-10 transition-transform duration-300 group-hover:scale-105" />
             </div>
-            <div className="trending-caption"><span className="line-clamp-2 font-semibold">{product.name}</span><ArrowUpRight size={18} className="shrink-0" /></div>
+            <div className="trending-caption"><span className="line-clamp-2 font-semibold">{product.name}</span><ArrowUpRight size={15} className="shrink-0" /></div>
           </Link>)}
         </div>)}
       </div>
