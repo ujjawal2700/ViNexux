@@ -11,7 +11,7 @@ const history = async (page, selected = invoice) => {
   });
 };
 
-test('shared invoice asks for the purchase phone and verifies OTP before showing history', async ({ page }) => {
+test('shared invoice asks for the purchase phone and verifies OTP before showing history', async ({ page, baseURL }) => {
   await history(page); await seedBrowserSession(page, 'storefront');
   let otpPhone;
   await page.route('**/api/auth/send-otp', route => {
@@ -22,8 +22,8 @@ test('shared invoice asks for the purchase phone and verifies OTP before showing
     accessToken: 'e2e-access', refreshToken: 'customer-refresh', user: { _id: '507f1f77bcf86cd799439011', name: 'Invoice Customer', role: 'customer', phone: '9876543210' },
     session: { expiresAt: new Date(Date.now() + 86400000).toISOString() },
   } } }));
-  const localLink = publicInvoiceUrl(token, { origin: 'http://localhost:4173' });
-  expect(localLink).toBe(`http://127.0.0.1:4173/invoices/${token}`);
+  const localLink = publicInvoiceUrl(token, { origin: baseURL.replace('127.0.0.1', 'localhost') });
+  expect(localLink).toBe(`${baseURL}/invoices/${token}`);
   await page.goto(localLink);
   await expect(page.getByRole('heading', { name: 'Find your invoices' })).toBeVisible();
   await expect(page.getByText(invoice.invoiceNumber, { exact: true })).toHaveCount(0);
@@ -31,9 +31,8 @@ test('shared invoice asks for the purchase phone and verifies OTP before showing
   await page.getByRole('button', { name: 'Send verification code' }).click();
   expect(otpPhone).toBe('9876543210');
   await expect(page).toHaveURL(/verify-otp/);
-  const digits = page.locator('input[maxlength="1"]');
+  const digits = page.getByRole('textbox', { name: /^OTP digit/ });
   for (let i = 0; i < 6; i++) await digits.nth(i).fill(String(i + 1));
-  await page.getByRole('button', { name: 'Verify & Login' }).click();
   await expect(page).toHaveURL(`/invoices/${token}`);
   await expect(page.getByRole('heading', { name: invoice.invoiceNumber })).toBeVisible();
 });

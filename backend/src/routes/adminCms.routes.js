@@ -1,4 +1,7 @@
 import { Router } from 'express';
+import { uploadImage, deleteImage } from '../controllers/upload.controller.js';
+import { PromotionalBanner } from '../models/PromotionalBanner.js';
+import { AppError } from '../utils/AppError.js';
 import themeRoutes, { resetTheme } from './theme.routes.js';
 import bannerGridRoutes from './bannerGrid.routes.js';
 import {
@@ -66,6 +69,19 @@ router.delete('/banners/:id', validate(getByIdSchema), removeBanner);
 router.post('/banners/:id/image', uploadSingle('file', 'cms'), uploadBannerImg);
 
 // --- Promotional Banners ---
+router.post('/promotional-banners/images', uploadSingle('file', 'cms'), (req, res, next) => {
+  req.body.folder = 'vinexus/promotional-banners';
+  req.body.category = 'cms';
+  return uploadImage(req, res, next);
+});
+router.delete('/promotional-banners/images', async (req, res, next) => {
+  try {
+    const publicId = req.body?.publicId;
+    if (typeof publicId !== 'string' || publicId.length > 500 || !/^vinexus\/promotional-banners\/[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/.test(publicId)) throw new AppError('Choose a promotional banner upload.', 400, 'VALIDATION_ERROR');
+    if (await PromotionalBanner.exists({ 'image.publicId': publicId })) throw new AppError('This image is still used by a promotional banner.', 409, 'CONFLICT');
+    return deleteImage(req, res, next);
+  } catch (error) { next(error); }
+});
 router.post('/promotional-banners', validate(promoBannerSchema), addPromoBanner);
 router.get('/promotional-banners', fetchPromoBanners);
 router.get('/promotional-banners/:id', validate(getByIdSchema), fetchPromoBannerById);
@@ -89,6 +105,14 @@ router.delete('/trust-badges/:id', validate(getByIdSchema), removeTrustBadge);
 router.post('/trust-badges/:id/image', uploadSingle('file', 'cms'), uploadTrustBadgeIconImg);
 
 // --- Footer Content ---
+router.post('/footer-content/images/:kind', (req, res, next) => {
+  if (!['bank-qr', 'social'].includes(req.params.kind)) return next(new AppError('Choose a bank QR or social image.', 400, 'VALIDATION_ERROR'));
+  next();
+}, uploadSingle('file', 'cms'), (req, res, next) => {
+  req.body.folder = `vinexus/${req.params.kind}`;
+  req.body.category = req.params.kind === 'bank-qr' ? 'qr' : 'cms';
+  return uploadImage(req, res, next);
+});
 router.get('/footer-content', fetchFooterContentAdmin);
 router.put('/footer-content', validate(footerContentSchema), editFooterContentAdmin);
 

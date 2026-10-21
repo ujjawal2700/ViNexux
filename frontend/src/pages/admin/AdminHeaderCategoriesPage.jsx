@@ -170,7 +170,7 @@ const AdminHeaderCategoriesPage = () => {
     setFormError('');
     try {
       const uploadedImage = categoryImageFile
-        ? await adminService.uploadCmsImage(categoryImageFile, 'vinexus/categories')
+        ? await adminService.uploadCategoryImage(categoryImageFile)
         : null;
       const computedSlug = slugify(formData.name) || cleanCategorySlug(formData);
       const payload = {
@@ -497,12 +497,12 @@ const AdminHeaderCategoriesPage = () => {
 
           <FormField
             label="Department Photo or Banner (Optional)"
-            helperText="Upload an image (PNG, JPG, WebP) or enter an external image URL."
+            helperText="Upload an image (PNG, JPG, WebP, SVG) or enter an external image URL."
           >
             <div className="space-y-2">
               <input
                 type="file"
-                accept="image/jpeg,image/jpg,image/png,image/webp"
+                accept="image/jpeg,image/jpg,image/png,image/webp,image/svg+xml,.svg"
                 onChange={(e) => setCategoryImageFile(e.target.files?.[0] || null)}
                 className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-gray-700 hover:file:bg-gray-200 cursor-pointer"
               />
@@ -567,7 +567,7 @@ const AdminHeaderCategoriesPage = () => {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDeleteConfirm}
         title="Delete Header Category"
-        message={`Are you sure you want to permanently delete header category "${deleteTarget?.name}"? All associated main categories, subcategories, and products will also be permanently deleted. This action cannot be undone.`}
+        message={`Are you sure you want to permanently delete header category "${deleteTarget?.name}"? Associated main categories and subcategories will be removed. Categories used by products cannot be deleted; reassign those products first. This action cannot be undone.`}
         confirmText="Delete"
         isLoading={deleteLoading}
         variant="danger"

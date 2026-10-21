@@ -25,6 +25,7 @@ describe('employee access control', () => {
     expect(sectionForAdminPath('/admin/enquiries/customers')).toBe('enquiries-customers');
     expect(sectionForAdminPath('/admin/enquiries/dealers')).toBe('enquiries-dealers');
     expect(sectionForAdminPath('/admin/upload/image')).toBe('uploads');
+    expect(sectionForAdminPath('/api/admin/cms/footer-content/images/bank-qr')).toBe('footer-content');
     expect(sectionForAdminPath('/api/upload/image')).toBe('uploads');
   });
   test('server middleware rejects writes despite a valid administrator role', () => {

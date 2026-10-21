@@ -23,15 +23,15 @@ export const createEnquirySchema = {
     addressId: z
       .string({ required_error: 'Please select or add a delivery address before submitting an enquiry' })
       .refine(isValidObjectId, { message: 'Invalid address ID format' }),
-    contactName: z.string().trim().min(2).max(100),
-    contactEmail: z.string().trim().email().max(254),
-    contactPhone: z.string().trim().regex(/^[6-9]\d{9}$/),
+    contactName: z.string({ required_error: 'Please enter your full name' }).trim().min(2, 'Please enter at least 2 characters for your full name').max(100, 'Full name cannot exceed 100 characters'),
+    contactEmail: z.string({ required_error: 'Please enter your email' }).trim().email('Please enter a valid email address').max(254),
+    contactPhone: z.string({ required_error: 'Please enter your phone number' }).trim().regex(/^[6-9]\d{9}$/, 'Please enter a valid 10-digit Indian mobile number'),
     deliveryAddress: z.object({
-      line1: z.string().trim().min(2).max(200),
-      line2: z.string().trim().max(200).optional().default(''),
-      city: z.string().trim().min(2).max(100),
-      state: z.string().trim().min(2).max(100),
-      pincode: z.string().trim().regex(/^\d{6}$/),
+      line1: z.string().trim().min(1, 'Please enter the delivery address').max(255, 'Delivery address cannot exceed 255 characters'),
+      line2: z.string().trim().max(255).optional().default(''),
+      city: z.string().trim().min(1, 'Please enter the delivery city').max(100),
+      state: z.string().trim().min(1, 'Please enter the delivery state').max(100),
+      pincode: z.string().trim().regex(/^\d{6}$/, 'Please enter a valid 6-digit pincode'),
     }),
     selectedProductIds: z.array(z.string().refine(isValidObjectId)).min(1),
     // The number admin should reach the submitter on via WhatsApp (wa.me

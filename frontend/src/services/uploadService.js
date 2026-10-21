@@ -4,6 +4,11 @@ import api from '../api/axios';
  * Service for uploading images to Cloudinary via backend API
  */
 export const uploadService = {
+  uploadFooterImage: async (file, kind = 'bank-qr') => {
+    const data = new FormData(); data.append('file', file);
+    const response = await api.post(`/admin/cms/footer-content/images/${kind}`, data);
+    return response.data;
+  },
   /**
    * Upload a single image file to Cloudinary
    * @param {File} file - File object from input or drag-and-drop

@@ -6,7 +6,7 @@ import { uploadSingle } from '../../backend/src/middlewares/upload.middleware.js
 
 const sharp = createRequire(new URL('../../backend/package.json', import.meta.url))('sharp');
 
-const upload = async (filename, mimetype, buffer) => {
+const upload = async (filename, mimetype, buffer, category = 'product') => {
   const boundary = 'product-image-test-boundary';
   const body = Buffer.concat([
     Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: ${mimetype}\r\n\r\n`),
@@ -19,7 +19,7 @@ const upload = async (filename, mimetype, buffer) => {
     'content-length': String(body.length),
   };
   const done = new Promise((resolve, reject) => {
-    uploadSingle('file', 'product')(req, {}, (error) => error ? reject(error) : resolve(req.file));
+    uploadSingle('file', category)(req, {}, (error) => error ? reject(error) : resolve(req.file));
   });
   req.end(body);
   return done;
@@ -52,6 +52,14 @@ describe('product gallery image uploads', () => {
     ['product.exe', 'image/png'],
   ])('rejects unsupported uploads: %s (%s)', async (filename, mime) => {
     await expect(upload(filename, mime, Buffer.from('invalid file'))).rejects.toMatchObject({ statusCode: 400 });
+  });
+
+  test.each(['product', 'cms', 'general', 'kyc'])('accepts SVG multipart uploads for %s', async category => {
+    const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8"/></svg>');
+    const file = await upload('vector.svg', 'image/svg+xml', svg, category);
+    expect(file.mimetype).toBe('image/svg+xml');
+    const fallback = await upload('vector.SVG', 'application/octet-stream', svg, category);
+    expect(fallback.mimetype).toBe('image/svg+xml');
   });
 
   test('retains the 5MB product image limit', async () => {

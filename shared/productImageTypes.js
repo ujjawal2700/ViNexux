@@ -3,6 +3,7 @@ const MIME_BY_EXTENSION = {
   jpeg: 'image/jpeg',
   png: 'image/png',
   webp: 'image/webp',
+  svg: 'image/svg+xml',
 };
 
 const MIME_ALIASES = {
@@ -11,7 +12,7 @@ const MIME_ALIASES = {
   'image/x-png': 'image/png',
 };
 
-export const PRODUCT_IMAGE_ACCEPT = '.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp';
+export const PRODUCT_IMAGE_ACCEPT = '.jpg,.jpeg,.png,.webp,.svg,image/jpeg,image/png,image/webp,image/svg+xml';
 
 // Browsers and multipart clients can omit the MIME type or send a generic
 // binary type. Only fall back to a supported extension in those cases.

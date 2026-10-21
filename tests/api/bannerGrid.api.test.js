@@ -63,10 +63,10 @@ test('stale edits fail; replacement, metadata edits and removal preserve other s
   expect((await request.delete(`/grid/0/images/${id}`).send({ revision: 4 })).status).toBe(200);
   expect(grid.sections[0].images).toHaveLength(0); expect(grid.sections[1].images).toHaveLength(1);
 });
-test('invalid sections, unsafe links, invalid IDs and SVG uploads are rejected', async () => {
+test('invalid sections, unsafe links, invalid IDs and executable uploads are rejected', async () => {
   expect((await upload(2, 0)).status).toBe(400);
   expect((await upload(4, 0)).status).toBe(400);
-  expect((await request.post('/grid/0/images').field('revision', 0).attach('file', Buffer.from('<svg/>'), { filename: 'banner.svg', contentType: 'image/svg+xml' })).status).toBe(400);
+  expect((await request.post('/grid/0/images').field('revision', 0).attach('file', Buffer.from('<svg/>'), { filename: 'banner.exe', contentType: 'image/svg+xml' })).status).toBe(400);
   expect((await request.put('/grid/0/images/not-an-id').send({ revision: 0 })).status).toBe(400);
   expect((await request.put('/grid/0/images/507f1f77bcf86cd799439011').send({ revision: 0, link: 'javascript:alert(1)' })).status).toBe(400);
   expect(storageService.uploadFile).not.toHaveBeenCalled();
@@ -87,3 +87,10 @@ test('legacy grids retain first and fourth artwork and migrate admin revision on
   expect((await upload(1, 7)).status).toBe(409);
   expect((await upload(1, 8)).status).toBe(200);
 });
+
+ test('SVG banner uploads reach the common image conversion service', async () => {
+  const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="10"><rect width="20" height="10"/></svg>');
+  const response = await request.post('/grid/0/images').field('revision', 0).attach('file', svg, { filename: 'banner.svg', contentType: 'image/svg+xml' });
+  expect(response.status).toBe(200);
+  expect(storageService.uploadFile).toHaveBeenCalledWith(expect.objectContaining({ buffer: svg, mimetype: 'image/svg+xml' }));
+ });

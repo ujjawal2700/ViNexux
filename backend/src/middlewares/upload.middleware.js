@@ -11,10 +11,10 @@ const PROHIBITED_EXTENSIONS = [
 ];
 
 const ALLOWED_MIME_TYPES = {
-  kyc: ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
-  product: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
-  cms: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
-  general: ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
+  kyc: ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'],
+  product: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'],
+  cms: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'],
+  general: ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'],
 };
 
 /**
@@ -85,7 +85,7 @@ export const uploadSingle = (fieldName = 'file', category = 'general') => {
 
 
       // Check allowed MIME type
-      const mimetype = category === 'product'
+      const mimetype = (file.mimetype || '').toLowerCase() !== 'application/pdf'
         ? getProductImageMimeType(file.originalname, file.mimetype)
         : (file.mimetype || '').toLowerCase();
       if (!allowedMimes.includes(mimetype)) {

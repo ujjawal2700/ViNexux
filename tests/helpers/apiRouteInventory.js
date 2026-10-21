@@ -21,31 +21,21 @@ export const materializeApiPath = (routePath) => routePath
   .replace(/:id/g, '507f1f77bcf86cd799439011');
 
 export const discoverApiRoutes = () => {
-  const indexSource = fs.readFileSync(path.join(ROUTES_DIR, 'index.js'), 'utf8');
-  const imports = new Map(
-    [...indexSource.matchAll(/import\s+(\w+)\s+from\s+'\.\/(.+?\.routes\.js)'/g)]
-      .map((match) => [match[1], match[2]])
-  );
-
-  const mounts = [];
-  for (const match of indexSource.matchAll(/router\.use\(\s*'([^']+)'\s*,([^;\n]+)\);/g)) {
-    const identifiers = [...match[2].matchAll(/\b(\w+Routes)\b/g)].map((item) => item[1]);
-    const routerName = identifiers.at(-1);
-    if (routerName && imports.has(routerName)) mounts.push({ base: match[1], file: imports.get(routerName) });
-  }
-
   const routes = [];
-  for (const mount of mounts) {
-    const source = fs.readFileSync(path.join(ROUTES_DIR, mount.file), 'utf8');
+  const walk = (file, base, ancestors = []) => {
+    if (ancestors.includes(file)) throw new Error(`Circular router mount: ${file}`);
+    const source = fs.readFileSync(path.join(ROUTES_DIR, file), 'utf8');
+    const imports = new Map([...source.matchAll(/import\s+(\w+)(?:\s*,\s*\{[^}]*\})?\s+from\s+['"]\.\/(.+?\.routes\.js)['"]/g)]
+      .map(match => [match[1], match[2]]));
     for (const match of source.matchAll(/router\.(get|post|put|patch|delete)\(\s*['"]([^'"]+)['"]/g)) {
-      routes.push({
-        method: match[1].toUpperCase(),
-        path: joinUrl('/api', mount.base, match[2]),
-        source: mount.file,
-      });
+      routes.push({ method: match[1].toUpperCase(), path: joinUrl(base, match[2]), source: file });
     }
-  }
-
+    for (const match of source.matchAll(/router\.use\(\s*['"]([^'"]+)'\s*,([^;\n]+)\);/g)) {
+      const routerName = [...match[2].matchAll(/\b(\w+)\b/g)].map(item => item[1]).findLast(name => imports.has(name));
+      if (routerName) walk(imports.get(routerName), joinUrl(base, match[1]), [...ancestors, file]);
+    }
+  };
+  walk('index.js', '/api');
   routes.push({ method: 'GET', path: '/', source: 'app.js' });
   return routes.sort((a, b) => `${a.path}:${a.method}`.localeCompare(`${b.path}:${b.method}`));
 };

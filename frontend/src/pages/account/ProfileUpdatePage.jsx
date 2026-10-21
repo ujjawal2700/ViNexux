@@ -172,9 +172,9 @@ const DealerKycSection = () => {
       return;
     }
 
-    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml', 'application/pdf'];
     if (!allowedMimeTypes.includes(file.type)) {
-      toast.error('Invalid file format. Please upload JPG, PNG, WEBP, or PDF.');
+      toast.error('Invalid file format. Please upload JPG, PNG, WebP, SVG, or PDF.');
       return;
     }
 
@@ -388,7 +388,7 @@ const DealerKycSection = () => {
                       <label className="flex-1">
                         <input
                           type="file"
-                          accept=".jpg,.jpeg,.png,.webp,.pdf"
+                          accept=".jpg,.jpeg,.png,.webp,.svg,.pdf"
                           className="hidden"
                           onChange={(e) => handleFileUpload(docType, e.target.files[0])}
                           disabled={isUploading || isDeleting}
@@ -407,7 +407,7 @@ const DealerKycSection = () => {
                     <label className="block w-full">
                       <input
                         type="file"
-                        accept=".jpg,.jpeg,.png,.webp,.pdf"
+                        accept=".jpg,.jpeg,.png,.webp,.svg,.pdf"
                         className="hidden"
                         onChange={(e) => handleFileUpload(docType, e.target.files[0])}
                         disabled={isUploading}

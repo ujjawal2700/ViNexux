@@ -27,6 +27,7 @@ import { StatusBadge, Badge } from '../../components/ui/Badge';
 import Pagination from '../../components/ui/Pagination';
 import Skeleton from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
+import { getProductImageMimeType, PRODUCT_IMAGE_ACCEPT } from '../../../../shared/productImageTypes.js';
 
 const emptyForm = {
   name: '',
@@ -118,7 +119,7 @@ export default function AdminBrandsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
+    if (!getProductImageMimeType(file.name, file.type)) {
       setError('Please select an image file (PNG, JPG, SVG, WEBP).');
       return;
     }
@@ -143,6 +144,7 @@ export default function AdminBrandsPage() {
   // Save Brand (Create or Update)
   const handleSave = async (e) => {
     e.preventDefault();
+    if (saving) return;
     if (!form.name.trim()) {
       setError('Brand name is required.');
       return;
@@ -156,7 +158,7 @@ export default function AdminBrandsPage() {
 
       // If user selected a new file, upload it
       if (logoFile) {
-        const uploaded = await adminService.uploadCmsImage(logoFile, 'vinexus/brands');
+        const uploaded = await adminService.uploadBrandLogo(logoFile);
         logoPayload = {
           url: uploaded.data.url,
           publicId: uploaded.data.publicId,
@@ -271,7 +273,7 @@ export default function AdminBrandsPage() {
 
   return (
     <div className="space-y-6">
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {toast && <Toast toasts={[{ ...toast, id: 'brand-notice' }]} onDismiss={() => setToast(null)} />}
 
       {/* Page Header (Import Existing button removed as requested) */}
       <AdminPageHeader
@@ -522,7 +524,8 @@ export default function AdminBrandsPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              accept={PRODUCT_IMAGE_ACCEPT}
+              aria-label="Brand logo image"
               className="hidden"
               onChange={handleLogoFileChange}
             />

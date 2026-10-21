@@ -5,7 +5,7 @@ import { ALLOWED_ENQUIRY_TRANSITIONS, canonicalEnquiryStatus } from '../../../sh
 import { Enquiry } from '../models/Enquiry.js';
 import { Cart } from '../models/Cart.js';
 import { User } from '../models/User.js';
-import { calculateApplicablePrices, validateProductsAndCategoriesActive } from './cart.service.js';
+import { calculateApplicablePrices, validateProductsAndCategoriesActive, assertQuantityAvailable } from './cart.service.js';
 import { AppError } from '../utils/AppError.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../constants/errorCodes.js';
@@ -83,6 +83,8 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
 
   // 3. Validate selected products against the live catalog.
   const productById = await validateProductsAndCategoriesActive(selectedItems.map((item) => item.productId));
+
+  for (const item of selectedItems) assertQuantityAvailable(productById.get(String(item.productId)), item.quantity);
 
   // 4. Build Contact Snapshot
   const contactName = payload.contactName || user.fullName || user.name || 'Vinexus Customer';

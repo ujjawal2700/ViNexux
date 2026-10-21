@@ -214,7 +214,7 @@ const AdminSubCategoriesPage = () => {
     setFormError('');
     try {
       const uploadedImage = categoryImageFile
-        ? await adminService.uploadCmsImage(categoryImageFile, 'vinexus/categories')
+        ? await adminService.uploadCategoryImage(categoryImageFile)
         : null;
       const computedSlug = generateUniqueCategorySlug(
         formData.name,
@@ -639,12 +639,12 @@ const AdminSubCategoriesPage = () => {
 
           <FormField
             label="Subcategory Photo or Banner (Optional)"
-            helperText="Upload an image (PNG, JPG, WebP) or enter an external image URL."
+            helperText="Upload an image (PNG, JPG, WebP, SVG) or enter an external image URL."
           >
             <div className="space-y-2">
               <input
                 type="file"
-                accept="image/jpeg,image/jpg,image/png,image/webp"
+                accept="image/jpeg,image/jpg,image/png,image/webp,image/svg+xml,.svg"
                 onChange={(e) => setCategoryImageFile(e.target.files?.[0] || null)}
                 className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-gray-700 hover:file:bg-gray-200 cursor-pointer"
               />
@@ -709,7 +709,7 @@ const AdminSubCategoriesPage = () => {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDeleteConfirm}
         title="Delete Sub Category"
-        message={`Are you sure you want to permanently delete sub category "${deleteTarget?.name}"? All associated products will also be permanently deleted. This action cannot be undone.`}
+        message={`Are you sure you want to permanently delete sub category "${deleteTarget?.name}"? This category cannot be deleted while products use it; reassign those products first. This action cannot be undone.`}
         confirmText="Delete"
         isLoading={deleteLoading}
         variant="danger"

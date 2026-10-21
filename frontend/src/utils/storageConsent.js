@@ -1,5 +1,5 @@
 const STORAGE_KEY = 'vinexus_storage_choices_v1';
-const OPTIONAL_KEYS = ['vinexus_wishlist', 'vinexus_recently_viewed'];
+const OPTIONAL_KEYS = ['vinexus_wishlist', 'vinexus_recently_viewed', 'vinexus_recent_searches'];
 
 export const getStorageChoices = () => {
   try {

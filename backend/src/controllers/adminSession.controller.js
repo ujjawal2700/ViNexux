@@ -9,7 +9,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 
 export const getSessions = asyncHandler(async (req, res) => {
-  const result = await listSessions(req.query);
+  const result = await listSessions(req.query, req.session?.sessionId);
 
   return ApiResponse.success(
     res,
@@ -25,18 +25,18 @@ export const getSession = asyncHandler(async (req, res) => {
   return ApiResponse.success(
     res,
     'Session details retrieved successfully',
-    { session },
+    { session: { ...(session.toObject ? session.toObject() : session), isCurrent: session.sessionId === req.session?.sessionId } },
     HTTP_STATUS.OK
   );
 });
 
 export const revokeSessionController = asyncHandler(async (req, res) => {
-  const session = await revokeSession(req.params.id);
+  const session = await revokeSession(req.params.id, req.session?.sessionId);
 
   return ApiResponse.success(
     res,
     'Session revoked successfully',
-    { session },
+    { session: { ...(session.toObject ? session.toObject() : session), isCurrent: session.sessionId === req.session?.sessionId } },
     HTTP_STATUS.OK
   );
 });

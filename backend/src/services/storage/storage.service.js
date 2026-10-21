@@ -8,40 +8,37 @@ import { ERROR_CODES } from '../../constants/errorCodes.js';
 const MAX_IMAGE_DIMENSION = 2000;
 const WEBP_QUALITY = 80;
 
-/**
- * Compresses and converts an uploaded image to WebP before it ever reaches
- * a storage provider (Cloudinary or the dev mock alike) - applies uniformly
- * regardless of which provider is active. Non-image uploads (KYC docs can
- * be PDFs) pass through completely unchanged. If sharp fails for any reason
- * (corrupt/unsupported image data), the original buffer is uploaded as-is
- * rather than blocking the upload entirely.
- *
- * @param {Buffer} buffer
- * @param {string} mimetype
- * @returns {Promise<{ buffer: Buffer, mimetype: string, extension: string|null }>}
- */
-const prepareImageBuffer = async (buffer, mimetype) => {
+/** Decode every image before storage; vector source is never stored or served. */
+export const prepareImageBuffer = async (buffer, mimetype, { lossless = false } = {}) => {
   if (!mimetype || !mimetype.startsWith('image/')) {
     return { buffer, mimetype, extension: null };
   }
 
   try {
+    // Reject active SVG content and external resources before rasterizing. Even
+    // a mislabeled SVG must pass these checks; inspect content as well as MIME.
+    const source = buffer.toString('utf8');
+    if (mimetype === 'image/svg+xml' || /<svg[\s>]/i.test(source)) {
+      const references = [...source.matchAll(/(?:href\s*=\s*["']([^"']*)["']|url\(\s*["']?([^\s)"']+))/gi)]
+        .map(match => match[1] ?? match[2]);
+      if (/<!DOCTYPE|<!ENTITY|<\s*(?:script|foreignObject)\b|\bon\w+\s*=|@import/i.test(source)
+        || references.some(value => !value.startsWith('#') && !/^data:image\/(?:png|jpeg|webp);base64,/i.test(value))) {
+        throw new Error('SVG must contain self-contained artwork without scripts or external resources');
+      }
+    }
     const { default: sharp } = await import('sharp');
-    const converted = await sharp(buffer)
-      .rotate() // respect EXIF orientation before stripping metadata
-      .resize({
-        width: MAX_IMAGE_DIMENSION,
-        height: MAX_IMAGE_DIMENSION,
-        fit: 'inside',
-        withoutEnlargement: true,
-      })
-      .webp({ quality: WEBP_QUALITY })
+    const converted = await sharp(buffer, { limitInputPixels: 40_000_000 })
+      .rotate()
+      .resize({ width: MAX_IMAGE_DIMENSION, height: MAX_IMAGE_DIMENSION, fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: WEBP_QUALITY, lossless })
       .toBuffer();
-
     return { buffer: converted, mimetype: 'image/webp', extension: 'webp' };
-  } catch (err) {
-    console.warn(`[StorageService] Image compression/WebP conversion failed, uploading original: ${err.message}`);
-    return { buffer, mimetype, extension: null };
+  } catch {
+    throw new AppError(
+      'This image could not be processed. Upload a valid JPG, PNG, WebP or self-contained SVG without scripts or external resources.',
+      HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR,
+      [{ path: 'images', message: 'Choose a valid image; SVG artwork must not contain scripts or external resources.' }],
+    );
   }
 };
 
@@ -68,7 +65,7 @@ export const storageService = {
 
     // Compress + convert to WebP before handing off to the provider (image
     // uploads only - PDFs and other non-image files pass through untouched).
-    const prepared = await prepareImageBuffer(buffer, mimetype);
+    const prepared = await prepareImageBuffer(buffer, mimetype, { lossless: category === 'qr' });
     const preparedName = prepared.extension
       ? `${(originalname || 'file').replace(/\.[^./]+$/, '')}.${prepared.extension}`
       : originalname;

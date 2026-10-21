@@ -1,3 +1,6 @@
+import SpecificationTemplates from '../../components/admin/SpecificationTemplates';
+import { isInventorySpecification } from '../../../../shared/productSpecifications.js';
+import SpecificationOrderEditor from '../../components/admin/SpecificationOrderEditor';
 import { getProductHsnCode } from '../../../../shared/productHsn.js';
 import React, {
   useState,
@@ -115,6 +118,7 @@ const AdminProductDetailPage = () => {
   const [model, setModel] = useState("");
   const [stockQuantity, setStockQuantity] = useState("0");
   const [isTrending, setIsTrending] = useState(false);
+  const [isLowStock, setIsLowStock] = useState(false);
   const [variant, setVariant] = useState("");
   const [hsnCode, setHsnCode] = useState("");
   const [warranty, setWarranty] = useState("");
@@ -147,6 +151,8 @@ const AdminProductDetailPage = () => {
   const [stagedImages, setStagedImages] = useState([]);
   const stagedImagesRef = useRef([]);
   const createdDraftIdRef = useRef(null);
+  const originalFieldsRef = useRef({});
+  const uploadedGalleryIdsRef = useRef(new Set());
   const [imageDeleteTarget, setImageDeleteTarget] = useState(null);
   const [imageUploading, setImageUploading] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState(null);
@@ -238,12 +244,12 @@ const AdminProductDetailPage = () => {
     const cleanValues = values
       .map((value) => String(value).trim())
       .filter(Boolean);
-    setSpecifications((previous) => [
-      ...previous.filter(
-        (spec) => spec.key.toLowerCase() !== definition.key.toLowerCase(),
-      ),
-      ...cleanValues.map((value) => ({ key: definition.key, value })),
-    ]);
+    setSpecifications(previous => {
+      const index = previous.findIndex(spec => spec.key.toLowerCase() === definition.key.toLowerCase());
+      const next = previous.filter(spec => spec.key.toLowerCase() !== definition.key.toLowerCase());
+      next.splice(index < 0 ? next.length : index, 0, ...cleanValues.map(value => ({ key: definition.key, value })));
+      return next;
+    });
   };
 
   // Load all categories and brands
@@ -294,20 +300,29 @@ const AdminProductDetailPage = () => {
         prod.dealerPrice !== undefined ? String(prod.dealerPrice) : "",
       );
       setIsTrending(Boolean(prod.isTrending));
-      setStatus(prod.isActive ? "published" : "draft");
+      setIsLowStock(Boolean(prod.isLowStock));
+      setStatus(prod.isActive !== false ? "published" : "draft");
       setImagesList(prod.images || []);
+      uploadedGalleryIdsRef.current = new Set();
+      originalFieldsRef.current = {
+        name: prod.name || "", sku: prod.sku || "", description: prod.description || "",
+        modelNumber: prod.modelNumber || "", model: prod.model || "",
+        stockQuantity: prod.stockQuantity !== undefined ? String(prod.stockQuantity) : "0",
+        variant: prod.variant || "", hsnCode: getProductHsnCode(prod),
+        warranty: prod.warranty === "1 Year ON-SITE / Direct Replacement Warranty" ? "" : (prod.warranty || ""),
+        productUrl: prod.productUrl || "", brandId: String(prod.brandId?._id || prod.brandId || ""),
+        standardPrice: prod.standardPrice !== undefined ? String(prod.standardPrice) : "",
+        dealerPrice: prod.dealerPrice !== undefined ? String(prod.dealerPrice) : "",
+        isTrending: Boolean(prod.isTrending), isLowStock: Boolean(prod.isLowStock), isActive: prod.isActive !== false,
+        categoryId: "", categoryIds: [], specifications: [],
+      };
+
 
       // Extract legitimate specifications only (ignoring legacy dummy fields)
       if (prod.specifications && Array.isArray(prod.specifications)) {
-        const legitimateSpecs = prod.specifications.filter((sp) => {
-          const keyLower = String(sp.key || "")
-            .toLowerCase()
-            .trim();
-          return !/^(highlight|hsn|variant|stock|inventory|country of origin|warranty)/i.test(
-            keyLower,
-          );
-        });
+        const legitimateSpecs = prod.specifications.filter(sp => sp.key && !isInventorySpecification(sp.key));
         setSpecifications(legitimateSpecs);
+        originalFieldsRef.current.specifications = legitimateSpecs.map(({ key, value }) => ({ key, value }));
       }
     } catch (err) {
       console.error("Failed to load product:", err);
@@ -371,6 +386,8 @@ const AdminProductDetailPage = () => {
     if (foundHeaderId) setSelectedHeaderId(foundHeaderId);
     setSelectedMainIds(Array.from(foundMainIds));
     setSelectedSubIds(Array.from(foundSubIds));
+    originalFieldsRef.current.categoryId = Array.from(foundSubIds)[0] || Array.from(foundMainIds)[0] || foundHeaderId;
+    originalFieldsRef.current.categoryIds = [foundHeaderId, ...foundMainIds, ...foundSubIds].filter(Boolean);
   }, [product, categoriesList]);
 
   // Category selection helpers
@@ -503,7 +520,7 @@ const AdminProductDetailPage = () => {
     if (!file) return;
     if (!getProductImageMimeType(file.name, file.type)) {
       setToast({
-        message: "Only JPG, JPEG, PNG and WebP product images are allowed.",
+        message: "Only JPG, JPEG, PNG, WebP and SVG product images are allowed.",
         type: "error",
       });
       return;
@@ -569,7 +586,7 @@ const AdminProductDetailPage = () => {
         fieldErrors.modelNumber ||
         fieldErrors.hsnCode ||
         fieldErrors.stockQuantity ||
-        fieldErrors.productUrl
+        fieldErrors.productUrl || fieldErrors.description || fieldErrors.model || fieldErrors.variant || fieldErrors.warranty
       );
     }
     if (tabId === "variants") {
@@ -694,56 +711,69 @@ const AdminProductDetailPage = () => {
     setFormError("");
     setFieldErrors({});
 
+    const currentFields = {
+      name, sku, description, modelNumber, model, stockQuantity, variant, hsnCode, warranty, productUrl,
+      brandId: selectedBrandId, standardPrice, dealerPrice, isTrending, isLowStock, isActive: status === "published",
+      categoryId: selectedSubIds[0] || selectedMainIds[0] || selectedHeaderId,
+      categoryIds: [selectedHeaderId, ...selectedMainIds, ...selectedSubIds].filter(Boolean),
+      specifications: specifications.map(({ key, value }) => ({ key, value })),
+    };
+    const changed = new Set(Object.keys(currentFields).filter(key =>
+      JSON.stringify(currentFields[key]) !== JSON.stringify(originalFieldsRef.current[key])
+    ));
+    const needs = key => isCreateMode || changed.has(key);
+    const gallery = isCreateMode ? stagedImages : imagesList;
+    const galleryChanged = isCreateMode || gallery.some(img => img.file)
+      || JSON.stringify(gallery) !== JSON.stringify(product?.images || []);
+
     // 1. Validate General Info
-    if (!name.trim()) {
+    if (needs("name") && !name.trim()) {
       scrollToAndHighlightField("name", "general", "Product Title is required.");
       return;
     }
-    if (name.trim().length < 2) {
+    if (needs("name") && name.trim().length < 2) {
       scrollToAndHighlightField("name", "general", "Product Title must be at least 2 characters.");
       return;
     }
-    if (name.trim().length > 150) {
+    if (needs("name") && name.trim().length > 150) {
       scrollToAndHighlightField("name", "general", "Product Title cannot exceed 150 characters.");
       return;
     }
 
-    if (!selectedBrandId) {
+    if (needs("brandId") && !selectedBrandId) {
       scrollToAndHighlightField("brandId", "general", "Please select a Brand for this product.");
       return;
     }
 
-    if (!sku.trim()) {
+    if (needs("sku") && !sku.trim()) {
       scrollToAndHighlightField("sku", "general", "Product SKU code is required.");
       return;
     }
-    if (sku.trim().length < 2) {
+    if (needs("sku") && sku.trim().length < 2) {
       scrollToAndHighlightField("sku", "general", "SKU must be at least 2 characters.");
       return;
     }
-    if (sku.trim().length > 50) {
+    if (needs("sku") && sku.trim().length > 50) {
       scrollToAndHighlightField("sku", "general", "SKU cannot exceed 50 characters.");
       return;
     }
 
-    if (hsnCode.trim() && !/^\d{4,8}$/.test(hsnCode.trim())) {
+    if (needs("hsnCode") && hsnCode.trim() && !/^\d{4,8}$/.test(hsnCode.trim())) {
       scrollToAndHighlightField("hsnCode", "general", "Enter a 4 to 8 digit HSN/SAC code.");
       return;
     }
-    if (!modelNumber.trim()) {
+    if (needs("modelNumber") && !modelNumber.trim()) {
       scrollToAndHighlightField("modelNumber", "general", "Model Number is required.");
       return;
     }
-    if (modelNumber.trim().length > 100) {
+    if (needs("modelNumber") && modelNumber.trim().length > 100) {
       scrollToAndHighlightField("modelNumber", "general", "Model Number cannot exceed 100 characters.");
       return;
     }
 
-    if (
-      stockQuantity === "" ||
-      isNaN(Number(stockQuantity)) ||
-      Number(stockQuantity) < 0
-    ) {
+    if (needs("stockQuantity") && (
+      stockQuantity === "" || !Number.isFinite(Number(stockQuantity)) || Number(stockQuantity) < 0
+    )) {
       scrollToAndHighlightField(
         "stockQuantity",
         "general",
@@ -752,12 +782,14 @@ const AdminProductDetailPage = () => {
       return;
     }
 
-    if (productUrl.trim()) {
+    let normalizedProductUrl = productUrl.trim();
+    if (needs("productUrl") && productUrl.trim()) {
       let cleanUrl = productUrl.trim();
       if (!/^https?:\/\//i.test(cleanUrl)) {
         if (/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(cleanUrl)) {
           cleanUrl = `https://${cleanUrl}`;
           setProductUrl(cleanUrl);
+          normalizedProductUrl = cleanUrl;
         } else {
           scrollToAndHighlightField(
             "productUrl",
@@ -771,7 +803,7 @@ const AdminProductDetailPage = () => {
 
     // 2. Validate Pricing & Media
     const sPrice = Number(standardPrice);
-    if (standardPrice === "" || isNaN(sPrice) || sPrice < 0) {
+    if (needs("standardPrice") && (standardPrice === "" || !Number.isFinite(sPrice) || sPrice < 0)) {
       scrollToAndHighlightField(
         "standardPrice",
         "variants",
@@ -781,7 +813,7 @@ const AdminProductDetailPage = () => {
     }
 
     const dPrice = Number(dealerPrice);
-    if (dealerPrice === "" || isNaN(dPrice) || dPrice < 0) {
+    if (needs("dealerPrice") && (dealerPrice === "" || !Number.isFinite(dPrice) || dPrice < 0)) {
       scrollToAndHighlightField(
         "dealerPrice",
         "variants",
@@ -793,7 +825,7 @@ const AdminProductDetailPage = () => {
     const totalImagesCount = isCreateMode
       ? imagesList.length + stagedImages.length
       : imagesList.length;
-    if (totalImagesCount === 0) {
+    if (status === "published" && totalImagesCount === 0 && (isCreateMode || galleryChanged || needs("isActive"))) {
       scrollToAndHighlightField(
         "images",
         "variants",
@@ -812,13 +844,23 @@ const AdminProductDetailPage = () => {
       return;
     }
 
+    if (needs("specifications")) {
+      const invalidIndex = specifications.findIndex(spec => !String(spec.key ?? "").trim() || !String(spec.value ?? "").trim() || String(spec.key).trim().length > 100 || String(spec.value).trim().length > 2000);
+      if (invalidIndex !== -1) {
+        const spec = specifications[invalidIndex];
+        const field = configuredFilterKeys.has(spec.key.toLowerCase()) ? `spec-${spec.key}` : `spec-row-${invalidIndex}`;
+        scrollToAndHighlightField(field, "specifications", "Enter a specification name (up to 100 characters) and value (up to 2000 characters), or remove the row.");
+        return;
+      }
+    }
+
     // 4. Validate Category Required Specifications
     const missingFilter = categoryFilterDefinitions.find(
       (definition) =>
         definition.isRequired &&
         getCategorySpecValues(definition.key).length === 0,
     );
-    if (missingFilter) {
+    if (missingFilter && (needs("specifications") || needs("categoryId"))) {
       scrollToAndHighlightField(
         `spec-${missingFilter.key}`,
         "specifications",
@@ -853,16 +895,17 @@ const AdminProductDetailPage = () => {
         modelNumber: modelNumber.trim(),
         model: model.trim() || "Standard Model",
         isTrending,
+        isLowStock,
         stockQuantity: Number(stockQuantity) >= 0 ? Number(stockQuantity) : 0,
         variant: variant.trim(),
         warranty: warranty.trim(),
         hsnCode: hsnCode.trim(),
-        productUrl: productUrl.trim(),
+        productUrl: normalizedProductUrl,
         sku: sku.trim().toUpperCase(),
         ...(primaryCategoryId ? { categoryId: primaryCategoryId } : {}),
         categoryIds: allCategoryIds,
         brandId: selectedBrandId || undefined,
-        description: description.trim() || undefined,
+        description: description.trim(),
         standardPrice: sPrice,
         dealerPrice: dPrice,
         isActive: isCreateMode ? false : status === "published",
@@ -870,7 +913,7 @@ const AdminProductDetailPage = () => {
         images: imagesList.map((img, i) => ({
           url: img.url,
           ...(img.publicId ? { publicId: img.publicId } : {}),
-          altText: img.altText || name.trim(),
+          altText: String(img.altText || name.trim()).slice(0, 150),
           sortOrder: i,
         })),
       };
@@ -887,15 +930,15 @@ const AdminProductDetailPage = () => {
       }
 
       const savedImages = [];
-      const gallery = isCreateMode ? stagedImages : imagesList;
       const setGallery = isCreateMode ? setStagedImages : setImagesList;
       setImageUploading(true);
       for (const img of gallery) {
         let savedImage = img;
         if (img.file) {
           const res = await adminService.uploadProductImage(productId, img.file, img.altText || name);
-          savedImage = res.data?.images?.at(-1);
+          savedImage = res.data?.uploadedImage || res.data?.images?.at(-1);
           if (!savedImage?.publicId) throw new Error("Image upload returned no image.");
+          uploadedGalleryIdsRef.current.add(savedImage.publicId);
           // Retain completed uploads for retry if a later upload or save fails.
           setGallery((prev) => prev.map((item) => item === img ? savedImage : item));
           URL.revokeObjectURL(img.previewUrl);
@@ -903,17 +946,24 @@ const AdminProductDetailPage = () => {
         savedImages.push({
           url: savedImage.url,
           ...(savedImage.publicId ? { publicId: savedImage.publicId } : {}),
-          altText: savedImage.altText || name.trim(),
+          altText: String(savedImage.altText || name.trim()).slice(0, 150),
           sortOrder: savedImages.length,
         });
       }
-      await adminService.updateProduct(productId, {
-        ...payload, images: savedImages, isActive: status === "published",
-      });
+      // Existing products receive only intentional edits. Saving an image must
+      // not reset stock, visibility, categories or legacy required fields.
+      const update = isCreateMode ? { ...payload, isActive: status === "published" }
+        : Object.fromEntries(Object.entries(payload).filter(([key]) => changed.has(key)));
+      if (galleryChanged) {
+        update.images = savedImages;
+        if (!isCreateMode) update.expectedImages = [...new Set([
+          ...(product.images || []).map(image => image.publicId || image.url),
+          ...uploadedGalleryIdsRef.current,
+        ])];
+      }
+      await adminService.updateProduct(productId, update);
       setToast({
-        message: isCreateMode
-          ? "Product created and published successfully!"
-          : "Product updated and published successfully!",
+        message: `Product ${isCreateMode ? "created" : "updated"} ${status === "published" ? "and published" : "as a draft"} successfully!`,
         type: "success",
       });
       if (isCreateMode) {
@@ -928,6 +978,7 @@ const AdminProductDetailPage = () => {
         data?.message ||
         data?.errors?.[0]?.message ||
         data?.details?.[0]?.message ||
+        err.message ||
         "Failed to save product. Please verify all fields and try again.";
       setFormError(errMsg);
       setToast({ message: errMsg, type: "error" });
@@ -938,6 +989,26 @@ const AdminProductDetailPage = () => {
 
       for (const item of details) {
         const path = String(item.path || "").toLowerCase();
+        const optionalField = ["description", "model", "variant", "warranty"].find(field => path === field);
+        if (optionalField) {
+          scrollToAndHighlightField(optionalField, "general", item.message);
+          mapped = true;
+          break;
+        }
+        if (path.startsWith("specifications.")) {
+          const key = String(item.path).slice("specifications.".length);
+          const index = Number(key.split(".")[0]);
+          const definition = categoryFilterDefinitions.find(def => def.key.toLowerCase() === key.toLowerCase());
+          const field = definition ? `spec-${definition.key}` : Number.isInteger(index) ? `spec-row-${index}` : "specifications";
+          scrollToAndHighlightField(field, "specifications", item.message);
+          mapped = true;
+          break;
+        }
+        if (path.includes("image")) {
+          scrollToAndHighlightField("images", "variants", item.message);
+          mapped = true;
+          break;
+        }
         if (path.includes("sku")) {
           scrollToAndHighlightField("sku", "general", item.message);
           mapped = true;
@@ -1123,7 +1194,7 @@ const AdminProductDetailPage = () => {
             isLoading={formSubmitting}
             leftIcon={<Save className="w-4 h-4" />}
             className="bg-[#800020] hover:bg-[#68001a] text-white font-bold px-6 text-xs h-10 shadow-sm">
-            Save & Publish
+            {status === "published" ? "Save & Publish" : "Save Draft"}
           </Button>
         </div>
       </div>
@@ -1244,11 +1315,13 @@ const AdminProductDetailPage = () => {
 
               {/* Description */}
               <FormField
+                id="field-description"
+                error={fieldErrors.description}
                 label="KEY FEATURES"
                 helperText="Provide key features, tech overview, capabilities and highlights">
                 <Textarea
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) => { setDescription(e.target.value); clearFieldError("description"); } }
                   placeholder="Describe key features, item specifications, overview and highlights here..."
                   rows={4}
                   className="text-sm"
@@ -1332,10 +1405,10 @@ const AdminProductDetailPage = () => {
                   </FormField>
                 </div>
 
-                <FormField label="MODEL NAME (OPTIONAL)" helperText="Specific model line">
+                <FormField id="field-model" error={fieldErrors.model} label="MODEL NAME (OPTIONAL)" helperText="Specific model line">
                   <Input
                     value={model}
-                    onChange={(e) => setModel(e.target.value)}
+                    onChange={(e) => { setModel(e.target.value); clearFieldError("model"); } }
                     placeholder="e.g. ROG Strix G16"
                   />
                 </FormField>
@@ -1370,18 +1443,18 @@ const AdminProductDetailPage = () => {
                   </FormField>
                 </div>
 
-                <FormField label="VARIANT (OPTIONAL)" helperText="e.g. 16GB RAM | 512GB SSD">
+                <FormField id="field-variant" error={fieldErrors.variant} label="VARIANT (OPTIONAL)" helperText="e.g. 16GB RAM | 512GB SSD">
                   <Input
                     value={variant}
-                    onChange={(e) => setVariant(e.target.value)}
+                    onChange={(e) => { setVariant(e.target.value); clearFieldError("variant"); } }
                     placeholder="e.g. 16GB / 512GB NVMe SSD"
                   />
                 </FormField>
 
-                <FormField label="WARRANTY (OPTIONAL)" helperText="Warranty terms & conditions">
+                <FormField id="field-warranty" error={fieldErrors.warranty} label="WARRANTY (OPTIONAL)" helperText="Warranty terms & conditions">
                   <Input
                     value={warranty}
-                    onChange={(e) => setWarranty(e.target.value)}
+                    onChange={(e) => { setWarranty(e.target.value); clearFieldError("warranty"); } }
                     placeholder="Enter warranty details (optional)"
                   />
                 </FormField>
@@ -1408,6 +1481,11 @@ const AdminProductDetailPage = () => {
               <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 text-sm">
                 <input type="checkbox" checked={isTrending} onChange={e => setIsTrending(e.target.checked)} className="h-4 w-4 accent-primary" />
                 <span><span className="font-semibold">Trending product</span><span className="mt-0.5 block text-xs text-muted-foreground">Show this product in the storefront Trending filter.</span></span>
+              </label>
+
+              <label className="flex items-center gap-3 rounded-xl border border-border p-4 cursor-pointer">
+                <input type="checkbox" checked={isLowStock} onChange={event => setIsLowStock(event.target.checked)} className="h-4 w-4 accent-primary" />
+                <span className="text-sm font-semibold">Mark as low stock<span className="block text-xs font-normal text-muted-foreground">Show in Low Stock. Customers can request up to 5 units, subject to available stock.</span></span>
               </label>
 
               {/* Bottom Nav Bar */}
@@ -1544,7 +1622,7 @@ const AdminProductDetailPage = () => {
                     </Button>
                   </div>
                 </div>
-                <p className="text-[11px] text-gray-500">JPG, JPEG, PNG or WebP, up to 5MB per image. Images upload when you save the product.</p>
+                <p className="text-[11px] text-gray-500">JPG, JPEG, PNG, WebP or SVG, up to 5MB per image. Images upload when you save the product.</p>
 
                 {fieldErrors.images && (
                   <div className="flex items-center gap-2 p-3 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl font-bold animate-pulse">
@@ -2047,7 +2125,7 @@ const AdminProductDetailPage = () => {
 
           {/* TAB 4: SPECIFICATIONS */}
           {activeTab === "specifications" && (
-            <div className="bg-white border border-[#f0e6e8] rounded-2xl p-6 shadow-xs space-y-6">
+            <div id="field-specifications" className="bg-white border border-[#f0e6e8] rounded-2xl p-6 shadow-xs space-y-6">
               <div>
                 <h3 className="text-sm font-black uppercase tracking-wider text-gray-900 flex items-center gap-2">
                   <FileText className="w-4 h-4 text-[#800020]" />
@@ -2057,8 +2135,11 @@ const AdminProductDetailPage = () => {
                   Configure technical hardware specifications and
                   category-specific attributes.
                 </p>
+                {fieldErrors.specifications && <FormError message={fieldErrors.specifications} />}
               </div>
 
+              <SpecificationTemplates specifications={specifications} onChange={setSpecifications} disabled={formSubmitting} />
+              <SpecificationOrderEditor specifications={specifications} onChange={setSpecifications} disabled={formSubmitting} />
               {/* Category-specific specifications (if defined for the category) */}
               {categoryFilterDefinitions.length > 0 && (
                 <div className="space-y-3 rounded-xl border border-[#e7d5da] bg-[#fdfbfb] p-4">
@@ -2287,12 +2368,14 @@ const AdminProductDetailPage = () => {
                       {manualSpecifications.map(({ spec: sp, index: idx }) => (
                         <div
                           key={idx}
+                          id={`field-spec-row-${idx}`}
                           className="px-4 py-2.5 grid grid-cols-12 items-center hover:bg-gray-50/50 transition-colors text-xs">
                           <div className="col-span-4 sm:col-span-3 font-bold text-gray-800 pr-2 truncate">
-                            {sp.key}
+                            <Input aria-label={`Specification ${idx + 1} name`} value={sp.key} maxLength={100} isDisabled={formSubmitting} onChange={event => setSpecifications(current => current.map((spec, position) => position === idx ? { ...spec, key: event.target.value } : spec))} />
                           </div>
                           <div className="col-span-7 sm:col-span-8 text-gray-600 pr-2 break-words">
-                            {sp.value}
+                            <Input aria-label={`Specification ${idx + 1} value`} value={sp.value} maxLength={2000} isDisabled={formSubmitting} onChange={event => setSpecifications(current => current.map((spec, position) => position === idx ? { ...spec, value: event.target.value } : spec))} />
+                            {fieldErrors[`spec-row-${idx}`] && <FormError message={fieldErrors[`spec-row-${idx}`]} />}
                           </div>
                           <div className="col-span-1 text-right">
                             <button
@@ -2337,7 +2420,7 @@ const AdminProductDetailPage = () => {
                   isLoading={formSubmitting}
                   leftIcon={<Save className="w-4 h-4" />}
                   className="bg-[#800020] hover:bg-[#68001a] text-white text-xs font-bold px-8 shadow-sm">
-                  Save & Publish Product
+                  {status === "published" ? "Save & Publish Product" : "Save Draft"}
                 </Button>
               </div>
             </div>

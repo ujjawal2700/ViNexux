@@ -20,7 +20,7 @@ export const VerifyOtpPage = () => {
 
   // Format phone number nicely (e.g. +91 8209224481)
   const formatPhoneNumber = (val) => {
-    if (!val) return '+91 8209224481'; // Default display preview
+    if (!val || val.includes('@')) return val;
     const clean = val.replace(/\D/g, '');
     if (clean.length === 10) {
       return `+91 ${clean}`;
@@ -44,6 +44,8 @@ export const VerifyOtpPage = () => {
   // 6 digit OTP state
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef([]);
+  const verificationPending = useRef(false);
+  const lastAutoAttempt = useRef(null);
 
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
@@ -81,6 +83,14 @@ export const VerifyOtpPage = () => {
   // Handle single digit input
   const handleDigitChange = (e, index) => {
     const val = e.target.value;
+    if (val.length >= 6) {
+      const code = val.replace(/\D/g, '').slice(0, 6);
+      if (!code) return;
+      setDigits(Array.from({ length: 6 }, (_, position) => code[position] || ''));
+      setError(null);
+      inputRefs.current[Math.min(code.length, 5)]?.focus();
+      return;
+    }
     const lastChar = val.substring(val.length - 1);
 
     if (val && !/^\d+$/.test(lastChar)) return;
@@ -129,16 +139,23 @@ export const VerifyOtpPage = () => {
   // Verify action
   const handleVerify = async (e) => {
     if (e) e.preventDefault();
+    if (verificationPending.current || sessionConflict) return;
+    if (!identifier) {
+      setError('Please return to login and request a new verification code.');
+      return;
+    }
     if (otpValue.length < 6) {
       setError('Please enter complete 6-digit verification code');
       return;
     }
 
+    verificationPending.current = true;
+    lastAutoAttempt.current = otpValue;
     setLoading(true);
     setError(null);
 
     try {
-      const res = await verifyOtp(identifier || '8209224481', otpValue, portal);
+      const res = await verifyOtp(identifier, otpValue, portal);
       if (res.sessionConflict) {
         return;
       }
@@ -157,17 +174,35 @@ export const VerifyOtpPage = () => {
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid or expired verification code');
     } finally {
+      verificationPending.current = false;
       setLoading(false);
     }
   };
+
+  // A complete code is submitted once. A failed code waits for an edit or manual retry.
+  const verifyLatest = useRef(handleVerify);
+  useEffect(() => { verifyLatest.current = handleVerify; });
+  useEffect(() => {
+    if (otpValue.length !== 6) {
+      lastAutoAttempt.current = null;
+      return;
+    }
+    if (!sessionConflict && !resendLoading && lastAutoAttempt.current !== otpValue) {
+      lastAutoAttempt.current = otpValue;
+      void verifyLatest.current();
+    }
+  }, [otpValue, sessionConflict, resendLoading]);
 
   // Resend action
   const handleResend = async () => {
     setResendLoading(true);
     setError(null);
     try {
-      const res = await sendOtp(identifier || '8209224481', portal, undefined, location.state?.password);
+      const res = await sendOtp(identifier, portal, undefined, location.state?.password);
       if (res.success) {
+        setDigits(['', '', '', '', '', '']);
+        lastAutoAttempt.current = null;
+        inputRefs.current[0]?.focus();
         toast.success('A new verification code has been sent!');
         setTimer(res.data?.resendAvailableInSeconds ?? 60);
       } else {
@@ -265,7 +300,7 @@ export const VerifyOtpPage = () => {
           <div className="w-5 h-5 rounded bg-[var(--store-primary,#800020)] flex items-center justify-center text-white shrink-0">
             <span className="text-[9px] leading-none font-black tracking-tighter">•••</span>
           </div>
-          <span>{mockOtpEnabled ? `Mock mode is enabled. Use code ${mockOtp || '123456'}.` : 'Check your SMS for the 6-digit code'}</span>
+          <span>{mockOtpEnabled ? `Mock mode is enabled. Use code ${mockOtp || '123456'}.` : `Check your ${identifier.includes('@') ? 'email' : 'SMS'} for the 6-digit code`}</span>
         </div>
 
         {/* Error Alert Notice */}
@@ -303,7 +338,9 @@ export const VerifyOtpPage = () => {
                   ref={(el) => (inputRefs.current[index] = el)}
                   type="text"
                   inputMode="numeric"
-                  maxLength={1}
+                  maxLength={6}
+                  aria-label={`OTP digit ${index + 1}`}
+                  autoComplete={index === 0 ? 'one-time-code' : 'off'}
                   value={digit}
                   disabled={loading}
                   onChange={(e) => handleDigitChange(e, index)}

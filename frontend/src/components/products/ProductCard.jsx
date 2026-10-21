@@ -104,10 +104,6 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (isOutOfStock) {
-      toast.warning('This product is currently out of stock.');
-      return;
-    }
 
     if (!isAuthenticated) {
       const updatedCart = guestCartService.addItem(product, quantity);
@@ -288,13 +284,14 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
 
           {/* Add to Cart OR Out of Stock button */}
           {isOutOfStock ? (
-            /* Full width disabled OOS button in orange (matching user request) */
+            /* Availability enquiries remain available for out-of-stock products. */
             <button
               type="button"
-              disabled
-              className="flex h-9 w-full items-center justify-center whitespace-nowrap rounded border border-orange-300 bg-orange-50 text-orange-700 text-[10.5px] font-bold tracking-tight uppercase cursor-not-allowed select-none"
+              disabled={isAdding || !product.isActive}
+              onClick={handleAddToCart}
+              className="flex h-9 w-full items-center justify-center whitespace-nowrap rounded border border-orange-300 bg-orange-50 text-orange-700 text-[10.5px] font-bold tracking-tight uppercase cursor-pointer select-none"
             >
-              OUT OF STOCK
+              {isAdding ? 'ADDING...' : isAdded ? 'ADDED' : 'ENQUIRE'}
             </button>
           ) : (
             <button

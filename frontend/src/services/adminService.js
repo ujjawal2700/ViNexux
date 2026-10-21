@@ -168,6 +168,31 @@ export const adminService = {
     const response = await apiClient.post('/admin/products/dev/seed-stock');
     return response.data;
   },
+  async uploadBrandLogo(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post('/admin/brands/logo', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  async uploadCategoryImage(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return (await apiClient.post('/admin/categories/image', formData)).data;
+  },
+
+  async uploadPromoDraftImage(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return (await apiClient.post('/admin/cms/promotional-banners/images', formData)).data;
+  },
+
+  async deletePromoDraftImage(publicId) {
+    return (await apiClient.delete('/admin/cms/promotional-banners/images', { data: { publicId } })).data;
+  },
+
   async uploadCmsImage(file, folder = 'vinexus/banners') {
     const formData = new FormData();
     formData.append('image', file);

@@ -1,4 +1,4 @@
-import { getMaximumOrderQuantity } from '../utils/inventory';
+import { getMaximumEnquiryQuantity } from '../utils/inventory';
 
 const STORAGE_KEY = 'vinexus_guest_cart';
 
@@ -26,14 +26,14 @@ export const guestCartService = {
     if (!productId) return this.getCart();
     const items = read();
     const existing = items.find((item) => String(item.productId?._id || item.productId) === productId);
-    const maximum = getMaximumOrderQuantity(product);
+    const maximum = getMaximumEnquiryQuantity(product);
     if (existing) existing.quantity = Math.min(maximum, existing.quantity + quantity);
     else items.push({ productId: product, quantity: Math.min(maximum, quantity), priceSnapshot: product.standardPrice || 0 });
     return write(items);
   },
   updateItem(productId, quantity) {
     return write(read().map((item) => String(item.productId?._id || item.productId) === String(productId)
-      ? { ...item, quantity: Math.min(getMaximumOrderQuantity(item.productId), Math.max(1, quantity)) } : item));
+      ? { ...item, quantity: Math.min(getMaximumEnquiryQuantity(item.productId), Math.max(1, quantity)) } : item));
   },
   removeItem(productId) {
     return write(read().filter((item) => String(item.productId?._id || item.productId) !== String(productId)));

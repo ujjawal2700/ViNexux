@@ -1,3 +1,4 @@
+import { getRecentViews } from '../../utils/browsingHistory';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
@@ -9,7 +10,7 @@ import categoryService from '../../services/categoryService';
 import useToast from '../../hooks/useToast';
 import ProductCard from '../../components/products/ProductCard';
 import { buildProductPath } from '../../utils/categoryUrls';
-import { getAvailableStock, getMaximumOrderQuantity } from '../../utils/inventory';
+import { getAvailableStock, getMaximumEnquiryQuantity } from '../../utils/inventory';
 import { allowsPreferences } from '../../utils/storageConsent';
 import { Skeleton } from '../../components/ui/Skeleton';
 import {
@@ -46,12 +47,10 @@ export const CartPage = () => {
   const [supportPhone, setSupportPhone] = useState('918769959424');
   const [whatsappNote, setWhatsappNote] = useState('Please confirm live stock availability, delivery timeline & share official GST commercial invoice.');
 
-  // Raw items array from cart
-  const rawItems = cart?.items || [];
   // Filter valid items where product exists
   const items = useMemo(() => {
-    return rawItems.filter((item) => item && (item.productId?._id || item.productId));
-  }, [rawItems]);
+    return (cart?.items || []).filter((item) => item && (item.productId?._id || item.productId));
+  }, [cart?.items]);
 
   // Format Currency (INR ₹)
   const formatCurrency = (amount) => {
@@ -104,7 +103,8 @@ export const CartPage = () => {
         return;
       }
       try {
-        const stored = JSON.parse(localStorage.getItem('vinexus_recently_viewed') || '[]');
+        const results = await Promise.allSettled(getRecentViews().slice(0, 6).map(id => productService.getProductById(id)));
+        const stored = results.filter(result => result.status === 'fulfilled').map(result => result.value.data?.product || result.value.data || result.value.product).filter(product => product?._id && product.isActive !== false);
         if (stored.length >= 6) {
           if (active) setRecentlyViewed(stored.slice(0, 6));
           return;
@@ -370,13 +370,13 @@ export const CartPage = () => {
   // Update Item Quantity (Optimistic + Broadcast)
   const handleUpdateQuantity = async (productId, newQuantity, product) => {
     if (newQuantity < 1 || !productId) return;
-    const maxAllowed = getMaximumOrderQuantity(product);
+    const maxAllowed = getMaximumEnquiryQuantity(product);
     if (newQuantity > maxAllowed) {
       toast.warning('The quantity limit for this enquiry has been reached.');
       return;
     }
     const availableStock = getAvailableStock(product);
-    if (availableStock !== null && newQuantity > availableStock) {
+    if (availableStock !== null && availableStock > 0 && newQuantity > availableStock) {
       toast.warning('The quantity limit for this enquiry has been reached.');
       return;
     }
@@ -675,9 +675,9 @@ export const CartPage = () => {
                   const prodId = String(prod._id || item.productId || item._id);
                   const unitPrice = item.priceSnapshot !== undefined ? item.priceSnapshot : (prod.standardPrice || prod.price || 0);
                   const availableStock = getAvailableStock(prod);
-                  const maxAllowedQty = getMaximumOrderQuantity(prod);
+                  const maxAllowedQty = getMaximumEnquiryQuantity(prod);
                   const currentQty = item.quantity || 1;
-                  const isAtLimit = currentQty >= maxAllowedQty || (availableStock !== null && currentQty >= availableStock);
+                  const isAtLimit = currentQty >= maxAllowedQty || (availableStock !== null && availableStock > 0 && currentQty >= availableStock);
                   const imgUrl = prod.images?.[0]?.url || prod.image || '';
                   return (
                     <div key={prodId} className={`rounded-lg border border-gray-200 bg-white p-3 ${selectedItemIds.has(prodId) ? '' : 'opacity-60'}`}>
@@ -698,7 +698,7 @@ export const CartPage = () => {
                           <div className="inline-flex items-center overflow-hidden rounded border border-gray-300 bg-white">
                             <button type="button" onClick={() => handleUpdateQuantity(prodId, (item.quantity || 1) - 1, prod)} disabled={(item.quantity || 1) <= 1 || updatingItemId === prodId} aria-label="Decrease quantity" className="flex h-8 w-8 items-center justify-center disabled:opacity-30"><Minus className="h-4 w-4" /></button>
                             <span className="flex h-8 w-8 items-center justify-center border-x border-gray-200 text-xs font-semibold">{item.quantity || 1}</span>
-                            <button type="button" onClick={() => handleUpdateQuantity(prodId, (item.quantity || 1) + 1, prod)} disabled={updatingItemId === prodId || isAtLimit || availableStock === 0} aria-label="Increase quantity" className="flex h-8 w-8 items-center justify-center disabled:opacity-30"><Plus className="h-4 w-4" /></button>
+                            <button type="button" onClick={() => handleUpdateQuantity(prodId, (item.quantity || 1) + 1, prod)} disabled={updatingItemId === prodId || isAtLimit} aria-label="Increase quantity" className="flex h-8 w-8 items-center justify-center disabled:opacity-30"><Plus className="h-4 w-4" /></button>
                           </div>
                           {isAtLimit && (
                             <p className="mt-1 text-[10px] font-semibold text-[var(--store-primary)]">
@@ -749,9 +749,9 @@ export const CartPage = () => {
                       const cdDiscount = Math.max(0, standardPrice - unitPrice);
                       const lineTotal = unitPrice * (item.quantity || 1);
                       const availableStock = getAvailableStock(prod);
-                      const maxAllowedQty = getMaximumOrderQuantity(prod);
+                      const maxAllowedQty = getMaximumEnquiryQuantity(prod);
                       const currentQty = item.quantity || 1;
-                      const isAtLimit = currentQty >= maxAllowedQty || (availableStock !== null && currentQty >= availableStock);
+                      const isAtLimit = currentQty >= maxAllowedQty || (availableStock !== null && availableStock > 0 && currentQty >= availableStock);
 
                       const imgUrl =
                         prod.images?.[0]?.url ||
@@ -832,7 +832,7 @@ export const CartPage = () => {
                               <button
                                 type="button"
                                 onClick={() => handleUpdateQuantity(prodId, (item.quantity || 1) + 1, prod)}
-                                disabled={updatingItemId === prodId || isAtLimit || availableStock === 0}
+                                disabled={updatingItemId === prodId || isAtLimit}
                                 className="w-7 h-7 flex items-center justify-center text-[#420b45] hover:bg-[#fbf7fc] disabled:opacity-30 cursor-pointer transition-colors"
                                 title="Increase quantity"
                               >
@@ -912,6 +912,9 @@ export const CartPage = () => {
 
               {/* Primary cart actions */}
               <div className="space-y-2.5 pt-2">
+                <p role="note" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-950">
+                  Orders placed before 5:00 pm IST are dispatched the same day. Orders placed at or after 5:00 pm IST are dispatched the next day.
+                </p>
                 {/* 1. WhatsApp chat button */}
                 <button
                   type="button"
@@ -920,7 +923,7 @@ export const CartPage = () => {
                   className="w-full h-11 rounded-md bg-[#25D366] hover:bg-[#20bd5a] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-bold tracking-wide flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-98"
                 >
                   <WhatsAppIcon className="w-4 h-4 text-white" />
-                  <span>Chat on WhatsApp</span>
+                  <span>Order on WhatsApp</span>
                 </button>
 
                 {/* 2. Send Enquiry Web Form Button */}

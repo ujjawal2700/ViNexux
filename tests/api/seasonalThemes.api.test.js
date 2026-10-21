@@ -70,7 +70,10 @@ describe('theme CMS lifecycle', () => {
     const response = await request.post(`/themes/${id}/assets/header`).attach('file', Buffer.from('test-image'), { filename: 'diya.png', contentType: 'image/png' });
     expect(response.status).toBe(200); expect(response.body.data.asset.publicId).toBe('cms/themes/diya'); expect(themes[0].draft.assets).toEqual(presetConfig('diwali').assets);
     expect(upload).toHaveBeenCalledTimes(1);
-    const rejected = await request.post(`/themes/${id}/assets/header`).attach('file', Buffer.from('<svg />'), { filename: 'diya.svg', contentType: 'image/svg+xml' });
-    expect(rejected.status).toBe(400); expect(upload).toHaveBeenCalledTimes(1);
+    const vector = await request.post(`/themes/${id}/assets/header`).attach('file', Buffer.from('<svg />'), { filename: 'diya.svg', contentType: 'image/svg+xml' });
+    expect(vector.status).toBe(200); expect(upload).toHaveBeenCalledTimes(2);
+    expect(upload).toHaveBeenLastCalledWith(expect.objectContaining({ mimetype: 'image/svg+xml' }));
+    const rejected = await request.post(`/themes/${id}/assets/header`).attach('file', Buffer.from('script'), { filename: 'diya.js', contentType: 'application/javascript' });
+    expect(rejected.status).toBe(400); expect(upload).toHaveBeenCalledTimes(2);
   });
 });

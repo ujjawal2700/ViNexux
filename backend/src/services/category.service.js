@@ -327,8 +327,18 @@ export const categoryService = {
     // Find all descendants at any depth
     const allDescendantIds = await findCategoryAndDescendantIds([id]);
 
-    // Clean up products in this category or any of its children
-    await Product.deleteMany({ categoryId: { $in: allDescendantIds } });
+    // Category maintenance must never silently destroy catalog records, including
+    // products linked through a secondary category or currently saved as drafts.
+    const productCount = await Product.countDocuments({ $or: [
+      { categoryId: { $in: allDescendantIds } },
+      { categoryIds: { $in: allDescendantIds } },
+    ] });
+    if (productCount) {
+      throw new AppError(
+        `Cannot delete this category: ${productCount} product(s) use it or its subcategories. Reassign those products first.`,
+        HTTP_STATUS.CONFLICT, ERROR_CODES.CONFLICT,
+      );
+    }
 
     // Delete the categories
     await Category.deleteMany({ _id: { $in: allDescendantIds } });

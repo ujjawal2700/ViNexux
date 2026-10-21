@@ -95,6 +95,7 @@ const AdminProductsPage = () => {
   const [categoryIdFilter, setCategoryIdFilter] = useState('');
   const [isActiveFilter, setIsActiveFilter] = useState('');
   const [trendingBusy, setTrendingBusy] = useState({});
+  const [lowStockBusy, setLowStockBusy] = useState({});
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('desc');
 
@@ -208,6 +209,20 @@ const AdminProductsPage = () => {
       toastApi.error(err.response?.data?.message || 'Unable to update trending status.');
     } finally {
       setTrendingBusy(current => ({ ...current, [product._id]: false }));
+    }
+  };
+
+  const toggleLowStock = async (product, isLowStock) => {
+    setLowStockBusy(current => ({ ...current, [product._id]: true }));
+    setProducts(current => current.map(item => item._id === product._id ? { ...item, isLowStock } : item));
+    try {
+      await adminService.updateProduct(product._id, { isLowStock });
+      toastApi.success(isLowStock ? 'Product marked as low stock.' : 'Product removed from low stock.');
+    } catch (err) {
+      setProducts(current => current.map(item => item._id === product._id ? { ...item, isLowStock: Boolean(product.isLowStock) } : item));
+      toastApi.error(err.response?.data?.message || 'Unable to update low stock status.');
+    } finally {
+      setLowStockBusy(current => ({ ...current, [product._id]: false }));
     }
   };
 
@@ -373,6 +388,7 @@ const AdminProductsPage = () => {
                 <Table.Head>Standard Price</Table.Head>
                 <Table.Head>Dealer Price</Table.Head>
                 <Table.Head>Trending</Table.Head>
+                <Table.Head>Low Stock</Table.Head>
                 <Table.Head>Stock</Table.Head>
                 <Table.Head>Status</Table.Head>
                 <Table.Head className="text-right">Actions</Table.Head>
@@ -434,6 +450,9 @@ const AdminProductsPage = () => {
                     </Table.Cell>
                     <Table.Cell onClick={e => e.stopPropagation()}>
                       <input type="checkbox" aria-label={`Trending: ${prod.name}`} checked={Boolean(prod.isTrending)} disabled={Boolean(trendingBusy[prod._id])} onChange={e => toggleTrending(prod, e.target.checked)} className="h-4 w-4 cursor-pointer accent-primary disabled:opacity-50" />
+                    </Table.Cell>
+                    <Table.Cell onClick={event => event.stopPropagation()}>
+                      <input type="checkbox" aria-label={`Low stock: ${prod.name}`} checked={Boolean(prod.isLowStock)} disabled={Boolean(lowStockBusy[prod._id])} onChange={event => toggleLowStock(prod, event.target.checked)} className="h-4 w-4 cursor-pointer accent-primary disabled:opacity-50" />
                     </Table.Cell>
                     <Table.Cell className="font-semibold">{prod.stockQuantity || 0}</Table.Cell>
                     <Table.Cell>

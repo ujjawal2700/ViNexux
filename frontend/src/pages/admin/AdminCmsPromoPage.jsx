@@ -172,7 +172,7 @@ const AdminCmsPromoPage = () => {
         if (imageFile) await adminService.uploadPromoBannerImageAdmin(editingPromo._id, imageFile);
         setToast({ message: 'Promotional banner updated!', type: 'success' });
       } else {
-        const upload = await adminService.uploadCmsImage(imageFile, 'vinexus/promotional-banners');
+        const upload = await adminService.uploadPromoDraftImage(imageFile);
         payload.image = { url: upload.data.url, publicId: upload.data.publicId };
         newlyUploadedPublicId = upload.data.publicId;
         await adminService.createPromoBannerAdmin(payload);
@@ -185,7 +185,7 @@ const AdminCmsPromoPage = () => {
       fetchPromos();
     } catch (err) {
       if (!editingPromo && newlyUploadedPublicId) {
-        await adminService.deleteStoredImage(newlyUploadedPublicId).catch(() => {});
+        await adminService.deletePromoDraftImage(newlyUploadedPublicId).catch(() => {});
       }
       console.error('Save promo banner error:', err);
       setFormError(err.response?.data?.message || 'Failed to save promotional banner');
@@ -423,10 +423,10 @@ const AdminCmsPromoPage = () => {
             />
           </FormField>
 
-          <FormField label={editingPromo ? 'Replace Promo Image (Optional)' : 'Promo Image'} required={!editingPromo} hint="Choose JPEG, PNG or WebP; max 5MB">
+          <FormField label={editingPromo ? 'Replace Promo Image (Optional)' : 'Promo Image'} required={!editingPromo} hint="Choose JPEG, PNG, WebP or SVG; max 5MB">
             <input
               type="file"
-              accept="image/jpeg,image/jpg,image/png,image/webp"
+              accept="image/jpeg,image/jpg,image/png,image/webp,image/svg+xml,.svg"
               onChange={(e) => {
                 const file = e.target.files?.[0] || null;
                 setImageFile(file);
@@ -500,10 +500,10 @@ const AdminCmsPromoPage = () => {
       {/* Image Upload Modal */}
       <Modal isOpen={!!uploadPromoTarget} onClose={() => setUploadPromoTarget(null)} title="Upload Promo Banner Image">
         <form onSubmit={handleImageUploadSubmit} className="space-y-4">
-          <FormField label="Select Image File (JPEG, PNG, WebP)" required hint="Recommended 600x200px resolution, max 5MB">
+          <FormField label="Select Image File (JPEG, PNG, WebP, SVG)" required hint="Recommended 600x200px resolution, max 5MB">
             <input
               type="file"
-              accept="image/jpeg,image/jpg,image/png,image/webp"
+              accept="image/jpeg,image/jpg,image/png,image/webp,image/svg+xml,.svg"
               onChange={(e) => setImageFile(e.target.files[0])}
               className="block w-full text-xs text-muted-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-muted file:text-foreground hover:file:bg-[#ebd5da] cursor-pointer"
               required

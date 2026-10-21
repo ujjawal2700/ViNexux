@@ -80,6 +80,7 @@ export const createProductSchema = {
       .default(0)
       .optional(),
     isTrending: z.boolean().default(false).optional(),
+    isLowStock: z.boolean().default(false).optional(),
     isFeatured: z.boolean().default(false).optional(),
     isActive: z.boolean().default(true).optional(),
   }),
@@ -124,6 +125,7 @@ export const updateProductSchema = {
       .optional()
       .nullable(),
     images: z.array(productImageSchema).optional(),
+    expectedImages: z.array(z.string()).optional(),
     specifications: z.array(productSpecificationSchema).optional(),
     standardPrice: z
       .number({ invalid_type_error: 'Standard price must be a number' })
@@ -134,6 +136,7 @@ export const updateProductSchema = {
       .min(0, { message: 'Dealer price cannot be negative' })
       .optional(),
     isTrending: z.boolean().optional(),
+    isLowStock: z.boolean().optional(),
     isFeatured: z.boolean().optional(),
     isActive: z.boolean().optional(),
   }),
@@ -158,6 +161,7 @@ export const getProductsQuerySchema = {
     inStock: z.enum(['true', 'false']).optional(),
     lowStock: z.enum(['true', 'false']).optional(),
     availability: z.string().max(100).refine((value) => {
+      if (value === 'none') return true;
       const allowed = new Set(['in-stock', 'low-stock', 'on-order', 'out-of-stock']);
       const statuses = value.split(',').filter(Boolean);
       return statuses.length > 0 && statuses.every((status) => allowed.has(status));
@@ -165,9 +169,12 @@ export const getProductsQuerySchema = {
     minPrice: z.coerce.number().min(0).optional(),
     maxPrice: z.coerce.number().min(0).optional(),
     specs: z.string().max(10000).refine((value) => {
-      try { return z.record(z.string().max(100), z.array(z.string().max(255)).max(30)).safeParse(JSON.parse(value)).success; }
+      try { return z.record(z.string().max(100), z.array(z.string().max(2000)).max(30)).safeParse(JSON.parse(value)).success; }
       catch { return false; }
     }, { message: 'Specifications must be a JSON object of string arrays' }).optional(),
+    headerCategory: z.string().max(2000).optional(),
+    mainCategory: z.string().max(2000).optional(),
+    subCategory: z.string().max(2000).optional(),
     categoryId: z.string().optional(),
     exactCategory: z.enum(['true', 'false']).optional(),
     category: z.string().optional(),

@@ -1,6 +1,7 @@
 module.exports = {
   displayName: 'unit',
   testEnvironment: 'node',
+  maxWorkers: 2,
   testMatch: ['<rootDir>/unit/**/*.test.js'],
   transform: {},
   collectCoverageFrom: [

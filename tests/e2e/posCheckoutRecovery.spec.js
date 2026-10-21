@@ -5,7 +5,7 @@ import { calculatePosBill, POS_SELLER_DEFAULTS } from '../../shared/posBilling.j
 
 const setup = async (page, { missingHsn = false, creationError = null, preflightError = null } = {}) => {
   await mockApi(page); await seedBrowserSession(page, 'admin');
-  let customer = posInput().customer, creates = 0, preflights = 0, lastPayload;
+  let customer = posInput().customer, creates = 0, preflights = 0, lookups = 0, lastPayload;
   const product = { _id: '507f1f77bcf86cd799439022', name: 'Checkout camera', sku: 'CAM-1', stockQuantity: 10, standardPrice: 100,
     images: [], specifications: missingHsn ? [] : [{ key: 'HSN', value: '85258900' }] };
   await page.route('**/api/admin/pos/**', async route => {
@@ -16,6 +16,7 @@ const setup = async (page, { missingHsn = false, creationError = null, preflight
     if (path.endsWith('/products')) return respond([product]);
     if (path.endsWith('/customer')) {
       if (request.method() === 'PUT') customer = request.postDataJSON();
+      else lookups++;
       return respond({ found: true, customer, needsVerification: false });
     }
     if (path.endsWith('/sales/validate')) {
@@ -36,7 +37,7 @@ const setup = async (page, { missingHsn = false, creationError = null, preflight
   });
   await page.goto('/admin/pos');
   await page.getByRole('button', { name: /Checkout camera CAM-1/ }).click();
-  return { creates: () => creates, preflights: () => preflights, payload: () => lastPayload };
+  return { creates: () => creates, preflights: () => preflights, lookups: () => lookups, payload: () => lastPayload };
 };
 
 const saveCustomer = async page => {
@@ -111,12 +112,13 @@ test('a later server address error can be corrected inside the payment dialog', 
   await dialog.getByRole('button', { name: 'Complete sale & generate invoice' }).click();
   await expect(dialog.getByRole('heading', { name: 'VI/26-27/000001' })).toBeVisible();
   expect(state.payload().customer.pincode).toBe('324099');
+  expect(state.lookups()).toBe(1);
 });
 
 test('admin rendering errors identify the broken route and preserve storage on go back and refresh', async ({ page }) => {
   await mockApi(page); await seedBrowserSession(page, 'admin');
   await page.goto('/admin/dashboard');
-  const fault = '**/src/pages/admin/AdminPosPage.jsx*';
+  const fault = process.env.PLAYWRIGHT_PREVIEW === '1' ? '**/assets/AdminPosPage-*.js' : '**/src/pages/admin/AdminPosPage.jsx*';
   await page.route(fault, route => route.fulfill({ contentType: 'application/javascript', body: 'export default function AdminPosPage() { throw new Error("POS render fixture"); }' }));
   await page.evaluate(() => { sessionStorage.setItem('recovery-marker', 'keep'); localStorage.setItem('recovery-marker', 'keep'); });
   await page.getByRole('link', { name: 'Offline POS Billing' }).click();

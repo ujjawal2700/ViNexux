@@ -48,7 +48,7 @@ export const updateBrand = asyncHandler(async (req, res) => {
   const previous = await Brand.findById(req.params.id).lean();
   const brand = await Brand.findByIdAndUpdate(req.params.id, payload, { new: true, runValidators: true });
   if (!brand) throw new AppError('Brand not found', 404, 'NOT_FOUND');
-  if (previous?.logo?.publicId && payload.logo?.publicId && previous.logo.publicId !== payload.logo.publicId) {
+  if (previous?.logo?.publicId && Object.hasOwn(payload, 'logo') && previous.logo.publicId !== brand.logo?.publicId) {
     await storageService.deleteFile(previous.logo.publicId);
   }
   ApiResponse.success(res, 'Brand updated', { brand });

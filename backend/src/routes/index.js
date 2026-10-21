@@ -1,3 +1,4 @@
+import { sharePage } from '../controllers/sharePage.controller.js';
 import campaignRoutes from './campaign.routes.js';
 import communicationsRoutes from './communications.routes.js';
 import adminAccessRoutes from './adminAccess.routes.js';
@@ -28,6 +29,7 @@ import publicPosRoutes from './publicPos.routes.js';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 
 const router = Router();
+router.get('/share-page', sharePage);
 
 // Mount system routes
 router.use('/', healthRoutes);

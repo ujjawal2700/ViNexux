@@ -1,5 +1,4 @@
-export const LOW_STOCK_THRESHOLD = 10;
-export const LOW_STOCK_MAX_ORDER = 3;
+export const LOW_STOCK_MAX_ORDER = 5;
 
 export const getAvailableStock = (product) => {
   const direct = product?.availableStock ?? product?.stockQuantity ?? product?.stock;
@@ -16,26 +15,17 @@ export const getAvailableStock = (product) => {
   return Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : null;
 };
 
-export const isLowStock = (product) => {
-  const stock = getAvailableStock(product);
-  if (stock !== null) {
-    return stock > 0 && stock < LOW_STOCK_THRESHOLD;
-  }
-  return product?.stockStatus === 'low-stock';
-};
+// Low stock is a merchandising flag, independent of the physical stock count.
+export const isLowStock = (product) => product?.isLowStock === true;
 
 export const getMaximumOrderQuantity = (product) => {
   const stock = getAvailableStock(product);
-  if (stock !== null) {
-    if (stock <= 0) return 0;
-    if (stock < LOW_STOCK_THRESHOLD) {
-      return Math.min(LOW_STOCK_MAX_ORDER, stock);
-    }
-    return stock;
-  }
-  if (product?.stockStatus === 'low-stock') {
-    return LOW_STOCK_MAX_ORDER;
-  }
-  return 1000;
+  const limit = isLowStock(product) ? LOW_STOCK_MAX_ORDER : 1000;
+  return stock === null ? limit : Math.min(stock, limit);
 };
 
+// Availability enquiries do not reserve stock or fulfill an order.
+export const getMaximumEnquiryQuantity = (product) =>
+  getAvailableStock(product) === 0 || product?.stockStatus === 'out-of-stock'
+    ? (isLowStock(product) ? LOW_STOCK_MAX_ORDER : 1000)
+    : getMaximumOrderQuantity(product);

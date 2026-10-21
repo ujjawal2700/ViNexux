@@ -6,6 +6,9 @@ for (const routeCase of frontendRouteCases()) {
   test(`${routeCase.section}: ${routeCase.pattern}`, async ({ page }) => {
     const pageErrors = [];
     page.on('pageerror', (error) => pageErrors.push(error.message));
+    page.on('console', message => {
+      if (/Maximum update depth|Too many re-renders/.test(message.text())) pageErrors.push(message.text());
+    });
     await mockApi(page);
     await seedBrowserSession(page, routeCase.section);
 

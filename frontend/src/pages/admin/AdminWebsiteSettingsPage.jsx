@@ -21,7 +21,7 @@ const emptyForm = {
 };
 
 const assetFields = [
-  { key: 'favicon', label: 'Favicon', help: 'Browser tab icon. A square PNG, JPG or WebP image is recommended.', previewClass: 'h-24 w-24 object-contain' },
+  { key: 'favicon', label: 'Favicon', help: 'Browser tab icon. A square PNG, JPG, WebP or SVG image is recommended.', previewClass: 'h-24 w-24 object-contain' },
   { key: 'logo', label: 'Website Logo', help: 'Displayed in the storefront header, admin panel and authentication pages.', previewClass: 'h-24 max-w-64 object-contain' },
   { key: 'ogImage', label: 'OG / Social Image', help: 'Preview image used when website links are shared on social platforms.', previewClass: 'h-32 w-full object-contain' },
 ];
@@ -63,8 +63,8 @@ const AdminWebsiteSettingsPage = () => {
 
   const handleFile = (field, file) => {
     if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      setErrors((current) => ({ ...current, [field]: 'Only PNG, JPG and WebP images are allowed.' }));
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'].includes(file.type)) {
+      setErrors((current) => ({ ...current, [field]: 'Only PNG, JPG, WebP and SVG images are allowed.' }));
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
@@ -186,7 +186,7 @@ const AdminWebsiteSettingsPage = () => {
             <p className="min-h-10 text-xs leading-5 text-muted-foreground">{asset.help}</p>
             <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:border-primary hover:text-primary">
               <Upload className="h-4 w-4" /> Choose Image
-              <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(event) => handleFile(asset.key, event.target.files?.[0])} />
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg" className="sr-only" onChange={(event) => handleFile(asset.key, event.target.files?.[0])} />
             </label>
             {files[asset.key] && <p className="truncate text-xs font-medium text-emerald-700">Selected: {files[asset.key].name}</p>}
             {errors[asset.key] && <p className="text-xs font-medium text-rose-600">{errors[asset.key]}</p>}

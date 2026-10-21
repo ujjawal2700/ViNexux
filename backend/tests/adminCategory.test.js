@@ -278,8 +278,8 @@ const runAdminCategoryTests = async () => {
     assert(deleteSubRes.body.data.deleted === true, 'Unused leaf category is deleted');
     assert(await Category.findById(subCatId) === null, 'Deleted leaf is absent from database');
 
-    // 15. Category having dependent product/subcategory is safely deactivated
-    console.log('\nTest 15: Category having dependent product/subcategory is safely deactivated');
+    // 15. Category deletion preserves dependent products and subcategories
+    console.log('\nTest 15: Category deletion preserves dependent products and subcategories');
     await Product.create({
       sku: `PROD-TEST-${timestamp}`,
       name: 'Industrial Valve 100',
@@ -293,10 +293,10 @@ const runAdminCategoryTests = async () => {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${adminToken}` },
     });
-    assert(deleteParentRes.status === 200, 'Returns HTTP 200 OK for category with dependencies');
-    assert(deleteParentRes.body.data.deleted === true, 'Category deletion cascades to dependent products');
-    assert(await Product.countDocuments({ categoryId: cat1Id }) === 0, 'Dependent products removed');
-    assert(await Category.findById(cat1Id) === null, 'Deleted parent is absent');
+    assert(deleteParentRes.status === 409, 'Returns conflict for category with dependent products');
+    assert(deleteParentRes.body.message.includes('Reassign'), 'Explains how to safely remove the category');
+    assert(await Product.countDocuments({ categoryId: cat1Id }) === 1, 'Dependent products are preserved');
+    assert(await Category.findById(cat1Id) !== null, 'Referenced parent is preserved');
 
     // 16. Existing public category API still works
     console.log('\nTest 16: Existing public category API still works');
@@ -304,7 +304,7 @@ const runAdminCategoryTests = async () => {
     assert(publicListRes.status === 200, 'Public GET /api/categories returns 200 OK');
 
     const publicGetRes = await request(`/api/categories/${cat1Id}`);
-    assert(publicGetRes.status === 404, 'Deleted category detail returns 404');
+    assert(publicGetRes.status === 200, 'Protected category is still available');
 
     console.log('\n===========================================================');
     console.log('🎉 ALL 16 ADMIN CATEGORY TEST CASES PASSED CLEANLY!');

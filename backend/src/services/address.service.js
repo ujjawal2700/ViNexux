@@ -60,7 +60,8 @@ export const createAddress = async (userId, data) => {
     isDefault: shouldBeDefault,
   });
 
-  await user.save();
+  // Validate the address changes without requiring unrelated legacy profile fields.
+  await user.save({ validateModifiedOnly: true });
   return user.savedAddresses;
 };
 
@@ -82,7 +83,8 @@ export const updateAddress = async (userId, addressId, data) => {
     address.isDefault = false;
   }
 
-  await user.save();
+  // Validate the address changes without requiring unrelated legacy profile fields.
+  await user.save({ validateModifiedOnly: true });
   return user.savedAddresses;
 };
 
@@ -99,7 +101,8 @@ export const deleteAddress = async (userId, addressId) => {
     user.savedAddresses[0].isDefault = true;
   }
 
-  await user.save();
+  // Validate the address changes without requiring unrelated legacy profile fields.
+  await user.save({ validateModifiedOnly: true });
   return user.savedAddresses;
 };
 
@@ -110,7 +113,8 @@ export const setDefaultAddress = async (userId, addressId) => {
   clearOtherDefaults(user, addressId);
   user.savedAddresses.id(addressId).isDefault = true;
 
-  await user.save();
+  // Validate the address changes without requiring unrelated legacy profile fields.
+  await user.save({ validateModifiedOnly: true });
   return user.savedAddresses;
 };
 

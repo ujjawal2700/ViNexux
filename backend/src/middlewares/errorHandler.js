@@ -35,7 +35,9 @@ export const errorHandler = (err, req, res, next) => {
   if (err.code === 11000) {
     statusCode = HTTP_STATUS.CONFLICT;
     errorCode = ERROR_CODES.CONFLICT;
-    message = 'Duplicate field value entered';
+    const fields = Object.keys(err.keyPattern || err.keyValue || {});
+    errorDetails = fields.map(path => ({ path, message: `${path === 'modelNumber' ? 'Model number' : path === 'sku' ? 'SKU' : path} is already in use. Choose a unique value.` }));
+    message = errorDetails.map(item => item.message).join(' ') || 'A unique field value is already in use.';
   }
 
   // Handle Mongoose ValidationError
@@ -48,6 +50,12 @@ export const errorHandler = (err, req, res, next) => {
       message: val.message,
     }));
     message = errorDetails.map(detail => `${detail.path}: ${detail.message}`).join(', ');
+  }
+
+  if (err.name === 'VersionError') {
+    statusCode = HTTP_STATUS.CONFLICT;
+    errorCode = ERROR_CODES.CONFLICT;
+    message = 'This product changed while you were editing it. Refresh and try again.';
   }
 
   // Log error details for server diagnostics

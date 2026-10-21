@@ -133,6 +133,8 @@ const AdminSessionsPage = () => {
         badge={`${pagination.total ?? 0} Session Records`}
       />
 
+      <p className="text-sm text-muted-foreground">Your current browser session appears first and is marked Current session. Use Log out to end this session.</p>
+
       {/* Filter Bar */}
       <FilterBar
         search={search}
@@ -232,6 +234,7 @@ const AdminSessionsPage = () => {
                     <Table.Cell>
                       <div className="font-mono text-xs text-foreground font-bold truncate max-w-[180px]">
                         {sess.sessionId || sess._id}
+                        {sess.isCurrent && <span className="block mt-1 text-xs font-semibold text-emerald-700">Current session · This browser</span>}
                       </div>
                       <div className="text-[11px] font-semibold text-foreground">
                         {userName} <span className="text-[10px] text-muted-foreground">({userObj.email || userObj.phone || 'N/A'})</span>
@@ -277,7 +280,7 @@ const AdminSessionsPage = () => {
                           <Eye className="w-3.5 h-3.5 mr-1" /> View
                         </Button>
 
-                        {isSessionActive && (
+                        {isSessionActive && !sess.isCurrent && (
                           <Button
                             variant="ghost"
                             size="sm"

@@ -3,7 +3,6 @@ import { Router } from 'express';
 import { z } from 'zod';
 import mongoose from 'mongoose';
 import rateLimit from 'express-rate-limit';
-import sharp from 'sharp';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 import { uploadSingle } from '../middlewares/upload.middleware.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -39,9 +38,7 @@ router.post('/images', uploadSingle('file', 'cms'), asyncHandler(async (req, res
     const origin = (process.env.PUBLIC_API_URL || `${req.protocol}://${req.get('host')}${config.apiBaseUrl}`).replace(/\/$/, '');
     file = { url: `${origin}/content/theme-assets/${local.filename}` };
   } else {
-    try { req.file.buffer = await sharp(req.file.buffer).rotate().resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true }).webp().toBuffer(); }
-    catch { fail('Upload a valid PNG, JPG or WebP image.'); }
-    file = await storageService.uploadFile({ ...req.file, originalname: 'campaign.webp', mimetype: 'image/webp', folder: 'cms/campaigns', category: 'cms' });
+    file = await storageService.uploadFile({ ...req.file, folder: 'cms/campaigns', category: 'cms' });
   }
   reply(res, { url: file.url });
 }));

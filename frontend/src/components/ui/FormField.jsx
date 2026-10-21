@@ -5,6 +5,7 @@ import FormHelperText from './FormHelperText';
 
 export const FormField = ({
   label,
+  id,
   required = false,
   error,
   helperText,
@@ -13,7 +14,7 @@ export const FormField = ({
   className = '',
 }) => {
   return (
-    <div className={`space-y-1 ${className}`}>
+    <div id={id} className={`space-y-1 ${className}`}>
       {label && <FormLabel htmlFor={htmlFor} required={required}>{label}</FormLabel>}
       {children}
       {error ? <FormError error={error} /> : <FormHelperText>{helperText}</FormHelperText>}

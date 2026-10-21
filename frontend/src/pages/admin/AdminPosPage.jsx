@@ -146,6 +146,8 @@ export default function AdminPosPage() {
   useEffect(() => {
     if (!customerOpen && !(tenderOpen && paymentCorrection === 'customer')) return;
     const phone = customerPhone;
+    // Reopening corrections must preserve the verified customer's local edits.
+    if (customerCheck.phone === phone && ['existing', 'verified'].includes(customerCheck.status)) return;
     let active = true;
     const timer = setTimeout(async () => {
       setOtpSent(false); setOtpCode(''); setMockOtp('');

@@ -13,7 +13,7 @@ const escapeRegex = (string) => {
 /**
  * Admin: List sessions with pagination, filtering & search
  */
-export const listSessions = async (query = {}) => {
+export const listSessions = async (query = {}, currentSessionId = null) => {
   const {
     page = 1,
     limit = 20,
@@ -94,15 +94,20 @@ export const listSessions = async (query = {}) => {
     }
   }
 
-  const skip = (page - 1) * limit;
-
   const totalItems = await Session.countDocuments(filter);
-  const sessions = await Session.find(filter)
+  // Pin only the requesting browser's authenticated session, within the selected filters.
+  const current = currentSessionId ? await Session.findOne({ ...filter, sessionId: currentSessionId })
+    .populate('userId', 'fullName name email phone role accountStatus isPhoneVerified isEmailVerified').lean() : null;
+  const remainingFilter = current ? { $and: [filter, { _id: { $ne: current._id } }] } : filter;
+  const skip = Math.max(0, (page - 1) * limit - (current && page > 1 ? 1 : 0));
+  const rows = await Session.find(remainingFilter)
     .populate('userId', 'fullName name email phone role accountStatus isPhoneVerified isEmailVerified')
-    .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 })
+    .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1, _id: 1 })
     .skip(skip)
-    .limit(limit)
+    .limit(current && page === 1 ? Math.max(1, limit - 1) : limit)
     .lean();
+  const sessions = [...(current && page === 1 ? [current] : []), ...(current && page === 1 && limit === 1 ? [] : rows)]
+    .map(session => ({ ...session, isCurrent: session.sessionId === currentSessionId }));
 
   return {
     sessions,
@@ -150,7 +155,7 @@ export const getSessionById = async (id) => {
 /**
  * Admin: Revoke/terminate session by MongoDB ObjectId or UUID sessionId
  */
-export const revokeSession = async (id) => {
+export const revokeSession = async (id, currentSessionId = null) => {
   let session;
   if (mongoose.Types.ObjectId.isValid(id)) {
     session = await Session.findById(id);
@@ -165,6 +170,10 @@ export const revokeSession = async (id) => {
 
   if (!session) {
     throw new AppError('Session not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
+  }
+
+  if (session.sessionId === currentSessionId) {
+    throw new AppError('This is your current session. Use Log out to end it.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
   }
 
   session.isActive = false;

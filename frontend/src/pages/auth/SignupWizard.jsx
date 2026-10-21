@@ -28,7 +28,7 @@ const AADHAAR_REGEX = /^\d{12}$/;
 const PINCODE_REGEX = /^\d{6}$/;
 const PHONE_REGEX = /^[6-9]\d{9}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
+const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml', 'application/pdf'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ORGANISATION_TYPES = ['Proprietorship', 'Partnership', 'Limited Liability Partnership (LLP)', 'Private Limited Company', 'Limited Company', 'Others'];
 const OfficeLocationPicker = lazy(() => import('../../components/auth/OfficeLocationPicker'));
@@ -62,7 +62,7 @@ const FileDropField = ({ label, required, file, onChange, disabled }) => (
       <span className="truncate flex-1 font-medium">{file ? file.name : 'Choose photo or PDF (max 5MB)'}</span>
       <input
         type="file"
-        accept=".jpg,.jpeg,.png,.webp,.pdf"
+        accept=".jpg,.jpeg,.png,.webp,.svg,.pdf"
         className="hidden"
         disabled={disabled}
         onChange={(e) => onChange(e.target.files[0] || null)}
@@ -219,7 +219,7 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
     for (const [file, label] of [[gstFile, 'GST Certificate'], [aadhaarFile, 'Aadhaar Card'], [msmeFile, 'MSME Certificate']]) {
       if (!file) continue;
       if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-        return `${label}: invalid file format. Please upload JPG, PNG, WEBP, or PDF.`;
+        return `${label}: invalid file format. Please upload JPG, PNG, WebP, SVG, or PDF.`;
       }
       if (file.size > MAX_FILE_SIZE) {
         return `${label}: file is too large (max 5MB).`;

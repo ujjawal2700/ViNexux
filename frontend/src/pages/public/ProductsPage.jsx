@@ -1,3 +1,5 @@
+import CategoryFilters from '../../components/products/CategoryFilters';
+import { CATEGORY_FILTER_KEYS, readCategorySelections, readSpecificationSelections, splitFilterValues, specificationFilterValues } from '../../../../shared/categoryFiltering.js';
 import React, {
   useState,
   useEffect,
@@ -36,13 +38,13 @@ import {
   buildCategoryPath,
   buildCategoryTrail,
   buildBrandUrl,
+  cleanBrandSlug,
 } from "../../utils/categoryUrls";
 import {
   Filter,
   ChevronRight,
   ChevronDown,
   LayoutGrid,
-  CheckSquare,
   SlidersHorizontal,
   PackageCheck,
   Layers,
@@ -88,10 +90,10 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
   // Local state
   const searchTerm = initialSearch;
 
-  const [selectedSpecs, setSelectedSpecs] = useState({}); // { "Wattage": ["65w"], ... }
-  const [selectedAvailability, setSelectedAvailability] = useState(() => [
-    ...DEFAULT_AVAILABILITY,
-  ]);
+  const specsParam = searchParams.get("specs") || "";
+  const availabilityParam = searchParams.get("availability");
+  const selectedSpecs = useMemo(() => readSpecificationSelections(specsParam), [specsParam]);
+  const selectedAvailability = useMemo(() => availabilityParam === null ? [...DEFAULT_AVAILABILITY] : splitFilterValues(availabilityParam).filter(value => DEFAULT_AVAILABILITY.includes(value)), [availabilityParam]);
   const [sortOption, setSortOption] = useState("default");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 28;
@@ -117,8 +119,10 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
     specs: [],
   });
   const facetKeyRef = useRef(null);
+  const [facetsLoaded, setFacetsLoaded] = useState(false);
   // Set when the server found no exact matches and searched corrected words.
   const [correctedSearch, setCorrectedSearch] = useState("");
+  const [resolvedRouteBrand, setResolvedRouteBrand] = useState("");
   const [pagination, setPagination] = useState({
     page: 1,
     totalPages: 1,
@@ -170,8 +174,9 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
   const selectedCategoryId = targetCategorySlug
     ? routeCategory?._id || ""
     : queryCategory?._id || initialCategory;
+  const categorySelections = useMemo(() => readCategorySelections(searchParams, categories, routeCategory), [searchParams, categories, routeCategory]);
   const routeBrand = brandSlug
-    ? brandSlug.replace(/-/g, " ").toUpperCase()
+    ? resolvedRouteBrand || (facets.brands || []).find(brand => cleanBrandSlug(brand.name) === cleanBrandSlug(brandSlug))?.name?.toUpperCase() || brandSlug.replace(/-/g, " ").toUpperCase()
     : "";
   const selectedBrands = useMemo(() => {
     const names = initialBrand
@@ -234,20 +239,12 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
           query.search = searchTerm.trim();
         }
 
-        if (
-          selectedCategoryId &&
-          /^[0-9a-fA-F]{24}$/.test(selectedCategoryId)
-        ) {
-          query.categoryId = selectedCategoryId;
-        } else if (initialCategory) {
-          query.category = initialCategory;
-        }
-
+        for (const key of CATEGORY_FILTER_KEYS) if (categorySelections[key].length) query[key] = categorySelections[key].join(',');
+        // Invalid legacy category links must remain empty instead of broadening to every product.
+        if (initialCategory && !splitFilterValues(initialCategory).every(value => categories.some(category => String(category._id) === value || category.slug === value))) query.category = initialCategory;
         if (brandSlug && !initialBrand) query.brandSlug = brandSlug;
         else if (initialBrand) query.brand = initialBrand;
-        if (selectedAvailability.length && selectedAvailability.length < DEFAULT_AVAILABILITY.length) {
-          query.availability = selectedAvailability.join(",");
-        }
+        if (selectedAvailability.length < DEFAULT_AVAILABILITY.length) query.availability = selectedAvailability.join(",") || "none";
         if (lowStockOnly) {
           query.lowStock = true;
           query.availability = "low-stock";
@@ -256,10 +253,12 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
           query.specs = JSON.stringify(selectedSpecs);
         // Facets depend on the filters, not the page. When only the page (or a
         // user-driven refetch) changes, reuse the facets already on screen.
-        const { page: _page, ...facetQuery } = query;
+        const { page: _page, sortBy: _sortBy, sortOrder: _sortOrder, ...facetQuery } = query;
         const facetKey = JSON.stringify({
           ...facetQuery,
-          user: user?.id || null,
+          user: user?._id || user?.id || null,
+          role: user?.role || null,
+          kycStatus: user?.kycStatus || null,
           dealerStatus: user?.dealerStatus || null,
         });
         const reuseFacets = facetKeyRef.current === facetKey;
@@ -278,6 +277,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
             },
           );
           facetKeyRef.current = facetKey;
+          setFacetsLoaded(true);
         }
         const productList = response.data?.products || response.products || [];
         const pageInfo = response.data?.pagination ||
@@ -287,6 +287,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
             total: productList.length,
           };
 
+        setResolvedRouteBrand(response.data?.resolvedBrand || "");
         setProducts(productList);
         setPagination(pageInfo);
         setCorrectedSearch(
@@ -311,7 +312,8 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
       currentPage,
       itemsPerPage,
       searchTerm,
-      selectedCategoryId,
+      categorySelections,
+      categories,
       targetCategorySlug,
       sortOption,
       initialCategory,
@@ -322,8 +324,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
       categoriesLoaded,
       categoryError,
       routeCategory,
-      user?.id,
-      user?.dealerStatus,
+      user,
     ],
   );
 
@@ -335,154 +336,43 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
 
   const isAllProductsRoute = lowStockOnly || trendingOnly || location.pathname.startsWith("/products");
 
-  const availableCategories = facets.categories || [];
-  const displayCategories = useMemo(() => {
-    if (availableCategories.length > 0) return availableCategories;
-    return categories
-      .filter((c) => !c.parentId)
-      .map((c) => ({
-        _id: c._id,
-        name: c.name,
-        slug: c.slug,
-        count: c.productCount || 0,
-      }));
-  }, [availableCategories, categories]);
-
-  // When on /products, show only header categories with rolled-up product counts
-  const headerCategoriesList = useMemo(() => {
-    if (!isAllProductsRoute) return null;
-    const roots = categories.filter((c) => !c.parentId);
-    const parentMap = new Map(
-      categories.map((c) => [
-        String(c._id),
-        c.parentId?._id
-          ? String(c.parentId._id)
-          : c.parentId
-            ? String(c.parentId)
-            : null,
-      ]),
-    );
-    const getRootId = (catId) => {
-      let curr = String(catId);
-      let p = parentMap.get(curr);
-      while (p) {
-        curr = p;
-        p = parentMap.get(curr);
-      }
-      return curr;
-    };
-    const counts = new Map();
-    for (const item of facets.categories || []) {
-      const rootId = getRootId(item._id);
-      counts.set(rootId, (counts.get(rootId) || 0) + (item.count || 0));
+  const availableBrands = useMemo(() => {
+    const result = [...(facets.brands || [])];
+    for (const name of selectedBrands) if (!result.some(brand => brand.name.toUpperCase() === name)) result.push({ name, count: 0 });
+    return result;
+  }, [facets.brands, selectedBrands]);
+  const specsToRender = useMemo(() => {
+    const result = (facets.specs || []).map(spec => ({ ...spec, values: [...spec.values] }));
+    for (const [key, values] of Object.entries(selectedSpecs)) {
+      let spec = result.find(item => item.key.toLowerCase() === key.toLowerCase());
+      if (!spec && values.length) { spec = { key, label: key, values: [] }; result.push(spec); }
+      if (spec) for (const val of values) if (!spec.values.some(item => item.val === val)) spec.values.push({ val, count: 0 });
     }
-    return roots.map((root) => ({
-      _id: root._id,
-      name: root.name,
-      slug: root.slug,
-      count: counts.get(String(root._id)) || 0,
-    }));
-  }, [isAllProductsRoute, categories, facets.categories]);
-
-  const categoriesToRender = isAllProductsRoute
-    ? headerCategoriesList || []
-    : displayCategories;
-  const availableBrands = facets.brands;
-  const dynamicSpecs = facets.specs;
+    return result;
+  }, [facets.specs, selectedSpecs]);
   const availabilityFacets = facets.availability || [];
   // Filtering and pagination are performed together by MongoDB.
   const displayedProducts = products;
 
-  // Current category (resolved from hierarchical route or query category)
-  const currentCategory = useMemo(() => {
-    if (routeCategory) return routeCategory;
-    if (initialCategory && !initialCategory.includes(",")) {
-      return (
-        categories.find(
-          (c) => c._id === initialCategory || c.slug === initialCategory,
-        ) || null
-      );
-    }
-    return null;
-  }, [routeCategory, initialCategory, categories]);
-
-  // If products are few (<= 12 products, 1-2 rows): only Categories, Brands, Availability.
-  // If products are multiple rows (> 12 products): show specs according to products!
-  const totalProductCount = pagination.total || products.length;
-  const hasMultipleRows = totalProductCount > 12;
-  const specsToRender =
-    (hasMultipleRows || lowStockOnly) && dynamicSpecs && dynamicSpecs.length > 0
-      ? dynamicSpecs.slice(0, 6)
-      : [];
-
-  // Selected category slugs / IDs
-  const selectedCategorySlugs = useMemo(() => {
-    if (targetCategorySlug) return [targetCategorySlug.toLowerCase()];
-    if (!initialCategory) return [];
-    return initialCategory
-      .split(",")
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean);
-  }, [targetCategorySlug, initialCategory]);
-
-  const isAllCategoriesChecked = selectedCategorySlugs.length === 0;
-
-  const isCategoryChecked = useCallback(
-    (cat) => {
-      if (!cat) return isAllCategoriesChecked;
-      const catSlug = (cat.slug || "").toLowerCase();
-      const catId = String(cat._id || "").toLowerCase();
-      return (
-        (Boolean(catSlug) && selectedCategorySlugs.includes(catSlug)) ||
-        (Boolean(catId) && selectedCategorySlugs.includes(catId))
-      );
-    },
-    [isAllCategoriesChecked, selectedCategorySlugs],
-  );
-
-  // Handle category selection in filter sidebar using checkboxes
-  const handleToggleCategory = (cat) => {
+  const writeFilters = (next, leaveCategoryRoute = false) => {
+    next.delete("page");
     setCurrentPage(1);
-    setSelectedSpecs({});
+    if (leaveCategoryRoute && targetCategorySlug) navigate(`/products${next.size ? `?${next}` : ""}`);
+    else setSearchParams(next);
+  };
+  const handleToggleCategory = (category, key) => {
     const next = new URLSearchParams(searchParams);
-
-    if (!cat) {
-      // Clicked "All Categories": clear specific category filters
-      next.delete("category");
-      next.delete("categoryId");
-      if (targetCategorySlug) {
-        navigate("/products");
-      } else {
-        setSearchParams(next);
-      }
-      return;
+    const selections = Object.fromEntries(CATEGORY_FILTER_KEYS.map(group => [group, [...categorySelections[group]]]));
+    if (category) {
+      const id = String(category._id);
+      selections[key] = selections[key].includes(id) ? selections[key].filter(value => value !== id) : [...selections[key], id];
+    } else for (const group of CATEGORY_FILTER_KEYS) selections[group] = [];
+    next.delete("category"); next.delete("categoryId");
+    for (const group of CATEGORY_FILTER_KEYS) {
+      if (selections[group].length) next.set(group, selections[group].join(','));
+      else next.delete(group);
     }
-
-    const catSlug = (cat.slug || cat._id).toLowerCase();
-    const checked = isCategoryChecked(cat);
-
-    let updatedSlugs;
-    if (checked) {
-      updatedSlugs = selectedCategorySlugs.filter(
-        (s) => s !== catSlug && s !== String(cat._id || "").toLowerCase(),
-      );
-    } else {
-      updatedSlugs = [...selectedCategorySlugs, cat.slug || cat._id];
-    }
-
-    if (updatedSlugs.length === 0) {
-      next.delete("category");
-      next.delete("categoryId");
-    } else {
-      next.set("category", updatedSlugs.join(","));
-      next.delete("categoryId");
-    }
-
-    if (targetCategorySlug) {
-      navigate(`/products${next.toString() ? `?${next.toString()}` : ""}`);
-    } else {
-      setSearchParams(next);
-    }
+    writeFilters(next, true);
   };
 
   // Current Active Category Object
@@ -542,6 +432,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
   // Keep search and category constraints when changing a brand.
   const handleToggleBrand = (brandName) => {
     const next = new URLSearchParams(searchParams);
+    next.delete("page");
     const normalized = brandName.toUpperCase();
     const updated = selectedBrands.includes(normalized)
       ? selectedBrands.filter((name) => name !== normalized)
@@ -553,46 +444,33 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
     else setSearchParams(next);
   };
 
-  // Toggle spec filter
-  const handleToggleSpec = (key, val) => {
-    setCurrentPage(1);
-    setSelectedSpecs((prev) => {
-      const currentList = prev[key] || [];
-      const updatedList = currentList.includes(val)
-        ? currentList.filter((v) => v !== val)
-        : [...currentList, val];
-      return { ...prev, [key]: updatedList };
-    });
+  const handleToggleSpec = (key, value) => {
+    const next = new URLSearchParams(searchParams);
+    const specs = { ...selectedSpecs };
+    const current = specificationFilterValues(specs, key);
+    for (const name of Object.keys(specs)) if (name.toLowerCase() === key.toLowerCase()) delete specs[name];
+    const values = current.includes(value) ? current.filter(item => item !== value) : [...current, value];
+    if (values.length) specs[key] = values; else delete specs[key];
+    if (Object.keys(specs).length) next.set('specs', JSON.stringify(specs)); else next.delete('specs');
+    writeFilters(next);
   };
-
-  const handleToggleAvailability = (status) => {
-    setCurrentPage(1);
-    setSelectedAvailability((current) =>
-      current.includes(status)
-        ? current.filter((item) => item !== status)
-        : [...current, status],
-    );
+  const handleToggleAvailability = status => {
+    const next = new URLSearchParams(searchParams);
+    const values = selectedAvailability.includes(status) ? selectedAvailability.filter(item => item !== status) : [...selectedAvailability, status];
+    if (values.length === DEFAULT_AVAILABILITY.length) next.delete('availability');
+    else next.set('availability', values.join(',') || 'none');
+    writeFilters(next);
   };
-
   const handleResetFilters = () => {
-    setSelectedSpecs({});
-    setSelectedAvailability([...DEFAULT_AVAILABILITY]);
-    setSortOption("default");
-    setCurrentPage(1);
-    setIsMobileFilterOpen(false);
-    if (brandSlug) {
-      navigate(`/brands/${brandSlug}`);
-      return;
-    }
-    const destination = lowStockOnly ? "/low-stock" : trendingOnly ? "/trending" : location.pathname.startsWith("/products")
-      ? "/products"
-      : activeCategory
-        ? buildCategoryPath(activeCategory, categories)
-        : "/search";
-    const preserved = new URLSearchParams();
-    if (searchTerm.trim()) preserved.set("search", searchTerm.trim());
-    navigate(`${destination}${preserved.size ? `?${preserved}` : ""}`);
+    setSortOption('default'); setCurrentPage(1);
+    const next = new URLSearchParams();
+    if (searchTerm.trim()) next.set('search', searchTerm.trim());
+    const destination = lowStockOnly ? '/low-stock' : trendingOnly ? '/trending' : brandSlug ? `/brands/${brandSlug}` : targetCategorySlug ? buildCategoryPath(routeCategory, categories) : location.pathname.startsWith('/products') ? '/products' : '/search';
+    navigate(`${destination}${next.size ? `?${next}` : ''}`);
   };
+  // Search/navigation/back-forward changes start a fresh first page.
+  const filterLocation = searchParams.toString();
+  useEffect(() => { setCurrentPage(1); }, [location.pathname, filterLocation]);
 
   // Compute Page Header Title (Matching Mega Jaipur: "Branded Laptop", "Laptop Hinges", "ACER")
   const pageTitle = useMemo(() => {
@@ -675,6 +553,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
           Reset
         </button>
       </div>
+      <p className="text-xs text-[var(--store-muted)]">Choose multiple options in a group to include any of them. Combine groups to narrow your search.</p>
 
       {/* 2. Categories Accordion (matching Availability checkbox pattern) */}
       <div className="border-b border-[var(--store-border)] pb-3">
@@ -700,93 +579,13 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
 
         {openSections.categories && (
           <div className="mt-2.5 space-y-1.5">
-            {currentCategory ? (
-              /* When inside a specific category page: show ONLY the current category, already ticked */
-              <label className="flex items-center justify-between text-xs text-[var(--store-muted)] hover:text-[var(--store-text)] cursor-pointer select-none py-0.5 group">
-                <span className="flex items-center gap-2 truncate">
-                  <input
-                    type="checkbox"
-                    checked={true}
-                    onChange={() => navigate("/products")}
-                    className="w-4 h-4 rounded border-[var(--store-border)] text-primary focus:ring-primary accent-[var(--store-primary)] cursor-pointer"
-                  />
-                  <span className="truncate font-bold text-[var(--store-text)]">
-                    {currentCategory.name}
-                  </span>
-                </span>
-                {pagination.total > 0 && (
-                  <span className="text-[11px] text-[var(--store-muted)] font-medium ml-2 shrink-0">
-                    {pagination.total}
-                  </span>
-                )}
-              </label>
-            ) : categoriesToRender.length > 0 ? (
-              /* On general /products page: show All Categories + Header categories */
-              <>
-                <label className="flex items-center justify-between text-xs text-[var(--store-muted)] hover:text-[var(--store-text)] cursor-pointer select-none py-0.5 group">
-                  <span className="flex items-center gap-2 truncate">
-                    <input
-                      type="checkbox"
-                      checked={isAllCategoriesChecked}
-                      onChange={() => handleToggleCategory(null)}
-                      className="w-4 h-4 rounded border-[var(--store-border)] text-primary focus:ring-primary accent-[var(--store-primary)] cursor-pointer"
-                    />
-                    <span
-                      className={`truncate ${
-                        isAllCategoriesChecked
-                          ? "font-bold text-[var(--store-text)]"
-                          : "group-hover:text-primary"
-                      }`}>
-                      All Categories
-                    </span>
-                  </span>
-                </label>
-                {categoriesToRender.map((cat) => {
-                  const isChecked = isCategoryChecked(cat);
-                  return (
-                    <label
-                      key={cat._id}
-                      className="flex items-center justify-between text-xs text-[var(--store-muted)] hover:text-[var(--store-text)] cursor-pointer select-none py-0.5 group">
-                      <span className="flex items-center gap-2 truncate">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => handleToggleCategory(cat)}
-                          className="w-4 h-4 rounded border-[var(--store-border)] text-primary focus:ring-primary accent-[var(--store-primary)] cursor-pointer"
-                        />
-                        <span
-                          className={`truncate ${
-                            isChecked
-                              ? "font-bold text-[var(--store-text)]"
-                              : "group-hover:text-primary"
-                          }`}>
-                          {cat.name}
-                        </span>
-                      </span>
-                      {cat.count !== undefined && cat.count > 0 && (
-                        <span className="text-[11px] text-[var(--store-muted)] font-medium ml-2 shrink-0">
-                          {cat.count}
-                        </span>
-                      )}
-                    </label>
-                  );
-                })}
-              </>
-            ) : (
-              <div className="flex items-center gap-2 rounded bg-primary/5 border border-primary/20 p-2 text-xs font-bold text-primary select-none">
-                <CheckSquare className="w-4 h-4 shrink-0" />
-                <span className="truncate">
-                  {activeCategory?.name || "All Products"}
-                </span>
-              </div>
-            )}
+            <CategoryFilters categories={categories} facets={facets.categories} selections={categorySelections} onToggle={handleToggleCategory} onClear={() => handleToggleCategory(null)} />
           </div>
         )}
       </div>
 
-      {/* 2. Brands Accordion (below Categories: shows only brands that have products available in this category) */}
-      {(lowStockOnly || Boolean(currentCategory) || (!isAllProductsRoute && !brandSlug)) &&
-        availableBrands.length > 0 && (
+      {/* Brand options remain available as other groups narrow the results. */}
+      {availableBrands.length > 0 && (
           <div className="border-b border-[var(--store-border)] pb-3">
             <button
               type="button"
@@ -818,6 +617,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
                       <div className="flex items-center gap-2 truncate">
                         <input
                           type="checkbox"
+                          aria-label={`Brand: ${brand.name}`}
                           checked={isChecked}
                           onChange={() => handleToggleBrand(brand.name)}
                           className="w-4 h-4 rounded border-[var(--store-border)] text-primary focus:ring-primary accent-[var(--store-primary)] cursor-pointer"
@@ -842,9 +642,8 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
           </div>
         )}
 
-      {/* 3. Category-specific specification filters (Shown when multiple rows of products exist: > 12 products) */}
-      {(lowStockOnly || Boolean(currentCategory) || !isAllProductsRoute) &&
-        specsToRender.length > 0 &&
+      {/* Specification options remain available for small and empty result sets. */}
+      {specsToRender.length > 0 &&
         specsToRender.map((spec) => (
           <div key={spec.key} className="border-b border-[var(--store-border)] pb-3">
             <button
@@ -874,7 +673,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
             {openSections[`spec_${spec.key}`] !== false && (
               <div className="mt-2.5 space-y-1.5">
                 {spec.values.map(({ val, count }) => {
-                  const isChecked = (selectedSpecs[spec.key] || []).includes(
+                  const isChecked = specificationFilterValues(selectedSpecs, spec.key).includes(
                     val,
                   );
                   return (
@@ -884,6 +683,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
                       <div className="flex items-center gap-2 truncate">
                         <input
                           type="checkbox"
+                          aria-label={`${spec.label || spec.key}: ${val}`}
                           checked={isChecked}
                           onChange={() => handleToggleSpec(spec.key, val)}
                           className="w-4 h-4 rounded border-[var(--store-border)] text-primary focus:ring-primary accent-[var(--store-primary)] cursor-pointer"
@@ -947,6 +747,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
                   <span className="flex items-center gap-2 truncate">
                     <input
                       type="checkbox"
+                      aria-label={`Availability: ${label}`}
                       checked={checked}
                       onChange={() => handleToggleAvailability(status)}
                       className="w-4 h-4 rounded border-[var(--store-border)] text-primary focus:ring-primary accent-[var(--store-primary)] cursor-pointer"
@@ -1119,7 +920,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
                 scrollbarColor: '#cbd5e1 transparent',
               }}
             >
-              {isLoading && displayedProducts.length === 0 ? (
+              {isLoading && !facetsLoaded ? (
                 <FilterSidebarSkeleton />
               ) : (
                 renderSidebarFilters()
@@ -1213,9 +1014,9 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
   );
 };
 
-// URL changes start a fresh query and reset pagination/spec filters.
+// Keep controls open while refining URL filters; reset UI only when changing catalog routes.
 const CatalogRoutePage = ({ lowStockOnly = false, trendingOnly = false }) => {
   const location = useLocation();
-  return <ProductsPage key={location.pathname + location.search} lowStockOnly={lowStockOnly} trendingOnly={trendingOnly} />;
+  return <ProductsPage key={location.pathname} lowStockOnly={lowStockOnly} trendingOnly={trendingOnly} />;
 };
 export default CatalogRoutePage;

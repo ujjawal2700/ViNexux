@@ -105,6 +105,7 @@ const productSchema = new mongoose.Schema(
     },
     stockUpdatedAt: { type: Date, default: null },
     isTrending: { type: Boolean, default: false },
+    isLowStock: { type: Boolean, default: false },
     variant: {
       type: String,
       trim: true,
@@ -178,6 +179,7 @@ productSchema.index({ categoryIds: 1, isActive: 1 });
 productSchema.index({ isActive: 1, createdAt: -1 });
 productSchema.index({ isActive: 1, stockUpdatedAt: -1 });
 productSchema.index({ isActive: 1, isTrending: 1, createdAt: -1 });
+productSchema.index({ isActive: 1, isLowStock: 1, createdAt: -1 });
 productSchema.index({ categoryId: 1, createdAt: -1 });
 productSchema.index({ searchTokens: 1 });
 productSchema.index({ brandKey: 1, isActive: 1 });

@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useId, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { Mail, Bell, Plus, ArrowLeft, Eye, Send, Save, Copy, Trash2, ArrowUp, ArrowDown, Upload, RefreshCw, X } from 'lucide-react';
 import apiClient from '../../api/axios';
 import useAuth from '../../hooks/useAuth';
@@ -39,7 +39,7 @@ function ImageField({ name, label = 'Image URL', value, onChange, disabled, noti
     try { const form = new FormData(); form.append('file', file); const response = await apiClient.post('/admin/campaigns/images', form, { portal: 'admin', headers: { 'Content-Type': 'multipart/form-data' } }); onChange(response.data.data.url); clearError(name); }
     catch (error) { notify(errorText(error)); } finally { setUploading(false); event.target.value = ''; }
   };
-  return <Field name={name} label={label} hint="JPG, PNG or WebP · up to 5 MB. Use publicly accessible images for delivery."><Text value={value} onChange={onChange} disabled={disabled || uploading} placeholder="https://…" /><label className="campaign-upload"><Upload size={14} />{uploading ? 'Uploading…' : 'Upload image'}<input aria-label={`Upload ${label}`} type="file" accept="image/png,image/jpeg,image/webp" disabled={disabled || uploading} onChange={upload} /></label></Field>;
+  return <Field name={name} label={label} hint="JPG, PNG, WebP or SVG · up to 5 MB. Use publicly accessible images for delivery."><Text value={value} onChange={onChange} disabled={disabled || uploading} placeholder="https://…" /><label className="campaign-upload"><Upload size={14} />{uploading ? 'Uploading…' : 'Upload image'}<input aria-label={`Upload ${label}`} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg" disabled={disabled || uploading} onChange={upload} /></label></Field>;
 }
 function EmailEditor({ email, setEmail, disabled, notify }) {
   const patch = changes => setEmail({ ...email, ...changes });
@@ -76,6 +76,7 @@ export default function AdminCampaignsPage() {
   const access = adminAccess || adminUser;
   const canRead = canAdmin(access, 'campaigns', 'read'), canWrite = canAdmin(access, 'campaigns', 'write');
   const [fieldErrors, setFieldErrors] = useState({});
+  const pendingErrorFocus = useRef(null);
   const clearFieldError = name => setFieldErrors(current => { const next = { ...current }; delete next[name]; return next; });
   const [items, setItems] = useState([]), [page, setPage] = useState(1), [pages, setPages] = useState(0), [draft, setDraft] = useState(null), [saved, setSaved] = useState(null), [details, setDetails] = useState(null), [message, setMessage] = useState(''), [busy, setBusy] = useState(false), [review, setReview] = useState(null), [preview, setPreview] = useState(null), [mobile, setMobile] = useState(false), [configuration, setConfiguration] = useState(null), [confirm, setConfirm] = useState(null);
   const notify = useCallback(text => setMessage(text), []), editable = canWrite && (!saved || saved.status === 'draft');
@@ -84,7 +85,12 @@ export default function AdminCampaignsPage() {
   const open = async id => { const data = await request('get', `/${id}`); setSaved(data.campaign); setDraft(clean(data.campaign)); setDetails(data); setPreview(null); setMessage(''); setFieldErrors({}); };
   const savedId = saved?._id, savedStatus = saved?.status;
   useEffect(() => { if (!savedId || !['queued', 'sending'].includes(savedStatus)) return; const timer = setInterval(async () => { try { const data = await request('get', `/${savedId}`); setSaved(data.campaign); setDetails(data); } catch { /* manual refresh remains available */ } }, 5000); return () => clearInterval(timer); }, [savedId, savedStatus]);
-  const run = async task => { setBusy(true); setMessage(''); try { await task(); } catch (error) { const issues = error.response?.data?.details || error.response?.data?.error?.details; if (Array.isArray(issues)) { const fields = issues.filter(issue => typeof issue.field === 'string'); setFieldErrors(Object.fromEntries(fields.map(issue => [issue.field, issue.message]))); if (fields[0]) requestAnimationFrame(() => focusField(fields[0].field)); } notify(errorText(error)); } finally { setBusy(false); } };
+  useLayoutEffect(() => {
+    if (busy || !pendingErrorFocus.current) return;
+    focusField(pendingErrorFocus.current);
+    pendingErrorFocus.current = null;
+  }, [busy, fieldErrors]);
+  const run = async task => { setBusy(true); setMessage(''); try { await task(); } catch (error) { const issues = error.response?.data?.details || error.response?.data?.error?.details; if (Array.isArray(issues)) { const fields = issues.filter(issue => typeof issue.field === 'string'); setFieldErrors(Object.fromEntries(fields.map(issue => [issue.field, issue.message]))); pendingErrorFocus.current = fields[0]?.field || null; } notify(errorText(error)); } finally { setBusy(false); } };
   const save = async () => { if (!editable) return saved; const data = await request(saved ? 'put' : 'post', saved ? `/${saved._id}` : '', { ...normalizeCampaignLinks(draft, import.meta.env.VITE_PUBLIC_SITE_URL || window.location.origin), ...(saved ? { revision: saved.revision } : {}) }); setSaved(data.campaign); setDraft(clean(data.campaign)); setFieldErrors({}); await loadList(); return data.campaign; };
   const action = task => run(async () => { await task(); });
   const needsWrite = () => { if (!canWrite) { notify("You don't have write access to this section."); return false; } return true; };

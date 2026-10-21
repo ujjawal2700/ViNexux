@@ -7,12 +7,19 @@
     "test:unit": "NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --config tests/jest.unit.config.cjs",
     "test:api": "NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --config tests/jest.api.config.cjs --runInBand",
     "test:e2e": "playwright test",
+    "test:e2e:production": "npm --prefix frontend run build && PLAYWRIGHT_PREVIEW=1 playwright test --workers=2",
     "test:all": "npm run test && npm run test:integration && npm run test:e2e",
+    "test:release": "npm run test:all && npm run test:e2e:production && npm --prefix frontend run lint",
     "test:integration": "node backend/tests/runAll.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.1",
     "jest": "^30.2.0",
     "supertest": "^7.1.4"
+  },
+  "overrides": {
+    "@istanbuljs/load-nyc-config": {
+      "js-yaml": "^4.1.1"
+    }
   }
 }

@@ -1,5 +1,9 @@
 import { Router } from 'express';
 import multer from 'multer';
+import { getProductImageMimeType } from '../../../shared/productImageTypes.js';
+import { AppError } from '../utils/AppError.js';
+import { ERROR_CODES } from '../constants/errorCodes.js';
+import { hasPathTraversal, isProhibitedExtension } from '../middlewares/upload.middleware.js';
 import { uploadImage, uploadMultipleImages, deleteImage } from '../controllers/upload.controller.js';
 
 const router = Router();
@@ -12,10 +16,12 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB file limit
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    const mime = getProductImageMimeType(file.originalname, file.mimetype) || (file.mimetype === 'image/gif' ? 'image/gif' : null);
+    if (mime && !hasPathTraversal(file.originalname) && !isProhibitedExtension(file.originalname)) {
+      file.mimetype = mime;
       cb(null, true);
     } else {
-      cb(new Error('Only image files (JPEG, PNG, WEBP, GIF, SVG) are allowed!'), false);
+      cb(new AppError('Upload a valid JPG, PNG, WebP, GIF or SVG image.', 400, ERROR_CODES.VALIDATION_ERROR), false);
     }
   },
 });

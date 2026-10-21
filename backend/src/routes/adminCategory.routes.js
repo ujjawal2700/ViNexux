@@ -8,6 +8,8 @@ import {
 } from '../controllers/adminCategory.controller.js';
 import { validate } from '../middlewares/validate.js';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
+import { uploadSingle } from '../middlewares/upload.middleware.js';
+import { uploadImage } from '../controllers/upload.controller.js';
 import {
   createCategorySchema,
   updateCategorySchema,
@@ -17,6 +19,11 @@ import {
 } from '../validators/category.validator.js';
 
 const router = Router();
+router.post('/image', authenticate, authorize('admin'), uploadSingle('file', 'cms'), (req, res, next) => {
+  req.body.folder = 'vinexus/categories';
+  req.body.category = 'cms';
+  return uploadImage(req, res, next);
+});
 
 // Protected Admin Category Routes (authenticate + authorize('admin'))
 router.post('/', authenticate, authorize('admin'), validate(createCategorySchema), createCategory);

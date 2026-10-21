@@ -30,12 +30,13 @@ const toastConfig = {
   },
 };
 
-export const ToastContainer = ({ toasts = [], onDismiss }) => {
-  if (toasts.length === 0) return null;
+export const ToastContainer = ({ toasts, onDismiss, message, type = 'info', onClose }) => {
+  const items = toasts ?? (message ? [{ id: 'notice', message, type }] : []);
+  if (items.length === 0) return null;
 
   return createPortal(
     <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
-      {toasts.map((toast) => {
+      {items.map((toast) => {
         const config = toastConfig[toast.type] || toastConfig.info;
         const Icon = config.icon;
 
@@ -48,7 +49,7 @@ export const ToastContainer = ({ toasts = [], onDismiss }) => {
             <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${config.iconStyle}`} />
             <p className="flex-1 text-xs font-semibold leading-relaxed">{toast.message}</p>
             <button
-              onClick={() => onDismiss(toast.id)}
+              onClick={() => onDismiss ? onDismiss(toast.id) : onClose?.()}
               className="text-muted-foreground hover:text-foreground p-0.5 rounded transition-colors"
               title="Dismiss notification"
             >

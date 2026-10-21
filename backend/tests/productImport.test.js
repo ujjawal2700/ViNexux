@@ -117,6 +117,17 @@ try {
   );
   assert.match(badImagePreview.rows[0].errors.join(' '), /Image could not be read/);
 
+  const vectorArchive = new JSZip();
+  vectorArchive.file('vector.svg', '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="8"><rect width="16" height="8"/></svg>');
+  const vectorZip = await vectorArchive.generateAsync({ type: 'nodebuffer' });
+  const vectorWorkbook = await makeWorkbook([row('LAP-VECTOR', 'MODEL-VECTOR', 'Vector Laptop', '', 3, 'vector.svg')]);
+  const vectorPreview = await previewProductImport(vectorWorkbook, vectorZip);
+  assert.equal(vectorPreview.valid, 1, 'SVG images are accepted from the import ZIP');
+  assert.match(vectorPreview.rows[0].imagePreview, /^data:image\/webp;base64,/);
+  assert.equal((await commitProductImport(vectorWorkbook, vectorZip)).created, 1);
+  assert.match((await Product.findOne({ modelNumber: 'MODEL-VECTOR' })).images[0].url, /\.webp$/);
+  await Product.deleteOne({ modelNumber: 'MODEL-VECTOR' }); // Keep the remaining fixture counts unchanged.
+
   const newCategoryRow = row('', 'MODEL-TABLET', 'Apple Full Size Tablet', 'Full Size Tablet', 6, '');
   newCategoryRow[4] = 'Apple';
   newCategoryRow[5] = 'Tablets';

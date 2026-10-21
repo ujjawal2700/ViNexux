@@ -125,7 +125,7 @@ export const uploadImage = asyncHandler(async (req, res) => {
   return ApiResponse.success(
     res,
     'Product image uploaded successfully',
-    product,
+    { ...(product.toObject ? product.toObject() : product), uploadedImage: product.$locals?.uploadedImage },
     HTTP_STATUS.OK
   );
 });

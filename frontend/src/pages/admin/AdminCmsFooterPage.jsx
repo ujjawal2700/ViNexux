@@ -1,3 +1,4 @@
+import { getProductImageMimeType, PRODUCT_IMAGE_ACCEPT } from '../../../../shared/productImageTypes.js';
 import React, { useState, useEffect } from 'react';
 import adminService from '../../services/adminService';
 import { uploadService } from '../../services/uploadService';
@@ -269,17 +270,17 @@ const AdminCmsFooterPage = () => {
   // Bank QR Code upload handler
   const handleUploadBankQr = async (index, file) => {
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
+    if (!getProductImageMimeType(file.name, file.type)) {
       toast.error('Please upload a valid image file (PNG, JPG, WEBP, SVG).');
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('QR code file size must be less than 2MB.');
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('QR code file size must be 5MB or smaller.');
       return;
     }
     try {
       setUploadingBankQrIndex(index);
-      const res = await uploadService.uploadImage(file, 'vinexus/bank-qr');
+      const res = await uploadService.uploadFooterImage(file, 'bank-qr');
       if (res.success && res.data?.url) {
         handleBankAccountChange(index, 'qrCodeUrl', res.data.url);
         toast.success('Bank QR Code uploaded successfully!');
@@ -333,18 +334,18 @@ const AdminCmsFooterPage = () => {
 
   const handleUploadSocialIcon = async (index, file) => {
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
+    if (!getProductImageMimeType(file.name, file.type)) {
       toast.error('Please upload a valid image file (PNG, JPG, WEBP, SVG).');
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Logo file size must be less than 2MB.');
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Logo file size must be 5MB or smaller.');
       return;
     }
 
     try {
       setUploadingSocialIndex(index);
-      const res = await uploadService.uploadImage(file, 'vinexus/social');
+      const res = await uploadService.uploadFooterImage(file, 'social');
       if (res.success && res.data?.url) {
         handleSocialLinkChange(index, 'iconUrl', res.data.url);
         toast.success('Social logo uploaded successfully!');
@@ -1034,8 +1035,9 @@ const AdminCmsFooterPage = () => {
                               )}
                               <input
                                 type="file"
-                                accept="image/*"
+                                accept={PRODUCT_IMAGE_ACCEPT}
                                 className="hidden"
+                                aria-label={`Upload bank QR image ${idx + 1}`}
                                 disabled={uploadingBankQrIndex === idx}
                                 onChange={(e) => {
                                   const file = e.target.files?.[0];
@@ -1207,7 +1209,7 @@ const AdminCmsFooterPage = () => {
                               )}
                               <input
                                 type="file"
-                                accept="image/*"
+                                accept={PRODUCT_IMAGE_ACCEPT}
                                 className="hidden"
                                 disabled={uploadingSocialIndex === idx}
                                 onChange={(e) => {

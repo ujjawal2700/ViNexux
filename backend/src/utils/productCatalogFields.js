@@ -2,10 +2,10 @@
 // storefront can filter and search with indexes instead of recomputing them
 // for every document on every request. Bump CATALOG_FIELDS_VERSION whenever
 // computeCatalogFields changes; startup re-derives older documents.
-export const CATALOG_FIELDS_VERSION = 1;
+export const CATALOG_FIELDS_VERSION = 3;
 
 // Paths the derived fields depend on.
-export const CATALOG_SOURCE_PATHS = ['name', 'sku', 'specifications', 'stockQuantity'];
+export const CATALOG_SOURCE_PATHS = ['name', 'sku', 'modelNumber', 'isLowStock', 'specifications', 'stockQuantity'];
 
 const BRAND_KEYS = ['brand', 'manufacturer'];
 const STOCK_KEYS = ['stock', 'inventory'];
@@ -95,10 +95,9 @@ const toStockNumber = (value) => {
   return DECIMAL_PATTERN.test(text) ? Number(text) : null;
 };
 
-const stockStatusFor = (stock) => {
+const stockStatusFor = (stock, isLowStock) => {
   if (stock === 0) return 'out-of-stock';
-  if (stock > 0 && stock < 10) return 'low-stock';
-  if (stock >= 10) return 'in-stock';
+  if (stock > 0) return isLowStock ? 'low-stock' : 'in-stock';
   return 'on-order';
 };
 
@@ -117,8 +116,8 @@ export const computeCatalogFields = (product) => {
   return {
     brandKey: brandValue === undefined || brandValue === null ? '' : toBrandKey(brandValue),
     stockLevel,
-    stockStatus: stockStatusFor(stockLevel),
-    searchTokens: searchTokensFor([product.name, product.sku, ...brandTexts]),
+    stockStatus: stockStatusFor(stockLevel, product.isLowStock === true),
+    searchTokens: searchTokensFor([product.name, product.sku, product.modelNumber, ...brandTexts]),
     catalogFieldsVersion: CATALOG_FIELDS_VERSION,
   };
 };

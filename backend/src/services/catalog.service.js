@@ -1,3 +1,5 @@
+import { CATEGORY_FILTER_KEYS, categoryLevels, splitFilterValues, readSpecificationSelections } from '../../../shared/categoryFiltering.js';
+import { categoryMembershipStages, rollupCategoryCounts, specificationCountStages, availabilityCountStages } from '../utils/catalogFacets.js';
 import { storefrontOrderingStages } from '../utils/storefrontOrdering.js';
 import mongoose from 'mongoose';
 import { isInventorySpecification } from '../../../shared/productSpecifications.js';
@@ -193,18 +195,20 @@ export const getPublicBrands = async () => {
   return dedupedBrands;
 };
 
-// Substring search on name, SKU and brand. The indexed searchTokens clause
+// Substring search on name, SKU, model number and brand. The indexed searchTokens clause
 // narrows candidates to products containing every fragment of the term; the
 // regex clauses then confirm the exact substring match on those few.
 const buildSearchOr = (categories, term) => {
   const regex = new RegExp(escapeRegex(term), 'i');
   const matchingCategories = categories.filter((category) => regex.test(category.name) || regex.test(category.slug));
   const textMatch = { $or: [
-    { name: regex }, { sku: regex },
+    { name: regex }, { sku: regex }, { modelNumber: regex },
     { specifications: { $elemMatch: { key: /^(brand|manufacturer)$/i, value: regex } } },
   ] };
   const tokens = requiredSearchTokens(term);
   return [
+    // Match existing documents while their derived search fields are backfilled.
+    { modelNumber: regex },
     tokens.length ? { $and: [{ searchTokens: { $all: tokens } }, textMatch] } : textMatch,
     { categoryId: { $in: descendantIds(categories, matchingCategories.map((category) => category._id)) } },
   ];
@@ -251,36 +255,25 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
     getPublicCategories(),
     user?.role === 'dealer' ? DealerProfile.findOne({ userId: user._id, status: 'approved' }).lean() : null,
   ]);
-  let allowedIds = categories.map((category) => category._id);
+  const allowedIds = categories.map(category => category._id);
+  const levels = categoryLevels(categories);
   let requestedCategoryRecord = null;
-  const requestedCategory = query.categoryId || query.category || query.categorySlug;
-  if (requestedCategory) {
-    const requestedItems = String(requestedCategory).split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
-    const matchedCategories = categories.filter((item) =>
-      requestedItems.includes(String(item._id).toLowerCase()) || requestedItems.includes(item.slug.toLowerCase())
-    );
-    requestedCategoryRecord = matchedCategories.length === 1 ? matchedCategories[0] : null;
-    if (matchedCategories.length > 0) {
-      const allMatchedIds = matchedCategories.map((c) => c._id);
-      allowedIds = query.exactCategory === 'true' ? allMatchedIds : descendantIds(categories, allMatchedIds);
-    } else {
-      allowedIds = [];
-    }
-  }
-  const match = { isActive: true };
-  if (requestedCategory) {
-    match.$or = [
-      { categoryId: { $in: allowedIds } },
-      { categoryIds: { $in: allowedIds } },
-    ];
-  } else if (allowedIds.length > 0) {
-    match.$or = [
-      { categoryId: { $in: allowedIds } },
-      { categoryIds: { $in: allowedIds } },
-      { categoryId: null },
-      { categoryId: { $exists: false } },
-    ];
-  }
+  const selections = [];
+  const addCategorySelection = (dimension, value, level = null) => {
+    if (!value) return;
+    const requested = splitFilterValues(value).map(item => item.toLowerCase());
+    const matched = categories.filter(category => (!level || levels.get(String(category._id)) === level) &&
+      (requested.includes(String(category._id).toLowerCase()) || requested.includes(category.slug.toLowerCase())));
+    if (matched.length === 1) requestedCategoryRecord = matched[0];
+    const ids = query.exactCategory === 'true' ? matched.map(category => category._id) : descendantIds(categories, matched.map(category => category._id));
+    selections.push({ dimension, condition: { $or: [{ categoryId: { $in: ids } }, { categoryIds: { $in: ids } }] } });
+  };
+  addCategorySelection('category', query.categoryId || query.category || query.categorySlug);
+  CATEGORY_FILTER_KEYS.forEach((key, index) => addCategorySelection(key, query[key], index + 1));
+  const match = { isActive: true, $or: [
+    { categoryId: { $in: allowedIds } }, { categoryIds: { $in: allowedIds } },
+    { categoryId: null }, { categoryId: { $exists: false } },
+  ] };
   if (query.id) match._id = new mongoose.Types.ObjectId(query.id);
   if (options.ids) match._id = { $in: options.ids.map((id) => new mongoose.Types.ObjectId(id)) };
   if (query.stockUpdatedOnly === 'true' || query.stockUpdatedOnly === true) {
@@ -298,7 +291,7 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
       match.$or = searchOr;
     }
   }
-  if (options.searchWords) match.$and = options.searchWords.map((word) => ({ $or: buildSearchOr(categories, word) }));
+  if (options.searchWords) match.$and = [...(match.$and || []), ...options.searchWords.map(word => ({ $or: buildSearchOr(categories, word) }))];
   // Brand and stock fields are stored on each product, so every filter below
   // is a plain $match that can use indexes; nothing is computed per document
   // until the current page has been selected.
@@ -307,7 +300,8 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   let managedBrandId = null;
   if (query.brandSlug) ({ brand, managedBrandId } = await resolveBrandSlug(query.brandSlug));
   const brandMatch = brand ? buildBrandMatch(brand, managedBrandId) : null;
-  if (brandMatch) pipeline.push({ $match: brandMatch });
+  if (brandMatch) selections.push({ dimension: 'brand', condition: brandMatch });
+  if (query.lowStock === 'true' || query.lowStock === true) pipeline.push({ $match: { isLowStock: true } });
 
   const pricingStages = [];
   if (approvedDealer) {
@@ -321,32 +315,32 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
     ? { $ifNull: [{ $arrayElemAt: ['$_pricing.price', 0] }, { $cond: [{ $gt: ['$dealerPrice', 0] }, '$dealerPrice', '$standardPrice'] }] }
     : '$standardPrice' } });
 
-  const extraFilters = [];
-  if (query.inStock === 'true' || query.inStock === true) extraFilters.push({ stockLevel: { $gt: 0 } });
-  if (query.inStock === 'false' || query.inStock === false) extraFilters.push({ stockLevel: { $lte: 0 } });
-  const specs = query.specs ? JSON.parse(query.specs) : {};
+  if (query.inStock === 'true' || query.inStock === true) selections.push({ dimension: 'availability', condition: { stockLevel: { $gt: 0 } } });
+  if (query.inStock === 'false' || query.inStock === false) selections.push({ dimension: 'availability', condition: { stockLevel: { $lte: 0 } } });
+  const specs = readSpecificationSelections(query.specs);
+  const selectedSpecKeys = [];
   for (const [key, values] of Object.entries(specs)) {
-    if (values.length) extraFilters.push({ specifications: { $elemMatch: { key: new RegExp(`^${escapeRegex(key)}$`, 'i'), value: { $in: values } } } });
+    if (values.length) {
+      selectedSpecKeys.push(key.trim().toLowerCase());
+      selections.push({ dimension: `spec:${key.trim().toLowerCase()}`, condition: { specifications: { $elemMatch: { key: new RegExp(`^${escapeRegex(key.trim())}$`, 'i'), value: { $in: values } } } } });
+    }
   }
-  if (query.lowStock === 'true' || query.lowStock === true || (query.availability && String(query.availability).split(',').includes('low-stock'))) {
-    extraFilters.push({
-      $or: [
-        { stockStatus: 'low-stock' },
-        { stockQuantity: { $gt: 0, $lt: 10 } },
-        { specifications: { $elemMatch: { key: /^(stock|inventory)$/i, value: /^\s*[1-9]\s*$/ } } },
-      ],
-    });
-  } else if (query.availability) {
-    const requestedStatuses = String(query.availability).split(',').filter(Boolean);
-    if (requestedStatuses.length && requestedStatuses.length < 4) extraFilters.push({ stockStatus: { $in: requestedStatuses } });
+  if (query.availability) {
+    const requested = splitFilterValues(query.availability);
+    if (query.availability === 'none') selections.push({ dimension: 'availability', condition: { _id: { $exists: false } } });
+    else if (requested.length && requested.length < 4) selections.push({ dimension: 'availability', condition: { $or: requested.map(status =>
+      status === 'low-stock' ? { isLowStock: true } : { stockStatus: status }
+    ) } });
   }
-  if (query.minPrice !== undefined || query.maxPrice !== undefined) {
-    extraFilters.push({ applicablePrice: {
-      ...(query.minPrice !== undefined ? { $gte: Number(query.minPrice) } : {}),
-      ...(query.maxPrice !== undefined ? { $lte: Number(query.maxPrice) } : {}),
-    } });
-  }
-  const filtered = extraFilters.length ? [{ $match: { $and: extraFilters } }] : [];
+  if (query.minPrice !== undefined || query.maxPrice !== undefined) selections.push({ dimension: 'price', condition: { applicablePrice: {
+    ...(query.minPrice !== undefined ? { $gte: Number(query.minPrice) } : {}),
+    ...(query.maxPrice !== undefined ? { $lte: Number(query.maxPrice) } : {}),
+  } } });
+  const matchingStages = (exclude = () => false) => {
+    const conditions = selections.filter(selection => !exclude(selection.dimension)).map(selection => selection.condition);
+    return conditions.length ? [{ $match: { $and: conditions } }] : [];
+  };
+  const filtered = matchingStages();
   const page = Math.max(1, Number(query.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
   const sortField = ['standardPrice', 'dealerPrice'].includes(query.sortBy) ? 'applicablePrice'
@@ -358,8 +352,9 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   if (priceNeededBeforePaging) pipeline.push(...pricingStages);
   // The specs facet counts the unfiltered set, so extra filters can only move
   // ahead of $facet (where they can use indexes) when no facets are requested.
-  const facetFilters = includeFacets ? filtered : [];
-  if (!includeFacets) pipeline.push(...filtered);
+  const needsSearchContext = Boolean(searchTerm || options.searchWords);
+  const facetFilters = includeFacets || needsSearchContext ? filtered : [];
+  if (!includeFacets && !needsSearchContext) pipeline.push(...filtered);
   const sortStage = query.sortBy === 'stockUpdatedAt'
     ? { stockUpdatedAt: query.sortOrder === 'asc' ? 1 : -1, createdAt: -1, _id: 1 }
     : { [sortField]: query.sortOrder === 'asc' ? 1 : -1, _id: 1 };
@@ -377,40 +372,39 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
     ],
     total: [...facetFilters, { $count: 'count' }],
   };
+  if (includeFacets || needsSearchContext) resultFacets.baseTotal = [{ $count: 'count' }];
   if (includeFacets) {
-    resultFacets.specs = [
-      { $unwind: '$specifications' },
-      { $group: { _id: { key: '$specifications.key', value: '$specifications.value' }, count: { $sum: 1 } } },
-      { $sort: { '_id.key': 1, '_id.value': 1 } },
-    ];
-    resultFacets.availability = [{ $group: { _id: '$stockStatus', count: { $sum: 1 } } }];
+    // Options come from the complete search context and remain visible at zero matches.
+    // Counts apply the other selections while omitting the option's own group.
+    resultFacets.specs = specificationCountStages;
+    resultFacets.specCounts = [...filtered, ...specificationCountStages];
+    selectedSpecKeys.forEach((key, index) => {
+      resultFacets[`specCounts${index}`] = [...matchingStages(dimension => dimension === `spec:${key}`), ...specificationCountStages];
+    });
+    resultFacets.brands = [{ $match: { brandKey: { $ne: '' } } }, { $group: { _id: '$brandKey', count: { $sum: 1 } } }, { $sort: { _id: 1 } }];
+    resultFacets.brandCounts = [...matchingStages(dimension => dimension === 'brand'), ...resultFacets.brands];
+    resultFacets.availability = [...matchingStages(dimension => dimension === 'availability'), ...availabilityCountStages];
+    resultFacets.categories = categoryMembershipStages;
+    CATEGORY_FILTER_KEYS.forEach((key, index) => {
+      resultFacets[`categoryCounts${index}`] = [...matchingStages(dimension => dimension === key || dimension === 'category'), ...categoryMembershipStages];
+    });
   }
-  const categoryFacetMatch = { ...match, categoryId: { $in: categories.map((category) => category._id) } };
-  const categoryFacetPipeline = [
-    { $match: brandMatch ? { $and: [categoryFacetMatch, brandMatch] } : categoryFacetMatch },
-    { $match: { categoryId: { $ne: null } } },
-    { $group: { _id: '$categoryId', count: { $sum: 1 } } },
-    { $sort: { count: -1, _id: 1 } },
-  ];
-
-  const [[result], categoryBrands, categoryGroupCounts] = await Promise.all([
-    Product.aggregate([...pipeline, { $facet: resultFacets }]),
-    // Group brands from the base match (category-scoped, unaffected by selected brand) so all available brands in this category are shown
-    includeFacets
-      ? Product.aggregate([{ $match: { $and: [match, { brandKey: { $ne: '' } }] } }, { $group: { _id: '$brandKey', count: { $sum: 1 } } }, { $sort: { _id: 1 } }])
-      : [],
-    includeFacets ? Product.aggregate(categoryFacetPipeline) : [],
-  ]);
+  const [result] = await Product.aggregate([...pipeline, { $facet: resultFacets }]);
+  const universeCategoryCounts = rollupCategoryCounts(result.categories, categories);
+  const categoryGroupCounts = categories.filter(category => universeCategoryCounts.has(String(category._id)))
+    .map(category => ({ _id: category._id, count: universeCategoryCounts.get(String(category._id)) }));
+  const categoryCountsByLevel = CATEGORY_FILTER_KEYS.map((_, index) => rollupCategoryCounts(result[`categoryCounts${index}`], categories));
+  const categoryBrands = (result.brands || []).map(brand => ({ ...brand, count: (result.brandCounts || []).find(item => item._id === brand._id)?.count || 0 }));
 
   // No exact matches for a search: retry once with spelling-corrected words,
   // each required to match, keeping every other filter. The response says so
   // via `searchMode` and `correctedSearch`.
   const exactTotal = result.total[0]?.count || 0;
-  if (searchTerm && exactTotal === 0 && !query.id && !options.ids) {
+  if (searchTerm && exactTotal === 0 && (result.baseTotal?.[0]?.count || 0) === 0 && !query.id && !options.ids) {
     const correctedWords = await correctSearchTerm(searchTerm);
     if (correctedWords) {
       const fuzzy = await getPublicProducts(query, user, { searchWords: correctedWords });
-      if (fuzzy.pagination.total > 0) return { ...fuzzy, searchMode: 'fuzzy', correctedSearch: correctedWords.join(' ') };
+      if (fuzzy.pagination.total > 0 || fuzzy.searchContextTotal > 0) return { ...fuzzy, searchMode: 'fuzzy', correctedSearch: correctedWords.join(' ') };
     }
   }
 
@@ -449,7 +443,7 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
       : (specStock !== null ? specStock : (product.stockQuantity || 0));
     const resolvedStatus = (resolvedStock === 0)
       ? 'out-of-stock'
-      : (resolvedStock < 10 ? 'low-stock' : (product.stockStatus || 'in-stock'));
+      : (product.isLowStock === true ? 'low-stock' : 'in-stock');
     return {
       ...product,
       modelNumber: product.modelNumber || `VNX-${String(product._id).slice(-8).toUpperCase()}`,
@@ -485,10 +479,12 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
     }
   }
   const configuredByKey = new Map(configuredDefinitions.map((definition) => [definition.key.toLowerCase(), definition]));
+  const specCountMaps = [result.specCounts || [], ...selectedSpecKeys.map((_, index) => result[`specCounts${index}`] || [])]
+    .map(rows => new Map(rows.map(item => [JSON.stringify([item._id.key, item._id.value]), item.count])));
   const specMap = new Map();
   for (const spec of result.specs || []) {
-    const rawKey = spec._id.key?.trim() || '';
-    if (!rawKey) continue;
+    const rawKey = spec.key?.trim() || spec._id.key?.trim() || '';
+    if (!rawKey || typeof spec._id.value !== 'string' || !spec._id.value.trim()) continue;
     if (isInventorySpecification(rawKey)) continue;
     if (/^(brand|manufacturer|model|model number|sku|warranty|country of origin|hsn|hsn code|stock|inventory|variant|highlight \d+|product url|information phone|dealer price|price|standard price)$/i.test(rawKey)) continue;
 
@@ -511,7 +507,9 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
       });
     }
     const entry = specMap.get(definition.key);
-    entry.values.push({ val: spec._id.value, count: spec.count });
+    const selectedIndex = selectedSpecKeys.indexOf(lowerKey);
+    const count = specCountMaps[selectedIndex + 1].get(JSON.stringify([lowerKey, spec._id.value])) || 0;
+    entry.values.push({ val: spec._id.value, count });
     entry.totalCount += spec.count;
   }
   const sortedSpecs = [...specMap.values()]
@@ -531,7 +529,6 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
       if (b.values.length !== a.values.length) return b.values.length - a.values.length;
       return b.totalCount - a.totalCount;
     })
-    .slice(0, 8)
     .map(({ definition, values }) => ({
       key: definition.key,
       label: definition.label,
@@ -539,14 +536,16 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
       unit: definition.unit,
       values: definition.options?.length
         ? [...values].sort((a, b) => definition.options.indexOf(a.val) - definition.options.indexOf(b.val))
-        : values.sort((a, b) => b.count - a.count),
+        : values.sort((a, b) => String(a.val).localeCompare(String(b.val), undefined, { numeric: true })),
     }));
   return {
+    resolvedBrand: query.brandSlug && brand !== '__unknown_brand__' ? brand : null,
+    searchContextTotal: result.baseTotal?.[0]?.count || 0,
     products, pagination: { page, limit, total: result.total[0]?.count || 0, totalPages: Math.ceil((result.total[0]?.count || 0) / limit) },
     facets: {
       categories: categoryGroupCounts.map((item) => {
         const cat = byId.get(String(item._id));
-        return cat ? { _id: String(cat._id), name: cat.name, slug: cat.slug, count: item.count } : null;
+        return cat ? { _id: String(cat._id), name: cat.name, slug: cat.slug, parentId: cat.parentId?._id || cat.parentId || null, level: levels.get(String(cat._id)), count: categoryCountsByLevel[(levels.get(String(cat._id)) || 1) - 1].get(String(cat._id)) || 0, availableCount: item.count } : null;
       }).filter(Boolean),
       brands: categoryBrands.map((item) => ({ name: item._id, count: item.count })),
       availability: ['in-stock', 'low-stock', 'on-order', 'out-of-stock'].map((status) => ({

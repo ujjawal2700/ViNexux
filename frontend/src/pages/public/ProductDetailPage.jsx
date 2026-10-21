@@ -1,7 +1,10 @@
-import { getProductHsnCode } from '../../../../shared/productHsn.js';
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { productShareDescription } from '../../../../shared/socialMetadata.js';
+import { getRecentViews, rememberView } from '../../utils/browsingHistory';
+import { findHeaderCategory, orderedProductSpecifications } from '../../utils/productBrowsing';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import productService from '../../services/productService';
+import contentService from '../../services/contentService';
 import categoryService from '../../services/categoryService';
 import cartService from '../../services/cartService';
 import guestCartService from '../../services/guestCartService';
@@ -15,8 +18,6 @@ import { Image } from '../../components/ui/Image';
 import { Skeleton } from '../../components/ui/Skeleton';
 import NotFoundPage from './NotFoundPage';
 import { getAvailableStock, getMaximumOrderQuantity, isLowStock } from '../../utils/inventory';
-import { isInventorySpecification } from '../../../../shared/productSpecifications';
-import { allowsPreferences } from '../../utils/storageConsent';
 import {
   ShoppingCart,
   ShieldCheck,
@@ -45,8 +46,27 @@ export const ProductDetailPage = () => {
   const toast = useToast();
 
   const [product, setProduct] = useState(null);
+  const [whatsappPhone, setWhatsappPhone] = useState('');
+  useEffect(() => {
+    let active = true;
+    contentService.getFooterContent().then(response => {
+      const footer = response?.data?.footer || response?.footer || response?.data;
+      const raw = String(footer?.whatsappNumbers?.[0]?.number || footer?.whatsappNumber || '').replace(/\D/g, '');
+      const phone = raw.length === 10 ? `91${raw}` : raw;
+      if (active && /^\d{10,15}$/.test(phone)) setWhatsappPhone(phone);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
   const [categories, setCategories] = useState([]);
   const [relatedProducts, setRelatedProducts] = useState([]);
+  const [recentProducts, setRecentProducts] = useState([]);
+  const [relatedPage, setRelatedPage] = useState(1);
+  const [hasMoreRelated, setHasMoreRelated] = useState(false);
+  const [relatedLoading, setRelatedLoading] = useState(false);
+  const [relatedError, setRelatedError] = useState('');
+  const [relatedRetry, setRelatedRetry] = useState(0);
+  const requestVersion = useRef(0);
+  const relatedHeader = useMemo(() => findHeaderCategory(product, categories), [product, categories]);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isImageLightboxOpen, setIsImageLightboxOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -67,6 +87,12 @@ export const ProductDetailPage = () => {
     return () => window.removeEventListener('wishlist-updated', syncWishlist);
   }, [productId]);
 
+
+  useEffect(() => {
+    const clearRecent = () => setRecentProducts([]);
+    window.addEventListener('storage-choices-updated', clearRecent);
+    return () => window.removeEventListener('storage-choices-updated', clearRecent);
+  }, []);
 
   // 1. Fetch categories tree for breadcrumbs & category linking
   useEffect(() => {
@@ -89,12 +115,13 @@ export const ProductDetailPage = () => {
       setIsLoading(false);
       return;
     }
+    const version = ++requestVersion.current;
     setIsLoading(true);
     setError(null);
-    setRelatedProducts([]);
     try {
       const res = await productService.getProductById(productId);
       const prod = res.data?.product || res.product || res.data;
+      if (version !== requestVersion.current) return;
       if (!prod) {
         setError('Product not found');
         return;
@@ -102,48 +129,53 @@ export const ProductDetailPage = () => {
       setProduct(prod);
       setIsWishlisted(wishlistService.isInWishlist(prod._id));
 
-      // Save to localStorage for Recently Viewed section
-      try {
-        if (allowsPreferences()) {
-          const stored = JSON.parse(localStorage.getItem('vinexus_recently_viewed') || '[]');
-          const filtered = stored.filter((p) => p && String(p._id) !== String(prod._id));
-          const updated = [prod, ...filtered].slice(0, 12);
-          localStorage.setItem('vinexus_recently_viewed', JSON.stringify(updated));
-        }
-      } catch (e) {
-        // non-blocking
-      }
-
-      // Match the product's exact category, excluding neighboring categories.
-      const catId = typeof prod.categoryId === 'object' ? prod.categoryId._id : prod.categoryId;
-      if (catId) {
-        try {
-          const relRes = await productService.getProducts({
-            categoryId: catId,
-            exactCategory: 'true',
-            limit: 5,
-            isActive: true,
-            includeFacets: false,
-          });
-          const relList = relRes.data?.products || relRes.products || [];
-          setRelatedProducts(relList.filter((p) => String(p._id) !== String(prod._id) && String(p.categoryId?._id || p.categoryId) === String(catId)).slice(0, 4));
-        } catch (relErr) {
-          console.warn('Failed to fetch related products:', relErr);
-        }
-      }
+      const previousIds = getRecentViews().filter(value => value !== String(prod._id));
+      rememberView(String(prod._id));
+      setRecentProducts([]);
+      // Resolve current prices/status through the API; history contains IDs only.
+      Promise.allSettled(previousIds.map(value => productService.getProductById(value, { skipGlobalLoader: true })))
+        .then(results => {
+          if (version !== requestVersion.current) return;
+          setRecentProducts(results.filter(result => result.status === 'fulfilled').map(result =>
+            result.value.data?.product || result.value.product || result.value.data
+          ).filter(value => value?._id && value.isActive !== false));
+        });
     } catch (err) {
+      if (version !== requestVersion.current) return;
       console.error('Product detail fetch error:', err);
       setError('Product not found or unavailable.');
     } finally {
-      setIsLoading(false);
+      if (version === requestVersion.current) setIsLoading(false);
     }
-  }, [productId, user?.id, user?.dealerStatus]);
+  }, [productId, user?._id, user?.id, user?.role, user?.dealerStatus, user?.kycStatus]);
 
   useEffect(() => {
     fetchProduct();
     setSelectedImageIndex(0);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    return () => { requestVersion.current++; };
   }, [fetchProduct]);
+
+  useEffect(() => {
+    setRelatedProducts([]); setRelatedPage(1); setHasMoreRelated(false);
+  }, [product?._id, relatedHeader?._id]);
+  useEffect(() => {
+    if (!product?._id || !relatedHeader?._id) return;
+    let active = true;
+    const controller = new AbortController();
+    setRelatedLoading(true); setRelatedError('');
+    productService.getProducts({ categoryId: String(relatedHeader._id), page: relatedPage, limit: 12, includeFacets: false },
+      { signal: controller.signal, skipGlobalLoader: true }).then(response => {
+      if (!active) return;
+      const data = response.data || response;
+      const rows = (data.products || []).filter(value => String(value._id) !== String(product._id));
+      setRelatedProducts(previous => [...new Map((relatedPage === 1 ? rows : [...previous, ...rows]).map(value => [String(value._id), value])).values()]);
+      const pages = data.pagination?.totalPages ?? data.pagination?.pages;
+      setHasMoreRelated(pages !== undefined ? relatedPage < pages : (data.products || []).length === 12);
+    }).catch(error => { if (active && error.code !== 'ERR_CANCELED') setRelatedError('Related products could not load. Please try again.'); })
+      .finally(() => { if (active) setRelatedLoading(false); });
+    return () => { active = false; controller.abort(); };
+  }, [product?._id, relatedHeader?._id, relatedPage, relatedRetry, user?._id, user?.role, user?.dealerStatus, user?.kycStatus]);
 
   // Extracted Brand info
   const brandName = useMemo(() => {
@@ -211,21 +243,8 @@ export const ProductDetailPage = () => {
     ];
   }, [brandSlug, product, categories, brandUrl, brandName]);
 
-  // Category Path & Name for "See all in [Category] ->"
-  const categoryPath = useMemo(() => {
-    const catId = typeof product?.categoryId === 'object' ? product?.categoryId?._id : product?.categoryId;
-    const catObj = categories.find((c) => String(c._id) === String(catId)) || (typeof product?.categoryId === 'object' ? product.categoryId : null);
-    if (catObj) {
-      return buildCategoryPath(catObj, categories);
-    }
-    return '/';
-  }, [product, categories]);
-
-  const categoryName = useMemo(() => {
-    const catId = typeof product?.categoryId === 'object' ? product?.categoryId?._id : product?.categoryId;
-    const catObj = categories.find((c) => String(c._id) === String(catId)) || (typeof product?.categoryId === 'object' ? product.categoryId : null);
-    return catObj?.name || 'Category';
-  }, [product, categories]);
+  const categoryPath = relatedHeader ? buildCategoryPath(relatedHeader, categories) : '/products';
+  const categoryName = relatedHeader?.name || 'Category';
 
   // Determine pricing & stock
   const isApprovedDealer = user?.role === 'dealer' && (user?.dealerStatus === 'approved' || user?.kycStatus === 'approved');
@@ -254,15 +273,12 @@ export const ProductDetailPage = () => {
   // Dynamic SEO metadata & Google Product Structured Data (JSON-LD)
   usePageSeo({
     title: product?.name ? `${product.name} | Buy Online at Best Price - Vinexus` : 'Product Details | Vinexus',
-    description: product?.shortDescription
-      ? `${product.name} - ${product.shortDescription}. Buy networking & IT equipment with official warranty, GST invoice & nationwide express shipping on Vinexus.`
-      : product?.name
-      ? `Buy ${product.name} at wholesale dealer prices on Vinexus. Official warranty, GST commercial invoice, and fast delivery in India.`
-      : undefined,
+    description: product ? productShareDescription(product) : undefined,
     keywords: product?.name
       ? `${product.name}, ${brandName || ''}, networking products, CCTV camera, enterprise switches, IT hardware India, Vinexus Kota`
       : undefined,
     image: product?.images?.[0]?.url || product?.imageUrl,
+    imageAlt: product?.name,
     type: 'product',
     jsonLd: product?.name
       ? {
@@ -288,7 +304,7 @@ export const ProductDetailPage = () => {
       : null,
   });
 
-  // Stepper handlers & disabled state (capped at maxAllowedQuantity: 3 for low stock items)
+  // Stepper handlers & disabled state (capped at available stock and 5 for manually flagged low-stock items)
   const isIncrementDisabled = !isInStock || quantity >= maxAllowedQuantity;
   const isDecrementDisabled = !isInStock || quantity <= 1;
 
@@ -315,10 +331,6 @@ export const ProductDetailPage = () => {
 
   // Add to Cart Action
   const handleAddToCart = async () => {
-    if (!isInStock) {
-      toast.warning('This product is currently out of stock. Please submit an enquiry.');
-      return;
-    }
 
     if (!isAuthenticated) {
       const updatedCart = guestCartService.addItem(product, quantity);
@@ -397,38 +409,7 @@ export const ProductDetailPage = () => {
     return product?.warranty || product?.specifications?.find((s) => s.key.toLowerCase().includes('warranty'))?.value || 'Not specified';
   }, [product]);
 
-  // Structured Full Specifications List
-  const fullSpecifications = useMemo(() => {
-    if (!product) return [];
-    const list = [];
-
-    // 1. Brand
-    list.push({ key: 'Brand', value: brandName });
-    const hsnCode = getProductHsnCode(product);
-    if (hsnCode) list.push({ key: 'HSN Code', value: hsnCode });
-
-    // Variant (if provided)
-    if (product.variant && product.variant.trim()) {
-      list.push({ key: 'Variant', value: product.variant.trim() });
-    }
-
-    // 4. Manually added specifications
-    if (product.specifications && Array.isArray(product.specifications)) {
-      product.specifications.forEach((s) => {
-        const keyLower = s.key?.trim().toLowerCase();
-        if (s.key && s.value && !isInventorySpecification(s.key) && !['brand', 'variant'].includes(keyLower) && !/^hsn(?:\/sac|\s*code)?$/i.test(keyLower)) {
-          list.push({ key: s.key.trim(), value: s.value.trim() });
-        }
-      });
-    }
-
-    // 5. Key Features
-    if (product.description && product.description.trim()) {
-      list.push({ key: 'Key Features', value: product.description.trim() });
-    }
-
-    return list;
-  }, [product, brandName]);
+  const fullSpecifications = useMemo(() => orderedProductSpecifications(product, brandName), [product, brandName]);
 
   // Product Images Gallery (Safe for hooks order)
   const images = useMemo(() => {
@@ -817,20 +798,22 @@ export const ProductDetailPage = () => {
               <button
                 type="button"
                 onClick={handleAddToCart}
-                disabled={!isInStock || isAdding}
-                className={`flex-1 h-11 px-4 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xs ${
-                  isInStock
-                    ? 'bg-[var(--store-primary)] hover:bg-[#66001a] text-white cursor-pointer active:scale-98'
-                    : 'bg-gray-200 text-[var(--store-muted)] cursor-not-allowed opacity-75'
-                }`}
+                disabled={isAdding || !product.isActive}
+                className="flex-1 h-11 px-4 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xs bg-[var(--store-primary)] hover:bg-[#66001a] text-white cursor-pointer active:scale-98"
                 title={isInStock ? 'Add to Cart' : 'Out of Stock - Please send an enquiry'}
               >
                 <ShoppingCart className="w-4 h-4 shrink-0" />
-                <span>{isInStock ? (isAdding ? 'Adding...' : 'Add to Cart') : 'Out of Stock'}</span>
+                <span>{isAdding ? 'Adding...' : isOutOfStock ? 'Enquire about availability' : 'Add to Cart'}</span>
               </button>
             </div>
 
 
+            {isOutOfStock && <p className="text-sm text-[var(--store-muted)]">Send an enquiry to ask about availability and restocking.</p>}
+            {whatsappPhone && (
+              <a href={`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(`Hello, I would like to order ${product.name}${product.modelNumber ? ` (Model: ${product.modelNumber})` : ''}. Quantity: ${quantity}. Please confirm pricing and availability. ${window.location.href}`)}`} target="_blank" rel="noopener noreferrer" className="flex h-11 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700">
+                Order on WhatsApp
+              </a>
+            )}
             {/* Trust Footer */}
             <div className="text-[10px] text-[var(--store-muted)] text-center pt-2 flex items-center justify-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-[var(--store-muted)] shrink-0" />
@@ -893,8 +876,8 @@ export const ProductDetailPage = () => {
       {/* =========================================================================
           4. RELATED PRODUCTS SECTION (On Scroll Down - Exactly Matching Given Image 3 & 4)
          ========================================================================= */}
-      {product?.categoryId && (
-        <section className="space-y-4 pt-8 border-t border-[var(--store-border)]">
+      {relatedHeader && (
+        <section aria-label="Related products" className="space-y-4 pt-8 border-t border-[var(--store-border)]">
           <div className="flex items-center justify-between border-b border-[var(--store-border)] pb-3">
             <h2 className="text-lg sm:text-xl font-bold text-[var(--store-text)] tracking-tight">
               Related Products
@@ -916,11 +899,17 @@ export const ProductDetailPage = () => {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-[var(--store-muted)]">No other products in this category yet.</p>
+            !relatedLoading && !relatedError && <p className="text-sm text-[var(--store-muted)]">No other products in this header category yet.</p>
           )}
+          {relatedLoading && <p role="status" className="text-sm text-[var(--store-muted)]">Loading related products…</p>}
+          {relatedError && <div><p role="alert" className="text-sm text-red-700">{relatedError}</p><button type="button" onClick={() => setRelatedRetry(value => value + 1)} className="mt-2 rounded border px-3 py-2 text-sm">Retry related products</button></div>}
+          {hasMoreRelated && !relatedError && <button type="button" disabled={relatedLoading} onClick={() => setRelatedPage(page => page + 1)} className="rounded-lg border px-4 py-2 text-sm font-semibold text-[var(--store-text)]">Show more related products</button>}
         </section>
       )}
-
+      {recentProducts.length > 0 && <section aria-label="Recently viewed products" className="space-y-4 border-t border-[var(--store-border)] pt-8">
+        <h2 className="text-lg sm:text-xl font-bold text-[var(--store-text)]">Recently viewed products</h2>
+        <div className="storefront-product-grid gap-4 sm:gap-5">{recentProducts.map(value => <ProductCard key={value._id} product={value} />)}</div>
+      </section>}
 
     </div>
   );

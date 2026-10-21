@@ -49,11 +49,27 @@ server {
         try_files $uri =404;
     }
     location = /index.html {
-        add_header Cache-Control "no-cache";
+        rewrite ^ /api/share-page?path=/index.html break;
+        proxy_pass http://vinexus_api;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # Client-side routes fall back to the SPA shell.
+    # Render page metadata before sending HTML so sharing crawlers see product images.
+    # The root must also use the renderer to pick up the admin's generic social image.
+    location = / {
+        rewrite ^ /api/share-page?path=/ break;
+        proxy_pass http://vinexus_api;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
     location / {
-        try_files $uri $uri/ /index.html;
+        try_files $uri $uri/ @storefront_page;
+    }
+    location @storefront_page {
+        rewrite ^ /api/share-page?path=$uri break;
+        proxy_pass http://vinexus_api;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }

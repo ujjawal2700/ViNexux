@@ -9,6 +9,7 @@ export const usePageSeo = ({
   keywords,
   canonical,
   image,
+  imageAlt,
   type = 'website',
   jsonLd,
 }) => {
@@ -65,6 +66,11 @@ export const usePageSeo = ({
     setMeta('meta[property="og:url"]', 'content', pageUrl);
     setMeta('meta[name="twitter:url"]', 'content', pageUrl);
 
+    // Remove generic image assumptions on product pages, including products without an image.
+    if (type === 'product') {
+      document.head.querySelectorAll('meta[property^="og:image:"], meta[name="twitter:image:alt"]').forEach(element => element.remove());
+      if (!image) document.head.querySelectorAll('meta[property="og:image"], meta[name="twitter:image"]').forEach(element => element.remove());
+    }
     // Update social image
     if (image) {
       const absoluteImage = image.startsWith('http')
@@ -72,6 +78,8 @@ export const usePageSeo = ({
         : new URL(image, window.location.origin).href;
       setMeta('meta[property="og:image"]', 'content', absoluteImage);
       setMeta('meta[name="twitter:image"]', 'content', absoluteImage);
+      setMeta('meta[property="og:image:alt"]', 'content', imageAlt || title);
+      setMeta('meta[name="twitter:image:alt"]', 'content', imageAlt || title);
     }
 
     // Update OpenGraph Type
@@ -97,7 +105,7 @@ export const usePageSeo = ({
       if (existingScript) existingScript.remove();
       document.title = originalTitle;
     };
-  }, [title, description, keywords, canonical, image, type, jsonLd]);
+  }, [title, description, keywords, canonical, image, imageAlt, type, jsonLd]);
 };
 
 export default usePageSeo;

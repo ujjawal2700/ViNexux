@@ -1,3 +1,4 @@
+import sharp from 'sharp';
 import { loginFixture } from './helpers/accounts.js';
 import test, { before, after, describe } from 'node:test';
 import assert from 'node:assert';
@@ -325,7 +326,7 @@ describe('Phase 8.4 — Cloudinary / S3 File Upload Integration Test Suite', () 
 
     test('6. storageService.replaceFile replaces file and triggers old file cleanup', async () => {
       const firstUpload = await storageService.uploadFile({
-        buffer: Buffer.from('old doc'),
+        buffer: await sharp({ create: { width: 8, height: 8, channels: 3, background: '#008020' } }).jpeg().toBuffer(),
         originalname: 'old_pan.jpg',
         mimetype: 'image/jpeg',
         folder: 'vinexus/kyc/replace_test',
@@ -333,7 +334,7 @@ describe('Phase 8.4 — Cloudinary / S3 File Upload Integration Test Suite', () 
 
       const replaced = await storageService.replaceFile({
         oldPublicId: firstUpload.publicId,
-        buffer: Buffer.from('new doc'),
+        buffer: await sharp({ create: { width: 8, height: 8, channels: 3, background: '#008020' } }).jpeg().toBuffer(),
         originalname: 'new_pan.jpg',
         mimetype: 'image/jpeg',
         folder: 'vinexus/kyc/replace_test',
@@ -416,7 +417,7 @@ describe('Phase 8.4 — Cloudinary / S3 File Upload Integration Test Suite', () 
         fieldname: 'file',
         filename: 'dealer1_gst_v2.jpg',
         mimetype: 'image/jpeg',
-        buffer: Buffer.from('JPEG GST Document content'),
+        buffer: await sharp({ create: { width: 8, height: 8, channels: 3, background: '#008020' } }).jpeg().toBuffer(),
       };
 
       const res = await sendMultipartRequest('/api/dealers/kyc/documents', dealer1Token, { type: 'gst' }, file);
@@ -425,7 +426,7 @@ describe('Phase 8.4 — Cloudinary / S3 File Upload Integration Test Suite', () 
 
       const updatedProfile = await DealerProfile.findById(dealer1Profile._id);
       const gstDoc = updatedProfile.kycDocuments.find((d) => d.type === 'gst');
-      assert.ok(gstDoc.url.endsWith('.jpg'));
+      assert.ok(gstDoc.url.endsWith('.webp'));
     });
 
     test('13. Dealer 2 cannot view or delete Dealer 1 KYC document', async () => {
@@ -477,7 +478,7 @@ describe('Phase 8.4 — Cloudinary / S3 File Upload Integration Test Suite', () 
         fieldname: 'file',
         filename: 'pipe_hd.png',
         mimetype: 'image/png',
-        buffer: Buffer.from('PNG Product Image data'),
+        buffer: await sharp({ create: { width: 8, height: 8, channels: 3, background: '#008020' } }).png().toBuffer(),
       };
 
       const res = await sendMultipartRequest(`/api/admin/products/${product._id}/images`, adminToken, { altText: 'HD Pipe' }, file);
@@ -516,7 +517,7 @@ describe('Phase 8.4 — Cloudinary / S3 File Upload Integration Test Suite', () 
         fieldname: 'file',
         filename: 'hero_banner.webp',
         mimetype: 'image/webp',
-        buffer: Buffer.from('WEBP Hero Banner data'),
+        buffer: await sharp({ create: { width: 8, height: 8, channels: 3, background: '#008020' } }).webp().toBuffer(),
       };
 
       const res = await sendMultipartRequest(`/api/admin/cms/banners/${banner._id}/image`, adminToken, {}, file);

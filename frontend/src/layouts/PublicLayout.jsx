@@ -1,3 +1,4 @@
+import { getRecentSearches, rememberSearch } from '../utils/browsingHistory';
 import { Image } from '../components/ui/Image';
 import React, { Suspense, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import RouteFallback from '../components/ui/RouteFallback';
@@ -105,6 +106,7 @@ const PublicLayout = () => {
 
   // Search state
   const [headerSearch, setHeaderSearch] = useState('');
+  const [recentSearches, setRecentSearches] = useState(getRecentSearches);
   const [searchSuggestions, setSearchSuggestions] = useState([]);
   const [correctedSuggestion, setCorrectedSuggestion] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -626,17 +628,28 @@ const PublicLayout = () => {
   const searchTarget = useCallback((text) => {
     const query = new URLSearchParams(location.search);
     query.set('search', text);
+    query.delete('page');
     return `${searchCategory ? location.pathname : '/search'}?${query}`;
   }, [searchCategory, location.pathname, location.search]);
 
-  // Handle Header Search Submit
-  const handleSearchSubmit = (e) => {
+  useEffect(() => {
+    const refresh = () => setRecentSearches(getRecentSearches());
+    window.addEventListener('storage-choices-updated', refresh);
+    return () => window.removeEventListener('storage-choices-updated', refresh);
+  }, []);
+
+  const submitSearch = text => {
+    const query = text.trim();
+    if (!query) { setRecentSearches(getRecentSearches()); setIsSearchOpen(true); return; }
+    setRecentSearches(rememberSearch(query));
+    setHeaderSearch(query);
+    navigate(searchTarget(query));
+    setIsMobileMenuOpen(false);
+    setIsSearchOpen(false);
+  };
+  const handleSearchSubmit = e => {
     e.preventDefault();
-    if (headerSearch.trim()) {
-      navigate(searchTarget(headerSearch.trim()));
-      setIsMobileMenuOpen(false);
-      setIsSearchOpen(false);
-    }
+    if (!e.nativeEvent?.isComposing) submitSearch(headerSearch);
   };
 
   // Debounced Live Search Suggestions
@@ -648,7 +661,6 @@ const PublicLayout = () => {
     if (query.length < 2) {
       setSearchSuggestions([]);
       setIsSearching(false);
-      setIsSearchOpen(false);
       return;
     }
 
@@ -670,7 +682,6 @@ const PublicLayout = () => {
         if (!active) return;
         setSearchSuggestions(prods);
         setCorrectedSuggestion(res?.data?.searchMode === 'fuzzy' ? (res?.data?.correctedSearch || '') : '');
-        setIsSearchOpen(true);
       } catch (err) {
         if (!active) return;
         setSearchSuggestions([]);
@@ -745,11 +756,15 @@ const PublicLayout = () => {
 
   // Render Search Autocomplete Dropdown
   const renderSearchDropdown = () => {
-    if (!isSearchOpen || !headerSearch.trim()) return null;
+    if (!isSearchOpen) return null;
 
     return (
       <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--store-surface)] rounded-b-lg shadow-2xl border border-[var(--store-border)] z-50 overflow-hidden text-left animate-in fade-in-50 duration-150">
-        {isSearching && searchSuggestions.length === 0 ? (
+        {recentSearches.length > 0 && <section aria-label="Recent searches" className="border-b border-[var(--store-border)] p-2">
+          <h3 className="px-2 py-1 text-xs font-semibold text-[var(--store-muted)]">Recent searches</h3>
+          {recentSearches.map(query => <button key={query.toLowerCase()} type="button" onClick={() => submitSearch(query)} className="block w-full rounded px-2 py-2 text-left text-sm text-[var(--store-text)] hover:bg-[var(--store-background)] focus-visible:outline-2 focus-visible:outline-primary">{query}</button>)}
+        </section>}
+        {!headerSearch.trim() ? (recentSearches.length === 0 ? <p className="px-4 py-4 text-sm text-[var(--store-muted)]">Your recent searches will appear here.</p> : null) : isSearching && searchSuggestions.length === 0 ? (
           <div role="status" aria-label="Searching products" className="space-y-3 px-4 py-4">
             <Skeleton className="h-4 w-4/5" />
             <Skeleton className="h-4 w-3/5" />
@@ -762,7 +777,7 @@ const PublicLayout = () => {
             </div>
             <div
               onClick={() => {
-                navigate(searchTarget(headerSearch.trim()));
+                submitSearch(headerSearch);
                 setIsSearchOpen(false);
               }}
               className="border-t border-[var(--store-border)] flex items-center justify-between px-4 py-3 text-sm text-[var(--store-primary)] hover:bg-[var(--store-background)] cursor-pointer font-medium transition-colors group"
@@ -783,6 +798,7 @@ const PublicLayout = () => {
                   <div
                     key={prod._id}
                     onClick={() => {
+                      setRecentSearches(rememberSearch(headerSearch));
                       navigate(buildProductPath(prod, allCategories));
                       setIsSearchOpen(false);
                     }}
@@ -819,7 +835,7 @@ const PublicLayout = () => {
             </div>
             <div
               onClick={() => {
-                navigate(searchTarget(headerSearch.trim()));
+                submitSearch(headerSearch);
                 setIsSearchOpen(false);
               }}
               className="border-t border-[var(--store-border)] flex items-center justify-between px-4 py-2.5 text-xs text-[var(--store-primary)] hover:bg-[var(--store-background)] cursor-pointer font-medium transition-colors group"
@@ -970,15 +986,19 @@ const PublicLayout = () => {
               </button>
               <div className="relative min-w-0 flex-1 flex items-center pr-3">
                 <input
-                  type="text"
-                  placeholder="Search laptops, printers, RAM, SSD..."
+                  type="search"
+                  aria-label="Search products"
+                  maxLength={200}
+                  placeholder="Search for CCTVs and related products."
                   value={headerSearch}
+                  onClick={() => { setRecentSearches(getRecentSearches()); setIsSearchOpen(true); }}
                   onFocus={() => {
-                    if (headerSearch.trim()) setIsSearchOpen(true);
+                    setRecentSearches(getRecentSearches());
+                    setIsSearchOpen(true);
                   }}
                   onChange={(e) => {
                     setHeaderSearch(e.target.value);
-                    if (e.target.value.trim()) setIsSearchOpen(true);
+                    setIsSearchOpen(true);
                   }}
                   className="w-full h-10 px-2 bg-transparent text-[var(--store-text)] placeholder-gray-500 text-xs sm:text-sm border-0 focus:outline-none"
                 />
@@ -1023,15 +1043,19 @@ const PublicLayout = () => {
             >
               <div className="relative w-full flex items-center">
                 <input
-                  type="text"
-                  placeholder="Search laptops, printers, RAM, SSD..."
+                  type="search"
+                  aria-label="Search products"
+                  maxLength={200}
+                  placeholder="Search for CCTVs and related products."
                   value={headerSearch}
+                  onClick={() => { setRecentSearches(getRecentSearches()); setIsSearchOpen(true); }}
                   onFocus={() => {
-                    if (headerSearch.trim()) setIsSearchOpen(true);
+                    setRecentSearches(getRecentSearches());
+                    setIsSearchOpen(true);
                   }}
                   onChange={(e) => {
                     setHeaderSearch(e.target.value);
-                    if (e.target.value.trim()) setIsSearchOpen(true);
+                    setIsSearchOpen(true);
                   }}
                   className="w-full h-11 px-4 bg-[var(--store-background)] hover:bg-[var(--store-surface)] focus:bg-[var(--store-surface)] text-[var(--store-text)] placeholder-gray-400 text-sm rounded-l-md border border-r-0 border-[var(--store-border)] focus:border-primary focus:outline-none transition-all shadow-inner"
                 />

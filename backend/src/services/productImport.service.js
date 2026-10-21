@@ -7,7 +7,7 @@ import sharp from 'sharp';
 import { Category } from '../models/Category.js';
 import { Brand } from '../models/Brand.js';
 import { Product } from '../models/Product.js';
-import { storageService } from './storage/storage.service.js';
+import { prepareImageBuffer, storageService } from './storage/storage.service.js';
 import { effectiveFilterDefinitions, getPublicCategories } from './catalog.service.js';
 import { createProductSchema } from '../validators/product.validator.js';
 import { AppError } from '../utils/AppError.js';
@@ -38,7 +38,7 @@ const LEGACY_HEADERS = PREVIOUS_HEADERS.filter((header) => header !== 'Product U
 const MAX_ROWS = 200;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const MAX_TOTAL_IMAGES = 500;
-const imageMime = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
+const imageMime = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', svg: 'image/svg+xml' };
 const invalid = (message) => new AppError(message, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
 const clean = (value) => String(value ?? '').trim();
 const normalized = (value) => clean(value).toLowerCase();
@@ -283,8 +283,9 @@ export const prepareProductImport = async (workbookBuffer, archiveBuffer) => {
             try {
               const buffer = await images.get(key).entry.async('nodebuffer');
               if (buffer.length > MAX_IMAGE_SIZE) return `Image exceeds 5 MB: ${name}`;
+              await prepareImageBuffer(buffer, images.get(key).mimetype);
               const metadata = await sharp(buffer).metadata();
-              if (!['png', 'jpeg', 'webp'].includes(metadata.format)) return `Invalid image: ${name}`;
+              if (!['png', 'jpeg', 'webp', 'svg'].includes(metadata.format)) return `Invalid image: ${name}`;
               return null;
             } catch { return `Image could not be read: ${name}`; }
           })());

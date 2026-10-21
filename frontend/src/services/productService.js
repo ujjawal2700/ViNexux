@@ -26,8 +26,8 @@ export const productService = {
    * Fetch single product detail view by ID.
    * @param {string} id
    */
-  async getProductById(id) {
-    const response = await apiClient.get(`/products/${id}`);
+  async getProductById(id, options = {}) {
+    const response = await apiClient.get(`/products/${id}`, options);
     return response.data;
   },
 };

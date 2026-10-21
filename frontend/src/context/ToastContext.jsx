@@ -1,4 +1,4 @@
-import React, { createContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useState, useCallback, useEffect, useMemo } from 'react';
 import ToastContainer from '../components/ui/Toast';
 
 export const ToastContext = createContext(null);
@@ -51,14 +51,14 @@ export const ToastProvider = ({ children }) => {
     return () => window.removeEventListener('session-expired', handleSessionExpired);
   }, [addToast]);
 
-  const toast = {
+  const toast = useMemo(() => ({
     success: (msg, duration) => addToast(msg, 'success', duration),
     error: (msg, duration) => addToast(msg, 'error', duration),
     warning: (msg, duration) => addToast(msg, 'warning', duration),
     info: (msg, duration) => addToast(msg, 'info', duration),
     stock: (msg, duration) => addToast(msg, 'stock', duration),
     remove: removeToast,
-  };
+  }), [addToast, removeToast]);
 
   return (
     <ToastContext.Provider value={toast}>

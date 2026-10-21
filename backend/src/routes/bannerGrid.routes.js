@@ -73,7 +73,7 @@ router.put('/:section', asyncHandler(async (req, res) => {
 }));
 const uploadImage = asyncHandler(async (req, res) => {
   const section = sectionIndex(req), data = input(req.body);
-  if (!req.file || !['image/png', 'image/jpeg', 'image/webp'].includes(req.file.mimetype) || req.file.size > 5 * 1024 * 1024) throw new AppError('Upload a PNG, JPG or WebP image up to 5 MB', 400, ERROR_CODES.VALIDATION_ERROR);
+  if (!req.file || !['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'].includes(req.file.mimetype) || req.file.size > 5 * 1024 * 1024) throw new AppError('Upload a PNG, JPG, WebP or SVG image up to 5 MB', 400, ERROR_CODES.VALIDATION_ERROR);
   await BannerGrid.updateOne({ singletonKey: 'primary' }, { $setOnInsert: { singletonKey: 'primary', sections: emptySections(), revision: 0, configured: false } }, { upsert: true });
   const replacing = Boolean(req.params.id);
   const filter = { singletonKey: 'primary', revision: data.revision, ...(replacing ? { [`sections.${section}.images._id`]: req.params.id } : { [`sections.${section}.images.${BENTO_IMAGE_LIMIT - 1}`]: { $exists: false } }) };

@@ -23,7 +23,10 @@ export const getProductImagePublicId = (image) => {
     if (url.hostname !== 'res.cloudinary.com') return null;
     const prefix = `/${config.cloudinaryCloudName}/image/upload/`;
     if (!config.cloudinaryCloudName || !url.pathname.startsWith(prefix)) return null;
-    const path = decodeURIComponent(url.pathname.slice(prefix.length)).replace(/^v\d+\//, '');
+    const deliveryPath = decodeURIComponent(url.pathname.slice(prefix.length));
+    // Cloudinary delivery URLs can contain transformation and version segments.
+    const folderIndex = deliveryPath.indexOf('vinexus/products/');
+    const path = folderIndex >= 0 ? deliveryPath.slice(folderIndex) : deliveryPath;
     // Only infer IDs for this app's product folder, never external images.
     if (!path.startsWith('vinexus/products/')) return null;
     return path.replace(/\.[^/.]+$/, '');
@@ -44,8 +47,19 @@ const cleanupProductImages = async (product) => {
       );
     }
     product.pendingImageDeletions = product.pendingImageDeletions.filter((id) => id !== publicId);
-    await product.save();
+    await product.save({ validateModifiedOnly: true });
   }
+};
+
+const withManagedBrand = (specifications, name) => {
+  let found = false;
+  const ordered = specifications.flatMap(spec => {
+    if (!/^(brand|manufacturer)$/i.test(spec.key)) return [spec];
+    if (found) return [];
+    found = true;
+    return [{ key: 'Brand', value: name }];
+  });
+  return found ? ordered : [...ordered, { key: 'Brand', value: name }];
 };
 
 const slugify = (value = '') => (value || '').toString().toLowerCase().trim().replace(/^https?:\/\/(www\.)?/i, '').replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -73,19 +87,19 @@ const validateCategorySpecifications = async (categoryId, specifications = []) =
   for (const definition of definitions) {
     const values = valuesByKey.get(definition.key.toLowerCase()) || [];
     if (definition.isRequired && values.length === 0) {
-      throw new AppError(`${definition.label} is required for this category.`, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+      throw new AppError(`${definition.label} is required for this category.`, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: `specifications.${definition.key}`, message: `${definition.label} is required for this category.` }]);
     }
     if (['select', 'multi-select'].includes(definition.inputType)) {
       const allowed = new Set(definition.options.map((option) => option.toLowerCase()));
       if (values.some((value) => !allowed.has(value.toLowerCase()))) {
-        throw new AppError(`${definition.label} contains an option not configured for this category.`, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+        throw new AppError(`${definition.label} contains an option not configured for this category.`, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: `specifications.${definition.key}`, message: `${definition.label} contains an option not configured for this category.` }]);
       }
     }
     if (definition.inputType === 'number' && values.some((value) => !Number.isFinite(Number(value)))) {
-      throw new AppError(`${definition.label} must be numeric.`, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+      throw new AppError(`${definition.label} must be numeric.`, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: `specifications.${definition.key}`, message: `${definition.label} must be numeric.` }]);
     }
     if (definition.inputType === 'boolean' && values.some((value) => !['yes', 'no', 'true', 'false'].includes(value.toLowerCase()))) {
-      throw new AppError(`${definition.label} must be Yes or No.`, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+      throw new AppError(`${definition.label} must be Yes or No.`, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: `specifications.${definition.key}`, message: `${definition.label} must be Yes or No.` }]);
     }
   }
 };
@@ -185,6 +199,7 @@ export const productService = {
     standardPrice = 0,
     dealerPrice = 0,
     isTrending = false,
+    isLowStock = false,
     isActive = true,
   }) {
     const uppercaseSku = sku.trim().toUpperCase();
@@ -229,15 +244,12 @@ export const productService = {
     }
     await validateCategorySpecifications(primaryCategoryId, specifications);
     const brand = brandId && await Brand.findOne({ _id: brandId, isActive: true });
-    if (!brand) throw new AppError('Please select an active managed brand.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
-    if (!modelNumber?.trim()) throw new AppError('Model number is required.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+    if (!brand) throw new AppError('Please select an active managed brand.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: 'brandId', message: 'Please select an active managed brand.' }]);
+    if (!modelNumber?.trim()) throw new AppError('Model number is required.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: 'modelNumber', message: 'Model number is required.' }]);
     const resolvedModel = model?.trim() || 'Standard Model';
     const existingModelNumber = await Product.findOne({ modelNumber: modelNumber.trim() });
-    if (existingModelNumber) throw new AppError('Model number must be unique.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
-    const normalizedSpecifications = [
-      ...specifications.filter((specification) => !/^(brand|manufacturer)$/i.test(specification.key)),
-      { key: 'Brand', value: brand.name },
-    ];
+    if (existingModelNumber) throw new AppError('Model number must be unique.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: 'modelNumber', message: 'Model number must be unique.' }]);
+    const normalizedSpecifications = withManagedBrand(specifications, brand.name);
     if (isActive && images.length === 0) {
       throw new AppError('At least one uploaded product image is required before publishing.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
     }
@@ -262,6 +274,7 @@ export const productService = {
       standardPrice,
       dealerPrice,
       isTrending,
+      isLowStock,
       isActive,
     });
 
@@ -329,14 +342,9 @@ isActive,
       }
     }
 
-    // Filter by low stock (stock > 0 and stock < 10)
+    // Low-stock merchandising is explicitly selected by an administrator.
     if (queryParams.lowStock === 'true' || queryParams.lowStock === true || queryParams.availability === 'low-stock') {
-      andClauses.push({
-        $or: [
-          { stockStatus: 'low-stock' },
-          { stockQuantity: { $gt: 0, $lt: 10 } },
-        ],
-      });
+      andClauses.push({ isLowStock: true });
     }
 
     if (andClauses.length > 0) {
@@ -452,6 +460,14 @@ isActive,
       throw new AppError('Product not found.', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
     }
 
+    if (updateData.images !== undefined && updateData.expectedImages !== undefined) {
+      const identities = images => [...new Set(images.map(image => typeof image === 'string' ? image : (image.publicId || image.url)))].sort();
+      if (JSON.stringify(identities(product.images || [])) !== JSON.stringify(identities(updateData.expectedImages))) {
+        const message = 'The product gallery changed in another session. Refresh before replacing or removing images.';
+        throw new AppError(message, HTTP_STATUS.CONFLICT, ERROR_CODES.CONFLICT, [{ path: 'images', message }]);
+      }
+    }
+
     const priceChanges = [];
     const originalPrices = {};
     const changedAt = new Date();
@@ -516,7 +532,7 @@ isActive,
     if (updateData.name) product.name = updateData.name.trim();
     if (updateData.modelNumber !== undefined) {
       const duplicateModel = await Product.findOne({ modelNumber: updateData.modelNumber.trim(), _id: { $ne: id } });
-      if (duplicateModel) throw new AppError('Model number must be unique.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+      if (duplicateModel) throw new AppError('Model number must be unique.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: 'modelNumber', message: 'Model number must be unique.' }]);
       product.modelNumber = updateData.modelNumber.trim();
     }
     if (updateData.model !== undefined) product.model = updateData.model.trim();
@@ -531,8 +547,8 @@ isActive,
     if (updateData.variant !== undefined) product.variant = updateData.variant.trim();
     if (updateData.hsnCode !== undefined) product.hsnCode = updateData.hsnCode.trim();
     if (updateData.warranty !== undefined) product.warranty = updateData.warranty.trim();
-    if (updateData.informationPhone !== undefined) product.informationPhone = updateData.informationPhone.trim();
-    if (updateData.productUrl !== undefined) product.productUrl = updateData.productUrl.trim();
+    if (updateData.informationPhone !== undefined) product.informationPhone = updateData.informationPhone?.trim() || '';
+    if (updateData.productUrl !== undefined) product.productUrl = updateData.productUrl?.trim() || '';
     if (updateData.description !== undefined) product.description = updateData.description ? updateData.description.trim() : null;
     if (updateData.images !== undefined) {
       const retained = new Set(updateData.images.map(getProductImagePublicId).filter(Boolean));
@@ -547,38 +563,36 @@ isActive,
     if (updateData.standardPrice !== undefined) product.standardPrice = updateData.standardPrice;
     if (updateData.dealerPrice !== undefined) product.dealerPrice = updateData.dealerPrice;
     if (updateData.isTrending !== undefined) product.isTrending = updateData.isTrending;
+    if (updateData.isLowStock !== undefined) product.isLowStock = updateData.isLowStock;
     if (updateData.isActive !== undefined) product.isActive = updateData.isActive;
     if (updateData.brandId !== undefined) {
       const brand = await Brand.findOne({ _id: updateData.brandId, isActive: true });
-      if (!brand) throw new AppError('Please select an active managed brand.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+      if (!brand) throw new AppError('Please select an active managed brand.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: 'brandId', message: 'Please select an active managed brand.' }]);
       product.brandId = updateData.brandId;
-      product.specifications = [
-        ...(product.specifications || []).filter((specification) => !/^(brand|manufacturer)$/i.test(specification.key)),
-        { key: 'Brand', value: brand.name },
-      ];
+      product.specifications = withManagedBrand(product.specifications || [], brand.name);
     }
 
-    if (product.categoryId) {
+    if (product.categoryId && (updateData.categoryId !== undefined || updateData.specifications !== undefined)) {
       await validateCategorySpecifications(product.categoryId, product.specifications);
     }
     let savedProduct = product;
     if (priceChanges.length) {
-      await product.validate();
+      await product.validate({ validateModifiedOnly: true });
       const paths = product.directModifiedPaths();
       const updates = Object.fromEntries(paths
         .filter((path) => !paths.some((parent) => parent !== path && path.startsWith(`${parent}.`)))
         .map((path) => [path, product.get(path)]));
       // Append the audit entries in the same write as the prices. Compare old
       // prices to avoid logging a stale previous value during simultaneous edits.
-      savedProduct = await Product.findOneAndUpdate({ _id: id, $and: Object.entries(originalPrices).map(([field, value]) => ({
+      savedProduct = await Product.findOneAndUpdate({ _id: id, ...(updateData.images !== undefined ? { __v: product.__v } : {}), $and: Object.entries(originalPrices).map(([field, value]) => ({
         $or: [{ [field]: value }, { [field]: { $exists: false } }],
-      })) }, { $set: updates, $push: { priceHistory: { $each: priceChanges } } }, { new: true, runValidators: true });
+      })) }, { $set: updates, $push: { priceHistory: { $each: priceChanges } }, ...(updateData.images !== undefined ? { $inc: { __v: 1 } } : {}) }, { new: true, runValidators: true });
       if (!savedProduct) {
         if (priceAttempt < 3) return this.updateProduct(id, updateData, actor, priceAttempt + 1);
         throw new AppError('Prices changed while saving. Refresh the product and try again.', HTTP_STATUS.CONFLICT, ERROR_CODES.BAD_REQUEST);
       }
     } else {
-      await product.save();
+      await product.save({ validateModifiedOnly: true });
     }
     await cleanupProductImages(savedProduct);
 
@@ -599,7 +613,7 @@ isActive,
     }
 
     product.isActive = false;
-    await product.save();
+    await product.save({ validateModifiedOnly: true });
 
     return {
       deactivated: true,
@@ -633,17 +647,24 @@ isActive,
     const imageData = {
       url: uploaded.url,
       publicId: uploaded.publicId,
-      altText: altText || product.name,
+      altText: String(altText || product.name || '').trim().slice(0, 150),
       sortOrder: (product.images || []).length,
     };
 
-    const updatedProduct = await Product.findByIdAndUpdate(
-      id,
-      { $push: { images: imageData } },
-      { new: true, runValidators: false }
-    );
-
-    return updatedProduct || product;
+    try {
+      const updatedProduct = await Product.findByIdAndUpdate(
+        id,
+        { $push: { images: imageData }, $inc: { __v: 1 } },
+        { new: true, runValidators: true }
+      );
+      if (!updatedProduct) throw new AppError('Product no longer exists. Refresh the catalog.', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
+      updatedProduct.$locals = { ...updatedProduct.$locals, uploadedImage: imageData };
+      return updatedProduct;
+    } catch (error) {
+      // An upload is not owned by a product until its DB write succeeds.
+      await storageService.deleteFile(uploaded.publicId);
+      throw error;
+    }
   },
 
   /**

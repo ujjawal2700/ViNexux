@@ -1,3 +1,4 @@
+import { productIdFromPath } from '../../../shared/socialMetadata.js';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import contentService from '../services/contentService';
@@ -15,34 +16,49 @@ const defaultSettings = {
 };
 
 const setMeta = (selector, attribute, value) => {
-  const element = document.head.querySelector(selector);
-  if (element && value) element.setAttribute(attribute, value);
+  if (!value) return;
+  let element = document.head.querySelector(selector);
+  if (!element) {
+    element = document.createElement(selector.startsWith('link') ? 'link' : 'meta');
+    const match = selector.match(/\[(name|property|rel)="([^"]+)"\]/);
+    if (match) element.setAttribute(match[1], match[2]);
+    document.head.appendChild(element);
+  }
+  element.setAttribute(attribute, value);
 };
 
 const applyDocumentMetadata = (settings, pathname = '/') => {
-  document.title = settings.metaTitle || settings.websiteName;
-  setMeta('meta[name="title"]', 'content', settings.metaTitle);
-  setMeta('meta[name="description"]', 'content', settings.metaDescription);
-  setMeta('meta[name="author"]', 'content', settings.websiteName);
-  setMeta('meta[property="og:site_name"]', 'content', settings.websiteName);
-  setMeta('meta[property="og:title"]', 'content', settings.metaTitle);
-  setMeta('meta[property="og:description"]', 'content', settings.metaDescription);
-  setMeta('meta[name="twitter:title"]', 'content', settings.metaTitle);
-  setMeta('meta[name="twitter:description"]', 'content', settings.metaDescription);
+  const productPage = Boolean(productIdFromPath(pathname));
+  // Product metadata is owned by the product page; late CMS responses must not overwrite it.
+  if (!productPage) {
+    document.title = settings.metaTitle || settings.websiteName;
+    setMeta('meta[name="title"]', 'content', settings.metaTitle);
+    setMeta('meta[name="description"]', 'content', settings.metaDescription);
+    setMeta('meta[name="author"]', 'content', settings.websiteName);
+    setMeta('meta[property="og:site_name"]', 'content', settings.websiteName);
+    setMeta('meta[property="og:title"]', 'content', settings.metaTitle);
+    setMeta('meta[property="og:description"]', 'content', settings.metaDescription);
+    setMeta('meta[name="twitter:title"]', 'content', settings.metaTitle);
+    setMeta('meta[name="twitter:description"]', 'content', settings.metaDescription);
 
+  }
   const faviconUrl = settings.favicon?.url || defaultSettings.favicon.url;
   document.head.querySelectorAll('link[rel~="icon"], link[rel="apple-touch-icon"]').forEach((link) => {
     link.removeAttribute('type');
     link.setAttribute('href', faviconUrl);
   });
 
+  if (productPage) return;
   const savedSocialImage = settings.ogImage?.url;
   const socialImage = !savedSocialImage || savedSocialImage === '/favicon.jpeg'
     ? defaultSettings.ogImage.url
     : savedSocialImage;
   const absoluteSocialImage = new URL(socialImage, window.location.origin).href;
+  setMeta('meta[property="og:type"]', 'content', 'website');
   setMeta('meta[property="og:image"]', 'content', absoluteSocialImage);
   setMeta('meta[name="twitter:image"]', 'content', absoluteSocialImage);
+  setMeta('meta[property="og:image:alt"]', 'content', settings.websiteName || 'Vinexus');
+  setMeta('meta[name="twitter:image:alt"]', 'content', settings.websiteName || 'Vinexus');
   const currentUrl = new URL(pathname, window.location.origin).href;
   setMeta('meta[property="og:url"]', 'content', currentUrl);
   setMeta('meta[name="twitter:url"]', 'content', currentUrl);

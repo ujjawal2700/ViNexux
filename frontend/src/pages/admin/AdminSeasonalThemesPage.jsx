@@ -133,7 +133,7 @@ export default function AdminSeasonalThemesPage() {
   };
   const upload = async (slot, event) => {
     const file = event.target.files?.[0]; event.target.value = ''; if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) { setError('Choose a PNG, JPG or WebP picture up to 5 MB.'); return; }
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'].includes(file.type) || file.size > 5 * 1024 * 1024) { setError('Choose a PNG, JPG, WebP or SVG picture up to 5 MB.'); return; }
     if (busyRef.current) return;
     busyRef.current = true; setBusy(true); setError('');
     let current = form;
@@ -175,10 +175,10 @@ export default function AdminSeasonalThemesPage() {
           <p className="text-xs text-gray-500">The festival pictures are ready to use. Replacing them is optional.</p>
           <div className="grid gap-3 sm:grid-cols-3">{['header', 'background', 'footer'].map(slot => <div key={slot} className="min-w-0 rounded-lg border border-gray-200 p-3"><h3 className="text-sm font-medium">{slot === 'header' ? 'Top of website' : slot === 'footer' ? 'Bottom of website' : 'Page background'}</h3>
             <div className="my-3 flex h-20 items-center justify-center overflow-hidden rounded bg-gray-50">{form.draft.assets[slot]?.url ? <img src={form.draft.assets[slot].url} alt={`${slot} decoration`} className="h-full w-full object-contain" loading="lazy" /> : <ImagePlus size={24} className="text-gray-400" />}</div>
-            <label className={`flex cursor-pointer items-center justify-center gap-1 rounded-lg border px-2 py-2 text-xs font-semibold text-primary hover:bg-rose-50 ${busy ? 'pointer-events-none' : ''}`}><Upload size={13} />{form.draft.assets[slot] ? 'Replace picture' : 'Upload picture'}<input aria-label={`Upload ${slot} image`} type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={e => upload(slot, e)} className="sr-only" /></label>
+            <label className={`flex cursor-pointer items-center justify-center gap-1 rounded-lg border px-2 py-2 text-xs font-semibold text-primary hover:bg-rose-50 ${busy ? 'pointer-events-none' : ''}`}><Upload size={13} />{form.draft.assets[slot] ? 'Replace picture' : 'Upload picture'}<input aria-label={`Upload ${slot} image`} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg" disabled={busy} onChange={e => upload(slot, e)} className="sr-only" /></label>
             {form.draft.assets[slot] && <button type="button" className="mt-2 w-full text-xs text-gray-500 underline" onClick={() => { const assets = { ...form.draft.assets }; delete assets[slot]; draft({ assets }); }}>Remove picture</button>}
           </div>)}</div>
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs"><span className="text-gray-500">PNG, JPG or WebP · up to 5 MB</span><button type="button" className="font-semibold text-primary underline" onClick={() => draft({ assets: presetConfig(form.preset).assets })}>Restore preset artwork</button></div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs"><span className="text-gray-500">PNG, JPG, WebP or SVG · up to 5 MB</span><button type="button" className="font-semibold text-primary underline" onClick={() => draft({ assets: presetConfig(form.preset).assets })}>Restore preset artwork</button></div>
         </section>
         <details onToggle={event => setMoreOpen(event.currentTarget.open)} className="rounded-xl border border-gray-200 bg-white p-5"><summary className="cursor-pointer text-sm font-semibold">More design options</summary><div className="mt-5 space-y-5">
           <p className="text-xs text-gray-500">Optional. The selected festival already includes a complete design.</p>

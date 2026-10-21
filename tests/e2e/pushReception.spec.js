@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { mockApi, seedBrowserSession } from './mockApi.js';
 
+test.skip(process.env.PLAYWRIGHT_PREVIEW === '1', 'Firebase source-module injection requires the development server; covered in the development browser suite.');
+
 for (const portal of ['admin', 'customer']) {
   test(`${portal} registers after auth restoration and shows foreground push for an id-only account`, async ({ page }) => {
     const errors = []; page.on('pageerror', error => errors.push(error.message));

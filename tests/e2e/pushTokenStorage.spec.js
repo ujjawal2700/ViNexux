@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { mockApi, seedBrowserSession } from './mockApi.js';
 
+test.skip(process.env.PLAYWRIGHT_PREVIEW === '1', 'Firebase source-module injection requires the development server; covered in the development browser suite.');
+
 for (const role of ['admin', 'customer', 'dealer']) {
   test(`${role} persists the registered browser token across reload and clears it on logout`, async ({ page }) => {
     await mockApi(page); await seedBrowserSession(page, role === 'admin' ? 'admin' : 'account');

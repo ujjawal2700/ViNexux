@@ -8,8 +8,7 @@ import { AppError } from '../utils/AppError.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../constants/errorCodes.js';
 
-const LOW_STOCK_THRESHOLD = 10;
-const LOW_STOCK_MAX_ORDER = 3;
+const LOW_STOCK_MAX_ORDER = 5;
 
 const getAvailableStock = (product) => {
   if (product?.stockQuantity !== undefined && product?.stockQuantity !== null) {
@@ -24,9 +23,10 @@ const getAvailableStock = (product) => {
   return Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : null;
 };
 
-const assertQuantityAvailable = (product, quantity) => {
+export const assertQuantityAvailable = (product, quantity) => {
   const availableStock = getAvailableStock(product);
-  if (availableStock !== null) {
+  // Zero stock can still be requested in an availability enquiry.
+  if (availableStock !== null && availableStock > 0) {
     if (quantity > availableStock) {
       throw new AppError(
         'The requested quantity cannot be added to this enquiry.',
@@ -34,13 +34,13 @@ const assertQuantityAvailable = (product, quantity) => {
         ERROR_CODES.BAD_REQUEST
       );
     }
-    if (availableStock > 0 && availableStock < LOW_STOCK_THRESHOLD && quantity > LOW_STOCK_MAX_ORDER) {
-      throw new AppError(
-        'The quantity limit for this enquiry has been reached.',
-        HTTP_STATUS.BAD_REQUEST,
-        ERROR_CODES.BAD_REQUEST
-      );
-    }
+  }
+  if (product.isLowStock === true && quantity > LOW_STOCK_MAX_ORDER) {
+    throw new AppError(
+      'Low-stock products are limited to 5 units per enquiry.',
+      HTTP_STATUS.BAD_REQUEST,
+      ERROR_CODES.BAD_REQUEST
+    );
   }
 };
 
@@ -186,7 +186,7 @@ const formatPopulatedCart = async (cart, userId) => {
 
   await cart.populate({
     path: 'items.productId',
-    select: 'sku name categoryId brandId description images specifications isFeatured isActive standardPrice dealerPrice stockQuantity stockStatus modelNumber',
+    select: 'sku name categoryId brandId description images specifications isFeatured isActive standardPrice dealerPrice stockQuantity stockStatus isLowStock modelNumber',
     populate: [
       {
         path: 'categoryId',
