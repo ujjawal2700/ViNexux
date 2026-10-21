@@ -15,10 +15,15 @@ export const prepareImageBuffer = async (buffer, mimetype, { lossless = false } 
   }
 
   try {
-    // Reject active SVG content and external resources before rasterizing. Even
-    // a mislabeled SVG must pass these checks; inspect content as well as MIME.
-    const source = buffer.toString('utf8');
-    if (mimetype === 'image/svg+xml' || /<svg[\s>]/i.test(source)) {
+    // Raster metadata may contain the SVG source used to export the picture.
+    // Do not interpret text inside a binary image as an SVG document. Invalid
+    // raster bytes still fail decoding below; mislabeled SVGs still get checked.
+    const raster = buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+      || buffer.subarray(0, 3).equals(Buffer.from([255, 216, 255]))
+      || /^GIF8[79]a$/.test(buffer.subarray(0, 6).toString('ascii'))
+      || buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP';
+    const source = raster ? '' : buffer.toString('utf8');
+    if (!raster && (mimetype === 'image/svg+xml' || /<svg[\s>]/i.test(source))) {
       const references = [...source.matchAll(/(?:href\s*=\s*["']([^"']*)["']|url\(\s*["']?([^\s)"']+))/gi)]
         .map(match => match[1] ?? match[2]);
       if (/<!DOCTYPE|<!ENTITY|<\s*(?:script|foreignObject)\b|\bon\w+\s*=|@import/i.test(source)

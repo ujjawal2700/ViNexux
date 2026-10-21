@@ -1,3 +1,4 @@
+import { getProductImageMimeType } from '../../../../shared/productImageTypes.js';
 import React, { useState, useRef } from 'react';
 import { UploadCloud, Image as ImageIcon, X, CheckCircle2, Cloud } from 'lucide-react';
 import Skeleton from './Skeleton';
@@ -31,7 +32,7 @@ export const ImageUploader = ({
   const handleFileSelect = async (file) => {
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
+    if (!getProductImageMimeType(file.name, file.type) && file.type !== 'image/gif') {
       setError('Please select a valid image file (PNG, JPG, WEBP, GIF, SVG).');
       return;
     }

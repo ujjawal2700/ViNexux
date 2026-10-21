@@ -1,3 +1,4 @@
+import { getProductImageMimeType } from '../../../../shared/productImageTypes.js';
 import React, { useEffect, useRef, useState } from 'react';
 import { Globe2, Image as ImageIcon, Save, Search, Upload } from 'lucide-react';
 import adminService from '../../services/adminService';
@@ -63,7 +64,7 @@ const AdminWebsiteSettingsPage = () => {
 
   const handleFile = (field, file) => {
     if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'].includes(file.type)) {
+    if (!getProductImageMimeType(file.name, file.type)) {
       setErrors((current) => ({ ...current, [field]: 'Only PNG, JPG, WebP and SVG images are allowed.' }));
       return;
     }

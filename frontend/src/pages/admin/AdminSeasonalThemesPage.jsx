@@ -1,3 +1,4 @@
+import { getProductImageMimeType } from '../../../../shared/productImageTypes.js';
 import NumberInput from '../../components/ui/NumberInput';
 import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -133,7 +134,7 @@ export default function AdminSeasonalThemesPage() {
   };
   const upload = async (slot, event) => {
     const file = event.target.files?.[0]; event.target.value = ''; if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'].includes(file.type) || file.size > 5 * 1024 * 1024) { setError('Choose a PNG, JPG, WebP or SVG picture up to 5 MB.'); return; }
+    if (!getProductImageMimeType(file.name, file.type) || file.size > 5 * 1024 * 1024) { setError('Choose a PNG, JPG, WebP or SVG picture up to 5 MB.'); return; }
     if (busyRef.current) return;
     busyRef.current = true; setBusy(true); setError('');
     let current = form;

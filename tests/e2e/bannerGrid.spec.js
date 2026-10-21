@@ -31,7 +31,7 @@ test('admin uploads five images per section, edits and replaces; independent ben
   });
   await page.goto('/admin/cms/banners');
   await expect(page.getByRole('heading', { name: 'Homepage bento grid', exact: true })).toBeVisible();
-  const files = n => Array.from({ length: n }, (_, i) => ({ name: `banner-${i}.png`, mimeType: 'image/png', buffer: png }));
+  const files = n => Array.from({ length: n }, (_, i) => ({ name: `banner-${i}.PNG`, mimeType: ['image/png', 'image/x-png', 'application/octet-stream'][i % 3], buffer: png }));
   for (let section = 0; section < 2; section++) {
     await page.getByLabel(`Upload images for section ${section + 1}`, { exact: true }).setInputFiles(files(section === 0 ? 5 : 2));
     await page.getByRole('button', { name: /^Upload \d banners?$/ }).click();

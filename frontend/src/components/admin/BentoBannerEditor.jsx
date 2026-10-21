@@ -1,3 +1,4 @@
+import { getProductImageMimeType } from '../../../../shared/productImageTypes.js';
 import React, { useEffect, useState } from 'react';
 import apiClient from '../../api/axios';
 import useConfirm from '../../hooks/useConfirm';
@@ -52,7 +53,7 @@ export default function BentoBannerEditor() {
     const files = Array.from(fileList || []);
     if (!files.length) return;
     const remaining = BENTO_IMAGE_LIMIT - grid.sections[section].images.length;
-    if ((!image && files.length > remaining) || files.some(f => f.size > 5 * 1024 * 1024 || !['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'].includes(f.type))) {
+    if ((!image && files.length > remaining) || files.some(f => f.size > 5 * 1024 * 1024 || !getProductImageMimeType(f.name, f.type))) {
       setError(`Choose up to ${image ? 1 : remaining} PNG, JPG, WebP or SVG images, each under 5 MB.`); return;
     }
     setError('');

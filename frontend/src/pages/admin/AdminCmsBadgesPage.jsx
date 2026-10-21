@@ -1,3 +1,4 @@
+import { getProductImageMimeType } from '../../../../shared/productImageTypes.js';
 import React, { useState, useEffect } from 'react';
 import adminService from '../../services/adminService';
 import useToast from '../../hooks/useToast';
@@ -150,8 +151,7 @@ const AdminCmsBadgesPage = () => {
       setSelectedFile(null);
       return;
     }
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
-    if (!allowedTypes.includes(file.type)) {
+    if (!getProductImageMimeType(file.name, file.type)) {
       setUploadError('Invalid image type. Please select JPEG, PNG, WEBP, or SVG.');
       setSelectedFile(null);
       return;

@@ -43,6 +43,32 @@ describe('SVG image storage', () => {
   test('invalid raster content also fails rather than uploading the unconverted file', async () => {
     await expect(prepareImageBuffer(Buffer.from('bad png'), 'image/png')).rejects.toMatchObject({ statusCode: 400 });
   });
+  test('PNG export metadata containing SVG source is not treated as an active SVG document', async () => {
+    const source = '<svg><image href="https://example.test/original.png"/></svg>';
+    const png = await sharp({ create: { width: 16, height: 8, channels: 4, background: '#00ff0080' } })
+      .withExif({ IFD0: { ImageDescription: source } }).png().toBuffer();
+    expect(png.toString('utf8')).toContain('<svg');
+    const prepared = await prepareImageBuffer(png, 'image/png');
+    expect(await sharp(prepared.buffer).metadata()).toMatchObject({ format: 'webp', width: 16, height: 8, hasAlpha: true });
+    expect(prepared.buffer.toString('utf8')).not.toContain('<svg');
+    expect((await sharp(prepared.buffer).metadata()).exif).toBeUndefined();
+  });
+  test('palette PNG with transparency is converted successfully', async () => {
+    const png = await sharp({ create: { width: 8, height: 8, channels: 4, background: '#ff000080' } }).png({ palette: true }).toBuffer();
+    const prepared = await prepareImageBuffer(png, 'image/png');
+    expect(await sharp(prepared.buffer).metadata()).toMatchObject({ format: 'webp', width: 8, height: 8, hasAlpha: true });
+  });
+  test('unsafe SVG renamed as PNG still fails before storage', async () => {
+    const uploadFile = jest.fn(); setStorageProvider({ uploadFile });
+    const unsafe = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><image href="https://example.test/private.png"/></svg>');
+    await expect(storageService.uploadFile({ buffer: unsafe, originalname: 'renamed.png', mimetype: 'image/png' }))
+      .rejects.toMatchObject({ statusCode: 400 });
+    expect(uploadFile).not.toHaveBeenCalled();
+  });
+  test('a forged PNG signature does not bypass SVG and image decoding validation', async () => {
+    const forged = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), Buffer.from('<svg><script>alert(1)</script></svg>')]);
+    await expect(prepareImageBuffer(forged, 'image/png')).rejects.toMatchObject({ statusCode: 400 });
+  });
   test('lossless QR conversion preserves every pixel for scanning', async () => {
     const prepared = await prepareImageBuffer(svg, 'image/svg+xml', { lossless: true });
     const before = await sharp(svg).ensureAlpha().raw().toBuffer();
