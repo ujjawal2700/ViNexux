@@ -902,13 +902,15 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
 
         {/* 2. TWO-COLUMN LAYOUT: SIDEBAR (lg:col-span-3) + PRODUCT GRID (lg:col-span-9) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start relative">
-          {/* Size containment lets the catalog set the row height; longer filters scroll inside it. */}
-          <aside className="hidden lg:block lg:col-span-3 xl:col-span-3 2xl:col-span-2 self-stretch min-h-80 [contain:size] overflow-y-auto overscroll-contain select-none bg-[var(--store-surface)] rounded-lg border border-[var(--store-border)] p-4 shadow-2xs">
+          {/* The column follows the catalog; the visible panel only grows to fit its filters. */}
+          <aside className="hidden lg:block lg:col-span-3 xl:col-span-3 2xl:col-span-2 self-stretch min-h-0 [contain:size] select-none">
+            <div className="max-h-full overflow-y-auto overscroll-contain bg-[var(--store-surface)] rounded-lg border border-[var(--store-border)] p-4 shadow-2xs">
               {isLoading && !facetsLoaded ? (
                 <FilterSidebarSkeleton />
               ) : (
                 renderSidebarFilters()
               )}
+            </div>
           </aside>
 
           {/* MAIN PRODUCT CATALOG CONTENT */}
