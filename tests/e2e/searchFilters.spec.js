@@ -40,11 +40,12 @@ async function setup(page, rows = products, transformFacets = facets => facets) 
       return Object.entries(specs).every(([key, values]) => !values.length || product.specifications.some(spec => spec.key.toLowerCase() === key.toLowerCase() && values.includes(spec.value)));
     });
     const pageNumber = Number(params.get('page') || 1), limit = Number(params.get('limit') || 28);
+    const context = rows.filter(product => !params.get('search') || product.name.toLowerCase().includes(params.get('search').toLowerCase()));
     const facets = {
-      categories: categories.map(category => ({ ...category, level: category.parentId ? [id(1), id(2)].includes(category.parentId) ? 2 : 3 : 1, count: rows.filter(product => ancestry(product).includes(category._id)).length, availableCount: 1 })),
-      brands: [...new Set(rows.map(product => product.specifications[0].value))].map(name => ({ name, count: 1 })),
-      specs: [{ key: 'Resolution', label: 'Resolution', values: [{ val: '4 MP', count: 2 }, { val: '8 MP', count: 1 }] }, { key: 'Power', label: 'Power', values: [{ val: 'PoE', count: 3 }, { val: '12V', count: 1 }] }],
-      availability: [{ status: 'in-stock', count: rows.length }],
+      categories: categories.map(category => ({ ...category, level: category.parentId ? [id(1), id(2)].includes(category.parentId) ? 2 : 3 : 1, count: context.filter(product => ancestry(product).includes(category._id)).length, availableCount: 1 })),
+      brands: [...new Set(context.map(product => product.specifications[0].value))].map(name => ({ name, count: 1 })),
+      specs: ['Resolution', 'Power'].map(key => ({ key, label: key, values: [...new Set(context.flatMap(product => product.specifications.filter(spec => spec.key === key).map(spec => spec.value)))].map(val => ({ val, count: context.filter(product => product.specifications.some(spec => spec.key === key && spec.value === val)).length })) })),
+      availability: [{ status: 'in-stock', count: context.length }],
     };
     return route.fulfill({ json: { success: true, data: { resolvedBrand, products: filtered.slice((pageNumber - 1) * limit, pageNumber * limit), pagination: { page: pageNumber, limit, total: filtered.length, totalPages: Math.ceil(filtered.length / limit) }, ...(params.get('includeFacets') === 'false' ? {} : { facets: transformFacets(facets) }) } } });
   });
@@ -52,16 +53,15 @@ async function setup(page, rows = products, transformFacets = facets => facets) 
 }
 const names = page => page.locator('main').getByRole('heading', { level: 3 });
 
-test('search supports header/main/subcategory unions and keeps every other filter visible', async ({ page }) => {
+test('search shows only main/subcategories and supports category unions', async ({ page }) => {
   await setup(page); await page.goto('/search?search=Camera');
   await expect(names(page)).toHaveCount(4);
   await expect(checkbox(page, 'Resolution: 4 MP')).toBeVisible();
-  await select(page, 'Header categories: CCTV'); await expect(names(page)).toHaveCount(3);
-  await expect(checkbox(page, 'Header categories: Networking')).toBeVisible();
-  await expect(checkbox(page, 'Main categories: Switches (Networking)')).toBeVisible();
-  await select(page, 'Header categories: Networking'); await expect(names(page)).toHaveCount(4);
-  await select(page, 'Main categories: IP Cameras (CCTV)'); await expect(names(page)).toHaveCount(3);
-  await select(page, 'Main categories: Switches (Networking)'); await expect(names(page)).toHaveCount(4);
+  await expect(page.getByText('Header categories', { exact: true })).toHaveCount(0);
+  await expect(checkbox(page, 'Header categories: CCTV')).toHaveCount(0);
+  await select(page, 'Main categories: IP Cameras'); await expect(names(page)).toHaveCount(3);
+  await expect(checkbox(page, 'Main categories: Switches')).toBeVisible();
+  await select(page, 'Main categories: Switches'); await expect(names(page)).toHaveCount(4);
   await select(page, 'Subcategories: Bullet (IP Cameras)'); await expect(names(page)).toHaveCount(1);
   await select(page, 'Subcategories: Dome (IP Cameras)'); await expect(names(page)).toHaveCount(3);
   await expect(checkbox(page, 'Resolution: 8 MP')).toBeVisible();
@@ -81,20 +81,20 @@ test('search supports header/main/subcategory unions and keeps every other filte
 
 test('zero results keep filters available and can be recovered without resetting everything', async ({ page }) => {
   await setup(page); await page.goto('/search?search=Camera');
-  await select(page, 'Header categories: Networking'); await expect(names(page)).toHaveCount(1);
+  await select(page, 'Main categories: Switches'); await expect(names(page)).toHaveCount(1);
   await select(page, 'Resolution: 4 MP');
   await expect(page.getByRole('heading', { name: 'No Products Found', exact: true })).toBeVisible();
   await expect(checkbox(page, 'Resolution: 8 MP')).toBeVisible();
-  await expect(checkbox(page, 'Header categories: CCTV')).toBeVisible();
+  await expect(checkbox(page, 'Main categories: IP Cameras')).toBeVisible();
   await expect(checkbox(page, 'Brand: ACME')).toBeVisible();
-  await select(page, 'Header categories: CCTV'); await expect(names(page)).toHaveCount(2);
+  await select(page, 'Main categories: IP Cameras'); await expect(names(page)).toHaveCount(2);
   await select(page, 'Resolution: 4 MP', false); await expect(names(page)).toHaveCount(4);
 });
 
 test('category-route filtering preserves search, brands and specs when adding a child selection', async ({ page }) => {
   await setup(page); await page.goto('/cctv?search=Camera&brand=ACME&specs=' + encodeURIComponent(JSON.stringify({ Resolution: ['4 MP'] })));
   await expect(names(page)).toHaveCount(1);
-  await expect(checkbox(page, 'Header categories: CCTV')).toBeChecked();
+  await expect(checkbox(page, 'Header categories: CCTV')).toHaveCount(0);
   await select(page, 'Subcategories: Bullet (IP Cameras)');
   await expect(page).toHaveURL(/\/products\?/);
   await expect(checkbox(page, 'Brand: ACME')).toBeChecked();
@@ -110,7 +110,7 @@ test('availability hides empty statuses and supports clearing its populated stat
   for (const name of ['Low Stock', 'On Order', 'Out of Stock']) await expect(checkbox(page, `Availability: ${name}`)).toHaveCount(0);
   await select(page, 'Availability: In Stock', false);
   await expect(page.getByRole('heading', { name: 'No Products Found', exact: true })).toBeVisible();
-  await expect(checkbox(page, 'Header categories: CCTV')).toBeVisible();
+  await expect(checkbox(page, 'Main categories: IP Cameras')).toBeVisible();
   await select(page, 'Availability: In Stock'); await expect(names(page)).toHaveCount(4);
 });
 
@@ -126,10 +126,9 @@ for (const mobile of [false, true]) {
     // Selected zero-count values must not be reinserted into the filter list.
     await page.goto('/products?headerCategory=' + id(2) + '&brand=BETA&specs=' + encodeURIComponent(JSON.stringify({ Power: ['PoE'] })));
     if (mobile) await page.getByRole('button', { name: 'Filters', exact: true }).click();
-    await expect(checkbox(page, 'Header categories: CCTV')).toBeVisible();
-    await expect(checkbox(page, 'Main categories: IP Cameras (CCTV)')).toBeVisible();
+    await expect(checkbox(page, 'Main categories: IP Cameras')).toBeVisible();
     await expect(checkbox(page, 'Subcategories: Bullet (IP Cameras)')).toBeVisible();
-    for (const name of ['Header categories: Networking', 'Main categories: Switches (Networking)', 'Subcategories: PoE Switches (Switches)', 'Brand: BETA', 'Resolution: 8 MP', 'Power: PoE', 'Power: 12V']) {
+    for (const name of ['Header categories: Networking', 'Main categories: Switches', 'Subcategories: PoE Switches (Switches)', 'Brand: BETA', 'Resolution: 8 MP', 'Power: PoE', 'Power: 12V']) {
       await expect(checkbox(page, name)).toHaveCount(0);
     }
     await expect(checkbox(page, 'Brand: ACME')).toBeVisible();
@@ -152,7 +151,7 @@ test('pagination reuses facets and selecting a filter returns to page one', asyn
 test('mobile drawer supports multiple selections, stays open and retains them on reopening', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 }); await setup(page); await page.goto('/search?search=Camera');
   await page.getByRole('button', { name: 'Filters', exact: true }).click();
-  await select(page, 'Header categories: CCTV');
+  await select(page, 'Main categories: IP Cameras');
   await select(page, 'Subcategories: Bullet (IP Cameras)');
   await select(page, 'Subcategories: Dome (IP Cameras)');
   await select(page, 'Resolution: 4 MP');
@@ -173,3 +172,26 @@ test('custom brand routes preserve the real name and punctuation when combining 
   await expect(names(page)).toHaveCount(4);
   expect(new URL(page.url()).searchParams.get('brand')).toBe('TP-LINK,BETA');
 });
+
+for (const mobile of [false, true]) {
+  test(`${mobile ? 'mobile' : 'desktop'} search filters reflect all matching products across pages`, async ({ page }) => {
+    if (mobile) await page.setViewportSize({ width: 390, height: 844 });
+    const rows = [
+      ...Array.from({ length: 28 }, (_, index) => ({ ...products[0], _id: id(100 + index) })),
+      products[2],
+      camera(200, 'Unrelated Switch', id(7), 'NETWORK BRAND', '', 'AC'),
+    ];
+    await setup(page, rows);
+    await page.goto('/search?search=Camera');
+    await expect(names(page)).toHaveCount(28);
+    if (mobile) await page.getByRole('button', { name: 'Filters', exact: true }).click();
+    await expect(checkbox(page, 'Main categories: IP Cameras')).toBeVisible();
+    await expect(checkbox(page, 'Subcategories: Dome (IP Cameras)')).toBeVisible();
+    await expect(checkbox(page, 'Brand: BETA')).toBeVisible();
+    await expect(checkbox(page, 'Power: 12V')).toBeVisible();
+    for (const name of ['Header categories: CCTV', 'Header categories: Networking', 'Main categories: Switches', 'Subcategories: PoE Switches (Switches)', 'Brand: NETWORK BRAND', 'Power: AC']) {
+      await expect(checkbox(page, name)).toHaveCount(0);
+    }
+    await expect(page.getByText('Header categories', { exact: true })).toHaveCount(0);
+  });
+}
