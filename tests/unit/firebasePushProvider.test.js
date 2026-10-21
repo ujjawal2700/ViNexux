@@ -32,5 +32,26 @@ test('no browser tokens means no Firebase request', async () => {
   await new FirebasePushProvider().sendToTokens({ tokens: [] });
   expect(sendEachForMulticast).not.toHaveBeenCalled();
 });
+test('all rejected tokens report failure and actionable reasons without exposing raw errors', async () => {
+  sendEachForMulticast.mockResolvedValue({ successCount: 0, failureCount: 2, responses: [
+    { success: false, error: { code: 'messaging/mismatched-credential', message: 'private-token-value' } },
+    { success: false, error: { code: 'messaging/registration-token-not-registered', message: 'another-private-token' } },
+  ] });
+  const result = await new FirebasePushProvider().sendToTokens({ tokens: ['wrong-project', 'expired'], title: 'Test', body: 'Test' });
+  expect(result.success).toBe(false);
+  expect(result.failureReasons.join(' ')).toContain('different Firebase project');
+  expect(result.failureReasons.join(' ')).toContain('expired');
+  expect(result.invalidTokens).toEqual(['expired']);
+  expect(JSON.stringify(result)).not.toContain('private-token');
+});
+test('server authentication failures expose safe guidance instead of raw provider messages', async () => {
+  sendEachForMulticast.mockRejectedValue(Object.assign(new Error('secret-credential-value'), { code: 'messaging/authentication-error' }));
+  let error;
+  try { await new FirebasePushProvider().sendToTokens({ tokens: ['browser'], title: 'Test', body: 'Test' }); }
+  catch (caught) { error = caught; }
+  expect(error.errorCode).toBe('PUSH_DELIVERY_ERROR');
+  expect(error.message).toContain('could not authenticate');
+  expect(error.message).not.toContain('secret-credential');
+});
 // This module runs in its own Jest environment; leave configuration clean nevertheless.
 afterAll(() => Object.assign(config, original));

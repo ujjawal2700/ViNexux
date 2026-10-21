@@ -23,6 +23,14 @@ router.post('/unsubscribe/:token', asyncHandler(async (req, res) => {
 }));
 router.use(authenticate);
 router.get('/preferences', asyncHandler(async (req, res) => reply(res, { preferences: { email: req.user.marketingPreferences?.email === true, push: req.user.marketingPreferences?.push === true } })));
+router.patch('/preferences', asyncHandler(async (req, res) => {
+  const parsed = z.object({ email: z.boolean().optional(), push: z.boolean().optional() }).strict()
+    .refine(value => Object.keys(value).length > 0).safeParse(req.body);
+  if (!parsed.success) throw new AppError('Choose email or push preferences.', 400, 'VALIDATION_ERROR');
+  const updates = Object.fromEntries(Object.entries(parsed.data).map(([channel, enabled]) => [`marketingPreferences.${channel}`, enabled]));
+  await User.updateOne({ _id: req.user._id }, { $set: { ...updates, 'marketingPreferences.updatedAt': new Date() } });
+  reply(res, { preferences: { email: req.user.marketingPreferences?.email === true, push: req.user.marketingPreferences?.push === true, ...parsed.data } });
+}));
 router.put('/preferences', asyncHandler(async (req, res) => {
   const parsed = z.object({ email: z.boolean(), push: z.boolean() }).strict().safeParse(req.body);
   if (!parsed.success) throw new AppError('Choose email and push preferences.', 400, 'VALIDATION_ERROR');

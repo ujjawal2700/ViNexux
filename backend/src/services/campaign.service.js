@@ -52,7 +52,8 @@ export const renderCampaignEmail = (campaign, recipient = { fullName: 'Preview r
   return { html, text, oneClickUrl, subject: personalize(campaign.email.subject, recipient).replace(/[\r\n]/g, ' '), unsubscribeUrl };
 };
 export const campaignProviderStatus = () => ({
-  email: { mode: ['development', 'dev'].includes(config.emailProvider) ? 'simulation' : 'live', ready: ['development', 'dev'].includes(config.emailProvider) || Boolean(config.emailHost && config.emailUser && config.emailPassword && config.emailFrom) },
+  email: { mode: ['development', 'dev'].includes(config.emailProvider) ? 'simulation' : 'live', ready: ['development', 'dev'].includes(config.emailProvider) || Boolean(config.emailHost && config.emailUser && config.emailPassword && config.emailFrom),
+    setupMessage: ['development', 'dev'].includes(config.emailProvider) ? '' : [!config.emailHost && 'EMAIL_HOST', !config.emailUser && 'EMAIL_USER', !config.emailPassword && 'EMAIL_PASSWORD', !config.emailFrom && 'EMAIL_FROM'].filter(Boolean).join(', ') },
   push: { mode: config.pushProvider === 'firebase' ? 'live' : 'simulation', ready: config.pushProvider !== 'firebase' || Boolean(config.firebaseProjectId && config.firebaseClientEmail && config.firebasePrivateKey) },
   siteReady: /^https:\/\//i.test(publicSiteUrl()) || config.nodeEnv !== 'production' && /^http:\/\//i.test(publicSiteUrl()),
 });
@@ -109,16 +110,18 @@ export async function deliverCampaignMessage(campaign, user) {
   if (Buffer.byteLength(JSON.stringify(data), 'utf8') > 3900) fail('The personalized push message exceeds the Firebase payload size.');
   const tokens = [...new Set(user.fcmTokens || [])];
   let acceptedDevices = 0, failedDevices = 0, provider;
+  const failureReasons = new Set();
   for (let i = 0; i < tokens.length; i += 500) {
     const batch = tokens.slice(i, i + 500);
     const result = await getPushProvider().sendToTokens({ tokens: batch, title: data.title, body: data.body, data, campaign: true, ttl: push.ttl });
     provider = result.provider;
     acceptedDevices += result.successCount ?? (result.success ? batch.length - (result.invalidTokens?.length || 0) : 0);
     failedDevices += result.failureCount ?? (result.invalidTokens?.length || 0);
+    for (const reason of result.failureReasons || []) failureReasons.add(reason);
     if (result.invalidTokens?.length) await User.updateOne({ _id: user._id }, { $pull: { fcmTokens: { $in: result.invalidTokens } } });
   }
   return { status: provider === 'development' ? 'simulated' : acceptedDevices ? 'accepted' : 'failed', provider, acceptedDevices, failedDevices,
-    reason: !acceptedDevices ? 'No device accepted this push notification.' : undefined };
+    reason: failureReasons.size ? [...failureReasons].join(' ') : !acceptedDevices ? 'No device accepted this push notification.' : undefined };
 }
 
 export async function processCampaignDelivery() {
@@ -139,7 +142,7 @@ export async function processCampaignDelivery() {
       else if (campaign.channel === 'push' && !user.fcmTokens?.length) outcome = { status: 'skipped', reason: 'No registered notification device.' };
       else outcome = await deliverCampaignMessage(campaign, user);
     }
-  } catch { outcome = { status: 'failed', reason: 'The delivery provider could not confirm acceptance.' }; }
+  } catch (error) { outcome = { status: 'failed', reason: error.errorCode === 'PUSH_DELIVERY_ERROR' ? error.message : 'The delivery provider could not confirm acceptance.' }; }
   await CampaignDelivery.updateOne({ _id: job._id, status: 'processing' }, { $set: { ...outcome, finishedAt: new Date() } });
   await completeCampaign(job.campaignId);
   return true;

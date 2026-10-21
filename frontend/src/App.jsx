@@ -1,5 +1,6 @@
 import React from 'react';
 import PushNotificationBridge from './components/ui/PushNotificationBridge';
+import CustomerPushPrompt from './components/ui/CustomerPushPrompt';
 import { SeasonalThemeProvider, StorefrontOverlayScope } from './context/SeasonalThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
@@ -20,6 +21,7 @@ function App() {
           <ToastProvider>
             <ConfirmationProvider>
             <PushNotificationBridge />
+            <CustomerPushPrompt />
             <ScrollToTop />
             <AppRoutes />
             <StorefrontOverlayScope>

@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getMessaging, getToken, deleteToken, onMessage, isSupported } from 'firebase/messaging';
+import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -28,12 +28,13 @@ export const getPushToken = async (requestPermission = false) => {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return null;
 
   try {
-    const supported = await isSupported();
-    if (!supported) return null;
-
     if (!('Notification' in window)) return null;
-    const permission = requestPermission ? await Notification.requestPermission() : Notification.permission;
+    // Call directly from the Enable button, before asynchronous SDK checks
+    // can consume the browser's transient user activation.
+    const permission = requestPermission && Notification.permission === 'default'
+      ? await Notification.requestPermission() : Notification.permission;
     if (permission !== 'granted') return null;
+    if (!await isSupported()) return null;
 
     const registration = await navigator.serviceWorker.register(`/firebase-messaging-sw.js?config=${encodeURIComponent(JSON.stringify(firebaseConfig))}`);
     await navigator.serviceWorker.ready;
@@ -43,13 +44,9 @@ export const getPushToken = async (requestPermission = false) => {
       vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
       serviceWorkerRegistration: registration,
     };
-    // Attach our configured worker first. Calling deleteToken on a fresh
-    // messaging instance would otherwise install Firebase's default worker.
-    let token = await getToken(messaging, options);
-    if (requestPermission) {
-      await deleteToken(messaging);
-      token = await getToken(messaging, options);
-    }
+    // Reuse valid subscriptions. Revoking on every enable can invalidate a
+    // token that the server still has if the replacement request fails.
+    const token = await getToken(messaging, options);
 
     return token || null;
   } catch (err) {

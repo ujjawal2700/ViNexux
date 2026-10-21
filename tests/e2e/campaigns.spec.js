@@ -62,6 +62,21 @@ test('admin composes a Firebase notification with imagery and actions on mobile'
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await page.locator('.campaign-push-preview').screenshot({ path: testInfo.outputPath('campaign-push-mobile.png') });
 });
+test('admin push test displays the Firebase rejection reason', async ({ page }) => {
+  await campaignApi(page);
+  await page.route('**/api/admin/campaigns/*/test', route => route.fulfill({ json: { success: true, data: { result: {
+    status: 'failed', reason: 'The browser token belongs to a different Firebase project.',
+  } } } }));
+  await page.goto('/admin/campaigns');
+  await page.getByRole('button', { name: 'New campaign' }).click();
+  await page.getByRole('button', { name: 'Firebase push', exact: true }).click();
+  await page.getByLabel('Campaign name (internal)').fill('Push test');
+  await page.getByLabel(/^Notification title/).fill('Hello');
+  await page.getByLabel(/^Message ·/).fill('Test notification');
+  await page.getByRole('button', { name: 'Send myself a test' }).click();
+  await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Test result: failed. The browser token belongs to a different Firebase project.');
+});
 test('read-only campaign employees cannot create or send campaigns', async ({ page }) => {
   await campaignApi(page, true); await page.goto('/admin/campaigns');
   await expect(page.getByRole('button', { name: 'New campaign' })).toBeDisabled();

@@ -13,8 +13,8 @@ export default function NotificationPreferencesPage() {
   };
   const enable = async () => {
     setBusy(true); setMessage('');
-    try { const token = await getPushToken(true); if (!token) throw new Error(isFirebaseConfigured ? 'Allow notifications in your browser settings, then try again.' : 'Push notifications have not been configured yet.'); await pushService.registerToken(token); setPreferences(old => ({ ...old, push: true })); setMessage('Browser connected. Save your preferences to subscribe to promotions.'); }
-    catch (error) { setMessage(error.message); } finally { setBusy(false); }
+    try { const token = await getPushToken(true); if (!token) throw new Error(isFirebaseConfigured ? 'Allow notifications in your browser settings, then try again.' : 'Push notifications have not been configured yet.'); await pushService.subscribe(token); setPreferences(old => ({ ...old, push: true })); setMessage('Push notifications are enabled on this browser.'); }
+    catch (error) { setMessage(error.response?.data?.message || error.message); } finally { setBusy(false); }
   };
   return <main className="mx-auto max-w-2xl px-5 py-14"><Link to="/account/profile" className="text-sm text-[#800020]">← My account</Link><h1 className="mt-5 text-3xl font-bold">Your notifications, your choice.</h1><p className="mt-3 text-gray-500">Choose how you hear about new products and special offers. You can change these preferences anytime.</p>
     {preferences && <div className="my-8 space-y-5 rounded-2xl border border-gray-200 bg-white p-6">

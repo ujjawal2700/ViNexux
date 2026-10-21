@@ -2,10 +2,22 @@ import { PushProvider } from './PushProvider.js';
 import { config } from '../../config/env.js';
 import { AppError } from '../../utils/AppError.js';
 import { HTTP_STATUS } from '../../constants/httpStatusCodes.js';
-import { ERROR_CODES } from '../../constants/errorCodes.js';
 
 let firebaseApp = null;
 
+// Never expose raw Firebase messages: they can contain credentials or tokens.
+export const pushFailureReason = code => ({
+  'messaging/mismatched-credential': 'The browser token belongs to a different Firebase project. Use matching frontend and server Firebase settings, rebuild the frontend, and enable notifications again.',
+  'messaging/authentication-error': 'Firebase could not authenticate the server. Check its service account and Firebase Cloud Messaging API access.',
+  'app/invalid-credential': 'Firebase rejected the server service account credentials.',
+  'messaging/third-party-auth-error': 'The browser push service rejected authentication. Check the Firebase Web Push certificate (VAPID key) used by the frontend.',
+  'messaging/registration-token-not-registered': 'This browser subscription has expired or was revoked. The customer must enable notifications again.',
+  'messaging/invalid-registration-token': 'The saved browser token is invalid. The customer must enable notifications again.',
+  'messaging/invalid-argument': 'Firebase rejected the push message or browser token. Check the notification content and re-register the browser.',
+  'messaging/server-unavailable': 'Firebase is temporarily unavailable. Try sending again later.',
+  'messaging/quota-exceeded': 'Firebase push quota was exceeded. Try sending again later.',
+  'messaging/message-rate-exceeded': 'Firebase push rate limit was exceeded. Try sending again later.',
+})[code] || 'Firebase could not accept the push notification. Check the server Firebase configuration and Cloud Messaging API access.';
 
 const getFirebaseApp = async () => {
   if (firebaseApp) return firebaseApp;
@@ -14,7 +26,7 @@ const getFirebaseApp = async () => {
     throw new AppError(
       'Push provider configuration error: Missing Firebase service account credentials.',
       HTTP_STATUS.BAD_GATEWAY,
-      ERROR_CODES.INTERNAL_ERROR
+      'PUSH_DELIVERY_ERROR'
     );
   }
 
@@ -56,9 +68,11 @@ export class FirebasePushProvider extends PushProvider {
 
       // Collect tokens Firebase reports as invalid/unregistered so callers can prune them
       const invalidTokens = [];
+      const failureReasons = new Set();
       response.responses.forEach((res, idx) => {
         if (!res.success) {
           const code = res.error?.code;
+          failureReasons.add(pushFailureReason(code));
           if (
             code === 'messaging/invalid-registration-token' ||
             code === 'messaging/registration-token-not-registered'
@@ -69,11 +83,12 @@ export class FirebasePushProvider extends PushProvider {
       });
 
       return {
-        success: true,
+        success: response.successCount > 0,
         provider: 'firebase',
         successCount: response.successCount,
         failureCount: response.failureCount,
         invalidTokens,
+        failureReasons: [...failureReasons],
       };
     } catch (err) {
       if (err instanceof AppError) {
@@ -81,9 +96,9 @@ export class FirebasePushProvider extends PushProvider {
       }
 
       throw new AppError(
-        'Failed to deliver push notification via Firebase.',
+        `Failed to deliver push notification via Firebase. ${pushFailureReason(err.code)}`,
         HTTP_STATUS.BAD_GATEWAY,
-        ERROR_CODES.INTERNAL_ERROR
+        'PUSH_DELIVERY_ERROR'
       );
     }
   }

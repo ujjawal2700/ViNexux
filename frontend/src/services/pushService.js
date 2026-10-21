@@ -6,6 +6,12 @@ const storedToken = portal => {
   catch { return null; }
 };
 export const pushService = {
+  async subscribe(token) {
+    await this.registerToken(token);
+    // Browser permission and campaign consent are separate. Persist both
+    // steps before reporting success, preserving the email preference.
+    return apiClient.patch('/communications/preferences', { push: true }, { portal: 'customer' });
+  },
   async registerToken(token, portal = 'customer') {
     const response = await apiClient.post('/push/register-token', { token }, { portal });
     registeredTokens.set(portal, token);
