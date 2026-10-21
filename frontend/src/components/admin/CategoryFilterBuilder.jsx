@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Plus, Trash2, SlidersHorizontal } from 'lucide-react';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
@@ -18,6 +18,26 @@ const slugifyKey = (text) => {
     .trim()
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '');
+};
+
+// Preserve punctuation and spacing while typing, but keep the saved choices clean.
+const FilterChoicesInput = ({ options = [], onChange }) => {
+  const [draft, setDraft] = useState(null);
+  return (
+    <Input
+      label="Available Choices (separate with commas)"
+      value={draft ?? options.join(', ')}
+      onChange={(event) => {
+        const text = event.target.value;
+        setDraft(text);
+        onChange(text.split(',').map(option => option.trim()).filter(Boolean));
+      }}
+      onBlur={() => setDraft(null)}
+      placeholder="e.g. 256 GB, 512 GB, 1 TB, 2 TB"
+      helperText="Customers will see these options as filter checkboxes."
+      required
+    />
+  );
 };
 
 const CategoryFilterBuilder = ({ value = [], onChange }) => {
@@ -125,22 +145,9 @@ const CategoryFilterBuilder = ({ value = [], onChange }) => {
 
               {/* Options row for select / multi-select */}
               {(definition.inputType === 'select' || definition.inputType === 'multi-select') && (
-                <Input
-                  label="Available Choices (separate with commas)"
-                  value={(definition.options || []).join(', ')}
-                  onChange={(e) =>
-                    update(
-                      index,
-                      'options',
-                      e.target.value
-                        .split(',')
-                        .map((opt) => opt.trim())
-                        .filter(Boolean)
-                    )
-                  }
-                  placeholder="e.g. 256 GB, 512 GB, 1 TB, 2 TB"
-                  helperText="Customers will see these options as filter checkboxes."
-                  required
+                <FilterChoicesInput
+                  options={definition.options || []}
+                  onChange={(options) => update(index, 'options', options)}
                 />
               )}
 
