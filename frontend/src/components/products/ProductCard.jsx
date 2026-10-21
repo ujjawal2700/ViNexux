@@ -1,3 +1,4 @@
+import { productModelVariant } from '../../../../shared/productPresentation.js';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
@@ -193,6 +194,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
 
         {/* Model Number box only (no PID) */}
         <div className="mt-1.5 min-h-5">
+          {productModelVariant(product) && <p className="text-xs text-[var(--store-muted)] break-words">Model Name / Variant: {productModelVariant(product)}</p>}
           {modelNumber && (
             <span
               className="block min-w-0 max-w-full truncate text-[10.5px] sm:text-[11px] font-medium text-[var(--store-muted)]"

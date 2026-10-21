@@ -96,7 +96,8 @@ const PublicLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { settings: websiteSettings } = useWebsiteSettings();
-  const websiteName = (websiteSettings.websiteName || 'Vi Nexus').toUpperCase();
+  const configuredWebsiteName = websiteSettings.websiteName || 'VI Nexus';
+  const websiteName = /^vi\s*nexus(?:\s+compu\s+world)?$/i.test(configuredWebsiteName.trim()) ? 'VI Nexus' : configuredWebsiteName;
   const hasCustomLogo = Boolean(
     websiteSettings?.logo?.url &&
     websiteSettings.logo.url !== '/logo.png' &&
@@ -1024,13 +1025,10 @@ const PublicLayout = () => {
               <Link to="/" className="flex items-center gap-2.5 shrink-0 group" aria-label="Vinexus home">
                 <Logo className="w-10 h-10 lg:w-11 lg:h-11 object-contain rounded group-hover:scale-105 transition-transform" />
                 <div className="flex flex-col text-left">
-                  <div className="flex items-center leading-none" aria-label={websiteName}>
+                  <div className="flex items-center gap-1 leading-none" aria-label={websiteName}>
                     <span className="text-2xl font-black tracking-tight text-primary">{websiteName.slice(0, 2)}</span>
-                    <span className="text-2xl font-black tracking-tight text-[var(--store-text)]">{websiteName.slice(2)}</span>
+                    <span className="text-2xl font-black tracking-tight text-[var(--store-text)]">{websiteName.slice(2).trim()}</span>
                   </div>
-                  <span className="text-[10px] font-black tracking-widest text-primary uppercase mt-0.5">
-                    COMPU WORLD
-                  </span>
                 </div>
               </Link>
             )}

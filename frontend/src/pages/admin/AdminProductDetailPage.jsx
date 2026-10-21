@@ -1,3 +1,4 @@
+import { isWarrantyLink } from '../../../../shared/productPresentation.js';
 import SpecificationTemplates from '../../components/admin/SpecificationTemplates';
 import { isInventorySpecification } from '../../../../shared/productSpecifications.js';
 import SpecificationOrderEditor from '../../components/admin/SpecificationOrderEditor';
@@ -122,6 +123,7 @@ const AdminProductDetailPage = () => {
   const [variant, setVariant] = useState("");
   const [hsnCode, setHsnCode] = useState("");
   const [warranty, setWarranty] = useState("");
+  const [warrantyType, setWarrantyType] = useState("text");
   const [productUrl, setProductUrl] = useState("");
 
   // Pricing
@@ -289,6 +291,7 @@ const AdminProductDetailPage = () => {
       setModel(prod.model || "");
       setStockQuantity(prod.stockQuantity !== undefined ? String(prod.stockQuantity) : "0");
       setVariant(prod.variant || "");
+      setWarrantyType(prod.warrantyType || "text");
       setHsnCode(getProductHsnCode(prod));
       setWarranty(prod.warranty === "1 Year ON-SITE / Direct Replacement Warranty" ? "" : (prod.warranty || ""));
       setProductUrl(prod.productUrl || "");
@@ -308,6 +311,7 @@ const AdminProductDetailPage = () => {
         name: prod.name || "", sku: prod.sku || "", description: prod.description || "",
         modelNumber: prod.modelNumber || "", model: prod.model || "",
         stockQuantity: prod.stockQuantity !== undefined ? String(prod.stockQuantity) : "0",
+        warrantyType: prod.warrantyType || "text",
         variant: prod.variant || "", hsnCode: getProductHsnCode(prod),
         warranty: prod.warranty === "1 Year ON-SITE / Direct Replacement Warranty" ? "" : (prod.warranty || ""),
         productUrl: prod.productUrl || "", brandId: String(prod.brandId?._id || prod.brandId || ""),
@@ -712,7 +716,7 @@ const AdminProductDetailPage = () => {
     setFieldErrors({});
 
     const currentFields = {
-      name, sku, description, modelNumber, model, stockQuantity, variant, hsnCode, warranty, productUrl,
+      name, sku, description, modelNumber, model, stockQuantity, variant, hsnCode, warranty, warrantyType, productUrl,
       brandId: selectedBrandId, standardPrice, dealerPrice, isTrending, isLowStock, isActive: status === "published",
       categoryId: selectedSubIds[0] || selectedMainIds[0] || selectedHeaderId,
       categoryIds: [selectedHeaderId, ...selectedMainIds, ...selectedSubIds].filter(Boolean),
@@ -725,6 +729,11 @@ const AdminProductDetailPage = () => {
     const gallery = isCreateMode ? stagedImages : imagesList;
     const galleryChanged = isCreateMode || gallery.some(img => img.file)
       || JSON.stringify(gallery) !== JSON.stringify(product?.images || []);
+
+    if ((needs("warranty") || needs("warrantyType")) && warrantyType === "link" && !isWarrantyLink(warranty.trim())) {
+      scrollToAndHighlightField("warranty", "general", "Enter a valid HTTP or HTTPS warranty link.");
+      return;
+    }
 
     // 1. Validate General Info
     if (needs("name") && !name.trim()) {
@@ -899,10 +908,11 @@ const AdminProductDetailPage = () => {
         stockQuantity: Number(stockQuantity) >= 0 ? Number(stockQuantity) : 0,
         variant: variant.trim(),
         warranty: warranty.trim(),
+        warrantyType,
         hsnCode: hsnCode.trim(),
         productUrl: normalizedProductUrl,
         sku: sku.trim().toUpperCase(),
-        ...(primaryCategoryId ? { categoryId: primaryCategoryId } : {}),
+        categoryId: primaryCategoryId || null,
         categoryIds: allCategoryIds,
         brandId: selectedBrandId || undefined,
         description: description.trim(),
@@ -954,6 +964,10 @@ const AdminProductDetailPage = () => {
       // not reset stock, visibility, categories or legacy required fields.
       const update = isCreateMode ? { ...payload, isActive: status === "published" }
         : Object.fromEntries(Object.entries(payload).filter(([key]) => changed.has(key)));
+      if (changed.has("categoryId") || changed.has("categoryIds")) {
+        update.categoryId = payload.categoryId;
+        update.categoryIds = payload.categoryIds;
+      }
       if (galleryChanged) {
         update.images = savedImages;
         if (!isCreateMode) update.expectedImages = [...new Set([
@@ -1405,7 +1419,7 @@ const AdminProductDetailPage = () => {
                   </FormField>
                 </div>
 
-                <FormField id="field-model" error={fieldErrors.model} label="MODEL NAME (OPTIONAL)" helperText="Specific model line">
+                <FormField id="field-model" error={fieldErrors.model} label="MODEL NAME / VARIANT (OPTIONAL)" helperText="Enter a model name or variant; both are shown to customers.">
                   <Input
                     value={model}
                     onChange={(e) => { setModel(e.target.value); clearFieldError("model"); } }
@@ -1451,11 +1465,15 @@ const AdminProductDetailPage = () => {
                   />
                 </FormField>
 
-                <FormField id="field-warranty" error={fieldErrors.warranty} label="WARRANTY (OPTIONAL)" helperText="Warranty terms & conditions">
+                <FormField id="field-warranty" error={fieldErrors.warranty} label="WARRANTY PERIOD (OPTIONAL)" helperText="Choose plain text or a clickable warranty link.">
+                  <Select aria-label="Warranty format" value={warrantyType}
+                    onChange={(e) => { setWarrantyType(e.target.value); clearFieldError("warranty"); }}
+                    options={[{ value: "text", label: "Text" }, { value: "link", label: "Link" }]} />
                   <Input
+                    type={warrantyType === "link" ? "url" : "text"}
                     value={warranty}
                     onChange={(e) => { setWarranty(e.target.value); clearFieldError("warranty"); } }
-                    placeholder="Enter warranty details (optional)"
+                    placeholder={warrantyType === "link" ? "https://example.com/warranty" : "e.g. 1 year warranty"}
                   />
                 </FormField>
 

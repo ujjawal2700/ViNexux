@@ -14,7 +14,7 @@ export const buildEnquiryWhatsAppMessage = (enquiry) => {
   const items = Array.isArray(enquiry?.items) ? enquiry.items : [];
 
   let text = `Hello ${contactName},\n\n`;
-  text += `This is Vinexus Security Systems regarding your enquiry${enquiryNumber ? ` #${enquiryNumber}` : ''}.\n\n`;
+  text += `This is VI Nexus regarding your order summary${enquiryNumber ? ` #${enquiryNumber}` : ''}.\n\n`;
 
   if (items.length > 0) {
     text += `Items requested:\n`;
@@ -25,7 +25,7 @@ export const buildEnquiryWhatsAppMessage = (enquiry) => {
     text += `\n`;
   }
 
-  text += `We'll get back to you shortly with pricing and availability. Thank you for choosing Vinexus!`;
+  text += `We'll get back to you shortly with pricing and availability. Thank you for choosing VI Nexus!`;
 
   return text;
 };

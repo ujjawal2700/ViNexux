@@ -1,3 +1,4 @@
+import { isWarrantyLink } from '../../../shared/productPresentation.js';
 import { stockUpdate } from '../utils/productStockUpdate.js';
 import mongoose from 'mongoose';
 import { config } from '../config/env.js';
@@ -187,6 +188,7 @@ export const productService = {
     stockQuantity = 0,
     variant = '',
     warranty = '',
+    warrantyType = 'text',
     hsnCode = '',
     informationPhone,
     productUrl,
@@ -202,6 +204,9 @@ export const productService = {
     isLowStock = false,
     isActive = true,
   }) {
+    if (warrantyType === 'link' && !isWarrantyLink(warranty?.trim())) {
+      throw new AppError('Enter a valid HTTP or HTTPS warranty link.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: 'warranty', message: 'Enter a valid HTTP or HTTPS warranty link.' }]);
+    }
     const uppercaseSku = sku.trim().toUpperCase();
 
     // Check duplicate SKU
@@ -262,6 +267,7 @@ export const productService = {
       stockQuantity: Number(stockQuantity) >= 0 ? Number(stockQuantity) : 0,
       variant: variant?.trim() || '',
       warranty: warranty?.trim() || '',
+      warrantyType,
       hsnCode: hsnCode.trim(),
       informationPhone: informationPhone?.trim() || undefined,
       productUrl: productUrl?.trim() || '',
@@ -500,12 +506,19 @@ isActive,
       const cleanCategoryIds = Array.isArray(updateData.categoryIds)
         ? updateData.categoryIds.filter((cid) => mongoose.Types.ObjectId.isValid(cid)).map(String)
         : [];
+      if (cleanCategoryIds.length) {
+        const activeCount = await Category.countDocuments({ _id: { $in: [...new Set(cleanCategoryIds)] }, isActive: true });
+        if (activeCount !== new Set(cleanCategoryIds).size) {
+          throw new AppError('Select existing active categories.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: 'categoryId', message: 'Select existing active categories.' }]);
+        }
+      }
       product.categoryIds = cleanCategoryIds;
-      if (cleanCategoryIds.length > 0 && !updateData.categoryId && !product.categoryId) {
-        product.categoryId = cleanCategoryIds[0];
+      if (updateData.categoryId === undefined && !cleanCategoryIds.includes(String(product.categoryId || ''))) {
+        product.categoryId = cleanCategoryIds[0] || null;
       }
     }
 
+    if (updateData.categoryId === null) product.categoryId = null;
     if (updateData.categoryId) {
       if (!mongoose.Types.ObjectId.isValid(updateData.categoryId)) {
         throw new AppError('Invalid categoryId format.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
@@ -546,7 +559,15 @@ isActive,
     }
     if (updateData.variant !== undefined) product.variant = updateData.variant.trim();
     if (updateData.hsnCode !== undefined) product.hsnCode = updateData.hsnCode.trim();
-    if (updateData.warranty !== undefined) product.warranty = updateData.warranty.trim();
+    if (updateData.warrantyType !== undefined || updateData.warranty !== undefined) {
+      const warrantyType = updateData.warrantyType ?? product.warrantyType ?? 'text';
+      const warranty = (updateData.warranty ?? product.warranty ?? '').trim();
+      if (warrantyType === 'link' && !isWarrantyLink(warranty)) {
+        throw new AppError('Enter a valid HTTP or HTTPS warranty link.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: 'warranty', message: 'Enter a valid HTTP or HTTPS warranty link.' }]);
+      }
+      product.warranty = warranty;
+      product.warrantyType = warrantyType;
+    }
     if (updateData.informationPhone !== undefined) product.informationPhone = updateData.informationPhone?.trim() || '';
     if (updateData.productUrl !== undefined) product.productUrl = updateData.productUrl?.trim() || '';
     if (updateData.description !== undefined) product.description = updateData.description ? updateData.description.trim() : null;
@@ -572,7 +593,7 @@ isActive,
       product.specifications = withManagedBrand(product.specifications || [], brand.name);
     }
 
-    if (product.categoryId && (updateData.categoryId !== undefined || updateData.specifications !== undefined)) {
+    if (product.categoryId && (updateData.categoryId !== undefined || updateData.categoryIds !== undefined || updateData.specifications !== undefined)) {
       await validateCategorySpecifications(product.categoryId, product.specifications);
     }
     let savedProduct = product;

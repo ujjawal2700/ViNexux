@@ -460,24 +460,16 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
       categoryId: byId.get(String(product.categoryId)),
     };
   });
-  let configuredDefinitions = [];
-  if (requestedCategoryRecord) {
-    configuredDefinitions = effectiveFilterDefinitions(categories, requestedCategoryRecord._id).filter((definition) => definition.isFilterable);
-  } else {
-    // On brand or search pages, collect filter definitions from all categories present in the results
-    const seenKeys = new Set();
-    for (const item of categoryGroupCounts) {
-      if (!item._id) continue;
-      const defs = effectiveFilterDefinitions(categories, item._id).filter((definition) => definition.isFilterable);
-      for (const d of defs) {
-        const lowerKey = d.key.toLowerCase();
-        if (!seenKeys.has(lowerKey)) {
-          seenKeys.add(lowerKey);
-          configuredDefinitions.push(d);
-        }
-      }
+  // Include definitions from matching descendants on header/category pages too.
+  // Keep hidden definitions so they cannot reappear as automatic spec filters.
+  const definitionsByKey = new Map();
+  const definitionCategoryIds = [...(requestedCategoryRecord ? [requestedCategoryRecord._id] : []), ...categoryGroupCounts.map(item => item._id)];
+  for (const categoryId of definitionCategoryIds) {
+    for (const definition of effectiveFilterDefinitions(categories, categoryId)) {
+      definitionsByKey.set(definition.key.trim().toLowerCase(), definition);
     }
   }
+  const configuredDefinitions = [...definitionsByKey.values()];
   const configuredByKey = new Map(configuredDefinitions.map((definition) => [definition.key.toLowerCase(), definition]));
   const specCountMaps = [result.specCounts || [], ...selectedSpecKeys.map((_, index) => result[`specCounts${index}`] || [])]
     .map(rows => new Map(rows.map(item => [JSON.stringify([item._id.key, item._id.value]), item.count])));
@@ -489,6 +481,7 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
     if (/^(brand|manufacturer|model|model number|sku|warranty|country of origin|hsn|hsn code|stock|inventory|variant|highlight \d+|product url|information phone|dealer price|price|standard price)$/i.test(rawKey)) continue;
 
     const lowerKey = rawKey.toLowerCase();
+    if (configuredByKey.get(lowerKey)?.isFilterable === false) continue;
     const isConfigured = configuredByKey.has(lowerKey);
     const definition = configuredByKey.get(lowerKey) || {
       key: rawKey,

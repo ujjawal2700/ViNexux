@@ -1,7 +1,9 @@
+import { productModelVariant } from '../../../../shared/productPresentation.js';
 import { getRecentViews } from '../../utils/browsingHistory';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
+import addressService from '../../services/addressService';
 import cartService from '../../services/cartService';
 import guestCartService from '../../services/guestCartService';
 import productService from '../../services/productService';
@@ -36,6 +38,15 @@ export const CartPage = () => {
   const toast = useToast();
 
   const [cart, setCart] = useState(null);
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let active = true;
+    addressService.listAddresses().then(response => {
+      if (active) setSavedAddresses(response.data?.addresses || response.addresses || []);
+    }).catch(() => { /* Profile address remains available if the address book cannot load. */ });
+    return () => { active = false; };
+  }, [isAuthenticated, user?._id, user?.id]);
   const [selectedItemIds, setSelectedItemIds] = useState(new Set());
   const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [similarProducts, setSimilarProducts] = useState([]);
@@ -537,15 +548,21 @@ export const CartPage = () => {
 
     const customerName = user?.fullName || user?.name || user?.contactPerson || 'Customer';
     const customerPhone = user?.phone ? ` | Phone: ${user.phone}` : '';
+    const addresses = savedAddresses.length ? savedAddresses : user?.savedAddresses || [];
+    const address = addresses.find(item => item.isDefault) || addresses[0];
+    const customerAddress = address
+      ? [address.line1, address.line2, address.city, address.state, address.pincode].filter(Boolean).join(', ')
+      : user?.address || user?.dealerProfileId?.address || 'Not provided';
     const nowStr = new Date().toLocaleDateString('en-IN', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
     });
 
-    let text = `🛍️ *ViNexus Compu World — Product Enquiry*\n`;
+    let text = `🛍️ *VI Nexus — Order Summary*\n`;
     text += `━━━━━━━━━━━━━━━━━━━━━\n`;
     text += `👤 *Customer:* ${customerName}${customerPhone}\n`;
+    text += `📍 *Address:* ${customerAddress}\n`;
     text += `📅 *Date:* ${nowStr}\n\n`;
     text += `📦 *Selected Items (${selectedCount} pcs):*\n`;
 
@@ -568,11 +585,12 @@ export const CartPage = () => {
 
       text += `${itemIndex}. *${name}*\n`;
       if (model) text += `   • Model Number: ${model}\n`;
+      if (productModelVariant(prod)) text += `   • Model Name / Variant: ${productModelVariant(prod)}\n`;
       text += `   • Qty: *${qty}* | Unit: ${formatCurrency(unitPrice)} | Total: *${formatCurrency(itemTotal)}*\n\n`;
     });
 
     text += `━━━━━━━━━━━━━━━━━━━━━\n`;
-    text += `💰 *Enquiry Summary:*\n`;
+    text += `💰 *Order Summary:*\n`;
     text += `• Total Items: ${selectedCount}\n`;
     text += `• Subtotal: ${formatCurrency(subtotal)}\n`;
     if (totalDiscount > 0) {

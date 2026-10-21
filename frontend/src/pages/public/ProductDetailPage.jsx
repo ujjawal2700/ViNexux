@@ -1,3 +1,4 @@
+import { isWarrantyLink, productModelVariant } from '../../../../shared/productPresentation.js';
 import { productShareDescription } from '../../../../shared/socialMetadata.js';
 import { getRecentViews, rememberView } from '../../utils/browsingHistory';
 import { findHeaderCategory, orderedProductSpecifications } from '../../utils/productBrowsing';
@@ -401,9 +402,7 @@ export const ProductDetailPage = () => {
 
 
   const modelNumber = product?.modelNumber || `VNX-${String(product?._id || '').slice(-8).toUpperCase()}`;
-  const modelName = product?.model || product?.specifications?.find(
-    (specification) => specification.key?.trim().toLowerCase() === 'model'
-  )?.value || 'Standard Model';
+  const modelName = productModelVariant(product) || 'Not specified';
 
   const warrantyText = useMemo(() => {
     return product?.warranty || product?.specifications?.find((s) => s.key.toLowerCase().includes('warranty'))?.value || 'Not specified';
@@ -681,7 +680,7 @@ export const ProductDetailPage = () => {
                 <tr className="border-b border-[var(--store-border)] hover:bg-[var(--store-background)]/50">
                   <td className="px-4 py-2.5 font-medium text-[var(--store-muted)] flex items-center gap-2">
                     <span className="text-[var(--store-muted)] font-bold">▣</span>
-                    <span>Model Name</span>
+                    <span>Model Name / Variant</span>
                   </td>
                   <td className="px-4 py-2.5 font-semibold text-[var(--store-text)]">
                     {modelName}
@@ -716,7 +715,9 @@ export const ProductDetailPage = () => {
                     <span>Warranty Period</span>
                   </td>
                   <td className="px-4 py-2.5 text-[var(--store-text)] font-medium">
-                    {warrantyText}
+                    {product.warrantyType === 'link' && isWarrantyLink(product.warranty) ? (
+                      <a href={product.warranty} target="_blank" rel="noopener noreferrer" className="text-[var(--store-primary)] underline underline-offset-2">{product.warranty}</a>
+                    ) : warrantyText}
                   </td>
                 </tr>
 

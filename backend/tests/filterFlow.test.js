@@ -72,5 +72,24 @@ test('hierarchical and multi-value filters keep stable options and accurate disj
     const exactNoResult = await get({ search: 'Camera', headerCategory: String(networking._id) });
     assert.equal(exactNoResult.pagination.total, 0); assert.notEqual(exactNoResult.searchMode, 'fuzzy');
     const searched = await get({ search: 'Camera' }); assert.equal(searched.pagination.total, 5); assert.ok(!ids(searched).includes(String(network._id)));
+    // Header routes inherit custom filters from matching child categories.
+    ip.filterDefinitions.push({ key: 'storage_capacity', label: 'Storage Capacity', inputType: 'multi-select', options: ['32gb', '64gb'], isFilterable: true });
+    ip.filterDefinitions.push({ key: 'internal_note', label: 'Internal Note', inputType: 'text', isFilterable: false });
+    await ip.save();
+    a.specifications.push({ key: 'storage_capacity', value: '32gb' }, { key: 'internal_note', value: 'Private option' });
+    await a.save();
+    const headerFilters = await get({ headerCategory: String(security._id) });
+    const storage = headerFilters.facets.specs.find(spec => spec.key === 'storage_capacity');
+    assert.equal(storage.label, 'Storage Capacity');
+    assert.deepEqual(storage.values.map(value => value.val), ['32gb']);
+    assert.ok(!headerFilters.facets.specs.some(spec => spec.key === 'internal_note'));
+    assert.deepEqual(ids(await get({ headerCategory: String(security._id), specs: JSON.stringify({ storage_capacity: ['32gb'] }) })), [String(a._id)]);
+    // Products assigned directly to a header, and moved between headers, stay visible.
+    const { default: productService } = await import('../src/services/product.service.js');
+    await productService.updateProduct(String(a._id), { categoryId: networking._id.toString(), categoryIds: [networking._id.toString()] });
+    assert.ok(ids(await get({ headerCategory: String(networking._id) })).includes(String(a._id)));
+    assert.ok(!ids(await get({ headerCategory: String(security._id) })).includes(String(a._id)));
+    const directHeader = await make('DIRECT-HEADER', security, 'Acme', '4 MP', 'PoE');
+    assert.ok(ids(await get({ headerCategory: String(security._id) })).includes(String(directHeader._id)));
   } finally { await new Promise(resolve => server.close(resolve)); await mongoose.disconnect(); }
 });

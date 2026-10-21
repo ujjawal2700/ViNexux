@@ -447,7 +447,7 @@ body {
 }
 
 
-/* Scope interaction feedback to the admin panel, including portaled dialogs. */
+/* Neutral admin fields, including portaled forms. Hover preserves the resting style. */
 body:has(.admin-panel) :is(
   input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
   textarea, select, [role="combobox"], button[aria-haspopup="menu"]
@@ -458,9 +458,10 @@ body:has(.admin-panel) :is(
   input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
   textarea, select, [role="combobox"], button[aria-haspopup="menu"]
 ):not(:disabled):not([aria-disabled="true"]):not([aria-invalid="true"]):not(.border-rose-500) {
-  border-color: color-mix(in srgb, var(--primary) 50%, var(--border));
-  background-color: color-mix(in srgb, var(--primary) 3%, var(--card));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 8%, transparent);
+  border-color: #d1d5db;
+  background-color: #f3f4f6;
+  border-radius: 10px;
+  box-shadow: none;
 }
 
 body:has(.admin-panel) :is(
@@ -484,9 +485,9 @@ body:has(.admin-panel) :is(
     input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
     textarea, select, [role="combobox"], button[aria-haspopup="menu"]
   ):not(:disabled):not([aria-disabled="true"]):not([readonly]):not([aria-invalid="true"]):not(.border-rose-500):hover {
-    border-color: color-mix(in srgb, var(--primary) 70%, var(--border));
-    background-color: color-mix(in srgb, var(--primary) 5%, var(--card));
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 14%, transparent);
+    border-color: #d1d5db;
+    background-color: #f3f4f6;
+    box-shadow: none;
   }
   .admin-panel tbody > tr:hover {
     background-color: color-mix(in srgb, var(--primary) 7%, var(--card));

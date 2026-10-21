@@ -112,6 +112,7 @@ const productSchema = new mongoose.Schema(
       default: '',
       maxlength: [100, 'Variant cannot exceed 100 characters'],
     },
+    warrantyType: { type: String, enum: ['text', 'link'], default: 'text' },
     warranty: {
       type: String,
       trim: true,
