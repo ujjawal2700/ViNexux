@@ -77,9 +77,9 @@ export default function TrendingProducts({ products = [] }) {
       <div ref={track} className="trending-track scrollbar-none" tabIndex={0} aria-label="Trending products, scroll horizontally">
         {(products.length > 1 ? [0, 1] : [0]).map(copy => <div key={copy} ref={copy === 0 ? group : undefined} className="trending-group" aria-hidden={copy === 1 ? true : undefined} inert={copy === 1 ? true : undefined}>
           {slides.map((product, index) => <Link key={`${product._id}-${index}`} to={buildProductPath(product)} className="trending-card group" title={product.name}>
+            <div className="trending-brand-row"><TrendingBrandLogo brand={product.brandId} /></div>
             <div className="trending-artwork">
-              <TrendingBrandLogo brand={product.brandId} />
-              <Image src={product.images?.[0]?.url || product.image} alt={product.name} className="h-full w-full !bg-transparent" objectFit="object-contain" imgClassName="px-3 pb-2 pt-10 transition-transform duration-300 group-hover:scale-105" />
+              <Image src={product.images?.[0]?.url || product.image} alt={product.name} className="h-full w-full !bg-transparent" objectFit="object-contain" imgClassName="p-2 transition-transform duration-300 motion-safe:group-hover:scale-105" />
             </div>
             <div className="trending-caption"><span className="line-clamp-2 font-semibold">{product.name}</span><ArrowUpRight size={15} className="shrink-0" /></div>
           </Link>)}

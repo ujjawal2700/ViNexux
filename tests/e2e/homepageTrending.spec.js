@@ -6,7 +6,7 @@ test('homepage shows scrolling trending cards and compact unboxed brand logos', 
   await mockApi(page);
   await seedBrowserSession(page, 'storefront');
   const products = ['Security Camera', 'Network Router', 'Wireless Access Point', 'Video Recorder', 'Network Switch', 'PoE Injector', 'Camera Adapter', 'Dome Camera'].map((name, i) => ({
-    _id: String(i + 1).padStart(24, '0'), name, modelNumber: `VNX-${i}`, standardPrice: 2500 + i * 1000,
+    _id: String(i + 1).padStart(24, '0'), name, model: 'Hidden card model', variant: 'Hidden card variant', modelNumber: `VNX-${i}`, standardPrice: 2500 + i * 1000,
     stockQuantity: 20, isTrending: true, brandId: { name: 'CCTV Brand', ...(i === 6 ? {} : { logo: { url: i === 7 ? '/home-test/missing-logo.svg' : '/home-test/brand-logo.svg' } }) }, images: [{ url: `/home-test/product-${i}.svg` }],
   }));
   let trendingRequested = false;
@@ -30,7 +30,12 @@ test('homepage shows scrolling trending cards and compact unboxed brand logos', 
   await expect(page.getByRole('heading', { name: 'Updated Products' })).toHaveCount(0);
   expect(trendingRequested).toBe(true);
   expect(homepageOrderingRequested).toBe(true);
-  expect((await section.locator('.trending-card').first().boundingBox()).height).toBeLessThan(230);
+  const productCard = page.locator('.theme-product-card').first();
+  await expect(productCard).not.toContainText('Model Name / Variant');
+  await expect(productCard).not.toContainText('Hidden card model');
+  await expect(productCard).not.toContainText('Hidden card variant');
+  await expect(productCard).toContainText('Model Number:');
+  expect((await section.locator('.trending-card').first().boundingBox()).height).toBeLessThan(310);
   await expect(section.getByRole('link', { name: /View all/ })).toHaveAttribute('href', '/trending');
   const track = section.locator('.trending-track');
   await page.mouse.move(0, 0);
@@ -62,7 +67,13 @@ test('homepage shows scrolling trending cards and compact unboxed brand logos', 
     const bounds = await track.boundingBox();
     const boxes = await cards.evaluateAll(elements => elements.map(el => { const rect = el.getBoundingClientRect(); return { left: rect.left, right: rect.right, height: rect.height }; }));
     expect(boxes.filter(box => box.left >= bounds.x - 1 && box.right <= bounds.x + bounds.width + 1)).toHaveLength(6);
-    expect(boxes[0].height).toBeLessThan(190);
+    expect(boxes[0].height).toBeLessThan(310);
+    const artwork = await cards.first().locator('.trending-artwork').boundingBox();
+    const productImage = cards.first().getByRole('img', { name: products[0].name, exact: true });
+    const imageStyles = await productImage.evaluate(el => { const style = getComputedStyle(el); return { fit: style.objectFit, padding: parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) }; });
+    expect(artwork.height).toBeGreaterThanOrEqual(128);
+    expect(imageStyles.fit).toBe('contain');
+    expect(imageStyles.padding).toBeLessThanOrEqual(16);
     await expect(cards.nth(0).getByRole('img', { name: 'CCTV Brand logo', exact: true })).toBeVisible();
     await expect(cards.nth(0)).not.toContainText('CCTV Brand');
     await expect(cards.nth(6).locator('.trending-brand')).toHaveCount(0);

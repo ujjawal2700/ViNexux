@@ -3,8 +3,9 @@
 .trending-group { display: flex; flex: none; gap: var(--trending-gap); padding-right: var(--trending-gap); }
 .trending-card { display: flex; flex-direction: column; flex: none; width: calc((100cqw - (var(--trending-columns) - 1) * var(--trending-gap)) / var(--trending-columns)); overflow: hidden; border-radius: 14px; background: var(--store-surface); border: 1px solid var(--store-border); }
 .trending-card:focus-visible { outline: 3px solid var(--store-primary); outline-offset: -3px; }
-.trending-artwork { position: relative; height: clamp(108px, 9cqw, 132px); background: radial-gradient(ellipse at top right, color-mix(in srgb, var(--store-primary) 12%, var(--store-surface)), var(--store-surface)); }
-.trending-brand { position: absolute; top: 10px; left: 12px; z-index: 1; width: 76px; max-width: calc(100% - 24px); height: 24px; object-fit: contain; object-position: left center; }
+.trending-brand-row { display: flex; align-items: center; height: 34px; padding: 6px 10px 0; }
+.trending-artwork { position: relative; aspect-ratio: 4 / 3; min-height: 128px; max-height: 216px; overflow: hidden; background: var(--store-surface); }
+.trending-brand { width: 76px; max-width: 100%; height: 24px; object-fit: contain; object-position: left center; }
 .trending-caption { min-height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 8px 10px; font-size: 12px; line-height: 1.4; color: white; background: linear-gradient(110deg, var(--store-primary), color-mix(in srgb, var(--store-primary) 78%, #211321)); }
 .trending-arrow { position: absolute; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--store-surface); color: var(--store-primary); border: 1px solid var(--store-border); box-shadow: 0 3px 12px #0001; cursor: pointer; }
 .trending-arrow:hover { background: var(--store-primary); color: white; }
