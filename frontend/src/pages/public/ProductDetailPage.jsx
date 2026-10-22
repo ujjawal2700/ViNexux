@@ -721,6 +721,13 @@ export const ProductDetailPage = () => {
                   </td>
                 </tr>
 
+                {(product.additionalDetails || []).filter(detail => detail.key?.trim() && detail.value?.trim()).map((detail, index) => (
+                  <tr key={index} className="border-b border-[var(--store-border)] last:border-b-0 hover:bg-[var(--store-background)]/50">
+                    <td className="px-4 py-2.5 align-top font-medium text-[var(--store-muted)] break-words [overflow-wrap:anywhere]">{detail.key}</td>
+                    <td className="px-4 py-2.5 align-top font-medium text-[var(--store-text)] whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{detail.value}</td>
+                  </tr>
+                ))}
+
               </tbody>
             </table>
           </div>

@@ -125,6 +125,7 @@ const AdminProductDetailPage = () => {
   const [warranty, setWarranty] = useState("");
   const [warrantyType, setWarrantyType] = useState("text");
   const [productUrl, setProductUrl] = useState("");
+  const [additionalDetails, setAdditionalDetails] = useState([]);
 
   // Pricing
   const [standardPrice, setStandardPrice] = useState("");
@@ -295,6 +296,7 @@ const AdminProductDetailPage = () => {
       setHsnCode(getProductHsnCode(prod));
       setWarranty(prod.warranty === "1 Year ON-SITE / Direct Replacement Warranty" ? "" : (prod.warranty || ""));
       setProductUrl(prod.productUrl || "");
+      setAdditionalDetails((prod.additionalDetails || []).map(({ key, value }) => ({ key, value })));
       setSelectedBrandId(String(prod.brandId?._id || prod.brandId || ""));
       setStandardPrice(
         prod.standardPrice !== undefined ? String(prod.standardPrice) : "",
@@ -319,6 +321,7 @@ const AdminProductDetailPage = () => {
         dealerPrice: prod.dealerPrice !== undefined ? String(prod.dealerPrice) : "",
         isTrending: Boolean(prod.isTrending), isLowStock: Boolean(prod.isLowStock), isActive: prod.isActive !== false,
         categoryId: "", categoryIds: [], specifications: [],
+        additionalDetails: (prod.additionalDetails || []).map(({ key, value }) => ({ key, value })),
       };
 
 
@@ -590,7 +593,7 @@ const AdminProductDetailPage = () => {
         fieldErrors.modelNumber ||
         fieldErrors.hsnCode ||
         fieldErrors.stockQuantity ||
-        fieldErrors.productUrl || fieldErrors.description || fieldErrors.model || fieldErrors.variant || fieldErrors.warranty
+        fieldErrors.productUrl || fieldErrors.description || fieldErrors.model || fieldErrors.variant || fieldErrors.warranty || fieldErrors.additionalDetails
       );
     }
     if (tabId === "variants") {
@@ -717,6 +720,7 @@ const AdminProductDetailPage = () => {
 
     const currentFields = {
       name, sku, description, modelNumber, model, stockQuantity, variant, hsnCode, warranty, warrantyType, productUrl,
+      additionalDetails,
       brandId: selectedBrandId, standardPrice, dealerPrice, isTrending, isLowStock, isActive: status === "published",
       categoryId: selectedSubIds[0] || selectedMainIds[0] || selectedHeaderId,
       categoryIds: [selectedHeaderId, ...selectedMainIds, ...selectedSubIds].filter(Boolean),
@@ -732,6 +736,13 @@ const AdminProductDetailPage = () => {
 
     if ((needs("warranty") || needs("warrantyType")) && warrantyType === "link" && !isWarrantyLink(warranty.trim())) {
       scrollToAndHighlightField("warranty", "general", "Enter a valid HTTP or HTTPS warranty link.");
+      return;
+    }
+
+    if (needs("additionalDetails") && (additionalDetails.length > 30 || additionalDetails.some(detail =>
+      !detail.key.trim() || !detail.value.trim() || detail.key.trim().length > 100 || detail.value.trim().length > 2000
+    ))) {
+      scrollToAndHighlightField("additionalDetails", "general", "Enter a label and value for every additional field, or remove unused rows. Labels allow 100 characters and values allow 2000 characters (up to 30 fields).");
       return;
     }
 
@@ -911,6 +922,7 @@ const AdminProductDetailPage = () => {
         warrantyType,
         hsnCode: hsnCode.trim(),
         productUrl: normalizedProductUrl,
+        additionalDetails: additionalDetails.map(({ key, value }) => ({ key: key.trim(), value: value.trim() })),
         sku: sku.trim().toUpperCase(),
         categoryId: primaryCategoryId || null,
         categoryIds: allCategoryIds,
@@ -1025,6 +1037,11 @@ const AdminProductDetailPage = () => {
         }
         if (path.includes("sku")) {
           scrollToAndHighlightField("sku", "general", item.message);
+          mapped = true;
+          break;
+        }
+        if (path.includes("additionaldetails")) {
+          scrollToAndHighlightField("additionalDetails", "general", item.message);
           mapped = true;
           break;
         }
@@ -1495,6 +1512,38 @@ const AdminProductDetailPage = () => {
                   </FormField>
                 </div>
               </div>
+
+              <section id="field-additionalDetails" data-field="additionalDetails" className="space-y-3 rounded-xl border border-border p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-bold">Additional product fields (optional)</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">Shown below warranty in the storefront product details. Add up to 30 fields.</p>
+                  </div>
+                  <Button type="button" variant="outline" disabled={formSubmitting || additionalDetails.length >= 30}
+                    onClick={() => { setAdditionalDetails(prev => [...prev, { key: "", value: "" }]); clearFieldError("additionalDetails"); }}>
+                    <Plus className="mr-1 h-4 w-4" /> Add field
+                  </Button>
+                </div>
+                {additionalDetails.map((detail, index) => (
+                  <div key={index} className="grid grid-cols-1 items-start gap-3 sm:grid-cols-[1fr_2fr_auto]">
+                    <FormField label={`Field label ${index + 1}`}>
+                      <Input aria-label={`Additional field ${index + 1} label`} value={detail.key} maxLength={100}
+                        placeholder="e.g. Country of origin" disabled={formSubmitting}
+                        onChange={event => { setAdditionalDetails(prev => prev.map((row, i) => i === index ? { ...row, key: event.target.value } : row)); clearFieldError("additionalDetails"); }} />
+                    </FormField>
+                    <FormField label={`Field value ${index + 1}`}>
+                      <Textarea aria-label={`Additional field ${index + 1} value`} value={detail.value} maxLength={2000} rows={2}
+                        placeholder="e.g. India" disabled={formSubmitting}
+                        onChange={event => { setAdditionalDetails(prev => prev.map((row, i) => i === index ? { ...row, value: event.target.value } : row)); clearFieldError("additionalDetails"); }} />
+                    </FormField>
+                    <Button type="button" variant="outline" className="sm:mt-6" aria-label={`Remove additional field ${index + 1}`} disabled={formSubmitting}
+                      onClick={() => { setAdditionalDetails(prev => prev.filter((_, i) => i !== index)); clearFieldError("additionalDetails"); }}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                {fieldErrors.additionalDetails && <p role="alert" className="text-xs text-red-600">{fieldErrors.additionalDetails}</p>}
+              </section>
 
               <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 text-sm">
                 <input type="checkbox" checked={isTrending} onChange={e => setIsTrending(e.target.checked)} className="h-4 w-4 accent-primary" />

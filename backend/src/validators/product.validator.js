@@ -70,6 +70,7 @@ export const createProductSchema = {
       .nullable(),
     images: z.array(productImageSchema).optional().default([]),
     specifications: z.array(productSpecificationSchema).optional().default([]),
+    additionalDetails: z.array(productSpecificationSchema).max(30).optional().default([]),
     standardPrice: z
       .number({ invalid_type_error: 'Standard price must be a number' })
       .min(0, { message: 'Standard price cannot be negative' })
@@ -129,6 +130,7 @@ export const updateProductSchema = {
     images: z.array(productImageSchema).optional(),
     expectedImages: z.array(z.string()).optional(),
     specifications: z.array(productSpecificationSchema).optional(),
+    additionalDetails: z.array(productSpecificationSchema).max(30).optional(),
     standardPrice: z
       .number({ invalid_type_error: 'Standard price must be a number' })
       .min(0, { message: 'Standard price cannot be negative' })

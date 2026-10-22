@@ -144,6 +144,11 @@ const productSchema = new mongoose.Schema(
     // Retain cleanup work across storage failures so a later save can retry.
     pendingImageDeletions: { type: [String], default: [] },
     specifications: [productSpecificationSchema],
+    additionalDetails: {
+      type: [productSpecificationSchema],
+      default: [],
+      validate: { validator: (details) => details.length <= 30, message: 'A product can have up to 30 additional fields' },
+    },
     standardPrice: {
       type: Number,
       default: 0,

@@ -198,6 +198,7 @@ export const productService = {
     description,
     images = [],
     specifications = [],
+    additionalDetails = [],
     standardPrice = 0,
     dealerPrice = 0,
     isTrending = false,
@@ -277,6 +278,7 @@ export const productService = {
       description: description ? description.trim() : undefined,
       images,
       specifications: normalizedSpecifications,
+      additionalDetails,
       standardPrice,
       dealerPrice,
       isTrending,
@@ -581,6 +583,7 @@ isActive,
       product.images = updateData.images;
     }
     if (updateData.specifications !== undefined) product.specifications = updateData.specifications;
+    if (updateData.additionalDetails !== undefined) product.additionalDetails = updateData.additionalDetails;
     if (updateData.standardPrice !== undefined) product.standardPrice = updateData.standardPrice;
     if (updateData.dealerPrice !== undefined) product.dealerPrice = updateData.dealerPrice;
     if (updateData.isTrending !== undefined) product.isTrending = updateData.isTrending;
