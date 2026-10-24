@@ -32,6 +32,41 @@ const WhatsAppIcon = ({ className = 'w-4 h-4' }) => (
   </svg>
 );
 
+const CartQuantityInput = ({ quantity, maximum, disabled, productName, onSave, className }) => {
+  const [draft, setDraft] = useState(null);
+
+  return (
+    <input
+      type="number"
+      inputMode="numeric"
+      min={1}
+      max={maximum}
+      step={1}
+      aria-label={`Quantity for ${productName || 'product'}`}
+      title="Enter quantity, then press Enter or click away to save"
+      value={draft ?? quantity}
+      disabled={disabled}
+      onFocus={(event) => event.currentTarget.select()}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={(event) => {
+        const value = event.currentTarget.value;
+        setDraft(null);
+        if (value !== String(quantity)) onSave(value);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.currentTarget.value = String(quantity);
+          event.currentTarget.blur();
+        } else if (event.key === 'Enter') {
+          event.preventDefault();
+          event.currentTarget.blur();
+        }
+      }}
+      className={`appearance-none text-center focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[var(--store-primary)] disabled:opacity-50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield] ${className}`}
+    />
+  );
+};
+
 export const CartPage = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
@@ -380,7 +415,12 @@ export const CartPage = () => {
 
   // Update Item Quantity (Optimistic + Broadcast)
   const handleUpdateQuantity = async (productId, newQuantity, product) => {
-    if (newQuantity < 1 || !productId) return;
+    if (!/^\d+$/.test(String(newQuantity)) || !Number.isSafeInteger(Number(newQuantity)) || Number(newQuantity) < 1) {
+      toast.warning('Please enter a whole number of at least 1.');
+      return;
+    }
+    newQuantity = Number(newQuantity);
+    if (!productId) return;
     const maxAllowed = getMaximumEnquiryQuantity(product);
     if (newQuantity > maxAllowed) {
       toast.warning('The quantity limit for this enquiry has been reached.');
@@ -715,7 +755,7 @@ export const CartPage = () => {
                         <div>
                           <div className="inline-flex items-center overflow-hidden rounded border border-gray-300 bg-white">
                             <button type="button" onClick={() => handleUpdateQuantity(prodId, (item.quantity || 1) - 1, prod)} disabled={(item.quantity || 1) <= 1 || updatingItemId === prodId} aria-label="Decrease quantity" className="flex h-8 w-8 items-center justify-center disabled:opacity-30"><Minus className="h-4 w-4" /></button>
-                            <span className="flex h-8 w-8 items-center justify-center border-x border-gray-200 text-xs font-semibold">{item.quantity || 1}</span>
+                            <CartQuantityInput quantity={item.quantity || 1} maximum={maxAllowedQty} disabled={updatingItemId === prodId} productName={prod.name} onSave={(value) => handleUpdateQuantity(prodId, value, prod)} className="h-8 w-14 border-x border-gray-200 text-xs font-semibold" />
                             <button type="button" onClick={() => handleUpdateQuantity(prodId, (item.quantity || 1) + 1, prod)} disabled={updatingItemId === prodId || isAtLimit} aria-label="Increase quantity" className="flex h-8 w-8 items-center justify-center disabled:opacity-30"><Plus className="h-4 w-4" /></button>
                           </div>
                           {isAtLimit && (
@@ -844,9 +884,14 @@ export const CartPage = () => {
                               >
                                 <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
                               </button>
-                              <span className="w-7 text-center text-xs sm:text-sm font-semibold text-gray-800 select-none">
-                                {item.quantity || 1}
-                              </span>
+                              <CartQuantityInput
+                                quantity={item.quantity || 1}
+                                maximum={maxAllowedQty}
+                                disabled={updatingItemId === prodId}
+                                productName={prod.name}
+                                onSave={(value) => handleUpdateQuantity(prodId, value, prod)}
+                                className="h-7 w-14 text-xs sm:text-sm font-semibold text-gray-800"
+                              />
                               <button
                                 type="button"
                                 onClick={() => handleUpdateQuantity(prodId, (item.quantity || 1) + 1, prod)}
