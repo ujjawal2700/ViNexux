@@ -15,7 +15,7 @@ const rupees = value => Number(value || 0).toLocaleString('en-IN', { style: 'cur
 const displayDate = value => new Date(value).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
 const normalizedPhone = value => { const digits = String(value || '').replace(/\D/g, ''); return digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits; };
 const blankCustomer = () => ({ name: '', phone: '', whatsappNumber: '', email: '', address: '', city: '', state: 'Rajasthan', stateCode: '08', pincode: '', gstin: '' });
-const blankDraft = () => ({ customer: blankCustomer(), delivery: {}, items: [], taxMode: 'inclusive', roundOff: true, notes: '' });
+const blankDraft = () => ({ customer: blankCustomer(), delivery: {}, items: [], billType: 'b2c', taxMode: 'inclusive', roundOff: true, notes: '' });
 const buttonClass = 'inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors';
 const primaryClass = `${buttonClass} !bg-primary !border-primary !text-white hover:!bg-primary/90`;
 const fieldClass = 'w-full min-w-0 rounded-md border border-slate-200 bg-white px-2.5 py-2 text-sm text-slate-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:bg-slate-50';
@@ -230,6 +230,23 @@ export default function AdminPosPage() {
     {customerCheck.status === 'error' && <p className="text-rose-700">Could not check this customer. Correct the number or reopen the form to retry.</p>}
   </div>;
   const updateItem = (id, values) => setDraft(prev => ({ ...prev, items: prev.items.map(item => item.productId === id ? { ...item, ...values } : item) }));
+  const billType = draft.billType || 'b2c';
+  const productPrice = product => billType === 'b2b' ? (product.dealerPrice ?? product.standardPrice) : product.standardPrice;
+  const changeBillType = nextType => run(async () => {
+    const items = await Promise.all(draft.items.map(async item => {
+      let pricing = item;
+      if (pricing.standardPrice == null || pricing.dealerPrice == null) {
+        pricing = products.find(product => product._id === item.productId) ||
+          (await posService.products(item.sku || item.productName || '')).find(product => product._id === item.productId);
+      }
+      if (!pricing) throw new Error(`Cannot reprice ${item.productName}. Refresh the catalogue and try again.`);
+      const standardPrice = pricing.standardPrice;
+      const dealerPrice = pricing.dealerPrice ?? standardPrice;
+      return { ...item, standardPrice, dealerPrice, unitPrice: nextType === 'b2b' ? dealerPrice : standardPrice };
+    }));
+    patch({ billType: nextType, items });
+    setFieldErrors({});
+  });
   const addProduct = product => {
     if (busy) return;
     const existing = draft.items.find(i => i.productId === product._id);
@@ -239,12 +256,12 @@ export default function AdminPosPage() {
     else {
       const spec = key => product.specifications?.find(s => key.test(s.key))?.value || '';
       patch({ items: [...draft.items, { productId: product._id, productName: product.name, sku: product.sku, modelNumber: product.modelNumber,
-        quantity: 1, unitPrice: product.standardPrice, stockQuantity: product.stockQuantity, discountPercent: 0,
+        quantity: 1, unitPrice: productPrice(product), standardPrice: product.standardPrice, dealerPrice: product.dealerPrice ?? product.standardPrice, stockQuantity: product.stockQuantity, discountPercent: 0,
         gstRate: Number.isFinite(Number.parseFloat(spec(/^gst(?:\s*rate)?$/i))) ? Number.parseFloat(spec(/^gst(?:\s*rate)?$/i)) : 18, hsn: getProductHsnCode(product), unit: 'NOS', serialNumbers: [] }] });
     }
   };
   const salePayload = (payment = payments[0]) => ({ ...draft, requestId,
-    items: draft.items.map(({ stockQuantity: _stock, productName: _name, sku: _sku, modelNumber: _model, serialInput: _serial, ...item }) => item),
+    items: draft.items.map(({ stockQuantity: _stock, productName: _name, sku: _sku, modelNumber: _model, serialInput: _serial, standardPrice: _standard, dealerPrice: _dealer, ...item }) => item),
     payments: [{ ...payment, amount: bill.total }],
   });
   const startTender = () => run(async () => {
@@ -328,11 +345,12 @@ export default function AdminPosPage() {
           {productLoading && <p className="p-5 text-sm text-slate-500">Loading catalogue…</p>}
           {!productLoading && productError && <div role="alert" className="p-4 text-sm text-rose-700">{productError}<button className="mt-2 block underline" onClick={() => setCatalogueVersion(v => v + 1)}>Retry</button></div>}
           {!productLoading && !productError && !products.length && <p className="p-5 text-sm text-slate-500">No matching products.</p>}
-          {!productError && products.map(product => <button type="button" key={product._id} disabled={busy || product.stockQuantity < 1} onClick={() => addProduct(product)} className="group flex w-full items-center gap-3 p-3.5 text-left hover:bg-slate-50 disabled:opacity-50"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-slate-100 bg-slate-50">{product.images?.[0]?.url ? <img src={product.images[0].url} alt="" className="h-10 w-10 object-contain" /> : <Package size={22} className="text-slate-300" />}</div><div className="min-w-0 flex-1"><p className="line-clamp-2 text-xs font-semibold leading-5">{product.name}</p><p className="truncate text-[10px] text-slate-400">{product.sku}</p><div className="mt-1 flex justify-between gap-2"><span className="text-xs font-semibold">{rupees(product.standardPrice)}</span><span className={`text-[10px] ${product.stockQuantity ? 'text-slate-500' : 'text-rose-600'}`}>{product.stockQuantity ? `${product.stockQuantity} in stock` : 'Out of stock'}</span></div></div><Plus size={15} className="text-primary" /></button>)}
+          {!productError && products.map(product => <button type="button" key={product._id} disabled={busy || product.stockQuantity < 1} onClick={() => addProduct(product)} className="group flex w-full items-center gap-3 p-3.5 text-left hover:bg-slate-50 disabled:opacity-50"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-slate-100 bg-slate-50">{product.images?.[0]?.url ? <img src={product.images[0].url} alt="" className="h-10 w-10 object-contain" /> : <Package size={22} className="text-slate-300" />}</div><div className="min-w-0 flex-1"><p className="line-clamp-2 text-xs font-semibold leading-5">{product.name}</p><p className="truncate text-[10px] text-slate-400">{product.sku}</p><div className="mt-1 flex justify-between gap-2"><span className="text-xs font-semibold">{rupees(productPrice(product))}</span><span className={`text-[10px] ${product.stockQuantity ? 'text-slate-500' : 'text-rose-600'}`}>{product.stockQuantity ? `${product.stockQuantity} in stock` : 'Out of stock'}</span></div></div><Plus size={15} className="text-primary" /></button>)}
         </div>
       </section>
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4"><div><h2 className="text-sm font-semibold">Current bill <span className="ml-2 font-normal text-slate-400">{draft.items.length} items</span></h2><p className="mt-1 text-[11px] text-slate-400">{heldId ? 'Resumed held bill' : 'B2C counter sale'} · Invoice number assigned on completion</p></div><div className="flex gap-2"><button className={buttonClass} disabled={busy} onClick={() => setHeldOpen(true)}><Pause size={14} />Held ({held.length})</button><button className={buttonClass} disabled={busy || !draft.items.length} onClick={holdBill}>Hold bill</button><button aria-label="Clear bill" title="Clear bill" className={buttonClass} disabled={busy || !draft.items.length} onClick={() => setConfirm({ type: 'clear' })}><Trash2 size={14} /></button></div></div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4"><div><h2 className="text-sm font-semibold">Current bill <span className="ml-2 font-normal text-slate-400">{draft.items.length} items</span></h2><p className="mt-1 text-[11px] text-slate-400">{heldId ? 'Resumed held bill' : `${billType.toUpperCase()} counter sale`} · Invoice number assigned on completion</p></div><div className="flex gap-2"><button className={buttonClass} disabled={busy} onClick={() => setHeldOpen(true)}><Pause size={14} />Held ({held.length})</button><button className={buttonClass} disabled={busy || !draft.items.length} onClick={holdBill}>Hold bill</button><button aria-label="Clear bill" title="Clear bill" className={buttonClass} disabled={busy || !draft.items.length} onClick={() => setConfirm({ type: 'clear' })}><Trash2 size={14} /></button></div></div>
+        <div className="border-b border-slate-200 px-5 py-3"><label className="flex flex-wrap items-center gap-3 text-xs font-semibold">Bill type<select aria-label="Bill type" value={billType} disabled={busy} onChange={e => changeBillType(e.target.value)} className={fieldClass + ' !w-auto'}><option value="b2c">B2C · Retail / standard price</option><option value="b2b">B2B · Dealer price</option></select></label><p className="mt-2 text-[11px] text-slate-500">Changing bill type resets all item unit prices to the selected catalogue pricing.</p></div>
         <button type="button" disabled={busy} onClick={() => { setCustomerTab('billing'); setCustomerOpen(true); }} className="flex w-full items-center gap-3 border-b border-slate-200 bg-slate-50/60 px-5 py-4 text-left hover:bg-slate-50"><div className="rounded-lg border border-slate-200 bg-white p-2"><UserRound size={18} className="text-slate-500" /></div><div className="min-w-0 flex-1"><p className="text-xs font-semibold">{draft.customer.name || 'Add customer details'}</p><p className="mt-1 truncate text-xs text-slate-500">{draft.customer.phone ? `${draft.customer.phone} · ${draft.customer.city || 'Address required'}` : 'Name, phone, WhatsApp and billing address'}</p></div><span className="text-[11px] text-slate-400">F4</span><ChevronRight size={16} className="text-slate-400" /></button>
         {!draft.items.length ? <div className="flex min-h-80 flex-col items-center justify-center px-6 text-center"><ShoppingCart size={36} strokeWidth={1.3} className="mb-4 text-slate-300" /><h3 className="text-sm font-semibold">Ready for the next customer</h3><p className="mt-2 max-w-xs text-xs leading-5 text-slate-500">Search the catalogue or scan a product SKU to start a bill.</p><button className={`${buttonClass} mt-4`} onClick={() => searchRef.current?.focus()}>Find a product <ArrowRight size={14} /></button></div> : <div className="divide-y divide-slate-100">{draft.items.map((item, index) => <div key={item.productId} className="space-y-3 px-5 py-4">
           <div className="flex items-start gap-3"><span className="mt-0.5 text-xs text-slate-400">{String(index + 1).padStart(2, '0')}</span><div className="min-w-0 flex-1"><p className="text-xs font-semibold leading-5">{item.productName}</p><p className="text-[10px] text-slate-400">{item.sku}</p></div><div className="shrink-0 text-right"><p className="text-sm font-semibold">{rupees(bill.items[index].lineTotal)}</p>{bill.items[index].discountAmount > 0 && <p className="mt-1 text-[10px] text-emerald-700">Discount {rupees(bill.items[index].discountAmount)} ({item.discountPercent}%)</p>}</div><button disabled={busy} aria-label={`Remove ${item.productName}`} onClick={() => patch({ items: draft.items.filter(i => i.productId !== item.productId) })} className="text-slate-400 hover:text-rose-600"><X size={15} /></button></div>

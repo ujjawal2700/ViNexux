@@ -21,6 +21,7 @@ const deliverySchema = z.object(Object.fromEntries([
 export const paymentSchema = z.object({ method: z.enum(['cash', 'upi', 'bank']), amount: amount.refine(n => n > 0), reference: text(), requestId: z.string().uuid() });
 const salePaymentSchema = paymentSchema.extend({ amount });
 export const posSaleSchema = z.object({
+  billType: z.enum(['b2b', 'b2c']).default('b2c'),
   requestId: z.string().uuid(), customer: customerSchema, shipping: customerSchema.optional(),
   delivery: deliverySchema.default({}), notes: text(1000),
   items: z.array(z.object({ productId: z.string().regex(/^[a-f\d]{24}$/i), quantity: z.number().int().min(1).max(10000),

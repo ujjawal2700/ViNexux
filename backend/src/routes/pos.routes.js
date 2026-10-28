@@ -29,7 +29,7 @@ router.put('/settings', validate({ body: posSellerSchema }), asyncHandler(async 
 router.get('/products', validate(searchSchema), asyncHandler(async (req, res) => {
   const filter = { isActive: true };
   if (req.query.search) filter.$or = ['name', 'sku', 'modelNumber'].map(key => ({ [key]: escapedRegex(req.query.search) }));
-  const products = await Product.find(filter).select('name sku modelNumber hsnCode standardPrice stockQuantity images specifications').sort({ name: 1 }).limit(40).lean();
+  const products = await Product.find(filter).select('name sku modelNumber hsnCode standardPrice dealerPrice stockQuantity images specifications').sort({ name: 1 }).limit(40).lean();
   reply(res, products);
 }));
 router.get('/customers', validate(searchSchema), asyncHandler(async (req, res) => {
@@ -40,7 +40,7 @@ router.get('/customers', validate(searchSchema), asyncHandler(async (req, res) =
   reply(res, records.map(r => r.customer));
 }));
 router.get('/held', asyncHandler(async (req, res) => reply(res, await posService.listHeld(req.user._id))));
-router.post('/held', validate({ body: z.object({ label: z.string().trim().min(1).max(100), draft: z.object({ requestId: z.string().uuid(), customer: z.record(z.unknown()), shipping: z.record(z.unknown()).optional(), delivery: z.record(z.unknown()), items: z.array(z.record(z.unknown())).max(100), taxMode: z.enum(['inclusive', 'exclusive']), roundOff: z.boolean(), notes: z.string().max(1000).default('') }) }) }),
+router.post('/held', validate({ body: z.object({ label: z.string().trim().min(1).max(100), draft: z.object({ billType: z.enum(['b2b', 'b2c']).default('b2c'), requestId: z.string().uuid(), customer: z.record(z.unknown()), shipping: z.record(z.unknown()).optional(), delivery: z.record(z.unknown()), items: z.array(z.record(z.unknown())).max(100), taxMode: z.enum(['inclusive', 'exclusive']), roundOff: z.boolean(), notes: z.string().max(1000).default('') }) }) }),
   asyncHandler(async (req, res) => reply(res, await posService.holdBill(req.body.draft, req.body.label, req.user._id))));
 router.delete('/held/:id', validate(idSchema), asyncHandler(async (req, res) => reply(res, await posService.removeHeld(req.params.id, req.user._id))));
 router.get('/sales/export', validate({ query: posListSchema }), asyncHandler(async (req, res) => {

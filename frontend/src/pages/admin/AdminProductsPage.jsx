@@ -6,6 +6,7 @@ import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import adminService from '../../services/adminService';
 import useToast from '../../hooks/useToast';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
+import CategoryMultiSelect from '../../components/admin/CategoryMultiSelect';
 import FilterBar from '../../components/admin/FilterBar';
 import Table from '../../components/ui/Table';
 import Pagination from '../../components/ui/Pagination';
@@ -92,7 +93,7 @@ const AdminProductsPage = () => {
     return () => clearTimeout(handler);
   }, [search, handlePageChange]);
 
-  const [categoryIdFilter, setCategoryIdFilter] = useState('');
+  const [categoryFilters, setCategoryFilters] = useState({ headerCategoryIds: [], mainCategoryIds: [], subCategoryIds: [] });
   const [isActiveFilter, setIsActiveFilter] = useState('');
   const [trendingBusy, setTrendingBusy] = useState({});
   const [lowStockBusy, setLowStockBusy] = useState({});
@@ -137,7 +138,7 @@ const AdminProductsPage = () => {
       await adminService.updateProduct(product._id, { categoryId: headerId, categoryIds: [headerId] });
       setProducts((items) => items.map((item) => item._id === product._id ? { ...item, categoryId: header, categoryIds: [headerId] } : item));
       toastApi.success(`Header category updated to ${header.name}. Main and sub-category assignments cleared.`);
-      if (categoryIdFilter) {
+      if (Object.values(categoryFilters).some(ids => ids.length)) {
         if (products.length === 1 && page > 1) handlePageChange(page - 1);
         else fetchProducts();
       }
@@ -154,7 +155,7 @@ const AdminProductsPage = () => {
     try {
       const params = { page, limit: 20, sortBy, sortOrder };
       if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
-      if (categoryIdFilter) params.categoryId = categoryIdFilter;
+      for (const [key, ids] of Object.entries(categoryFilters)) if (ids.length) params[key] = ids.join(',');
       if (isActiveFilter !== '') params.isActive = isActiveFilter;
 
       const res = await adminService.getProducts(params);
@@ -196,7 +197,7 @@ const AdminProductsPage = () => {
   useEffect(() => {
     fetchProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, categoryIdFilter, isActiveFilter, sortBy, sortOrder, debouncedSearch]);
+  }, [page, categoryFilters, isActiveFilter, sortBy, sortOrder, debouncedSearch]);
 
   const toggleTrending = async (product, isTrending) => {
     setTrendingBusy(current => ({ ...current, [product._id]: true }));
@@ -294,33 +295,6 @@ const AdminProductsPage = () => {
         }}
         searchPlaceholder="Search by SKU or Product Name..."
         filters={[
-          ...(canReadCategories && categoriesList.length ? [{
-            value: categoryIdFilter,
-            onChange: (val) => {
-              setCategoryIdFilter(val);
-              handlePageChange(1);
-            },
-            options: [
-              { value: '', label: 'All Categories' },
-              ...categoriesList.map((cat) => {
-                const pId = cat.parentId?._id || cat.parentId;
-                const parent = pId ? categoriesList.find((p) => p._id === pId) : null;
-                const grandParentId = parent?.parentId?._id || parent?.parentId;
-                const isSub = Boolean(grandParentId);
-                const isMain = Boolean(pId && !grandParentId);
-
-                let label = cat.name;
-                if (isSub) {
-                  label = `↳ [Sub] ${cat.name}`;
-                } else if (isMain) {
-                  label = `— [Main] ${cat.name}`;
-                } else {
-                  label = `[Header] ${cat.name}`;
-                }
-                return { value: cat._id, label };
-              }),
-            ],
-          }] : []),
           {
             value: isActiveFilter,
             onChange: (val) => {
@@ -349,13 +323,22 @@ const AdminProductsPage = () => {
           setSearch('');
           setDebouncedSearch('');
           prevSearchRef.current = '';
-          setCategoryIdFilter('');
+          setCategoryFilters({ headerCategoryIds: [], mainCategoryIds: [], subCategoryIds: [] });
           setIsActiveFilter('');
           handlePageChange(1);
           setSortBy('createdAt');
           setSortOrder('desc');
         }}
       />
+
+      {canReadCategories && categoriesList.length > 0 && <div className="grid gap-3 sm:grid-cols-3">
+        {[
+          ['headerCategoryIds', 'Header categories', category => !category.parentId],
+          ['mainCategoryIds', 'Main categories', category => { const parent = categoryById.get(String(category.parentId?._id || category.parentId)); return parent && !parent.parentId; }],
+          ['subCategoryIds', 'Subcategories', category => { const parent = categoryById.get(String(category.parentId?._id || category.parentId)); return Boolean(parent?.parentId); }],
+        ].map(([key, label, matches]) => <CategoryMultiSelect key={key} label={label} options={categoriesList.filter(matches)} value={categoryFilters[key]} onChange={ids => { setCategoryFilters(current => ({ ...current, [key]: ids })); handlePageChange(1); }} />)}
+        <p className="text-xs text-muted-foreground sm:col-span-3">Select multiple categories at each level. Filters across levels are combined.</p>
+      </div>}
 
       {/* Table & Catalog Content */}
       {loading ? (

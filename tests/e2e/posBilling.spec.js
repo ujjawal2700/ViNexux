@@ -22,7 +22,7 @@ const configure = async page => {
     if (path.endsWith('/sales/validate')) { const body = request.postDataJSON(); return response({ ready: true, seller: POS_SELLER_DEFAULTS, ...calculatePosBill(body.items, body) }); }
     if (path.endsWith('/settings')) return response(POS_SELLER_DEFAULTS);
     if (path.endsWith('/products')) return response([{ _id: '507f1f77bcf86cd799439022', name: 'TRUEVIEW 3MP 4G Camera', sku: 'CAM-001', modelNumber: 'T-18120', stockQuantity: 8,
-      standardPrice: 3550, images: [], specifications: [{ key: 'HSN', value: '85258900' }] }]);
+      standardPrice: 3550, dealerPrice: 3000, images: [], specifications: [{ key: 'HSN', value: '85258900' }] }]);
     if (path.endsWith('/customers')) return response([]);
     if (path.endsWith('/held')) {
       if (request.method() === 'POST') { const data = request.postDataJSON(); holds.push({ ...data, _id: '507f1f77bcf86cd799439023', updatedAt: new Date().toISOString() }); }
@@ -116,4 +116,30 @@ test('POS stays usable on narrow screens and surfaces checkout errors inside the
   await expect(page.getByRole('dialog').getByRole('alert').first()).toContainText('Customer → Name');
   const width = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, viewport: innerWidth }));
   expect(width.scroll).toBeLessThanOrEqual(width.viewport);
+});
+
+
+test('POS switches retail and dealer prices for existing items and preserves B2B on hold', async ({ page }) => {
+  const state = await configure(page);
+  await page.getByRole('button', { name: /TRUEVIEW 3MP 4G Camera CAM-001/ }).click();
+  const price = page.getByLabel('Unit price (₹)', { exact: true });
+  await expect(price).toHaveValue('3550');
+  await page.getByLabel('Bill type', { exact: true }).selectOption('b2b');
+  await expect(price).toHaveValue('3000');
+  await page.getByRole('button', { name: /TRUEVIEW 3MP 4G Camera CAM-001/ }).click();
+  await expect(page.getByLabel('TRUEVIEW 3MP 4G Camera quantity', { exact: true })).toHaveValue('2');
+  await expect(price).toHaveValue('3000');
+  await page.getByLabel('Bill type', { exact: true }).selectOption('b2c');
+  await expect(price).toHaveValue('3550');
+  await page.getByLabel('Bill type', { exact: true }).selectOption('b2b');
+  await page.getByRole('button', { name: 'Hold bill', exact: true }).click();
+  await expect.poll(() => state.holds()[0]?.draft.billType).toBe('b2b');
+  await expect.poll(() => state.holds()[0]?.draft.items[0].unitPrice).toBe(3000);
+  await page.getByRole('button', { name: 'Held (1)', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Resume' }).click();
+  await expect(page.getByLabel('Bill type', { exact: true })).toHaveValue('b2b');
+  await expect(price).toHaveValue('3000');
+  await page.reload();
+  await expect(page.getByLabel('Bill type', { exact: true })).toHaveValue('b2b');
+  await expect(price).toHaveValue('3000');
 });
