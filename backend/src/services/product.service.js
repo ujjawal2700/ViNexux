@@ -383,6 +383,19 @@ isActive,
       }
     }
 
+    // OR within each category level; AND between levels, including descendants.
+    for (const key of ['headerCategoryIds', 'mainCategoryIds', 'subCategoryIds']) {
+      if (!queryParams[key]) continue;
+      const ids = String(queryParams[key]).split(',');
+      if (ids.some(id => !mongoose.Types.ObjectId.isValid(id))) {
+        throw new AppError('Invalid category filter format.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+      }
+      const catIds = await findCategoryAndDescendantIds(ids);
+      filter.$and = [...(filter.$and || []), { $or: [
+        { categoryId: { $in: catIds } }, { categoryIds: { $in: catIds } },
+      ] }];
+    }
+
     // Filter by isActive flag
     if (isActive !== undefined) {
       filter.isActive = isActive === 'true' || isActive === true;
@@ -394,8 +407,9 @@ isActive,
 
     const sortDirection = sortOrder === 'asc' ? 1 : -1;
     const sortField = sortBy === 'sortOrder' ? 'createdAt' : sortBy;
-    const sortOptions = {};
-    sortOptions[sortField] = sortDirection;
+    // A unique tie-breaker keeps equal names, prices or timestamps in the
+    // same order across paginated requests (including bulk-imported products).
+    const sortOptions = { [sortField]: sortDirection, _id: 1 };
 
     const [products, total] = await Promise.all([
       Product.find(filter)

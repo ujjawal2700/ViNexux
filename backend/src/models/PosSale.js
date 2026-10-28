@@ -10,6 +10,7 @@ const saleSchema = new mongoose.Schema({
   invoiceNumber: { type: String, required: true, unique: true }, requestId: { type: String, required: true, unique: true },
   shareToken: { type: String, required: true, unique: true, select: false },
   seller: { type: Object, required: true }, customer: { type: Object, required: true }, shipping: Object, delivery: Object,
+  billType: { type: String, enum: ['b2b', 'b2c'], default: 'b2c' },
   items: [item], taxGroups: [Object], taxMode: String, interstate: Boolean, roundOff: Boolean,
   itemsTotal: Number, discountTotal: Number, subtotal: Number, cgst: Number, sgst: Number, igst: Number, taxTotal: Number, roundOffAmount: Number, total: Number, totalQuantity: Number,
   customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
