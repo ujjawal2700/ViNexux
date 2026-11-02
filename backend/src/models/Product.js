@@ -41,13 +41,13 @@ const productSpecificationSchema = new mongoose.Schema(
   {
     key: {
       type: String,
-      required: [true, 'Specification key is required'],
+      required: [function () { return this.ownerDocument?.().isActive !== false; }, 'Specification key is required'],
       trim: true,
       maxlength: [100, 'Specification key cannot exceed 100 characters'],
     },
     value: {
       type: String,
-      required: [true, 'Specification value is required'],
+      required: [function () { return this.ownerDocument?.().isActive !== false; }, 'Specification value is required'],
       trim: true,
       maxlength: [2000, 'Specification value cannot exceed 2000 characters'],
     },
@@ -67,7 +67,7 @@ const productSchema = new mongoose.Schema(
     },
     name: {
       type: String,
-      required: [true, 'Product name is required'],
+      required: [function () { return this.isActive !== false; }, 'Product name is required'],
       trim: true,
       maxlength: [150, 'Product name cannot exceed 150 characters'],
     },
@@ -104,6 +104,8 @@ const productSchema = new mongoose.Schema(
       min: [0, 'Stock quantity cannot be negative'],
     },
     stockUpdatedAt: { type: Date, default: null },
+    filterOptionIds: { type: [{ type: mongoose.Schema.Types.ObjectId }], default: [] },
+    isNewArrival: { type: Boolean, default: false },
     isTrending: { type: Boolean, default: false },
     isLowStock: { type: Boolean, default: false },
     variant: {
@@ -184,6 +186,8 @@ productSchema.index({ categoryIds: 1, isActive: 1 });
 // Admin listing (default sort newest first) and newest-per-category lookups.
 productSchema.index({ isActive: 1, createdAt: -1 });
 productSchema.index({ isActive: 1, stockUpdatedAt: -1 });
+productSchema.index({ isActive: 1, filterOptionIds: 1 });
+productSchema.index({ isActive: 1, isNewArrival: 1, createdAt: -1 });
 productSchema.index({ isActive: 1, isTrending: 1, createdAt: -1 });
 productSchema.index({ isActive: 1, isLowStock: 1, createdAt: -1 });
 productSchema.index({ categoryId: 1, createdAt: -1 });

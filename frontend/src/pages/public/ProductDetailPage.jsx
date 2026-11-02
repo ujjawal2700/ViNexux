@@ -431,17 +431,17 @@ export const ProductDetailPage = () => {
 
   if (isLoading) {
     return (
-      <div className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 py-8 space-y-6 bg-[var(--store-surface)] min-h-screen">
+      <div className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 py-6 space-y-6 bg-[var(--store-surface)]">
         <Skeleton className="h-5 w-48" />
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-12 gap-8">
-          <div className="xl:col-span-4">
-            <Skeleton className="h-80 w-full rounded-xl" />
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 lg:gap-6">
+          <div className="lg:col-span-5 xl:col-span-4">
+            <Skeleton className="aspect-square w-full max-w-[480px] rounded-xl" />
           </div>
-          <div className="xl:col-span-5 space-y-4">
-            <Skeleton className="h-8 w-3/4" />
-            <Skeleton className="h-32 w-full rounded-xl" />
-          </div>
-          <div className="lg:col-span-2 xl:col-span-3">
+          <div className="grid min-w-0 gap-5 lg:col-span-7 xl:col-span-8 xl:grid-cols-[minmax(0,1fr)_minmax(260px,0.8fr)]">
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-3/4" />
+              <Skeleton className="h-32 w-full rounded-xl" />
+            </div>
             <Skeleton className="h-64 w-full rounded-xl" />
           </div>
         </div>
@@ -454,7 +454,7 @@ export const ProductDetailPage = () => {
   }
 
   return (
-    <div className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 py-4 sm:py-6 space-y-10 bg-[var(--store-surface)] min-h-screen text-[var(--store-text)] font-sans">
+    <div className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 py-4 sm:py-6 space-y-6 bg-[var(--store-surface)] text-[var(--store-text)] font-sans">
       
       {/* 1. TOP BREADCRUMBS (Matching Given Image - No left gap) */}
       <div className="flex items-center justify-between gap-3 border-b border-[var(--store-border)] pb-3">
@@ -482,66 +482,91 @@ export const ProductDetailPage = () => {
         </nav>
       </div>
 
-      {/* 2. TOP MAIN PRODUCT PRESENTATION: 3-COLUMN LAYOUT (Matching Given Image) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-12 gap-6 lg:gap-8 xl:gap-10 items-start">
+      {/* Compact gallery beside product information and purchase controls. */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start">
         
         {/* =========================================
             COLUMN 1: PRODUCT IMAGE & THUMBNAILS (Left - No empty margin)
            ========================================= */}
-        <div className="xl:col-span-4 space-y-3">
-          <div
-            className="bg-[var(--store-surface)] p-4 rounded-xl border border-[var(--store-border)] overflow-hidden relative shadow-2xs group flex items-center justify-center min-h-[360px] sm:min-h-[420px] xl:min-h-[clamp(460px,34vw,660px)]"
-            onMouseMove={(event) => {
-              const image = event.currentTarget.querySelector('img');
-              if (!image) return;
-              const bounds = image.getBoundingClientRect();
-              const x = Math.max(0, Math.min(100, ((event.clientX - bounds.left) / bounds.width) * 100));
-              const y = Math.max(0, Math.min(100, ((event.clientY - bounds.top) / bounds.height) * 100));
-              image.style.transformOrigin = `${x}% ${y}%`;
-            }}
-            onMouseLeave={(event) => {
-              const image = event.currentTarget.querySelector('img');
-              if (image) image.style.transformOrigin = 'center center';
-            }}
-          >
-            <button type="button" aria-label="Open full size product image" onClick={() => currentImage && setIsImageLightboxOpen(true)} className="w-full cursor-zoom-in">
-            <Image
-              src={currentImage}
-              alt={product.name}
-              aspectRatio="aspect-square"
-              objectFit="object-contain"
-              className="rounded-lg w-full max-h-[620px]"
-              imgClassName="transition-transform duration-100 group-hover:scale-200"
-            />
-            </button>
-
-            {/* Left and Right navigation arrows over main photo */}
+        <div className="min-w-0 lg:col-span-5 xl:col-span-4">
+          <div role="group" aria-label="Product gallery" className="mx-auto flex w-full max-w-[480px] gap-2 sm:gap-3 lg:mx-0">
+            {/* Keep all thumbnails in a scrollable rail beside the main image. */}
             {images.length > 1 && (
-              <>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedImageIndex((prev) => (prev - 1 + images.length) % images.length);
-                  }}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[var(--store-surface)]/95 shadow-md border border-[var(--store-border)] flex items-center justify-center hover:bg-[var(--store-surface)] text-[var(--store-muted)] transition-all hover:scale-105 active:scale-95 cursor-pointer z-10"
-                  aria-label="Previous image"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedImageIndex((prev) => (prev + 1) % images.length);
-                  }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[var(--store-surface)]/95 shadow-md border border-[var(--store-border)] flex items-center justify-center hover:bg-[var(--store-surface)] text-[var(--store-muted)] transition-all hover:scale-105 active:scale-95 cursor-pointer z-10"
-                  aria-label="Next image"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </>
+              <div className="relative w-12 shrink-0 self-stretch sm:w-16">
+                <div role="group" aria-label="Product image thumbnails" className="absolute inset-0 flex flex-col gap-2 overflow-y-auto overscroll-contain">
+                {images.map((img, index) => (
+                  <button
+                    type="button"
+                    key={index}
+                    onClick={() => setSelectedImageIndex(index)}
+                    className={`w-12 h-12 sm:w-16 sm:h-16 rounded-lg overflow-hidden border-2 transition-all shrink-0 bg-[var(--store-surface)] p-1 cursor-pointer flex items-center justify-center ${
+                      selectedImageIndex === index
+                        ? 'border-[var(--store-primary)] shadow-xs ring-1 ring-[var(--store-primary)]/20'
+                        : 'border-[var(--store-border)] opacity-70 hover:opacity-100 hover:border-[var(--store-border)]'
+                    }`}
+                    aria-pressed={selectedImageIndex === index}
+                    aria-label={`Select photo ${index + 1}`}
+                  >
+                    <Image src={img.url} alt="" aspectRatio="aspect-square" className="object-contain w-full h-full" />
+                  </button>
+                ))}
+                </div>
+              </div>
             )}
+            <div className="relative aspect-square min-w-0 flex-1 overflow-hidden rounded-xl border border-[var(--store-border)] bg-[var(--store-surface)] shadow-2xs">
+              <button type="button" aria-label="Open full size product image" onClick={() => currentImage && setIsImageLightboxOpen(true)}
+                className="group/product-image h-full w-full cursor-zoom-in p-2 sm:p-3"
+                onMouseMove={(event) => {
+                  const image = event.currentTarget.querySelector('img');
+                  if (!image) return;
+                  const bounds = event.currentTarget.getBoundingClientRect();
+                  const x = Math.max(0, Math.min(100, ((event.clientX - bounds.left) / bounds.width) * 100));
+                  const y = Math.max(0, Math.min(100, ((event.clientY - bounds.top) / bounds.height) * 100));
+                  image.style.transformOrigin = `${x}% ${y}%`;
+                }}
+                onMouseLeave={(event) => {
+                  const image = event.currentTarget.querySelector('img');
+                  if (image) image.style.transformOrigin = 'center center';
+                }}
+              >
+                <Image
+                  src={currentImage}
+                  alt={product.name}
+                  objectFit="object-contain"
+                  className="h-full w-full rounded-lg"
+                  imgClassName="transition-transform duration-100 motion-safe:group-hover/product-image:scale-200"
+                />
+              </button>
+
+              {/* Left and Right navigation arrows over main photo */}
+              {images.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedImageIndex((prev) => (prev - 1 + images.length) % images.length);
+                    }}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[var(--store-surface)]/95 shadow-md border border-[var(--store-border)] flex items-center justify-center hover:bg-[var(--store-surface)] text-[var(--store-muted)] transition-all hover:scale-105 active:scale-95 cursor-pointer z-10"
+                    aria-label="Previous image"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedImageIndex((prev) => (prev + 1) % images.length);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[var(--store-surface)]/95 shadow-md border border-[var(--store-border)] flex items-center justify-center hover:bg-[var(--store-surface)] text-[var(--store-muted)] transition-all hover:scale-105 active:scale-95 cursor-pointer z-10"
+                    aria-label="Next image"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+            </div>
+
           </div>
 
           {isImageLightboxOpen && (
@@ -564,32 +589,13 @@ export const ProductDetailPage = () => {
               {images.length > 1 && <div className="absolute bottom-4 left-1/2 flex max-w-[90vw] -translate-x-1/2 gap-2 overflow-x-auto rounded-lg bg-black/40 p-2" onClick={(event) => event.stopPropagation()}>{images.map((img, index) => <button key={img.publicId || img.url || index} type="button" aria-label={`Show image ${index + 1}`} onClick={() => setSelectedImageIndex(index)} className={`h-14 w-14 shrink-0 overflow-hidden rounded border-2 bg-white ${selectedImageIndex === index ? 'border-white' : 'border-white/30 opacity-70'}`}><img src={img.url} alt="" className="h-full w-full object-contain" /></button>)}</div>}
             </div>
           )}
-
-          {/* Thumbnails Row below photo (Matching Mega Jaipur Image) */}
-          {images.length > 1 && (
-            <div className="flex gap-2.5 overflow-x-auto pb-1">
-              {images.map((img, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedImageIndex(index)}
-                  className={`w-18 h-18 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 transition-all shrink-0 bg-[var(--store-surface)] p-1 cursor-pointer flex items-center justify-center ${
-                    selectedImageIndex === index
-                      ? 'border-[var(--store-primary)] shadow-xs ring-1 ring-[var(--store-primary)]/20'
-                      : 'border-[var(--store-border)] opacity-70 hover:opacity-100 hover:border-[var(--store-border)]'
-                  }`}
-                  aria-label={`Select photo ${index + 1}`}
-                >
-                  <Image src={img.url} alt={`Thumbnail ${index}`} aspectRatio="aspect-square" className="object-contain w-full h-full" />
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* =========================================
             COLUMN 2: PRODUCT INFO, TITLE, WARRANTY & SPECS TABLE (Middle)
            ========================================= */}
-        <div className="xl:col-span-5 space-y-4">
+        <div className="grid min-w-0 gap-5 lg:col-span-7 xl:col-span-8 xl:grid-cols-[minmax(0,1fr)_minmax(260px,0.8fr)] items-start">
+        <div className="min-w-0 space-y-4">
           {/* Title Row + Action Icons + Brand Box */}
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2 flex-1">
@@ -734,7 +740,7 @@ export const ProductDetailPage = () => {
         </div>
 
         {/* Purchase card: product quantity is adjusted later in the cart. */}
-        <div className="lg:col-span-2 xl:col-span-3">
+        <div className="min-w-0">
           <div className="bg-[var(--store-surface)] rounded-2xl border border-[var(--store-border)] p-5 shadow-xs space-y-4">
             
             {/* Price & Discount Row */}
@@ -776,7 +782,7 @@ export const ProductDetailPage = () => {
             )}
 
             {/* Quantity Stepper + Add to Cart Button (Matching Screenshot) */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               {isInStock && (
                 <div className="flex items-center h-11 border border-[var(--store-border)] rounded-lg bg-[var(--store-surface)] overflow-hidden shadow-xs shrink-0">
                   <button
@@ -807,7 +813,7 @@ export const ProductDetailPage = () => {
                 type="button"
                 onClick={handleAddToCart}
                 disabled={isAdding || !product.isActive}
-                className="flex-1 h-11 px-4 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xs bg-[var(--store-primary)] hover:bg-[#66001a] text-white cursor-pointer active:scale-98"
+                className="min-w-[150px] flex-1 h-11 px-4 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xs bg-[var(--store-primary)] hover:bg-[#66001a] text-white cursor-pointer active:scale-98"
                 title={isInStock ? 'Add to Cart' : 'Out of Stock - Please send an enquiry'}
               >
                 <ShoppingCart className="w-4 h-4 shrink-0" />
@@ -829,12 +835,13 @@ export const ProductDetailPage = () => {
             </div>
           </div>
         </div>
+        </div>
       </div>
 
       {/* =========================================================================
           3. SPECIFICATIONS SECTION (On Scroll Down - Exactly Matching Given Image 2)
          ========================================================================= */}
-      <section className="space-y-4 pt-6 border-t border-[var(--store-border)]">
+      <section className="space-y-4 pt-4 border-t border-[var(--store-border)]">
         {/* Header with List Icon */}
         <div className="flex items-center gap-2.5 text-[var(--store-text)]">
           <div className="w-6 h-6 rounded bg-[var(--store-primary)]/10 flex items-center justify-center text-[var(--store-primary)]">

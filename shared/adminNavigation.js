@@ -14,6 +14,7 @@ export const ADMIN_NAV_GROUPS = [
     { label: 'Product Catalog', path: '/admin/products', icon: 'Package', keywords: 'stock inventory import positioning', children: [
       { label: 'Product Positioning', path: '/admin/products/positioning', icon: 'Layers' },
     ] },
+    { label: 'Filters', path: '/admin/filters', icon: 'Layers', keywords: 'capacity options checkbox product filters' },
     { label: 'Brand Management', path: '/admin/brands', icon: 'Tags' },
   ] },
   { label: 'Sales & Enquiries', items: [

@@ -69,8 +69,7 @@ test('real API/database product image replacement, SVG conversion, cleanup and c
     assert.equal((await Product.findById(product._id)).images.length, 1);
 
     const invalidSpec = await call(`/admin/products/${product._id}`, 'PUT', { specifications: [] });
-    assert.equal(invalidSpec.status, 400);
-    assert.equal(invalidSpec.body.details[0].path, 'specifications.Resolution');
+    assert.equal(invalidSpec.status, 200, 'Legacy filter definitions no longer require product specifications');
     const invalidImage = await call(`/admin/products/${product._id}`, 'PUT', { images: [{ url: '' }] });
     assert.equal(invalidImage.status, 400); assert.equal(invalidImage.body.details[0].path, 'images.0.url');
     const invalidUpload = await call(`/admin/products/${product._id}/images`, 'POST', form('not SVG'));

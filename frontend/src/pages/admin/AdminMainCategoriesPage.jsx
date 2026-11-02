@@ -20,7 +20,6 @@ import Pagination from '../../components/ui/Pagination';
 import { Plus, Edit2, Trash2, FolderTree, Search, Layers, Lock, RotateCcw } from 'lucide-react';
 import { slugify, cleanCategorySlug, generateUniqueCategorySlug } from '../../utils/categoryUrls';
 import CategoryIcon from '../../components/ui/CategoryIcon';
-import CategoryFilterBuilder from '../../components/admin/CategoryFilterBuilder';
 
 /**
  * Dedicated Main Category Management Page (Tier 2 Categories)
@@ -217,7 +216,6 @@ const AdminMainCategoriesPage = () => {
         description: formData.description.trim() || undefined,
         isActive: formData.isActive,
         sortOrder: Number(formData.sortOrder) || 0,
-        filterDefinitions: formData.filterDefinitions || [],
       };
 
       if (editingCategory) {
@@ -640,10 +638,6 @@ const AdminMainCategoriesPage = () => {
             />
           </FormField>
 
-          <CategoryFilterBuilder
-            value={formData.filterDefinitions || []}
-            onChange={(filterDefinitions) => setFormData({ ...formData, filterDefinitions })}
-          />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField

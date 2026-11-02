@@ -8,7 +8,7 @@ import { Category } from '../models/Category.js';
 import { Brand } from '../models/Brand.js';
 import { Product } from '../models/Product.js';
 import { prepareImageBuffer, storageService } from './storage/storage.service.js';
-import { effectiveFilterDefinitions, getPublicCategories } from './catalog.service.js';
+import { getPublicCategories } from './catalog.service.js';
 import { createProductSchema } from '../validators/product.validator.js';
 import { AppError } from '../utils/AppError.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
@@ -329,16 +329,6 @@ export const prepareProductImport = async (workbookBuffer, archiveBuffer) => {
     };
     const schema = createProductSchema.body.safeParse(payload);
     if (!schema.success) errors.push(...schema.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`));
-    if (category) {
-      const definitions = effectiveFilterDefinitions([...activeCategories, ...newCategories], category._id);
-      for (const definition of definitions) {
-        const values = specifications.filter((spec) => normalized(spec.key) === normalized(definition.key)).map((spec) => spec.value);
-        if (values.length && ['select', 'multi-select'].includes(definition.inputType)
-          && values.some((value) => !definition.options.some((option) => normalized(option) === normalized(value)))) errors.push(`${definition.label} has an invalid option.`);
-        if (definition.inputType === 'number' && values.some((value) => !Number.isFinite(Number(value)))) errors.push(`${definition.label} must be numeric.`);
-        if (definition.inputType === 'boolean' && values.some((value) => !['yes', 'no', 'true', 'false'].includes(normalized(value)))) errors.push(`${definition.label} must be Yes or No.`);
-      }
-    }
     prepared.push({ rowNumber, fields, payload, imageNames, publish: booleanValue(fields.Publish, 'Publish', errors, true), errors });
   }
   return { rows: prepared, images, categories, newCategories, newBrands };

@@ -1,5 +1,6 @@
+import { readProductFilters } from '../../../../shared/productFiltering.js';
 import CategoryFilters from '../../components/products/CategoryFilters';
-import { CATEGORY_FILTER_KEYS, readCategorySelections, readSpecificationSelections, splitFilterValues, specificationFilterValues } from '../../../../shared/categoryFiltering.js';
+import { CATEGORY_FILTER_KEYS, readCategorySelections, splitFilterValues } from '../../../../shared/categoryFiltering.js';
 import React, {
   useState,
   useEffect,
@@ -44,23 +45,11 @@ import {
   Filter,
   ChevronRight,
   ChevronDown,
-  LayoutGrid,
   SlidersHorizontal,
-  PackageCheck,
   Layers,
-  Cpu,
   Check,
   ArrowUpDown,
 } from "lucide-react";
-
-// Descriptive product details stay on product pages rather than in the sidebar.
-const HIDDEN_SPECIFICATION_FILTERS = new Set([
-  "storage", "applications", "voice assistant", "lens & zoom", "material",
-  "product type", "pan & tilt", "audio", "protection", "smart features",
-  "storage support",
-]);
-const isHiddenSpecificationFilter = (name) =>
-  HIDDEN_SPECIFICATION_FILTERS.has(String(name || "").trim().toLowerCase());
 
 const SORT_OPTIONS = [
   { value: "default", label: "Default" },
@@ -68,13 +57,6 @@ const SORT_OPTIONS = [
   { value: "stock_updated", label: "Stock Updated" },
   { value: "price_asc", label: "Price (Low > High)" },
   { value: "price_desc", label: "Price (High > Low)" },
-];
-
-const DEFAULT_AVAILABILITY = [
-  "in-stock",
-  "low-stock",
-  "on-order",
-  "out-of-stock",
 ];
 
 export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => {
@@ -99,10 +81,8 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
   // Local state
   const searchTerm = initialSearch;
 
-  const specsParam = searchParams.get("specs") || "";
-  const availabilityParam = searchParams.get("availability");
-  const selectedSpecs = useMemo(() => readSpecificationSelections(specsParam), [specsParam]);
-  const selectedAvailability = useMemo(() => availabilityParam === null ? [...DEFAULT_AVAILABILITY] : splitFilterValues(availabilityParam).filter(value => DEFAULT_AVAILABILITY.includes(value)), [availabilityParam]);
+  const customFiltersParam = searchParams.get("customFilters") || "";
+  const selectedCustomFilters = useMemo(() => readProductFilters(customFiltersParam), [customFiltersParam]);
   const [sortOption, setSortOption] = useState("default");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 28;
@@ -110,10 +90,8 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
 
   // Accordion toggle states in sidebar
   const [openSections, setOpenSections] = useState({
-    categories: true,
     brands: true,
-    availability: true,
-    specs: true,
+
   });
 
   // Data states
@@ -183,7 +161,11 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
   const selectedCategoryId = targetCategorySlug
     ? routeCategory?._id || ""
     : queryCategory?._id || initialCategory;
-  const categorySelections = useMemo(() => readCategorySelections(searchParams, categories, routeCategory), [searchParams, categories, routeCategory]);
+  const categorySelections = useMemo(() => {
+    const selections = readCategorySelections(searchParams, categories, routeCategory);
+    if (!routeCategory && !initialCategory) selections.subCategory = [];
+    return selections;
+  }, [searchParams, categories, routeCategory, initialCategory]);
   const routeBrand = brandSlug
     ? resolvedRouteBrand || (facets.brands || []).find(brand => cleanBrandSlug(brand.name) === cleanBrandSlug(brandSlug))?.name?.toUpperCase() || brandSlug.replace(/-/g, " ").toUpperCase()
     : "";
@@ -253,13 +235,12 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
         if (initialCategory && !splitFilterValues(initialCategory).every(value => categories.some(category => String(category._id) === value || category.slug === value))) query.category = initialCategory;
         if (brandSlug && !initialBrand) query.brandSlug = brandSlug;
         else if (initialBrand) query.brand = initialBrand;
-        if (selectedAvailability.length < DEFAULT_AVAILABILITY.length) query.availability = selectedAvailability.join(",") || "none";
+
         if (lowStockOnly) {
           query.lowStock = true;
           query.availability = "low-stock";
         }
-        if (Object.values(selectedSpecs).some((values) => values.length))
-          query.specs = JSON.stringify(selectedSpecs);
+        if (Object.keys(selectedCustomFilters).length) query.customFilters = JSON.stringify(selectedCustomFilters);
         // Facets depend on the filters, not the page. When only the page (or a
         // user-driven refetch) changes, reuse the facets already on screen.
         const { page: _page, sortBy: _sortBy, sortOrder: _sortOrder, ...facetQuery } = query;
@@ -328,8 +309,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
       initialCategory,
       initialBrand,
       brandSlug,
-      selectedAvailability,
-      selectedSpecs,
+      selectedCustomFilters,
       categoriesLoaded,
       categoryError,
       routeCategory,
@@ -346,11 +326,9 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
   const isAllProductsRoute = lowStockOnly || trendingOnly || location.pathname.startsWith("/products");
 
   const availableBrands = useMemo(() => (facets.brands || []).filter(brand => brand.count > 0), [facets.brands]);
-  const specsToRender = useMemo(() => (facets.specs || [])
-    .filter(spec => !isHiddenSpecificationFilter(spec.key) && !isHiddenSpecificationFilter(spec.label))
-    .map(spec => ({ ...spec, values: spec.values.filter(value => value.count > 0) }))
-    .filter(spec => spec.values.length > 0), [facets.specs]);
-  const availabilityFacets = (facets.availability || []).filter(item => item.count > 0);
+  const customFilters = (facets.customFilters || []).map(filter => ({ ...filter,
+    options: filter.options.filter(option => option.count > 0 || (selectedCustomFilters[filter._id] || []).includes(option._id)),
+  })).filter(filter => filter.options.length > 0);
   // Filtering and pagination are performed together by MongoDB.
   const displayedProducts = products;
 
@@ -444,21 +422,16 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
     else setSearchParams(next);
   };
 
-  const handleToggleSpec = (key, value) => {
+  const handleCustomFilter = (filter, optionId) => {
     const next = new URLSearchParams(searchParams);
-    const specs = { ...selectedSpecs };
-    const current = specificationFilterValues(specs, key);
-    for (const name of Object.keys(specs)) if (name.toLowerCase() === key.toLowerCase()) delete specs[name];
-    const values = current.includes(value) ? current.filter(item => item !== value) : [...current, value];
-    if (values.length) specs[key] = values; else delete specs[key];
-    if (Object.keys(specs).length) next.set('specs', JSON.stringify(specs)); else next.delete('specs');
-    writeFilters(next);
-  };
-  const handleToggleAvailability = status => {
-    const next = new URLSearchParams(searchParams);
-    const values = selectedAvailability.includes(status) ? selectedAvailability.filter(item => item !== status) : [...selectedAvailability, status];
-    if (values.length === DEFAULT_AVAILABILITY.length) next.delete('availability');
-    else next.set('availability', values.join(',') || 'none');
+    const selections = { ...selectedCustomFilters };
+    const current = selections[filter._id] || [];
+    const values = !optionId ? [] : filter.type === 'checkbox'
+      ? current.includes(optionId) ? current.filter(id => id !== optionId) : [...current, optionId]
+      : current.includes(optionId) ? [] : [optionId];
+    if (values.length) selections[filter._id] = values; else delete selections[filter._id];
+    if (Object.keys(selections).length) next.set('customFilters', JSON.stringify(selections)); else next.delete('customFilters');
+    next.delete('specs'); next.delete('availability'); next.delete('minPrice'); next.delete('maxPrice'); next.delete('inStock');
     writeFilters(next);
   };
   const handleResetFilters = () => {
@@ -538,7 +511,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
 
 
   // Sidebar Filter Content (used in both desktop sidebar & mobile drawer)
-  const renderSidebarFilters = () => (
+  const renderSidebarFilters = (instance = 'desktop') => (
     <div className="space-y-4">
       {/* 1. Header with Filters title & Reset All */}
       <div className="flex items-center justify-between pb-3 border-b border-[var(--store-border)]">
@@ -553,7 +526,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
           Reset
         </button>
       </div>
-      <p className="text-xs text-[var(--store-muted)]">Choose multiple options in a group to include any of them. Combine groups to narrow your search.</p>
+      <p className="text-xs text-[var(--store-muted)]">Checkbox filters allow multiple choices. Combine filter groups to narrow your results.</p>
 
       {/* Brands appear first; only show options that have products. */}
       {availableBrands.length > 0 && (
@@ -613,160 +586,21 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
           </div>
         )}
 
-      {/* Categories */}
-      <div className="border-b border-[var(--store-border)] pb-3">
-        <button
-          type="button"
-          onClick={() =>
-            setOpenSections((prev) => ({
-              ...prev,
-              categories: !prev.categories,
-            }))
-          }
-          className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-[var(--store-text)] py-1.5 hover:text-primary transition-colors select-none">
-          <div className="flex items-center gap-2">
-            <LayoutGrid className="w-4 h-4 text-primary" />
-            <span>Categories</span>
-          </div>
-          <ChevronDown
-            className={`w-4 h-4 text-[var(--store-muted)] transition-transform duration-200 ${
-              openSections.categories ? "rotate-180" : ""
-            }`}
-          />
-        </button>
+      <CategoryFilters categories={categories} facets={facets.categories} selections={categorySelections} onToggle={handleToggleCategory} onClear={() => handleToggleCategory(null)} />
 
-        {openSections.categories && (
-          <div className="mt-2.5 space-y-1.5">
-            <CategoryFilters categories={categories} facets={facets.categories} selections={categorySelections} onToggle={handleToggleCategory} onClear={() => handleToggleCategory(null)} />
-          </div>
-        )}
-      </div>
+      {customFilters.map(filter => <fieldset key={filter._id} className="space-y-2 border-b border-[var(--store-border)] pb-3">
+        <legend className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--store-text)]">{filter.name}</legend>
+        {filter.type === 'select' ? <select aria-label={filter.name} value={(selectedCustomFilters[filter._id] || [])[0] || ''}
+          onChange={event => handleCustomFilter(filter, event.target.value)} className="w-full rounded-lg border border-[var(--store-border)] bg-[var(--store-surface)] p-2 text-xs">
+          <option value="">All {filter.name}</option>
+          {filter.options.map(option => <option key={option._id} value={option._id}>{option.label} ({option.count})</option>)}
+        </select> : <div className="space-y-2">{filter.options.map(option => <label key={option._id} className="flex cursor-pointer items-center justify-between gap-2 text-xs text-[var(--store-muted)]">
+          <span className="flex items-center gap-2"><input type={filter.type === 'radio' ? 'radio' : 'checkbox'} name={`filter-${filter._id}-${instance}`} value={option._id} aria-label={`${filter.name}: ${option.label}`} checked={(selectedCustomFilters[filter._id] || []).includes(option._id)} onChange={() => handleCustomFilter(filter, option._id)} className="h-4 w-4 accent-[var(--store-primary)]" />{option.label}</span>
+          <span>{option.count}</span>
+        </label>)}</div>}
+        {(selectedCustomFilters[filter._id] || []).length > 0 && <button type="button" onClick={() => handleCustomFilter(filter, '')} className="text-xs font-semibold text-[var(--store-primary)]">Clear {filter.name}</button>}
+      </fieldset>)}
 
-      {/* Omit specification groups without any populated values. */}
-      {specsToRender.length > 0 &&
-        specsToRender.map((spec) => (
-          <div key={spec.key} className="border-b border-[var(--store-border)] pb-3">
-            <button
-              type="button"
-              onClick={() =>
-                setOpenSections((prev) => ({
-                  ...prev,
-                  [`spec_${spec.key}`]:
-                    prev[`spec_${spec.key}`] === false ? true : false,
-                }))
-              }
-              className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-[var(--store-text)] py-1.5 hover:text-primary transition-colors select-none">
-              <div className="flex items-center gap-2">
-                <Cpu className="w-4 h-4 text-primary" />
-                <span className="truncate">
-                  {spec.label || spec.key}
-                  {spec.unit ? ` (${spec.unit})` : ""}
-                </span>
-              </div>
-              <ChevronDown
-                className={`w-4 h-4 text-[var(--store-muted)] transition-transform duration-200 ${
-                  openSections[`spec_${spec.key}`] !== false ? "rotate-180" : ""
-                }`}
-              />
-            </button>
-
-            {openSections[`spec_${spec.key}`] !== false && (
-              <div className="mt-2.5 space-y-1.5">
-                {spec.values.map(({ val, count }) => {
-                  const isChecked = specificationFilterValues(selectedSpecs, spec.key).includes(
-                    val,
-                  );
-                  return (
-                    <label
-                      key={val}
-                      className="flex items-center justify-between text-xs text-[var(--store-muted)] hover:text-[var(--store-text)] cursor-pointer select-none py-0.5 group">
-                      <div className="flex items-center gap-2 truncate">
-                        <input
-                          type="checkbox"
-                          aria-label={`${spec.label || spec.key}: ${val}`}
-                          checked={isChecked}
-                          onChange={() => handleToggleSpec(spec.key, val)}
-                          className="w-4 h-4 rounded border-[var(--store-border)] text-primary focus:ring-primary accent-[var(--store-primary)] cursor-pointer"
-                        />
-                        <span
-                          className={`truncate ${
-                            isChecked
-                              ? "font-bold text-[var(--store-text)]"
-                              : "group-hover:text-primary"
-                          }`}>
-                          {val}
-                        </span>
-                      </div>
-                      <span className="text-[11px] text-[var(--store-muted)] font-medium ml-2 shrink-0">
-                        {count}
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        ))}
-
-      {/* 4. Availability (last filter: as is) */}
-      {!lowStockOnly && availabilityFacets.length > 0 && <div className="border-b border-[var(--store-border)] pb-3">
-        <button
-          type="button"
-          onClick={() =>
-            setOpenSections((prev) => ({
-              ...prev,
-              availability: !prev.availability,
-            }))
-          }
-          className="w-full flex items-center justify-between font-bold text-xs uppercase tracking-wider text-[var(--store-text)] py-1.5 hover:text-primary transition-colors select-none">
-          <div className="flex items-center gap-2">
-            <PackageCheck className="w-4 h-4 text-primary" />
-            <span>Availability</span>
-          </div>
-          <ChevronDown
-            className={`w-4 h-4 text-[var(--store-muted)] transition-transform duration-200 ${openSections.availability ? "rotate-180" : ""}`}
-          />
-        </button>
-
-        {openSections.availability && (
-          <div className="mt-2.5 space-y-1.5">
-            {[
-              ["in-stock", "In Stock"],
-              ["low-stock", "Low Stock"],
-              ["on-order", "On Order"],
-              ["out-of-stock", "Out of Stock"],
-            ].map(([status, label]) => {
-              const checked = selectedAvailability.includes(status);
-              const count = availabilityFacets
-                .filter((item) => item.status === status)
-                .reduce((total, item) => total + (item.count || 0), 0);
-              if (count <= 0) return null;
-              return (
-                <label
-                  key={status}
-                  className="flex items-center justify-between text-xs text-[var(--store-muted)] hover:text-[var(--store-text)] cursor-pointer select-none py-0.5 group">
-                  <span className="flex items-center gap-2 truncate">
-                    <input
-                      type="checkbox"
-                      aria-label={`Availability: ${label}`}
-                      checked={checked}
-                      onChange={() => handleToggleAvailability(status)}
-                      className="w-4 h-4 rounded border-[var(--store-border)] text-primary focus:ring-primary accent-[var(--store-primary)] cursor-pointer"
-                    />
-                    <span
-                      className={`truncate ${checked ? "font-bold text-[var(--store-text)]" : "group-hover:text-primary"}`}>
-                      {label}
-                    </span>
-                  </span>
-                  <span className="text-[11px] text-[var(--store-muted)] font-medium ml-2 shrink-0">
-                    {count}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-        )}
-      </div>}
     </div>
   );
 
@@ -1003,7 +837,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
         title="Filter Products"
         className="!max-w-[min(90vw,380px)]"
         contentClassName="!p-3">
-        <div>{renderSidebarFilters()}</div>
+        <div>{renderSidebarFilters('mobile')}</div>
       </Drawer>
     </div>
   );

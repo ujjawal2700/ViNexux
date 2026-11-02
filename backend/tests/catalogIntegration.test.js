@@ -95,22 +95,16 @@ try {
   check((await get(`/categories/${hiddenChild._id}`)).status === 404, 'Inactive ancestor hides category detail');
   check((await get(`/products/${first._id}`)).data.stockStatus === 'out-of-stock', 'Product stock status reflects database');
 
-  await assert.rejects(
-    () => productService.createProduct({
-      sku: 'INVALID-RAM', name: 'Invalid RAM option', categoryId: sub._id,
-      standardPrice: 10, dealerPrice: 5, specifications: [{ key: 'RAM', value: '32GB' }],
-    }),
-    /option not configured/
-  );
-  checks++;
-  await assert.rejects(
-    () => productService.createProduct({
-      sku: 'MISSING-RAM', name: 'Missing required RAM', categoryId: sub._id,
-      standardPrice: 10, dealerPrice: 5, specifications: [],
-    }),
-    /required for this category/
-  );
-  checks++;
+  const freeSpecification = await productService.createProduct({
+    sku: 'FREE-RAM', modelNumber: 'FREE-RAM', name: 'Ordinary technical specification', categoryId: sub._id,
+    brandId: acer._id, isActive: false, standardPrice: 10, dealerPrice: 5, specifications: [{ key: 'RAM', value: '32GB' }],
+  });
+  check(freeSpecification.specifications.some(spec => spec.key === 'RAM' && spec.value === '32GB'), 'Legacy category options no longer restrict ordinary product specifications');
+  const missingSpecification = await productService.createProduct({
+    sku: 'MISSING-RAM', modelNumber: 'MISSING-RAM', name: 'No required category filter fields', categoryId: sub._id,
+    brandId: acer._id, isActive: false, standardPrice: 10, dealerPrice: 5, specifications: [],
+  });
+  check(!missingSpecification.specifications.some(spec => spec.key === 'RAM'), 'Legacy required filter fields are no longer required in the product form');
 
   const dealer = await User.create({ fullName: 'Test dealer', email: 'dealer@example.test', phone: '9876543210', role: 'dealer', accountStatus: 'active' });
   const profile = await DealerProfile.create({ userId: dealer._id, companyName: 'Test company', status: 'approved' });

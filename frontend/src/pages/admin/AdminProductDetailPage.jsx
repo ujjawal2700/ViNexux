@@ -1,3 +1,4 @@
+import { editableProductIdentifier } from '../../../../shared/productDrafts.js';
 import { isWarrantyLink } from '../../../../shared/productPresentation.js';
 import SpecificationTemplates from '../../components/admin/SpecificationTemplates';
 import { isInventorySpecification } from '../../../../shared/productSpecifications.js';
@@ -23,9 +24,9 @@ import FormError from "../../components/ui/FormError";
 import Toast from "../../components/ui/Toast";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import ProductPriceHistory from "../../components/admin/ProductPriceHistory";
+import ProductImageViewer from "../../components/products/ProductImageViewer";
 import { SkeletonCard } from "../../components/ui/Skeleton";
 import ErrorState from "../../components/ui/ErrorState";
-import { getEffectiveFilterDefinitions } from "../../utils/categoryFilters";
 import {
   ArrowLeft,
   Save,
@@ -118,6 +119,7 @@ const AdminProductDetailPage = () => {
   const [modelNumber, setModelNumber] = useState("");
   const [model, setModel] = useState("");
   const [stockQuantity, setStockQuantity] = useState("0");
+  const [isNewArrival, setIsNewArrival] = useState(false);
   const [isTrending, setIsTrending] = useState(false);
   const [isLowStock, setIsLowStock] = useState(false);
   const [variant, setVariant] = useState("");
@@ -137,7 +139,7 @@ const AdminProductDetailPage = () => {
   const [selectedSubIds, setSelectedSubIds] = useState([]);
 
   // Status & Visibility
-  const [status, setStatus] = useState("published"); // 'published' | 'draft'
+  const [status, setStatus] = useState("draft"); // 'published' | 'draft'
 
   // Specifications
   const [specifications, setSpecifications] = useState([]);
@@ -157,6 +159,7 @@ const AdminProductDetailPage = () => {
   const originalFieldsRef = useRef({});
   const uploadedGalleryIdsRef = useRef(new Set());
   const [imageDeleteTarget, setImageDeleteTarget] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [imageUploading, setImageUploading] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
@@ -203,57 +206,8 @@ const AdminProductDetailPage = () => {
 
   const selectedEffectiveCategoryId =
     selectedSubIds[0] || selectedMainIds[0] || selectedHeaderId;
-  const categoryFilterDefinitions = useMemo(() => {
-    const allSelectedIds = [selectedHeaderId, ...selectedMainIds, ...selectedSubIds].filter(Boolean);
-    const seenKeys = new Set();
-    const merged = [];
-    allSelectedIds.forEach((catId) => {
-      const defs = getEffectiveFilterDefinitions(categoriesList, catId);
-      defs.forEach((d) => {
-        const k = d.key.toLowerCase();
-        if (!seenKeys.has(k)) {
-          seenKeys.add(k);
-          merged.push(d);
-        }
-      });
-    });
-    return merged;
-  }, [categoriesList, selectedHeaderId, selectedMainIds, selectedSubIds]);
-  const configuredFilterKeys = useMemo(
-    () =>
-      new Set(
-        categoryFilterDefinitions.map((definition) =>
-          definition.key.toLowerCase(),
-        ),
-      ),
-    [categoryFilterDefinitions],
-  );
-  const manualSpecifications = useMemo(
-    () =>
-      specifications
-        .map((spec, index) => ({ spec, index }))
-        .filter(
-          ({ spec }) => !configuredFilterKeys.has(spec.key.toLowerCase()),
-        ),
-    [specifications, configuredFilterKeys],
-  );
-
-  const getCategorySpecValues = (key) =>
-    specifications
-      .filter((spec) => spec.key.toLowerCase() === key.toLowerCase())
-      .map((spec) => spec.value);
-
-  const setCategorySpecValues = (definition, values) => {
-    const cleanValues = values
-      .map((value) => String(value).trim())
-      .filter(Boolean);
-    setSpecifications(previous => {
-      const index = previous.findIndex(spec => spec.key.toLowerCase() === definition.key.toLowerCase());
-      const next = previous.filter(spec => spec.key.toLowerCase() !== definition.key.toLowerCase());
-      next.splice(index < 0 ? next.length : index, 0, ...cleanValues.map(value => ({ key: definition.key, value })));
-      return next;
-    });
-  };
+  // Specifications describe the product; storefront filter assignments live in Admin → Filters.
+  const manualSpecifications = useMemo(() => specifications.map((spec, index) => ({ spec, index })), [specifications]);
 
   // Load all categories and brands
   const loadCategories = useCallback(async () => {
@@ -286,9 +240,9 @@ const AdminProductDetailPage = () => {
       setProduct(prod);
 
       setName(prod.name || "");
-      setSku(prod.sku || "");
+      setSku(editableProductIdentifier(prod.sku));
       setDescription(prod.description || "");
-      setModelNumber(prod.modelNumber || "");
+      setModelNumber(editableProductIdentifier(prod.modelNumber));
       setModel(prod.model || "");
       setStockQuantity(prod.stockQuantity !== undefined ? String(prod.stockQuantity) : "0");
       setVariant(prod.variant || "");
@@ -304,14 +258,15 @@ const AdminProductDetailPage = () => {
       setDealerPrice(
         prod.dealerPrice !== undefined ? String(prod.dealerPrice) : "",
       );
+      setIsNewArrival(Boolean(prod.isNewArrival));
       setIsTrending(Boolean(prod.isTrending));
       setIsLowStock(Boolean(prod.isLowStock));
       setStatus(prod.isActive !== false ? "published" : "draft");
       setImagesList(prod.images || []);
       uploadedGalleryIdsRef.current = new Set();
       originalFieldsRef.current = {
-        name: prod.name || "", sku: prod.sku || "", description: prod.description || "",
-        modelNumber: prod.modelNumber || "", model: prod.model || "",
+        name: prod.name || "", sku: editableProductIdentifier(prod.sku), description: prod.description || "",
+        modelNumber: editableProductIdentifier(prod.modelNumber), model: prod.model || "",
         stockQuantity: prod.stockQuantity !== undefined ? String(prod.stockQuantity) : "0",
         warrantyType: prod.warrantyType || "text",
         variant: prod.variant || "", hsnCode: getProductHsnCode(prod),
@@ -319,7 +274,7 @@ const AdminProductDetailPage = () => {
         productUrl: prod.productUrl || "", brandId: String(prod.brandId?._id || prod.brandId || ""),
         standardPrice: prod.standardPrice !== undefined ? String(prod.standardPrice) : "",
         dealerPrice: prod.dealerPrice !== undefined ? String(prod.dealerPrice) : "",
-        isTrending: Boolean(prod.isTrending), isLowStock: Boolean(prod.isLowStock), isActive: prod.isActive !== false,
+        isNewArrival: Boolean(prod.isNewArrival), isTrending: Boolean(prod.isTrending), isLowStock: Boolean(prod.isLowStock), isActive: prod.isActive !== false,
         categoryId: "", categoryIds: [], specifications: [],
         additionalDetails: (prod.additionalDetails || []).map(({ key, value }) => ({ key, value })),
       };
@@ -327,7 +282,7 @@ const AdminProductDetailPage = () => {
 
       // Extract legitimate specifications only (ignoring legacy dummy fields)
       if (prod.specifications && Array.isArray(prod.specifications)) {
-        const legitimateSpecs = prod.specifications.filter(sp => sp.key && !isInventorySpecification(sp.key));
+        const legitimateSpecs = prod.specifications.filter(sp => (prod.isActive === false || sp.key) && !isInventorySpecification(sp.key));
         setSpecifications(legitimateSpecs);
         originalFieldsRef.current.specifications = legitimateSpecs.map(({ key, value }) => ({ key, value }));
       }
@@ -713,7 +668,9 @@ const AdminProductDetailPage = () => {
   };
 
   // --- SAVE & PUBLISH HANDLER ---
-  const handleSaveAndPublish = async () => {
+  const handleSaveAndPublish = async (targetStatus = status) => {
+    const savingDraft = targetStatus === "draft";
+    const publishingDraft = !savingDraft && product?.isActive === false;
     if (formSubmitting) return;
     setFormError("");
     setFieldErrors({});
@@ -721,7 +678,7 @@ const AdminProductDetailPage = () => {
     const currentFields = {
       name, sku, description, modelNumber, model, stockQuantity, variant, hsnCode, warranty, warrantyType, productUrl,
       additionalDetails,
-      brandId: selectedBrandId, standardPrice, dealerPrice, isTrending, isLowStock, isActive: status === "published",
+      brandId: selectedBrandId, standardPrice, dealerPrice, isNewArrival, isTrending, isLowStock, isActive: !savingDraft,
       categoryId: selectedSubIds[0] || selectedMainIds[0] || selectedHeaderId,
       categoryIds: [selectedHeaderId, ...selectedMainIds, ...selectedSubIds].filter(Boolean),
       specifications: specifications.map(({ key, value }) => ({ key, value })),
@@ -729,7 +686,7 @@ const AdminProductDetailPage = () => {
     const changed = new Set(Object.keys(currentFields).filter(key =>
       JSON.stringify(currentFields[key]) !== JSON.stringify(originalFieldsRef.current[key])
     ));
-    const needs = key => isCreateMode || changed.has(key);
+    const needs = key => !savingDraft && (isCreateMode || publishingDraft || changed.has(key));
     const gallery = isCreateMode ? stagedImages : imagesList;
     const galleryChanged = isCreateMode || gallery.some(img => img.file)
       || JSON.stringify(gallery) !== JSON.stringify(product?.images || []);
@@ -845,7 +802,7 @@ const AdminProductDetailPage = () => {
     const totalImagesCount = isCreateMode
       ? imagesList.length + stagedImages.length
       : imagesList.length;
-    if (status === "published" && totalImagesCount === 0 && (isCreateMode || galleryChanged || needs("isActive"))) {
+    if (!savingDraft && totalImagesCount === 0 && (isCreateMode || galleryChanged || needs("isActive"))) {
       scrollToAndHighlightField(
         "images",
         "variants",
@@ -855,7 +812,7 @@ const AdminProductDetailPage = () => {
     }
 
     // 3. Validate Category Hierarchy
-    if (isCreateMode && !selectedHeaderId) {
+    if (!savingDraft && (isCreateMode || publishingDraft) && !selectedHeaderId) {
       scrollToAndHighlightField(
         "headerCategory",
         "groups",
@@ -868,25 +825,10 @@ const AdminProductDetailPage = () => {
       const invalidIndex = specifications.findIndex(spec => !String(spec.key ?? "").trim() || !String(spec.value ?? "").trim() || String(spec.key).trim().length > 100 || String(spec.value).trim().length > 2000);
       if (invalidIndex !== -1) {
         const spec = specifications[invalidIndex];
-        const field = configuredFilterKeys.has(spec.key.toLowerCase()) ? `spec-${spec.key}` : `spec-row-${invalidIndex}`;
+        const field = `spec-row-${invalidIndex}`;
         scrollToAndHighlightField(field, "specifications", "Enter a specification name (up to 100 characters) and value (up to 2000 characters), or remove the row.");
         return;
       }
-    }
-
-    // 4. Validate Category Required Specifications
-    const missingFilter = categoryFilterDefinitions.find(
-      (definition) =>
-        definition.isRequired &&
-        getCategorySpecValues(definition.key).length === 0,
-    );
-    if (missingFilter && (needs("specifications") || needs("categoryId"))) {
-      scrollToAndHighlightField(
-        `spec-${missingFilter.key}`,
-        "specifications",
-        `Please enter ${missingFilter.label || missingFilter.key} (Required for this category).`
-      );
-      return;
     }
 
     setFormSubmitting(true);
@@ -897,7 +839,7 @@ const AdminProductDetailPage = () => {
           key: String(s.key || "").trim(),
           value: String(s.value || "").trim(),
         }))
-        .filter((s) => s.key && s.value);
+        .filter((s) => savingDraft || (s.key && s.value));
 
       const allCategoryIds = [
         selectedHeaderId,
@@ -914,6 +856,7 @@ const AdminProductDetailPage = () => {
         name: name.trim(),
         modelNumber: modelNumber.trim(),
         model: model.trim() || "Standard Model",
+        isNewArrival,
         isTrending,
         isLowStock,
         stockQuantity: Number(stockQuantity) >= 0 ? Number(stockQuantity) : 0,
@@ -926,11 +869,11 @@ const AdminProductDetailPage = () => {
         sku: sku.trim().toUpperCase(),
         categoryId: primaryCategoryId || null,
         categoryIds: allCategoryIds,
-        brandId: selectedBrandId || undefined,
+        brandId: selectedBrandId || null,
         description: description.trim(),
         standardPrice: sPrice,
         dealerPrice: dPrice,
-        isActive: isCreateMode ? false : status === "published",
+        isActive: isCreateMode ? false : !savingDraft,
         specifications: allSpecs,
         images: imagesList.map((img, i) => ({
           url: img.url,
@@ -974,7 +917,7 @@ const AdminProductDetailPage = () => {
       }
       // Existing products receive only intentional edits. Saving an image must
       // not reset stock, visibility, categories or legacy required fields.
-      const update = isCreateMode ? { ...payload, isActive: status === "published" }
+      const update = isCreateMode ? { ...payload, isActive: !savingDraft }
         : Object.fromEntries(Object.entries(payload).filter(([key]) => changed.has(key)));
       if (changed.has("categoryId") || changed.has("categoryIds")) {
         update.categoryId = payload.categoryId;
@@ -987,9 +930,11 @@ const AdminProductDetailPage = () => {
           ...uploadedGalleryIdsRef.current,
         ])];
       }
+      if (savingDraft) update.isActive = false;
       await adminService.updateProduct(productId, update);
+      setStatus(targetStatus);
       setToast({
-        message: `Product ${isCreateMode ? "created" : "updated"} ${status === "published" ? "and published" : "as a draft"} successfully!`,
+        message: `Product ${isCreateMode ? "created" : "updated"} ${savingDraft ? "as a draft" : "and published"} successfully!`,
         type: "success",
       });
       if (isCreateMode) {
@@ -1024,8 +969,7 @@ const AdminProductDetailPage = () => {
         if (path.startsWith("specifications.")) {
           const key = String(item.path).slice("specifications.".length);
           const index = Number(key.split(".")[0]);
-          const definition = categoryFilterDefinitions.find(def => def.key.toLowerCase() === key.toLowerCase());
-          const field = definition ? `spec-${definition.key}` : Number.isInteger(index) ? `spec-row-${index}` : "specifications";
+          const field = Number.isInteger(index) ? `spec-row-${index}` : "specifications";
           scrollToAndHighlightField(field, "specifications", item.message);
           mapped = true;
           break;
@@ -1204,7 +1148,7 @@ const AdminProductDetailPage = () => {
               )}
             </h1>
             <p className="text-[11px] text-gray-500 font-medium">
-              Configure product information card-by-card, then Save & Publish
+              Save your progress as a draft, or complete the details to publish
             </p>
           </div>
         </div>
@@ -1218,14 +1162,15 @@ const AdminProductDetailPage = () => {
             className="border-gray-300 text-gray-700 hover:bg-gray-100 font-semibold px-4 text-xs h-10">
             Cancel
           </Button>
+          <Button type="button" variant="outline" onClick={() => handleSaveAndPublish("draft")} disabled={formSubmitting} className="font-semibold text-xs h-10">Save Draft</Button>
           <Button
             type="button"
             variant="primary"
-            onClick={handleSaveAndPublish}
+            onClick={() => handleSaveAndPublish("published")}
             isLoading={formSubmitting}
             leftIcon={<Save className="w-4 h-4" />}
             className="bg-[#800020] hover:bg-[#68001a] text-white font-bold px-6 text-xs h-10 shadow-sm">
-            {status === "published" ? "Save & Publish" : "Save Draft"}
+            Save & Publish
           </Button>
         </div>
       </div>
@@ -1291,14 +1236,7 @@ const AdminProductDetailPage = () => {
               <label className="text-[11px] font-black uppercase tracking-wider text-[#800020] block mb-2">
                 Status
               </label>
-              <Select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                options={[
-                  { value: 'published', label: 'PUBLISHED' },
-                  { value: 'draft', label: 'DRAFT / INACTIVE' },
-                ]}
-              />
+              <p className="text-sm font-semibold text-gray-700">{isCreateMode ? "UNSAVED DRAFT" : status === "published" ? "PUBLISHED" : "DRAFT / INACTIVE"}</p>
               <p className="text-[10px] text-gray-500 mt-1.5">
                 {status === "published"
                   ? "Active in catalog and visible for order inquiries"
@@ -1550,6 +1488,11 @@ const AdminProductDetailPage = () => {
                 <span><span className="font-semibold">Trending product</span><span className="mt-0.5 block text-xs text-muted-foreground">Show this product in the storefront Trending filter.</span></span>
               </label>
 
+              <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 text-sm">
+                <input type="checkbox" checked={isNewArrival} onChange={e => setIsNewArrival(e.target.checked)} className="h-4 w-4 accent-primary" />
+                <span><span className="font-semibold">New arrival</span><span className="mt-0.5 block text-xs text-muted-foreground">Show this published product in the storefront New Arrivals carousel.</span></span>
+              </label>
+
               <label className="flex items-center gap-3 rounded-xl border border-border p-4 cursor-pointer">
                 <input type="checkbox" checked={isLowStock} onChange={event => setIsLowStock(event.target.checked)} className="h-4 w-4 accent-primary" />
                 <span className="text-sm font-semibold">Mark as low stock<span className="block text-xs font-normal text-muted-foreground">Show in Low Stock. Customers can request up to 5 units, subject to available stock.</span></span>
@@ -1656,7 +1599,7 @@ const AdminProductDetailPage = () => {
                       </span>
                     </h4>
                     <p className="text-[11px] text-gray-500">
-                      Drag and drop to rearrange photo display order. The 1st front image is automatically designated as the Primary image.
+                      Click an image to preview full screen. Drag and drop to rearrange photo display order. The 1st front image is automatically designated as the Primary image.
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1724,11 +1667,19 @@ const AdminProductDetailPage = () => {
                             ? "border-2 border-amber-400 bg-amber-50/20 shadow-xs"
                             : "border border-gray-200 bg-gray-50 hover:border-gray-300"
                         }`}>
-                        <img
-                          src={src}
-                          alt={img.altText || `Product Image ${idx + 1}`}
-                          className="w-full h-full object-cover pointer-events-none"
-                        />
+                        <button type="button" aria-label={`Preview product image ${idx + 1}`} disabled={formSubmitting}
+                          className="h-full w-full cursor-zoom-in focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
+                          onClick={() => setImagePreview({
+                            index: idx,
+                            images: (isCreateMode ? stagedImages : imagesList).map(image => ({ ...image, url: image.previewUrl || image.url })),
+                          })}>
+                          <img
+                            src={src}
+                            alt={img.altText || `Product Image ${idx + 1}`}
+                            draggable={false}
+                            className="w-full h-full object-cover pointer-events-none"
+                          />
+                        </button>
 
                         {/* Primary Badge or Position Number */}
                         {isPrimary ? (
@@ -2199,130 +2150,13 @@ const AdminProductDetailPage = () => {
                   Product Specifications
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Configure technical hardware specifications and
-                  category-specific attributes.
+                  Add product information here. Configure storefront filters separately in Admin → Filters.
                 </p>
                 {fieldErrors.specifications && <FormError message={fieldErrors.specifications} />}
               </div>
 
               <SpecificationTemplates specifications={specifications} onChange={setSpecifications} disabled={formSubmitting} />
               <SpecificationOrderEditor specifications={specifications} onChange={setSpecifications} disabled={formSubmitting} />
-              {/* Category-specific specifications (if defined for the category) */}
-              {categoryFilterDefinitions.length > 0 && (
-                <div className="space-y-3 rounded-xl border border-[#e7d5da] bg-[#fdfbfb] p-4">
-                  <div>
-                    <h4 className="text-xs font-black uppercase tracking-wider text-gray-900">
-                      Category-Specific Specifications
-                    </h4>
-                    <p className="text-[11px] text-gray-500">
-                      These attributes are defined for the selected category and
-                      power storefront filters.
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {categoryFilterDefinitions.map((definition) => {
-                      const values = getCategorySpecValues(definition.key);
-                      const label = `${definition.label || definition.key}${definition.unit ? ` (${definition.unit})` : ""}`;
-                      const specError = fieldErrors[`spec-${definition.key}`];
-                      return (
-                        <div
-                          key={definition.key}
-                          id={`field-spec-${definition.key}`}
-                          data-field={`spec-${definition.key}`}
-                          className="space-y-1.5 rounded-xl transition-all p-1">
-                          <label className="text-[11px] font-bold text-gray-700 flex items-center justify-between">
-                            <span>
-                              {label}
-                              {definition.isRequired ? " *" : ""}
-                            </span>
-                            {specError && (
-                              <span className="text-[10px] text-rose-600 font-bold">Required</span>
-                            )}
-                          </label>
-                          {definition.inputType === "multi-select" ? (
-                            <div className={`flex flex-wrap gap-2 rounded-lg border bg-white p-2 ${
-                              specError ? "border-rose-500 ring-1 ring-rose-500/30" : "border-gray-200"
-                            }`}>
-                              {(definition.options || []).map((option) => (
-                                <label
-                                  key={option}
-                                  className="flex items-center gap-1.5 text-xs">
-                                  <input
-                                    type="checkbox"
-                                    checked={values.includes(option)}
-                                    onChange={(event) => {
-                                      setCategorySpecValues(
-                                        definition,
-                                        event.target.checked
-                                          ? [...values, option]
-                                          : values.filter(
-                                              (value) => value !== option,
-                                            ),
-                                      );
-                                      clearFieldError(`spec-${definition.key}`);
-                                    }}
-                                  />{" "}
-                                  {option}
-                                </label>
-                              ))}
-                            </div>
-                          ) : definition.inputType === "select" ||
-                            definition.inputType === "boolean" ? (
-                            <select
-                              className={`w-full rounded-lg border bg-white px-3 py-2 text-xs ${
-                                specError ? "border-rose-500 ring-1 ring-rose-500/30" : "border-gray-300"
-                              }`}
-                              value={values[0] || ""}
-                              onChange={(event) => {
-                                setCategorySpecValues(definition, [
-                                  event.target.value,
-                                ]);
-                                clearFieldError(`spec-${definition.key}`);
-                              }}>
-                              <option value="">
-                                Select {definition.label || definition.key}
-                              </option>
-                              {(definition.inputType === "boolean"
-                                ? ["Yes", "No"]
-                                : definition.options || []
-                              ).map((option) => (
-                                <option key={option} value={option}>
-                                  {option}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <Input
-                              type={
-                                definition.inputType === "number"
-                                  ? "number"
-                                  : "text"
-                              }
-                              value={values[0] || ""}
-                              error={Boolean(specError)}
-                              onChange={(event) => {
-                                setCategorySpecValues(definition, [
-                                  event.target.value,
-                                ]);
-                                clearFieldError(`spec-${definition.key}`);
-                              }}
-                              placeholder={`Enter ${definition.label || definition.key}`}
-                              className="text-xs"
-                            />
-                          )}
-                          {specError && (
-                            <p className="text-xs text-rose-600 font-bold flex items-center gap-1 mt-1">
-                              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                              {specError}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
               {/* Manual Technical Specifications Section */}
               <div className="space-y-4 pt-2">
                 <div>
@@ -2480,14 +2314,15 @@ const AdminProductDetailPage = () => {
                   className="text-xs font-semibold">
                   ← Back: Groups
                 </Button>
+                <Button type="button" variant="outline" onClick={() => handleSaveAndPublish("draft")} disabled={formSubmitting}>Save Draft</Button>
                 <Button
                   type="button"
                   variant="primary"
-                  onClick={handleSaveAndPublish}
+                  onClick={() => handleSaveAndPublish("published")}
                   isLoading={formSubmitting}
                   leftIcon={<Save className="w-4 h-4" />}
                   className="bg-[#800020] hover:bg-[#68001a] text-white text-xs font-bold px-8 shadow-sm">
-                  {status === "published" ? "Save & Publish Product" : "Save Draft"}
+                  Save & Publish Product
                 </Button>
               </div>
             </div>
@@ -2496,6 +2331,8 @@ const AdminProductDetailPage = () => {
       </div>
 
       {!isCreateMode && <ProductPriceHistory entries={product?.priceHistory || []} />}
+
+      {imagePreview && <ProductImageViewer product={{ name, images: imagePreview.images }} initialIndex={imagePreview.index} onClose={() => setImagePreview(null)} />}
 
       {/* Image Delete Confirm Dialog */}
       <ConfirmDialog

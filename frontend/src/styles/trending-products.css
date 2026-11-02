@@ -1,6 +1,7 @@
 .trending-track { --trending-columns: 2; --trending-gap: 12px; container-type: inline-size; display: flex; overflow-x: auto; scrollbar-width: none; border-radius: 14px; padding: 2px 0; }
 .trending-track:focus-visible { outline: 2px solid var(--store-primary); outline-offset: 4px; }
 .trending-group { display: flex; flex: none; gap: var(--trending-gap); padding-right: var(--trending-gap); }
+.product-carousel-item { flex: none; width: calc((100cqw - (var(--trending-columns) - 1) * var(--trending-gap)) / var(--trending-columns)); }
 .trending-card { display: flex; flex-direction: column; flex: none; width: calc((100cqw - (var(--trending-columns) - 1) * var(--trending-gap)) / var(--trending-columns)); overflow: hidden; border-radius: 14px; background: var(--store-surface); border: 1px solid var(--store-border); }
 .trending-card:focus-visible { outline: 3px solid var(--store-primary); outline-offset: -3px; }
 .trending-brand-row { display: flex; align-items: center; height: 34px; padding: 6px 10px 0; }

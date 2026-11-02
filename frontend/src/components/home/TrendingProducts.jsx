@@ -12,7 +12,7 @@ function TrendingBrandLogo({ brand }) {
   return <img src={source} alt={`${brand.name || 'Brand'} logo`} className="trending-brand" loading="lazy" decoding="async" onError={() => setFailedSource(source)} />;
 }
 
-export default function TrendingProducts({ products = [] }) {
+export default function TrendingProducts({ products = [], title = 'Trending Products', eyebrow = 'In the spotlight', label = 'Trending products', viewAll = '/trending', renderProduct }) {
   const track = useRef(null);
   const group = useRef(null);
   const [paused, setPaused] = useState(false);
@@ -60,23 +60,25 @@ export default function TrendingProducts({ products = [] }) {
     if (direction < 0 && el.scrollLeft < 1) el.scrollLeft = width;
     if (direction > 0 && el.scrollLeft >= width) el.scrollLeft -= width;
     const gap = parseFloat(getComputedStyle(group.current).columnGap) || 0;
-    const cardWidth = el.querySelector('a')?.getBoundingClientRect().width || 0;
+    const cardWidth = group.current.firstElementChild?.getBoundingClientRect().width || 0;
     el.scrollBy({ left: direction * (cardWidth + gap || 320), behavior: reducedMotion ? 'instant' : 'smooth' });
   };
 
   if (!products.length) return null;
-  return <section className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-4" aria-label="Trending products">
+  return <section className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-4" aria-label={label}>
     <div className="flex items-center justify-between gap-4">
-      <div><p className="text-[10px] sm:text-xs font-semibold uppercase tracking-[.18em] text-[var(--store-primary)]">In the spotlight</p>
-        <h2 className="mt-1 text-lg sm:text-xl font-bold tracking-tight text-[var(--store-text)]">Trending Products</h2></div>
-      <Link to="/trending" className="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-[var(--store-primary)]">View all <ArrowUpRight size={16} /></Link>
+      <div><p className="text-[10px] sm:text-xs font-semibold uppercase tracking-[.18em] text-[var(--store-primary)]">{eyebrow}</p>
+        <h2 className="mt-1 text-lg sm:text-xl font-bold tracking-tight text-[var(--store-text)]">{title}</h2></div>
+      {viewAll && <Link to={viewAll} className="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-[var(--store-primary)]">View all <ArrowUpRight size={16} /></Link>}
     </div>
     <div className="relative" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)} onBlurCapture={e => { if (!e.currentTarget.contains(e.relatedTarget)) setPaused(false); }}
       onTouchStart={() => setPaused(true)} onTouchEnd={() => setPaused(false)} onTouchCancel={() => setPaused(false)}>
-      <div ref={track} className="trending-track scrollbar-none" tabIndex={0} aria-label="Trending products, scroll horizontally">
-        {(products.length > 1 ? [0, 1] : [0]).map(copy => <div key={copy} ref={copy === 0 ? group : undefined} className="trending-group" aria-hidden={copy === 1 ? true : undefined} inert={copy === 1 ? true : undefined}>
-          {slides.map((product, index) => <Link key={`${product._id}-${index}`} to={buildProductPath(product)} className="trending-card group" title={product.name}>
+      <div ref={track} className="trending-track scrollbar-none" tabIndex={0} aria-label={`${label}, scroll horizontally`}>
+        {(products.length > 1 ? [0, 1] : [0]).map(copy => <div key={copy} ref={copy === 0 ? group : undefined} className="trending-group" aria-hidden={copy === 1 && !renderProduct ? true : undefined} inert={copy === 1 && !renderProduct ? true : undefined}>
+          {slides.map((product, index) => renderProduct ? (
+            <div key={`${product._id}-${index}`} className="product-carousel-item">{renderProduct(product)}</div>
+          ) : <Link key={`${product._id}-${index}`} to={buildProductPath(product)} className="trending-card group" title={product.name}>
             <div className="trending-brand-row"><TrendingBrandLogo brand={product.brandId} /></div>
             <div className="trending-artwork">
               <Image src={product.images?.[0]?.url || product.image} alt={product.name} className="h-full w-full !bg-transparent" objectFit="object-contain" imgClassName="p-2 transition-transform duration-300 motion-safe:group-hover:scale-105" />
@@ -86,8 +88,8 @@ export default function TrendingProducts({ products = [] }) {
         </div>)}
       </div>
       {products.length > 1 && <>
-        <button type="button" className="trending-arrow -left-2 sm:-left-4" onClick={() => navigate(-1)} aria-label="Previous trending products"><ChevronLeft size={22} /></button>
-        <button type="button" className="trending-arrow -right-2 sm:-right-4" onClick={() => navigate(1)} aria-label="Next trending products"><ChevronRight size={22} /></button>
+        <button type="button" className="trending-arrow -left-2 sm:-left-4" onClick={() => navigate(-1)} aria-label={`Previous ${label.toLowerCase()}`}><ChevronLeft size={22} /></button>
+        <button type="button" className="trending-arrow -right-2 sm:-right-4" onClick={() => navigate(1)} aria-label={`Next ${label.toLowerCase()}`}><ChevronRight size={22} /></button>
       </>}
     </div>
   </section>;

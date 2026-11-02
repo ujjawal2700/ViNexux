@@ -79,3 +79,27 @@ describe('Product price history', () => {
     ]);
   });
 });
+
+test('sheet concurrency guard rejects a stale catalogue snapshot before changing prices', async () => {
+  const { document, write } = setup();
+  document.updatedAt = new Date('2026-11-02T12:00:00Z');
+  await expect(productService.updateProduct(id, { standardPrice: 125, expectedUpdatedAt: '2026-11-02T11:00:00Z' }, actor)).rejects.toMatchObject({ statusCode: 409 });
+  expect(write).not.toHaveBeenCalled();
+});
+
+test('sheet price updates compare the catalogue timestamp in the same atomic write', async () => {
+  const { document, write } = setup();
+  document.updatedAt = new Date('2026-11-02T12:00:00Z');
+  await productService.updateProduct(id, { standardPrice: 125, expectedUpdatedAt: document.updatedAt }, actor);
+  expect(write.mock.calls[0][0].updatedAt).toEqual(new Date('2026-11-02T12:00:00Z'));
+});
+
+test('sheet non-price saves guard the timestamp and return a conflict if another writer wins', async () => {
+  const document = hydrate({ updatedAt: new Date('2026-11-02T12:00:00Z') });
+  jest.spyOn(Product, 'findById').mockResolvedValue(document);
+  jest.spyOn(document, 'save').mockImplementation(async () => {
+    expect(document.$where.updatedAt).toEqual(document.updatedAt);
+    const error = new Error('No matching document'); error.name = 'DocumentNotFoundError'; throw error;
+  });
+  await expect(productService.updateProduct(id, { name: 'Sheet edit', expectedUpdatedAt: document.updatedAt }, actor)).rejects.toMatchObject({ statusCode: 409 });
+});

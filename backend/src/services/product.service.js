@@ -1,3 +1,4 @@
+import { isDraftIdentifier } from '../../../shared/productDrafts.js';
 import { isWarrantyLink } from '../../../shared/productPresentation.js';
 import { stockUpdate } from '../utils/productStockUpdate.js';
 import mongoose from 'mongoose';
@@ -13,7 +14,6 @@ import { storageService } from './storage/storage.service.js';
 import { AppError } from '../utils/AppError.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../constants/errorCodes.js';
-import { effectiveFilterDefinitions, getPublicCategories } from './catalog.service.js';
 import { findCategoryAndDescendantIds } from './category.service.js';
 
 // Older gallery rows may contain a Cloudinary URL without its public ID.
@@ -74,35 +74,6 @@ const sanitizeBrandSlug = (brand) => {
     brand.slug = slugify(raw) || slugify(brand.name);
   }
   return brand;
-};
-
-const validateCategorySpecifications = async (categoryId, specifications = []) => {
-  const categories = await getPublicCategories();
-  const definitions = effectiveFilterDefinitions(categories, categoryId);
-  const valuesByKey = new Map();
-  for (const specification of specifications) {
-    const key = specification.key.trim().toLowerCase();
-    if (!valuesByKey.has(key)) valuesByKey.set(key, []);
-    valuesByKey.get(key).push(specification.value.trim());
-  }
-  for (const definition of definitions) {
-    const values = valuesByKey.get(definition.key.toLowerCase()) || [];
-    if (definition.isRequired && values.length === 0) {
-      throw new AppError(`${definition.label} is required for this category.`, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: `specifications.${definition.key}`, message: `${definition.label} is required for this category.` }]);
-    }
-    if (['select', 'multi-select'].includes(definition.inputType)) {
-      const allowed = new Set(definition.options.map((option) => option.toLowerCase()));
-      if (values.some((value) => !allowed.has(value.toLowerCase()))) {
-        throw new AppError(`${definition.label} contains an option not configured for this category.`, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: `specifications.${definition.key}`, message: `${definition.label} contains an option not configured for this category.` }]);
-      }
-    }
-    if (definition.inputType === 'number' && values.some((value) => !Number.isFinite(Number(value)))) {
-      throw new AppError(`${definition.label} must be numeric.`, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: `specifications.${definition.key}`, message: `${definition.label} must be numeric.` }]);
-    }
-    if (definition.inputType === 'boolean' && values.some((value) => !['yes', 'no', 'true', 'false'].includes(value.toLowerCase()))) {
-      throw new AppError(`${definition.label} must be Yes or No.`, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: `specifications.${definition.key}`, message: `${definition.label} must be Yes or No.` }]);
-    }
-  }
 };
 
 /**
@@ -201,12 +172,19 @@ export const productService = {
     additionalDetails = [],
     standardPrice = 0,
     dealerPrice = 0,
+    isNewArrival = false,
     isTrending = false,
     isLowStock = false,
     isActive = true,
   }) {
-    if (warrantyType === 'link' && !isWarrantyLink(warranty?.trim())) {
+    if (warrantyType === 'link' && (isActive || warranty?.trim()) && !isWarrantyLink(warranty?.trim())) {
       throw new AppError('Enter a valid HTTP or HTTPS warranty link.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: 'warranty', message: 'Enter a valid HTTP or HTTPS warranty link.' }]);
+    }
+    const draftIdentifier = `__DRAFT__${new mongoose.Types.ObjectId()}`;
+    if (!isActive) {
+      sku = sku?.trim() || draftIdentifier;
+      modelNumber = modelNumber?.trim() || draftIdentifier;
+      name = name?.trim() || '';
     }
     const uppercaseSku = sku.trim().toUpperCase();
 
@@ -233,29 +211,31 @@ export const productService = {
     }
 
     // Verify referenced category exists and is active
-    if (!primaryCategoryId || !mongoose.Types.ObjectId.isValid(primaryCategoryId)) {
+    if ((isActive || primaryCategoryId) && (!primaryCategoryId || !mongoose.Types.ObjectId.isValid(primaryCategoryId))) {
       throw new AppError('Invalid categoryId format.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
     }
 
-    const category = await Category.findById(primaryCategoryId);
-    if (!category) {
+    const category = primaryCategoryId && await Category.findById(primaryCategoryId);
+    if ((isActive || primaryCategoryId) && !category) {
       throw new AppError('Referenced category does not exist.', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
     }
-    if (!category.isActive) {
+    if (category && !category.isActive) {
       throw new AppError(
         'Cannot assign product to an inactive category.',
         HTTP_STATUS.BAD_REQUEST,
         ERROR_CODES.BAD_REQUEST
       );
     }
-    await validateCategorySpecifications(primaryCategoryId, specifications);
     const brand = brandId && await Brand.findOne({ _id: brandId, isActive: true });
-    if (!brand) throw new AppError('Please select an active managed brand.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: 'brandId', message: 'Please select an active managed brand.' }]);
+    if ((isActive || brandId) && !brand) throw new AppError('Please select an active managed brand.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: 'brandId', message: 'Please select an active managed brand.' }]);
     if (!modelNumber?.trim()) throw new AppError('Model number is required.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: 'modelNumber', message: 'Model number is required.' }]);
     const resolvedModel = model?.trim() || 'Standard Model';
     const existingModelNumber = await Product.findOne({ modelNumber: modelNumber.trim() });
     if (existingModelNumber) throw new AppError('Model number must be unique.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: 'modelNumber', message: 'Model number must be unique.' }]);
-    const normalizedSpecifications = withManagedBrand(specifications, brand.name);
+    const normalizedSpecifications = brand ? withManagedBrand(specifications, brand.name) : specifications;
+    if (isActive && (isDraftIdentifier(uppercaseSku) || isDraftIdentifier(modelNumber))) {
+      throw new AppError('Complete the SKU and model number before publishing.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+    }
     if (isActive && images.length === 0) {
       throw new AppError('At least one uploaded product image is required before publishing.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
     }
@@ -281,6 +261,7 @@ export const productService = {
       additionalDetails,
       standardPrice,
       dealerPrice,
+      isNewArrival,
       isTrending,
       isLowStock,
       isActive,
@@ -482,6 +463,14 @@ isActive,
       throw new AppError('Product not found.', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
     }
 
+    if (updateData.expectedUpdatedAt) {
+      const expected = new Date(updateData.expectedUpdatedAt);
+      if (!product.updatedAt || product.updatedAt.getTime() !== expected.getTime()) {
+        throw new AppError('This product changed in the catalogue during sync. Retry Sync Products.', HTTP_STATUS.CONFLICT, ERROR_CODES.CONFLICT);
+      }
+      product.$where = { ...(product.$where || {}), updatedAt: expected };
+    }
+
     if (updateData.images !== undefined && updateData.expectedImages !== undefined) {
       const identities = images => [...new Set(images.map(image => typeof image === 'string' ? image : (image.publicId || image.url)))].sort();
       if (JSON.stringify(identities(product.images || [])) !== JSON.stringify(identities(updateData.expectedImages))) {
@@ -499,6 +488,12 @@ isActive,
       originalPrices[field] = previousPrice;
       priceChanges.push({ priceType, previousPrice, newPrice: updateData[field], changedAt,
         changedBy: actor?._id || null, changedByName: actor?.fullName || actor?.name || 'System' });
+    }
+
+    const savingDraft = updateData.isActive === false || (updateData.isActive === undefined && product.isActive === false);
+    if (savingDraft) {
+      if (updateData.sku === '') updateData.sku = `__DRAFT__${new mongoose.Types.ObjectId()}`;
+      if (updateData.modelNumber === '') updateData.modelNumber = `__DRAFT__${new mongoose.Types.ObjectId()}`;
     }
 
     // Validate SKU uniqueness if SKU is updated
@@ -558,7 +553,7 @@ isActive,
     }
 
     // Preserve existing fields that were not supplied
-    if (updateData.name) product.name = updateData.name.trim();
+    if (updateData.name !== undefined) product.name = updateData.name.trim();
     if (updateData.modelNumber !== undefined) {
       const duplicateModel = await Product.findOne({ modelNumber: updateData.modelNumber.trim(), _id: { $ne: id } });
       if (duplicateModel) throw new AppError('Model number must be unique.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: 'modelNumber', message: 'Model number must be unique.' }]);
@@ -578,7 +573,7 @@ isActive,
     if (updateData.warrantyType !== undefined || updateData.warranty !== undefined) {
       const warrantyType = updateData.warrantyType ?? product.warrantyType ?? 'text';
       const warranty = (updateData.warranty ?? product.warranty ?? '').trim();
-      if (warrantyType === 'link' && !isWarrantyLink(warranty)) {
+      if (warrantyType === 'link' && (!savingDraft || warranty) && !isWarrantyLink(warranty)) {
         throw new AppError('Enter a valid HTTP or HTTPS warranty link.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: 'warranty', message: 'Enter a valid HTTP or HTTPS warranty link.' }]);
       }
       product.warranty = warranty;
@@ -600,18 +595,33 @@ isActive,
     if (updateData.additionalDetails !== undefined) product.additionalDetails = updateData.additionalDetails;
     if (updateData.standardPrice !== undefined) product.standardPrice = updateData.standardPrice;
     if (updateData.dealerPrice !== undefined) product.dealerPrice = updateData.dealerPrice;
+    if (updateData.isNewArrival !== undefined) product.isNewArrival = updateData.isNewArrival;
     if (updateData.isTrending !== undefined) product.isTrending = updateData.isTrending;
     if (updateData.isLowStock !== undefined) product.isLowStock = updateData.isLowStock;
+    const publishingDraft = product.isActive === false && updateData.isActive === true;
     if (updateData.isActive !== undefined) product.isActive = updateData.isActive;
-    if (updateData.brandId !== undefined) {
+    if (savingDraft && updateData.brandId === null) product.brandId = null;
+    else if (updateData.brandId !== undefined) {
       const brand = await Brand.findOne({ _id: updateData.brandId, isActive: true });
       if (!brand) throw new AppError('Please select an active managed brand.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, [{ path: 'brandId', message: 'Please select an active managed brand.' }]);
       product.brandId = updateData.brandId;
       product.specifications = withManagedBrand(product.specifications || [], brand.name);
     }
 
-    if (product.categoryId && (updateData.categoryId !== undefined || updateData.categoryIds !== undefined || updateData.specifications !== undefined)) {
-      await validateCategorySpecifications(product.categoryId, product.specifications);
+    if (publishingDraft) {
+      const missing = [];
+      if (!product.name || product.name.trim().length < 2) missing.push({ path: 'name', message: 'Product name is required before publishing.' });
+      if (!product.sku || isDraftIdentifier(product.sku) || product.sku.length < 2) missing.push({ path: 'sku', message: 'SKU is required before publishing.' });
+      if (!product.modelNumber || isDraftIdentifier(product.modelNumber)) missing.push({ path: 'modelNumber', message: 'Model number is required before publishing.' });
+      if (!product.categoryId) missing.push({ path: 'categoryId', message: 'Select a category before publishing.' });
+      if (!product.brandId) missing.push({ path: 'brandId', message: 'Select a brand before publishing.' });
+      if (product.warrantyType === 'link' && !isWarrantyLink(product.warranty)) missing.push({ path: 'warranty', message: 'Enter a valid HTTP or HTTPS warranty link.' });
+      if (!product.images?.length) missing.push({ path: 'images', message: 'Upload at least one image before publishing.' });
+      if (missing.length) throw new AppError('Complete the required product details before publishing.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR, missing);
+      const brand = await Brand.findOne({ _id: product.brandId, isActive: true });
+      const category = await Category.findOne({ _id: product.categoryId, isActive: true });
+      if (!brand || !category) throw new AppError('Select an active brand and category before publishing.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+      await product.validate();
     }
     let savedProduct = product;
     if (priceChanges.length) {
@@ -620,18 +630,25 @@ isActive,
       const updates = Object.fromEntries(paths
         .filter((path) => !paths.some((parent) => parent !== path && path.startsWith(`${parent}.`)))
         .map((path) => [path, product.get(path)]));
+      // The hydrated document above validates draft fields with their parent
+      // visibility. Query validators cannot see that parent for nested rows.
       // Append the audit entries in the same write as the prices. Compare old
       // prices to avoid logging a stale previous value during simultaneous edits.
-      savedProduct = await Product.findOneAndUpdate({ _id: id, ...(updateData.images !== undefined ? { __v: product.__v } : {}), $and: Object.entries(originalPrices).map(([field, value]) => ({
+      savedProduct = await Product.findOneAndUpdate({ _id: id, ...(updateData.expectedUpdatedAt ? { updatedAt: new Date(updateData.expectedUpdatedAt) } : {}), ...(updateData.images !== undefined ? { __v: product.__v } : {}), $and: Object.entries(originalPrices).map(([field, value]) => ({
         $or: [{ [field]: value }, { [field]: { $exists: false } }],
-      })) }, { $set: updates, $push: { priceHistory: { $each: priceChanges } }, ...(updateData.images !== undefined ? { $inc: { __v: 1 } } : {}) }, { new: true, runValidators: true });
+      })) }, { $set: updates, $push: { priceHistory: { $each: priceChanges } }, ...(updateData.images !== undefined ? { $inc: { __v: 1 } } : {}) }, { new: true, runValidators: !savingDraft });
       if (!savedProduct) {
         if (priceAttempt < 3) return this.updateProduct(id, updateData, actor, priceAttempt + 1);
         throw new AppError('Prices changed while saving. Refresh the product and try again.', HTTP_STATUS.CONFLICT, ERROR_CODES.BAD_REQUEST);
       }
     } else {
-      await product.save({ validateModifiedOnly: true });
+      try { await product.save({ validateModifiedOnly: true }); }
+      catch (error) {
+        if (updateData.expectedUpdatedAt && error.name === 'DocumentNotFoundError') throw new AppError('This product changed in the catalogue during sync. Retry Sync Products.', HTTP_STATUS.CONFLICT, ERROR_CODES.CONFLICT);
+        throw error;
+      }
     }
+    if (updateData.expectedUpdatedAt) product.$where = undefined;
     await cleanupProductImages(savedProduct);
 
     return savedProduct;

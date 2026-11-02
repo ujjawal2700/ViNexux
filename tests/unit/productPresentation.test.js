@@ -33,7 +33,7 @@ test('explicit warranty format persists while URL-shaped text can stay plain', a
   await expect(productService.updateProduct(id, { warrantyType: 'link', warranty: 'javascript:alert(1)' })).rejects.toThrow('HTTP or HTTPS');
 });
 test('warranty format is accepted by create/update schemas and defaults to plain text', () => {
-  expect(createProductSchema.body.shape.warrantyType.parse(undefined)).toBe('text');
+  expect(createProductSchema.body.parse({ sku: 'WARRANTY-1', name: 'Test product', modelNumber: 'WARRANTY-1', brandId: '507f1f77bcf86cd799439011' }).warrantyType).toBe('text');
   expect(updateProductSchema.body.parse({ warrantyType: 'link' }).warrantyType).toBe('link');
   expect(updateProductSchema.body.safeParse({ warrantyType: 'html' }).success).toBe(false);
 });

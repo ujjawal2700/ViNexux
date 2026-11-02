@@ -61,6 +61,7 @@ export const config = {
   googleSheetsEnabled: process.env.GOOGLE_SHEETS_ENABLED === 'true',
   googleSheetsProvider: process.env.GOOGLE_SHEETS_PROVIDER || 'development',
   googleSheetsSpreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID || '',
+  googleProductsSpreadsheetId: process.env.GOOGLE_PRODUCTS_SPREADSHEET_ID || '',
   googleSheetsTabName: process.env.GOOGLE_SHEETS_TAB_NAME || 'Enquiries',
   googleServiceAccountEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || '',
   googleServiceAccountPrivateKey: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY || '',

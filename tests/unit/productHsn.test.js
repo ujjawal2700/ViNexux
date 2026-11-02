@@ -12,7 +12,10 @@ import { createProductImportTemplate, prepareProductImport } from '../../backend
 afterEach(() => jest.restoreAllMocks());
 
 test('product HSN validation preserves leading zeros and accepts blank codes', () => {
-  for (const schema of [createProductSchema.body.shape.hsnCode, updateProductSchema.body.shape.hsnCode]) {
+  for (const body of [createProductSchema.body, updateProductSchema.body]) {
+    const base = { sku: 'HSN-TEST', name: 'Test product', modelNumber: 'HSN-01', brandId: '507f1f77bcf86cd799439011' };
+    const schema = { parse: hsnCode => body.parse({ ...base, hsnCode }).hsnCode,
+      safeParse: hsnCode => body.safeParse({ ...base, hsnCode }) };
     expect(schema.parse(' 012345 ')).toBe('012345');
     expect(schema.parse('')).toBe('');
     expect(schema.parse(undefined)).toBeUndefined();

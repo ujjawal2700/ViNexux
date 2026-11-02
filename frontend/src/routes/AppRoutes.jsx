@@ -62,10 +62,12 @@ const AdminHeaderCategoriesPage = lazyWithRetry(() => import('../pages/admin/Adm
 const AdminMainCategoriesPage = lazyWithRetry(() => import('../pages/admin/AdminMainCategoriesPage'));
 const AdminSubCategoriesPage = lazyWithRetry(() => import('../pages/admin/AdminSubCategoriesPage'));
 const AdminProductPositioningPage = lazyWithRetry(() => import('../pages/admin/AdminProductPositioningPage'));
+const AdminFiltersPage = lazyWithRetry(() => import('../pages/admin/AdminFiltersPage'));
 const AdminProductsPage = lazyWithRetry(() => import('../pages/admin/AdminProductsPage'));
 const AdminPosPage = lazyWithRetry(() => import('../pages/admin/AdminPosPage'));
 const AdminBrandsPage = lazyWithRetry(() => import('../pages/admin/AdminBrandsPage'));
 const AdminProductDetailPage = lazyWithRetry(() => import('../pages/admin/AdminProductDetailPage'));
+const AdminProductSheetPage = lazyWithRetry(() => import('../pages/admin/AdminProductSheetPage'));
 const AdminProductImportPage = lazyWithRetry(() => import('../pages/admin/AdminProductImportPage'));
 const AdminDealersPage = lazyWithRetry(() => import('../pages/admin/AdminDealersPage'));
 const AdminDealerDetailPage = lazyWithRetry(() => import('../pages/admin/AdminDealerDetailPage'));
@@ -210,10 +212,12 @@ const AppRoutes = () => {
             <Route path="/admin/categories/main" element={<AdminMainCategoriesPage />} />
             <Route path="/admin/categories/sub" element={<AdminSubCategoriesPage />} />
             <Route path="/admin/products/positioning" element={<AdminProductPositioningPage />} />
+            <Route path="/admin/filters" element={<AdminFiltersPage />} />
             <Route path="/admin/products" element={<AdminProductsPage />} />
             <Route path="/admin/pos" element={<AdminPosPage />} />
             <Route path="/admin/brands" element={<AdminBrandsPage />} />
             <Route path="/admin/products/new" element={<AdminProductDetailPage />} />
+            <Route path="/admin/products/google-sheet" element={<AdminProductSheetPage />} />
             <Route path="/admin/products/import" element={<AdminProductImportPage />} />
             <Route path="/admin/products/:id" element={<AdminProductDetailPage />} />
             <Route path="/admin/dealers" element={<AdminDealersPage />} />

@@ -1,3 +1,4 @@
+import { getProductSheet, initializeProductSheet, syncProductSheet } from '../controllers/productSheet.controller.js';
 import { listSpecificationTemplates, createSpecificationTemplate, updateSpecificationTemplate, deleteSpecificationTemplate } from '../controllers/specificationTemplate.controller.js';
 import { listSpecificationTemplatesSchema, createSpecificationTemplateSchema, updateSpecificationTemplateSchema, deleteSpecificationTemplateSchema } from '../validators/specificationTemplate.validator.js';
 import { Router } from 'express';
@@ -52,6 +53,9 @@ router.get('/specification-templates', authenticate, authorize('admin'), validat
 router.post('/specification-templates', authenticate, authorize('admin'), validate(createSpecificationTemplateSchema), createSpecificationTemplate);
 router.put('/specification-templates/:templateId', authenticate, authorize('admin'), validate(updateSpecificationTemplateSchema), updateSpecificationTemplate);
 router.delete('/specification-templates/:templateId', authenticate, authorize('admin'), validate(deleteSpecificationTemplateSchema), deleteSpecificationTemplate);
+router.get('/google-sheet', authenticate, authorize('admin'), getProductSheet);
+router.post('/google-sheet/initialize', authenticate, authorize('admin'), initializeProductSheet);
+router.post('/google-sheet/sync', authenticate, authorize('admin'), syncProductSheet);
 router.get('/:id', authenticate, authorize('admin'), validate(getProductByIdSchema), getProductById);
 router.put('/:id', authenticate, authorize('admin'), validate(updateProductSchema), updateProduct);
 router.delete('/:id', authenticate, authorize('admin'), validate(deleteProductSchema), deleteProduct);

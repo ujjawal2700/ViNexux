@@ -19,7 +19,6 @@ import Toast from '../../components/ui/Toast';
 import Pagination from '../../components/ui/Pagination';
 import { Plus, Edit2, Trash2, GitBranch, Search, Layers, FolderTree, Info, Lock, RotateCcw } from 'lucide-react';
 import { slugify, cleanCategorySlug, generateUniqueCategorySlug } from '../../utils/categoryUrls';
-import CategoryFilterBuilder from '../../components/admin/CategoryFilterBuilder';
 
 /**
  * Dedicated Sub Category Management Page (Tier 3 Categories - Optional)
@@ -230,7 +229,6 @@ const AdminSubCategoriesPage = () => {
         description: formData.description.trim() || undefined,
         isActive: formData.isActive,
         sortOrder: Number(formData.sortOrder) || 0,
-        filterDefinitions: formData.filterDefinitions || [],
       };
 
       if (editingCategory) {
@@ -668,10 +666,6 @@ const AdminSubCategoriesPage = () => {
             />
           </FormField>
 
-          <CategoryFilterBuilder
-            value={formData.filterDefinitions || []}
-            onChange={(filterDefinitions) => setFormData({ ...formData, filterDefinitions })}
-          />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField

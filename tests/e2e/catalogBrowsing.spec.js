@@ -79,7 +79,7 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 
   await expect(history.getByRole('button')).toHaveText(['WiFi', 'RAM', 'SSD', 'Router', 'Switch', 'NVR']);
   await history.getByRole('button', { name: 'Router', exact: true }).focus(); await page.keyboard.press('Enter');
   await expect.poll(() => new URL(page.url()).searchParams.get('search')).toBe('Router');
-  await page.reload(); await input.click();
+  await page.reload(); await input.fill(''); await input.click();
   await expect(history.getByRole('button').first()).toHaveText('Router');
 });
 test('footer-only employees can upload an SVG QR without shared upload permission', async ({ page }) => {

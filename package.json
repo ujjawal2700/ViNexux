@@ -6,6 +6,7 @@
     "test": "npm run test:unit && npm run test:api",
     "test:unit": "NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --config tests/jest.unit.config.cjs",
     "test:api": "NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --config tests/jest.api.config.cjs --runInBand",
+    "test:providers": "node backend/scripts/check_provider_credentials.mjs",
     "test:e2e": "playwright test",
     "test:e2e:production": "npm --prefix frontend run build && PLAYWRIGHT_PREVIEW=1 playwright test --workers=2",
     "test:all": "npm run test && npm run test:integration && npm run test:e2e",

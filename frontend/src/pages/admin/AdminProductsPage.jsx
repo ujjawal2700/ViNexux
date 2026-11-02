@@ -1,3 +1,4 @@
+import { editableProductIdentifier } from '../../../../shared/productDrafts.js';
 import useAuth from '../../hooks/useAuth';
 import { canAdmin } from '../../../../shared/adminAccess.js';
 import { getAdminAccessState } from '../../utils/adminAccessState';
@@ -13,6 +14,7 @@ import Pagination from '../../components/ui/Pagination';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import StockUpdateDialog from '../../components/admin/StockUpdateDialog';
 import ProductPriceDialog from '../../components/admin/ProductPriceDialog';
+import ProductImageViewer from '../../components/products/ProductImageViewer';
 import Button from '../../components/ui/Button';
 import Badge, { StatusBadge } from '../../components/ui/Badge';
 import Image from '../../components/ui/Image';
@@ -95,6 +97,7 @@ const AdminProductsPage = () => {
 
   const [categoryFilters, setCategoryFilters] = useState({ headerCategoryIds: [], mainCategoryIds: [], subCategoryIds: [] });
   const [isActiveFilter, setIsActiveFilter] = useState('');
+  const [newArrivalBusy, setNewArrivalBusy] = useState({});
   const [trendingBusy, setTrendingBusy] = useState({});
   const [lowStockBusy, setLowStockBusy] = useState({});
   const [sortBy, setSortBy] = useState('createdAt');
@@ -105,6 +108,7 @@ const AdminProductsPage = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [stockTarget, setStockTarget] = useState(null);
   const [priceTarget, setPriceTarget] = useState(null);
+  const [imageTarget, setImageTarget] = useState(null);
   const [categoryBusy, setCategoryBusy] = useState({});
   const [permanentDeleteTarget, setPermanentDeleteTarget] = useState(null);
   const [permanentDeleteLoading, setPermanentDeleteLoading] = useState(false);
@@ -213,6 +217,20 @@ const AdminProductsPage = () => {
     }
   };
 
+  const toggleNewArrival = async (product, isNewArrival) => {
+    setNewArrivalBusy(current => ({ ...current, [product._id]: true }));
+    setProducts(current => current.map(item => item._id === product._id ? { ...item, isNewArrival } : item));
+    try {
+      await adminService.updateProduct(product._id, { isNewArrival });
+      toastApi.success(isNewArrival ? 'Product added to New Arrivals.' : 'Product removed from New Arrivals.');
+    } catch (err) {
+      setProducts(current => current.map(item => item._id === product._id ? { ...item, isNewArrival: Boolean(product.isNewArrival) } : item));
+      toastApi.error(err.response?.data?.message || 'Unable to update new arrival status.');
+    } finally {
+      setNewArrivalBusy(current => ({ ...current, [product._id]: false }));
+    }
+  };
+
   const toggleLowStock = async (product, isLowStock) => {
     setLowStockBusy(current => ({ ...current, [product._id]: true }));
     setProducts(current => current.map(item => item._id === product._id ? { ...item, isLowStock } : item));
@@ -284,6 +302,12 @@ const AdminProductsPage = () => {
         </div>}
       />
 
+      <nav aria-label="Product management options" className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3">
+        <span aria-current="page" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Product Catalogue</span>
+        <Button type="button" variant="outline" onClick={() => navigate('/admin/products/google-sheet')}><FileSpreadsheet className="mr-2 h-4 w-4" />Google Sheet</Button>
+        <p className="text-xs text-muted-foreground">Manage products here or edit your connected sheet and sync.</p>
+      </nav>
+
       {/* Filter & Search Bar */}
       <FilterBar
         search={search}
@@ -304,7 +328,7 @@ const AdminProductsPage = () => {
             options: [
               { value: '', label: 'All Statuses' },
               { value: 'true', label: 'Active Products Only' },
-              { value: 'false', label: 'Inactive Products Only' },
+              { value: 'false', label: 'Draft / Inactive Products Only' },
             ],
           },
         ]}
@@ -371,6 +395,7 @@ const AdminProductsPage = () => {
                 <Table.Head>Standard Price</Table.Head>
                 <Table.Head>Dealer Price</Table.Head>
                 <Table.Head>Trending</Table.Head>
+                <Table.Head>New Arrival</Table.Head>
                 <Table.Head>Low Stock</Table.Head>
                 <Table.Head>Stock</Table.Head>
                 <Table.Head>Status</Table.Head>
@@ -390,19 +415,19 @@ const AdminProductsPage = () => {
                     onClick={() => navigate(`/admin/products/${prod._id}?returnPage=${page}`, { state: { returnPage: page } })}
                   >
                     <Table.Cell onClick={(e) => e.stopPropagation()}>
-                      <div className="w-9 h-9 rounded-lg overflow-hidden border border-border bg-muted flex items-center justify-center">
+                      <button type="button" aria-label={`View images for ${prod.name || 'Untitled product'}`} disabled={!primaryImage} onClick={() => setImageTarget(prod)} className="w-9 h-9 rounded-lg overflow-hidden border border-border bg-muted flex items-center justify-center cursor-zoom-in disabled:cursor-default focus-visible:outline-2 focus-visible:outline-primary">
                         {primaryImage ? (
                           <Image src={primaryImage} alt={prod.name} className="w-full h-full object-cover" />
                         ) : (
                           <ImageIcon className="w-4 h-4 text-muted-foreground" />
                         )}
-                      </div>
+                      </button>
                     </Table.Cell>
                     <Table.Cell>
-                      <div className="font-mono text-[11px] text-primary font-bold">{prod.sku}</div>
-                      <div className="text-[10px] font-semibold text-muted-foreground">Model Number: {prod.modelNumber || 'Not set'}</div>
+                      <div className="font-mono text-[11px] text-primary font-bold">{editableProductIdentifier(prod.sku) || 'SKU not set'}</div>
+                      <div className="text-[10px] font-semibold text-muted-foreground">Model Number: {editableProductIdentifier(prod.modelNumber) || 'Not set'}</div>
                       <div className="text-[10px] text-muted-foreground">Model Name: {prod.model || 'Not set'}</div>
-                      <div className="text-xs font-bold text-foreground max-w-xs truncate">{prod.name}</div>
+                      <div className="text-xs font-bold text-foreground max-w-xs truncate">{prod.name || 'Untitled product'}</div>
                     </Table.Cell>
                     <Table.Cell className="text-xs text-muted-foreground" onClick={(event) => event.stopPropagation()}>
                       {canReadCategories && headerCategories.length > 0 ? <select value={headerId} disabled={Boolean(categoryBusy[prod._id]) || headerCategories.length === 0}
@@ -434,12 +459,15 @@ const AdminProductsPage = () => {
                     <Table.Cell onClick={e => e.stopPropagation()}>
                       <input type="checkbox" aria-label={`Trending: ${prod.name}`} checked={Boolean(prod.isTrending)} disabled={Boolean(trendingBusy[prod._id])} onChange={e => toggleTrending(prod, e.target.checked)} className="h-4 w-4 cursor-pointer accent-primary disabled:opacity-50" />
                     </Table.Cell>
+                    <Table.Cell onClick={e => e.stopPropagation()}>
+                      <input type="checkbox" aria-label={`New arrival: ${prod.name || 'Untitled product'}`} checked={Boolean(prod.isNewArrival)} disabled={Boolean(newArrivalBusy[prod._id])} onChange={e => toggleNewArrival(prod, e.target.checked)} className="h-4 w-4 cursor-pointer accent-primary disabled:opacity-50" />
+                    </Table.Cell>
                     <Table.Cell onClick={event => event.stopPropagation()}>
                       <input type="checkbox" aria-label={`Low stock: ${prod.name}`} checked={Boolean(prod.isLowStock)} disabled={Boolean(lowStockBusy[prod._id])} onChange={event => toggleLowStock(prod, event.target.checked)} className="h-4 w-4 cursor-pointer accent-primary disabled:opacity-50" />
                     </Table.Cell>
                     <Table.Cell className="font-semibold">{prod.stockQuantity || 0}</Table.Cell>
                     <Table.Cell>
-                      <StatusBadge status={prod.isActive ? 'active' : 'inactive'} />
+                      <StatusBadge status={prod.isActive ? 'active' : 'draft'} />
                     </Table.Cell>
                     <Table.Cell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1">
@@ -492,6 +520,8 @@ const AdminProductsPage = () => {
           )}
         </div>
       )}
+
+      {imageTarget && <ProductImageViewer key={imageTarget._id} product={imageTarget} onClose={() => setImageTarget(null)} />}
 
       {/* Delete / Deactivate Confirm Dialog */}
       <ConfirmDialog

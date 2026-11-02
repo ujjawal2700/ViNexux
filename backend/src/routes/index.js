@@ -1,3 +1,4 @@
+import adminFilterRoutes from './adminFilter.routes.js';
 import { sharePage } from '../controllers/sharePage.controller.js';
 import campaignRoutes from './campaign.routes.js';
 import communicationsRoutes from './communications.routes.js';
@@ -53,6 +54,7 @@ router.use('/admin/pos', posRoutes);
 router.use('/pos', publicPosRoutes);
 router.use('/admin/categories', adminCategoryRoutes);
 router.use('/admin/products', adminProductRoutes);
+router.use('/admin/filters', adminFilterRoutes);
 router.use('/admin/brands', adminBrandRoutes);
 router.use('/admin/dealers', adminDealerRoutes);
 router.use('/admin/enquiries', adminEnquiryRoutes);

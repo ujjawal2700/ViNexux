@@ -19,6 +19,7 @@ for (const file of files) {
     MONGODB_URI: `mongodb://127.0.0.1:27019/${name}?replicaSet=vinexusAccessTest`, JWT_SECRET: 'vinexus-isolated-integration-test-secret',
     EMAIL_PROVIDER: 'development', SMS_PROVIDER: 'development', PUSH_PROVIDER: 'development', STORAGE_PROVIDER: 'development',
     MOCK_OTP: 'true', MOCK_OTP_CODE: '123456', GOOGLE_SHEETS_ENABLED: 'false', GOOGLE_SHEETS_PROVIDER: 'development',
+    GOOGLE_SERVICE_ACCOUNT_EMAIL: '', GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: '', GOOGLE_PRODUCTS_SPREADSHEET_ID: '', GOOGLE_SHEETS_SPREADSHEET_ID: '',
     FIREBASE_SERVICE_ACCOUNT_JSON: '', FIREBASE_PRIVATE_KEY: '', FIREBASE_CLIENT_EMAIL: '', FIREBASE_PROJECT_ID: '',
     EMAIL_HOST: '', EMAIL_USER: '', EMAIL_PASSWORD: '', SMS_API_KEY: '', SMS_API_SECRET: '', CLOUDINARY_API_SECRET: '',
   };

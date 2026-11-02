@@ -1,0 +1,16 @@
+import { Router } from 'express';
+import { authenticate, authorize } from '../middlewares/auth.middleware.js';
+import { validate } from '../middlewares/validate.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { ApiResponse } from '../utils/ApiResponse.js';
+import { productFilterService } from '../services/productFilter.service.js';
+import { filterIdSchema, filterProductSearchSchema, saveFilterSchema } from '../validators/productFilter.validator.js';
+const router = Router();
+router.use(authenticate, authorize('admin'));
+router.get('/', asyncHandler(async (req, res) => ApiResponse.success(res, 'Filters retrieved', { filters: await productFilterService.list() })));
+router.get('/products', validate(filterProductSearchSchema), asyncHandler(async (req, res) => ApiResponse.success(res, 'Products retrieved', await productFilterService.searchProducts(req.query))));
+router.get('/:id', validate(filterIdSchema), asyncHandler(async (req, res) => ApiResponse.success(res, 'Filter retrieved', await productFilterService.get(req.params.id))));
+router.post('/', validate(saveFilterSchema), asyncHandler(async (req, res) => ApiResponse.success(res, 'Filter created', await productFilterService.save(null, req.body), 201)));
+router.put('/:id', validate(filterIdSchema), validate(saveFilterSchema), asyncHandler(async (req, res) => ApiResponse.success(res, 'Filter updated', await productFilterService.save(req.params.id, req.body))));
+router.delete('/:id', validate(filterIdSchema), asyncHandler(async (req, res) => ApiResponse.success(res, 'Filter deleted', await productFilterService.remove(req.params.id))));
+export default router;

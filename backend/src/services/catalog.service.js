@@ -1,3 +1,7 @@
+import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
+import { ERROR_CODES } from '../constants/errorCodes.js';
+import { ProductFilter } from '../models/ProductFilter.js';
+import { readProductFilters } from '../../../shared/productFiltering.js';
 import { CATEGORY_FILTER_KEYS, categoryLevels, splitFilterValues, readSpecificationSelections } from '../../../shared/categoryFiltering.js';
 import { categoryMembershipStages, rollupCategoryCounts, specificationCountStages, availabilityCountStages } from '../utils/catalogFacets.js';
 import { storefrontOrderingStages } from '../utils/storefrontOrdering.js';
@@ -279,6 +283,8 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   if (query.stockUpdatedOnly === 'true' || query.stockUpdatedOnly === true) {
     match.stockUpdatedAt = { $ne: null };
   }
+  if (query.isNewArrival === 'true' || query.isNewArrival === true) match.isNewArrival = true;
+  if (query.isNewArrival === 'false' || query.isNewArrival === false) match.isNewArrival = { $ne: true };
   if (query.isTrending === 'true' || query.isTrending === true) match.isTrending = true;
   if (query.isTrending === 'false' || query.isTrending === false) match.isTrending = { $ne: true };
   const searchTerm = options.searchWords ? '' : query.search?.trim() || '';
@@ -302,6 +308,19 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   const brandMatch = brand ? buildBrandMatch(brand, managedBrandId) : null;
   if (brandMatch) selections.push({ dimension: 'brand', condition: brandMatch });
   if (query.lowStock === 'true' || query.lowStock === true) pipeline.push({ $match: { isLowStock: true } });
+
+  const manualFilters = includeFacets || query.customFilters
+    ? await ProductFilter.find({ isActive: true }).sort({ sortOrder: 1, name: 1, _id: 1 }).lean() : [];
+  const customSelections = readProductFilters(query.customFilters);
+  for (const [id, optionIds] of Object.entries(customSelections)) {
+    const definition = manualFilters.find(filter => String(filter._id) === id);
+    const allowed = new Set((definition?.options || []).map(option => String(option._id)));
+    if (definition && definition.type !== 'checkbox' && optionIds.length > 1) throw new AppError('Choose only one option for this filter.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+    const valid = definition && optionIds.every(option => allowed.has(option));
+    selections.push({ dimension: `custom:${id}`, condition: valid
+      ? { filterOptionIds: { $in: optionIds.map(option => new mongoose.Types.ObjectId(option)) } }
+      : { _id: { $in: [] } } });
+  }
 
   const pricingStages = [];
   if (approvedDealer) {
@@ -368,7 +387,7 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
       { $limit: limit },
       ...(priceNeededBeforePaging ? [] : pricingStages),
       { $set: { brand: '$brandKey', stockQuantity: '$stockLevel' } },
-      { $unset: ['_pricing', '_categoryPriority', '__v', 'priceHistory', ...INTERNAL_CATALOG_FIELDS] },
+      { $unset: ['filterOptionIds', '_pricing', '_categoryPriority', '__v', 'priceHistory', ...INTERNAL_CATALOG_FIELDS] },
     ],
     total: [...facetFilters, { $count: 'count' }],
   };
@@ -376,6 +395,14 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   if (includeFacets) {
     // Options come from the complete search context and remain visible at zero matches.
     // Counts apply the other selections while omitting the option's own group.
+    manualFilters.forEach((filter, index) => {
+      resultFacets[`customCounts${index}`] = [
+        ...matchingStages(dimension => dimension === `custom:${filter._id}`),
+        { $unwind: '$filterOptionIds' },
+        { $match: { filterOptionIds: { $in: filter.options.map(option => option._id) } } },
+        { $group: { _id: '$filterOptionIds', count: { $sum: 1 } } },
+      ];
+    });
     resultFacets.specs = specificationCountStages;
     resultFacets.specCounts = [...filtered, ...specificationCountStages];
     selectedSpecKeys.forEach((key, index) => {
@@ -546,6 +573,11 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
         count: availabilityCounts.find((item) => item._id === status)?.count || 0,
       })),
       specs: sortedSpecs,
+      customFilters: includeFacets ? manualFilters.map((filter, index) => ({
+        _id: String(filter._id), name: filter.name, type: filter.type,
+        options: filter.options.map(option => ({ _id: String(option._id), label: option.label,
+          count: (result[`customCounts${index}`] || []).find(item => String(item._id) === String(option._id))?.count || 0 })),
+      })) : [],
     },
   };
 };

@@ -64,8 +64,8 @@ export const HomePage = () => {
     try {
       const [catRes, featured, newest, allRes, gridResponse] = await Promise.all([
         categoryService.getCategoryTree(),
-        productService.getProducts({ isTrending: true, sortBy: 'updatedAt', sortOrder: 'desc', limit: 20, includeFacets: false }),
-        productService.getProducts({ sortBy: 'createdAt', sortOrder: 'desc', limit: 8, includeFacets: false }),
+        productService.getMerchandisingProducts('isTrending'),
+        productService.getMerchandisingProducts('isNewArrival'),
         productService.getProducts({ page: 1, sortBy: 'categoryPriority', limit: 16, includeFacets: false }),
         contentService.getBannerGrid().catch(() => ({ data: { grid: null } })),
       ]);
@@ -103,22 +103,7 @@ export const HomePage = () => {
 
       <TrendingProducts products={trendingProducts} />
 
-      {/* 4. NEW ARRIVALS SECTION */}
-      {newArrivals.length > 0 && (
-        <section className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-3 pt-2 sm:pt-4">
-          <div className="border-b border-[var(--store-border)] pb-2">
-            <h2 className="text-lg sm:text-xl font-bold text-[var(--store-text)] tracking-tight text-left">
-              New Arrivals
-            </h2>
-          </div>
-
-          <div className="home-product-grid gap-3 sm:gap-4">
-            {newArrivals.slice(0, 8).map((product) => (
-              <ProductCard key={product._id} product={product} />
-            ))}
-          </div>
-        </section>
-      )}
+      <TrendingProducts products={newArrivals} title="New Arrivals" eyebrow="Selected for you" label="New arrival products" viewAll={null} renderProduct={product => <ProductCard product={product} />} />
 
       {/* 5. ALL PRODUCTS SECTION (2 horizontal rows of products + Show All button in front) */}
       {allProducts.length > 0 && (

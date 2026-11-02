@@ -61,6 +61,16 @@ export const adminService = {
   },
 
   // --- PRODUCT MANAGEMENT ---
+  async getProductSheet() {
+    return (await apiClient.get('/admin/products/google-sheet')).data;
+  },
+  async initializeProductSheet(spreadsheetUrl) {
+    return (await apiClient.post('/admin/products/google-sheet/initialize', { spreadsheetUrl }, { timeout: 600000 })).data;
+  },
+  async syncProductSheet() {
+    return (await apiClient.post('/admin/products/google-sheet/sync', {}, { timeout: 600000 })).data;
+  },
+
   async downloadProductImportTemplate() {
     const response = await apiClient.get('/admin/products/import/template', { responseType: 'blob' });
     return response.data;

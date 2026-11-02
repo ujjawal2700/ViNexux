@@ -106,7 +106,7 @@ const PublicLayout = () => {
   const { brands: catalogBrands } = useCatalogBrands();
 
   // Search state
-  const [headerSearch, setHeaderSearch] = useState('');
+  const [headerSearch, setHeaderSearch] = useState(() => new URLSearchParams(location.search).get('search') || '');
   const [recentSearches, setRecentSearches] = useState(getRecentSearches);
   const [searchSuggestions, setSearchSuggestions] = useState([]);
   const [correctedSuggestion, setCorrectedSuggestion] = useState('');
@@ -626,12 +626,23 @@ const PublicLayout = () => {
     const path = location.pathname.replace(/\/$/, '');
     return allCategories.find((category) => buildCategoryPath(category, allCategories) === path);
   }, [allCategories, location.pathname]);
-  const searchTarget = useCallback((text) => {
+  // A header search always starts with the whole catalog, including when repeated.
+  const searchTarget = text => `/search${text ? `?${new URLSearchParams({ search: text })}` : ''}`;
+  const clearCatalogSearchFilters = () => {
     const query = new URLSearchParams(location.search);
-    query.set('search', text);
-    query.delete('page');
-    return `${searchCategory ? location.pathname : '/search'}?${query}`;
-  }, [searchCategory, location.pathname, location.search]);
+    const scopedRoute = searchCategory || /^\/brands\/[^/]+\/?$/.test(location.pathname) || ['/low-stock', '/trending'].includes(location.pathname);
+    const catalogRoute = scopedRoute || ['/products', '/search'].includes(location.pathname);
+    if (catalogRoute && (scopedRoute || [...query.keys()].some(key => key !== 'search'))) {
+      // Clear selections immediately while keeping the submitted query until Enter/Search.
+      navigate(searchTarget(query.get('search') || ''), { replace: true });
+    }
+  };
+  const handleSearchChange = e => {
+    const text = e.target.value;
+    setHeaderSearch(text);
+    setIsSearchOpen(true);
+    if (text !== headerSearch) clearCatalogSearchFilters();
+  };
 
   useEffect(() => {
     const refresh = () => setRecentSearches(getRecentSearches());
@@ -641,7 +652,7 @@ const PublicLayout = () => {
 
   const submitSearch = text => {
     const query = text.trim();
-    if (!query) { setRecentSearches(getRecentSearches()); setIsSearchOpen(true); return; }
+    if (!query) { clearCatalogSearchFilters(); setRecentSearches(getRecentSearches()); setIsSearchOpen(true); return; }
     setRecentSearches(rememberSearch(query));
     setHeaderSearch(query);
     navigate(searchTarget(query));
@@ -997,10 +1008,7 @@ const PublicLayout = () => {
                     setRecentSearches(getRecentSearches());
                     setIsSearchOpen(true);
                   }}
-                  onChange={(e) => {
-                    setHeaderSearch(e.target.value);
-                    setIsSearchOpen(true);
-                  }}
+                  onChange={handleSearchChange}
                   className="w-full h-10 px-2 bg-transparent text-[var(--store-text)] placeholder-gray-500 text-xs sm:text-sm border-0 focus:outline-none"
                 />
                 {renderSearchDropdown()}
@@ -1051,10 +1059,7 @@ const PublicLayout = () => {
                     setRecentSearches(getRecentSearches());
                     setIsSearchOpen(true);
                   }}
-                  onChange={(e) => {
-                    setHeaderSearch(e.target.value);
-                    setIsSearchOpen(true);
-                  }}
+                  onChange={handleSearchChange}
                   className="w-full h-11 px-4 bg-[var(--store-background)] hover:bg-[var(--store-surface)] focus:bg-[var(--store-surface)] text-[var(--store-text)] placeholder-gray-400 text-sm rounded-l-md border border-r-0 border-[var(--store-border)] focus:border-primary focus:outline-none transition-all shadow-inner"
                 />
 

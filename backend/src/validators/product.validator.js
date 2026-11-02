@@ -1,3 +1,4 @@
+import { filterSelectionsSchema } from './productFilter.validator.js';
 import { z } from 'zod';
 import mongoose from 'mongoose';
 
@@ -81,6 +82,7 @@ export const createProductSchema = {
       .min(0, { message: 'Dealer price cannot be negative' })
       .default(0)
       .optional(),
+    isNewArrival: z.boolean().optional(),
     isTrending: z.boolean().default(false).optional(),
     isLowStock: z.boolean().default(false).optional(),
     isFeatured: z.boolean().default(false).optional(),
@@ -139,12 +141,30 @@ export const updateProductSchema = {
       .number({ invalid_type_error: 'Dealer price must be a number' })
       .min(0, { message: 'Dealer price cannot be negative' })
       .optional(),
+    isNewArrival: z.boolean().optional(),
     isTrending: z.boolean().optional(),
     isLowStock: z.boolean().optional(),
     isFeatured: z.boolean().optional(),
     isActive: z.boolean().optional(),
   }),
 };
+
+// Drafts may be incomplete, while supplied values still obey type and size limits.
+const draftSpecificationSchema = z.object({
+  key: z.string().trim().max(100).default(''),
+  value: z.string().trim().max(2000).default(''),
+});
+const draftFields = {
+  isActive: z.literal(false),
+  sku: z.string().trim().max(50).optional(),
+  name: z.string().trim().max(150).optional(),
+  modelNumber: z.string().trim().max(100).optional(),
+  brandId: z.string().refine(isValidObjectId, 'Invalid brandId format').nullable().optional(),
+  specifications: z.array(draftSpecificationSchema).optional(),
+  additionalDetails: z.array(draftSpecificationSchema).max(30).optional(),
+};
+createProductSchema.body = z.union([createProductSchema.body.extend(draftFields), createProductSchema.body]);
+updateProductSchema.body = z.union([updateProductSchema.body.extend(draftFields), updateProductSchema.body]);
 
 export const getProductByIdSchema = {
   params: z.object({
@@ -172,6 +192,7 @@ export const getProductsQuerySchema = {
     }, { message: 'Invalid availability filter' }).optional(),
     minPrice: z.coerce.number().min(0).optional(),
     maxPrice: z.coerce.number().min(0).optional(),
+    customFilters: z.string().max(25000).refine(value => { try { return filterSelectionsSchema.safeParse(JSON.parse(value)).success; } catch { return false; } }, 'Choose valid filter options.').optional(),
     specs: z.string().max(10000).refine((value) => {
       try { return z.record(z.string().max(100), z.array(z.string().max(2000)).max(30)).safeParse(JSON.parse(value)).success; }
       catch { return false; }
@@ -187,6 +208,7 @@ export const getProductsQuerySchema = {
     category: z.string().optional(),
     categorySlug: z.string().optional(),
     brand: z.string().optional(),
+    isNewArrival: z.enum(['true', 'false']).optional(),
     isTrending: z.enum(['true', 'false']).optional(),
     stockUpdatedOnly: z.enum(['true', 'false']).optional(),
     isFeatured: z.string().optional(),
