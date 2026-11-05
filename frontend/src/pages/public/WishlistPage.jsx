@@ -1,13 +1,12 @@
-import PriceGate, { usePriceVisibility } from '../../components/products/PriceGate';
+import PriceGate, { LoginToViewPrices, usePriceVisibility } from '../../components/products/PriceGate';
 import productService from '../../services/productService';
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Heart, Store, ShoppingCart, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
 import wishlistService from '../../services/wishlistService';
 import cartService from '../../services/cartService';
-import guestCartService from '../../services/guestCartService';
 import { isLowStock } from '../../utils/inventory';
 import { buildProductPath } from '../../utils/categoryUrls';
 
@@ -15,6 +14,7 @@ export const WishlistPage = () => {
   const { isAuthenticated, user } = useAuth();
   const pricesVisible = usePriceVisibility();
   const toast = useToast();
+  const navigate = useNavigate();
   const [items, setItems] = useState(() => wishlistService.getWishlist());
   const [page, setPage] = useState(1);
   const pageSize = 12; // Matching Mega Jaipur pagination (12 items per page)
@@ -64,6 +64,10 @@ export const WishlistPage = () => {
 
   // Add item to cart + broadcast
   const handleAddToCart = async (product) => {
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: { pathname: '/wishlist' } } });
+      return;
+    }
     try {
       const productId = product._id || product.id;
       const unitPrice = product.applicablePrice ?? product.standardPrice ?? product.price ?? 0;
@@ -88,8 +92,7 @@ export const WishlistPage = () => {
           })
         );
       } else {
-        const updatedCart = guestCartService.addItem(product, 1);
-        window.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart: updatedCart } }));
+        return;
       }
 
       toast.success(`Added "${product.name || 'item'}" to cart`);
@@ -221,7 +224,7 @@ export const WishlistPage = () => {
                         </Link>
 
                         {/* Price & CD Discount */}
-                        <PriceGate>
+                        {pricesVisible && <PriceGate>
                         <div className="flex items-baseline gap-1.5 flex-wrap pt-0.5">
                           <span className="text-xs sm:text-[13px] font-bold text-[var(--store-text)]">
                             {product.applicablePrice == null && product.standardPrice == null && pricesVisible ? 'Loading prices…' : formatCurrency(unitPrice)}
@@ -231,14 +234,14 @@ export const WishlistPage = () => {
                           </span>
                         </div>
 
-                        </PriceGate>
+                        </PriceGate>}
                         {product.modelNumber && <div className="text-[10px] text-[var(--store-muted)]">Model Number: {product.modelNumber}</div>}
                       </div>
                     </div>
 
                     {/* Bottom Row: [Add to Cart] + [Remove] */}
                     <div className="flex items-center gap-2 pt-2.5 mt-2 border-t border-[var(--store-border)]">
-                      {stockInfo.canAdd ? (
+                      {!pricesVisible ? <LoginToViewPrices /> : stockInfo.canAdd ? (
                         <button
                           type="button"
                           onClick={() => handleAddToCart(product)}

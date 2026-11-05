@@ -1,4 +1,4 @@
-import PriceGate, { usePriceVisibility } from '../../components/products/PriceGate';
+import PriceGate, { LoginToViewPrices, usePriceVisibility } from '../../components/products/PriceGate';
 import { productModelVariant } from '../../../../shared/productPresentation.js';
 import { getRecentViews } from '../../utils/browsingHistory';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -69,7 +69,7 @@ const CartQuantityInput = ({ quantity, maximum, disabled, productName, onSave, c
 };
 
 export const CartPage = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading: authLoading } = useAuth();
   const pricesVisible = usePriceVisibility();
   const navigate = useNavigate();
   const toast = useToast();
@@ -666,6 +666,20 @@ export const CartPage = () => {
 
     toast.success('Opening the pre-filled WhatsApp chat.');
   };
+
+  if (!isAuthenticated && !authLoading) {
+    return (
+      <section className="storefront-container px-4 py-12 sm:py-20">
+        <div className="mx-auto max-w-md rounded-xl border border-[var(--store-border)] bg-[var(--store-surface)] p-6 text-center shadow-sm sm:p-8">
+          <ShoppingCart className="mx-auto mb-4 h-10 w-10 text-[var(--store-muted)]" aria-hidden="true" />
+          <h1 className="text-xl font-bold text-[var(--store-text)]">Login to access your cart</h1>
+          <p className="mb-5 mt-2 text-sm text-[var(--store-muted)]">Sign in to view prices and add products to your cart.</p>
+          <LoginToViewPrices />
+          <Link to="/products" className="mt-4 block text-sm font-medium text-[var(--store-muted)] hover:underline">Continue browsing</Link>
+        </div>
+      </section>
+    );
+  }
 
   if (isLoading) {
     return (

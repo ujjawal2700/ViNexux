@@ -28,6 +28,8 @@ test('guest detail hides prices and offer metadata, and the login button navigat
   await page.goto(`/products/${id}`);
   await expect(page.getByRole('heading', { name: product.name, exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Login to view the prices', exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /Add to cart/i })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Increase quantity', exact: true })).toHaveCount(0);
   await expect(page.locator('body')).not.toContainText(/₹\s?7,891|₹\s?6,789|₹\s?4,567/);
   const productSchemas = await page.locator('script[type="application/ld+json"]').allTextContents();
   expect(productSchemas.join('')).not.toContain('"price":7891');
@@ -42,6 +44,7 @@ for (const role of ['customer', 'dealer']) {
     await expect(page.getByRole('heading', { name: product.name, exact: true })).toBeVisible();
     await expect(page.locator('body')).toContainText(role === 'dealer' ? /₹\s?4,567/ : /₹\s?7,891/);
     await expect(page.getByRole('link', { name: 'Login to view the prices', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Add to cart/i }).first()).toBeVisible();
   });
 }
 
@@ -60,6 +63,7 @@ test('guest cart hides historical saved prices and totals', async ({ page }) => 
     localStorage.setItem('vinexus_guest_cart', JSON.stringify([{ productId: product, quantity: 2, priceSnapshot: 7891 }]));
   }, product);
   await page.goto('/cart');
+  await expect(page.getByRole('heading', { name: 'Login to access your cart', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Login to view the prices', exact: true }).first()).toBeVisible();
   await expect(page.locator('body')).not.toContainText(/₹\s?7,891|₹\s?15,782/);
 });
@@ -72,6 +76,20 @@ test('guest product cards show a login button instead of the price', async ({ pa
   await page.goto('/products');
   await expect(page.getByRole('heading', { name: product.name, exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Login to view the prices', exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /Add to cart/i })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Increase quantity', exact: true })).toHaveCount(0);
+  const card = page.locator('.theme-product-card').first();
+  const button = card.getByRole('link', { name: 'Login to view the prices', exact: true });
+  const cardBox = await card.boundingBox();
+  const buttonBox = await button.boundingBox();
+  expect(buttonBox.width).toBeGreaterThan(cardBox.width - 40);
+  expect(buttonBox.height).toBeLessThanOrEqual(42);
+  await page.screenshot({ path: '/tmp/vinexus-guest-cards-desktop.png' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileButtonBox = await button.boundingBox();
+  expect(mobileButtonBox.height).toBeLessThanOrEqual(42);
+  expect(await button.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await card.screenshot({ path: '/tmp/vinexus-guest-card-mobile.png' });
   await expect(page.locator('body')).not.toContainText(/₹\s?7,891/);
 });
 
@@ -89,6 +107,7 @@ for (const authenticated of [false, true]) {
     } else {
       await expect(page.getByRole('link', { name: 'Login to view the prices', exact: true }).first()).toBeVisible();
       await expect(page.locator('body')).not.toContainText(/₹\s?7,891/);
+      await expect(page.getByRole('button', { name: /Add to cart/i })).toHaveCount(0);
     }
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('vinexus_wishlist')));
     expect(saved[0]).not.toHaveProperty('standardPrice');

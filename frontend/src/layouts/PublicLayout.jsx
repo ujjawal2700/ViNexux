@@ -1,4 +1,4 @@
-import PriceGate, { usePriceVisibility } from '../components/products/PriceGate';
+import PriceGate, { LoginToViewPrices, usePriceVisibility } from '../components/products/PriceGate';
 import { getRecentSearches, rememberSearch } from '../utils/browsingHistory';
 import { Image } from '../components/ui/Image';
 import React, { Suspense, useState, useEffect, useRef, useMemo, useCallback } from 'react';
@@ -1224,7 +1224,12 @@ const PublicLayout = () => {
                   <div className="w-[360px] sm:w-[420px] bg-[var(--store-surface)] rounded-xl shadow-2xl border border-[var(--store-border)] relative overflow-hidden text-left">
                     <div className="absolute -top-1.5 right-6 w-3 h-3 bg-[var(--store-surface)] border-t border-l border-[var(--store-border)] rotate-45 transform z-10" />
 
-                    {cartItems.length === 0 ? (
+                    {!isAuthenticated ? (
+                      <div className="p-6 text-center space-y-3">
+                        <p className="text-sm text-[var(--store-muted)]">Login to view prices and access your cart.</p>
+                        <LoginToViewPrices />
+                      </div>
+                    ) : cartItems.length === 0 ? (
                       <div className="py-10 px-6 text-center select-none">
                         <p className="text-[var(--store-muted)] font-medium text-sm sm:text-base">
                           Your cart is empty

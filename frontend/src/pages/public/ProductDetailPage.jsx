@@ -1,21 +1,20 @@
-import PriceGate, { usePriceVisibility } from '../../components/products/PriceGate';
+import PriceGate, { LoginToViewPrices, usePriceVisibility } from '../../components/products/PriceGate';
 import { isWarrantyLink, productModelVariant } from '../../../../shared/productPresentation.js';
 import { productShareDescription } from '../../../../shared/socialMetadata.js';
 import { getRecentViews, rememberView } from '../../utils/browsingHistory';
 import { findHeaderCategory, orderedProductSpecifications } from '../../utils/productBrowsing';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import productService from '../../services/productService';
 import contentService from '../../services/contentService';
 import categoryService from '../../services/categoryService';
 import cartService from '../../services/cartService';
-import guestCartService from '../../services/guestCartService';
 import wishlistService from '../../services/wishlistService';
 import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
 import usePageSeo from '../../hooks/usePageSeo';
 import ProductCard from '../../components/products/ProductCard';
-import { extractProductId, buildCategoryPath, buildCategoryTrail, buildBrandUrl, cleanBrandSlug } from '../../utils/categoryUrls';
+import { extractProductId, buildProductPath, buildCategoryPath, buildCategoryTrail, buildBrandUrl, cleanBrandSlug } from '../../utils/categoryUrls';
 import { Image } from '../../components/ui/Image';
 import { Skeleton } from '../../components/ui/Skeleton';
 import NotFoundPage from './NotFoundPage';
@@ -40,6 +39,7 @@ import {
 
 export const ProductDetailPage = () => {
   const pricesVisible = usePriceVisibility();
+  const navigate = useNavigate();
   const params = useParams();
   const { id, param2, param3, brandSlug } = params;
   const rawId = id || param3 || param2;
@@ -336,8 +336,7 @@ export const ProductDetailPage = () => {
   const handleAddToCart = async () => {
 
     if (!isAuthenticated) {
-      const updatedCart = guestCartService.addItem(product, quantity);
-      window.dispatchEvent(new CustomEvent('cart-item-added', { detail: { product, quantity, displayPrice, cart: updatedCart } }));
+      navigate('/login', { state: { from: { pathname: buildProductPath(product) } } });
       return;
     }
 
@@ -746,7 +745,7 @@ export const ProductDetailPage = () => {
           <div className="bg-[var(--store-surface)] rounded-2xl border border-[var(--store-border)] p-5 shadow-xs space-y-4">
             
             {/* Price & Discount Row */}
-            <PriceGate>
+            {pricesVisible && <PriceGate>
             <div className="flex items-center justify-between gap-2 border-b border-[var(--store-border)] pb-3">
               <div className="flex flex-col">
                 <span className="text-2xl sm:text-3xl font-black text-[var(--store-text)] tracking-tight">
@@ -766,7 +765,7 @@ export const ProductDetailPage = () => {
               )}
             </div>
 
-            </PriceGate>
+            </PriceGate>}
             {/* In Stock / Out of Stock Status Pill */}
             {isOutOfStock ? (
               <div className="w-full py-2.5 px-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center justify-center gap-2">
@@ -785,6 +784,7 @@ export const ProductDetailPage = () => {
               </div>
             )}
 
+            {!pricesVisible ? <LoginToViewPrices /> : <>
             {/* Quantity Stepper + Add to Cart Button (Matching Screenshot) */}
             <div className="flex flex-wrap items-center gap-3">
               {isInStock && (
@@ -824,10 +824,11 @@ export const ProductDetailPage = () => {
                 <span>{isAdding ? 'Adding...' : isOutOfStock ? 'Enquire about availability' : 'Add to Cart'}</span>
               </button>
             </div>
+            </>}
 
 
             {isOutOfStock && <p className="text-sm text-[var(--store-muted)]">Send an enquiry to ask about availability and restocking.</p>}
-            {whatsappPhone && (
+            {pricesVisible && whatsappPhone && (
               <a href={`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(`Hello, I would like to order ${product.name}${product.modelNumber ? ` (Model: ${product.modelNumber})` : ''}. Quantity: ${quantity}. Please confirm pricing and availability. ${window.location.href}`)}`} target="_blank" rel="noopener noreferrer" className="flex h-11 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700">
                 Order on WhatsApp
               </a>

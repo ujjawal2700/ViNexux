@@ -1,12 +1,11 @@
-import PriceGate, { usePriceVisibility } from './PriceGate';
+import PriceGate, { LoginToViewPrices, usePriceVisibility } from './PriceGate';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
 import cartService from '../../services/cartService';
-import guestCartService from '../../services/guestCartService';
 import wishlistService from '../../services/wishlistService';
-import { Minus, Plus, Check, Heart, ImageOff } from 'lucide-react';
+import { Minus, Plus, Check, Heart, ImageOff, LockKeyhole } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { buildProductPath } from '../../utils/categoryUrls';
 import { getMaximumOrderQuantity, isLowStock } from '../../utils/inventory';
@@ -108,10 +107,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
 
 
     if (!isAuthenticated) {
-      const updatedCart = guestCartService.addItem(product, quantity);
-      window.dispatchEvent(new CustomEvent('cart-item-added', { detail: { product, quantity, displayPrice, cart: updatedCart } }));
-      setIsAdded(true);
-      setTimeout(() => setIsAdded(false), 2000);
+      navigate('/login', { state: { from: { pathname: buildProductPath(product) } } });
       return;
     }
 
@@ -207,7 +203,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
 
         {/* Price row with brand logo/name */}
         <div className="mt-2 flex min-h-9 items-center justify-between gap-2">
-          <PriceGate available={product.applicablePrice != null || product.standardPrice != null}>
+          {pricesVisible && <PriceGate available={product.applicablePrice != null || product.standardPrice != null}>
           <div className="flex min-w-0 flex-wrap items-baseline gap-x-1 gap-y-0.5">
             <span className="text-lg font-bold text-[var(--store-text)] sm:text-xl leading-none">
               ₹{(Number(displayPrice) || 0).toLocaleString('en-IN')}
@@ -219,7 +215,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
             )}
           </div>
 
-          </PriceGate>
+          </PriceGate>}
           {brandLogo ? (
             <img loading="lazy" decoding="async" src={brandLogo} alt={`${brandName} logo`} title={brandName} className="h-8 w-[30%] max-w-16 shrink-0 object-contain object-right" />
           ) : (
@@ -253,6 +249,15 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
           </div>
         )}
 
+        {!pricesVisible ? (
+          <div className="mt-auto pt-2 space-y-1.5">
+            <p className="flex items-center gap-1 text-[10px] italic text-[var(--store-muted)]">
+              <LockKeyhole className="h-3 w-3 shrink-0" aria-hidden="true" />
+              Login to see prices
+            </p>
+            <LoginToViewPrices />
+          </div>
+        ) : <>
         <div className="h-3" />
         {/* Quantity Selector + Add to Cart / Out of Stock Button */}
         <div className="product-card-actions mt-auto pt-3 border-t border-[var(--store-border)] flex w-full items-center gap-2 translate-y-0">
@@ -322,6 +327,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
             </button>
           )}
         </div>
+        </>}
       </div>
     </div>
   );
