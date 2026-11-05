@@ -10,7 +10,7 @@ function configure(t) {
   const original = { ...config };
   Object.assign(config, {
     smsApiKey: 'test-api-key', smsSenderId: 'VNXSMS',
-    smsBaseUrl: '', smsTemplateId: '',
+    smsBaseUrl: '', smsTemplateId: '', smsRouteId: '', smsPeId: '',
   });
   t.after(() => Object.assign(config, original));
 }
@@ -18,6 +18,8 @@ function configure(t) {
 test('sends using API-key authentication and documented transactional parameters', async (t) => {
   configure(t);
   config.smsTemplateId = 'test-template-id';
+  config.smsRouteId = '02';
+  config.smsPeId = '10000000000000001';
   t.mock.method(globalThis, 'fetch', async (input, options) => {
     const url = new URL(input);
     assert.equal(url.origin + url.pathname, 'https://cloud.smsindiahub.in/api/mt/SendSMS');
@@ -25,7 +27,8 @@ test('sends using API-key authentication and documented transactional parameters
     assert.deepEqual(Object.fromEntries(url.searchParams), {
       APIKey: 'test-api-key', number: '919876543210', senderid: 'VNXSMS',
       text: 'Dear customer 123456 is your mobile OTP verification code .do not share it with anyone.SCHTRD',
-      channel: 'Trans', DCS: '0', flashsms: '0', TemplateId: 'test-template-id',
+      channel: 'Trans', DCS: '0', flashsms: '0', DLTTemplateId: 'test-template-id',
+      route: '02', PEId: '10000000000000001',
     });
     return Response.json({ ErrorCode: '000', JobId: 'job-1', MessageData: [{ MessageId: 'message-1' }] });
   });
@@ -41,9 +44,25 @@ test('preserves account-specific endpoint query parameters and accepts a job ID'
     const url = new URL(input);
     assert.equal(url.searchParams.get('route'), '1');
     assert.equal(url.searchParams.has('TemplateId'), false);
+    assert.equal(url.searchParams.has('DLTTemplateId'), false);
+    assert.equal(url.searchParams.has('PEId'), false);
     return Response.json({ ErrorCode: '000', JobId: 'job-1' });
   });
   assert.equal((await provider.sendOtp(request)).messageId, 'job-1');
+});
+
+test('environment route and PE ID override stale endpoint query values', async (t) => {
+  configure(t);
+  config.smsBaseUrl = 'https://example.test/api/mt/SendSMS?route=old&PEId=old';
+  config.smsRouteId = '03';
+  config.smsPeId = '10000000000000002';
+  t.mock.method(globalThis, 'fetch', async (input) => {
+    const url = new URL(input);
+    assert.deepEqual(url.searchParams.getAll('route'), ['03']);
+    assert.deepEqual(url.searchParams.getAll('PEId'), ['10000000000000002']);
+    return Response.json({ ErrorCode: '000', JobId: 'job-1' });
+  });
+  assert.equal((await provider.sendOtp(request)).success, true);
 });
 
 test('rejects a missing API key before contacting the gateway', async (t) => {

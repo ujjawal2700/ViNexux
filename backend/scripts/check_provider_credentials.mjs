@@ -36,6 +36,8 @@ const report = {
     mockOtpEnabled: config.mockOtpEnabled,
     senderIdConfigured: Boolean(config.smsSenderId),
     templateIdConfigured: Boolean(config.smsTemplateId),
+    routeIdConfigured: Boolean(config.smsRouteId),
+    peIdConfigured: Boolean(config.smsPeId),
     apiKeyEndpointConfigured: (config.smsBaseUrl || 'https://cloud.smsindiahub.in/api/mt/SendSMS').split('?')[0] === 'https://cloud.smsindiahub.in/api/mt/SendSMS',
     requestMax: config.otpRequestMax,
     requestWindowMinutes: config.otpRequestWindowMinutes,

@@ -61,6 +61,8 @@ export const config = {
   smsApiKey: process.env.SMS_API_KEY || '',
   smsSenderId: process.env.SMS_SENDER_ID || '',
   smsTemplateId: process.env.SMS_TEMPLATE_ID || '',
+  smsRouteId: process.env.SMS_ROUTE_ID?.trim() || '',
+  smsPeId: process.env.SMS_PE_ID?.trim() || '',
   smsBaseUrl: process.env.SMS_BASE_URL || '',
   emailProvider: process.env.EMAIL_PROVIDER || 'smtp',
   emailHost: process.env.EMAIL_HOST || '',

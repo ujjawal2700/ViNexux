@@ -35,7 +35,9 @@ export class SmsIndiaHubOtpProvider extends OtpProvider {
       DCS: '0',
       flashsms: '0',
     });
-    if (config.smsTemplateId) params.set('TemplateId', config.smsTemplateId);
+    if (config.smsTemplateId) params.set('DLTTemplateId', config.smsTemplateId);
+    if (config.smsRouteId) params.set('route', config.smsRouteId);
+    if (config.smsPeId) params.set('PEId', config.smsPeId);
 
     let stage = 'endpoint';
     try {
