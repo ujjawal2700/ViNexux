@@ -12,8 +12,8 @@ export const getStorageChoices = () => {
 
 export const allowsPreferences = () => getStorageChoices()?.preferences === true;
 
-export const saveStorageChoices = (preferences) => {
-  const choice = { preferences: Boolean(preferences), updatedAt: new Date().toISOString() };
+export const saveStorageChoices = (preferences, analytics = preferences) => {
+  const choice = { preferences: Boolean(preferences), analytics: Boolean(analytics), updatedAt: new Date().toISOString() };
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(choice));
     if (!choice.preferences) OPTIONAL_KEYS.forEach((key) => window.localStorage.removeItem(key));

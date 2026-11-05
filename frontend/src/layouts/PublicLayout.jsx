@@ -895,6 +895,7 @@ const PublicLayout = () => {
               </strong>
               {user?.role === 'dealer' && ' (Verified Dealer)'}
               {', you are now logged in. '}
+              {user?.role === 'customer' && <Link to="/account/become-dealer" className="mx-2 font-bold text-[var(--store-primary)] underline">Become a Dealer</Link>}
               <button
                 type="button"
                 onClick={handleLogout}
@@ -1914,13 +1915,13 @@ const PublicLayout = () => {
                     <a
                       key={`wa-${idx}`}
                       className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 hover:text-[var(--store-primary)] hover:underline"
-                      href={`https://wa.me/${waLink}`}
-                      target="_blank"
+                      href={item.type === 'call' ? `tel:${raw.replace(/[^+0-9]/g, '')}` : `https://wa.me/${waLink}`}
+                      target={item.type === 'call' ? undefined : '_blank'}
                       rel="noopener noreferrer"
                     >
-                      <span className="min-w-0 break-words">{item.label || `WhatsApp ${idx + 1}`}</span>
+                      <span className="min-w-0 break-words">{item.label || `${item.type === 'call' ? 'Call' : 'WhatsApp'} ${idx + 1}`}</span>
                       <span className="shrink-0 tabular-nums whitespace-nowrap">{displayNum}</span>
-                      <WhatsAppIcon className="h-4 w-4 shrink-0 text-[#25D366]" />
+                      {item.type === 'call' ? <Phone aria-label="Call contact" className="h-4 w-4 shrink-0" /> : <WhatsAppIcon title="WhatsApp contact" className="h-4 w-4 shrink-0 text-[#25D366]" />}
                     </a>
                   );
                 })}

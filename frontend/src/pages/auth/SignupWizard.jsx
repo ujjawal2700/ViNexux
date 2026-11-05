@@ -192,7 +192,7 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
     if (!PAN_REGEX.test(pan.trim().toUpperCase())) {
       return 'A valid 10-character PAN number is required.';
     }
-    if (!MSME_REGEX.test(msmeNumber.trim().toUpperCase())) {
+    if (msmeNumber.trim() && !MSME_REGEX.test(msmeNumber.trim().toUpperCase())) {
       return 'Enter a valid MSME/Udyam number in the format UDYAM-XX-00-0000000.';
     }
     if (!aadhaarNumber.trim() || !AADHAAR_REGEX.test(aadhaarNumber.trim())) {
@@ -704,11 +704,10 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
 
               <div className="space-y-1">
                 <label className="block text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                  MSME / UDYAM NUMBER *
+                  MSME / UDYAM NUMBER (OPTIONAL)
                 </label>
                 <input
                   type="text"
-                  required
                   value={msmeNumber}
                   onChange={(e) => setMsmeNumber(e.target.value.toUpperCase().slice(0, 23))}
                   placeholder="UDYAM-RJ-00-0000000"

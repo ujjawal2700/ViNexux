@@ -69,6 +69,7 @@ const AdminBrandsPage = lazyWithRetry(() => import('../pages/admin/AdminBrandsPa
 const AdminProductDetailPage = lazyWithRetry(() => import('../pages/admin/AdminProductDetailPage'));
 const AdminProductSheetPage = lazyWithRetry(() => import('../pages/admin/AdminProductSheetPage'));
 const AdminProductImportPage = lazyWithRetry(() => import('../pages/admin/AdminProductImportPage'));
+const BecomeDealerPage = lazyWithRetry(() => import('../pages/account/BecomeDealerPage'));
 const AdminDealersPage = lazyWithRetry(() => import('../pages/admin/AdminDealersPage'));
 const AdminDealerDetailPage = lazyWithRetry(() => import('../pages/admin/AdminDealerDetailPage'));
 const AdminCustomersPage = lazyWithRetry(() => import('../pages/admin/AdminCustomersPage'));
@@ -84,6 +85,7 @@ const AdminCmsPagesPage = lazyWithRetry(() => import('../pages/admin/AdminCmsPag
 const AdminCmsFooterPage = lazyWithRetry(() => import('../pages/admin/AdminCmsFooterPage'));
 const AdminWebsiteSettingsPage = lazyWithRetry(() => import('../pages/admin/AdminWebsiteSettingsPage'));
 const AdminSeasonalThemesPage = lazyWithRetry(() => import('../pages/admin/AdminSeasonalThemesPage'));
+const AdminSuperAdminsPage = lazyWithRetry(() => import('../pages/admin/AdminSuperAdminsPage'));
 const AdminAccessPage = lazyWithRetry(() => import('../pages/admin/AdminAccessPage'));
 const AdminLogbookPage = lazyWithRetry(() => import('../pages/admin/AdminLogbookPage'));
 const AdminProfilePage = lazyWithRetry(() => import('../pages/admin/AdminProfilePage'));
@@ -148,6 +150,7 @@ const AppRoutes = () => {
             <Route path="/account/invoices" element={<ProfilePage />} />
             <Route path="/account/enquiries/:id" element={<EnquiryDetailPage />} />
             <Route path="/account/notifications" element={<NotificationPreferencesPage />} />
+            <Route path="/account/become-dealer" element={<BecomeDealerPage />} />
             <Route path="/account/profile" element={<ProfilePage />} />
             <Route path="/account/profile/update" element={<ProfileUpdatePage />} />
           </Route>
@@ -204,6 +207,7 @@ const AppRoutes = () => {
         <Route element={<RoleRoute allowedRoles={[ROLES.ADMIN]} portal="admin" />}>
           <Route element={<AdminLayout />}>
             <Route path="/admin/campaigns" element={<AdminCampaignsPage />} />
+            <Route path="/admin/super-admins" element={<AdminSuperAdminsPage />} />
             <Route path="/admin/access" element={<AdminAccessPage />} />
             <Route path="/admin/logbook" element={<AdminLogbookPage />} />
             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
@@ -220,6 +224,8 @@ const AppRoutes = () => {
             <Route path="/admin/products/google-sheet" element={<AdminProductSheetPage />} />
             <Route path="/admin/products/import" element={<AdminProductImportPage />} />
             <Route path="/admin/products/:id" element={<AdminProductDetailPage />} />
+            <Route path="/admin/dealer-accounts" element={<AdminDealersPage key="accounts" mode="accounts" />} />
+            <Route path="/admin/dealer-accounts/:id" element={<AdminDealerDetailPage key="accounts" mode="accounts" />} />
             <Route path="/admin/dealers" element={<AdminDealersPage />} />
             <Route path="/admin/dealers/:id" element={<AdminDealerDetailPage />} />
             <Route path="/admin/customers" element={<AdminCustomersPage />} />

@@ -1,3 +1,4 @@
+import { SITE_TITLE, SITE_DESCRIPTION } from '../../../shared/seo.js';
 import { Banner } from '../models/Banner.js';
 import { getActiveTheme } from './theme.service.js';
 import { PromotionalBanner } from '../models/PromotionalBanner.js';
@@ -381,7 +382,7 @@ export const updateFooterContent = async (payload) => {
   }
 
   if (Array.isArray(updateData.whatsappNumbers) && updateData.whatsappNumbers.length > 0) {
-    const firstWa = updateData.whatsappNumbers[0]?.number;
+    const firstWa = updateData.whatsappNumbers.find(item => item.type !== 'call')?.number;
     if (firstWa && !updateData.whatsappNumber) {
       updateData.whatsappNumber = firstWa;
     }
@@ -439,18 +440,21 @@ export const updateWebsiteSettings = async (payload, adminUserId) => {
 };
 
 export const getPublicWebsiteSettings = async () => {
-  const settings = await getWebsiteSettings();
-  const defaultMetaTitle = "Vinexus | India's #1 Networking Products, Enterprise Switches, CCTV & IT Hardware Distributor";
-  const defaultMetaDescription = 'Buy high-performance networking products, managed PoE switches, WiFi 6 routers, patch panels, Cat6 cables, server racks, CCTV cameras & IT hardware at wholesale dealer prices in India on Vinexus.';
+  // Storefront status polling must not update timestamps or create audit entries.
+  const settings = await WebsiteSettings.findOne({ singletonKey: 'primary' }).lean() || await getWebsiteSettings();
+  const defaultMetaTitle = SITE_TITLE;
+  const defaultMetaDescription = SITE_DESCRIPTION;
   return {
     websiteName: settings.websiteName === 'Vi Nexus' ? 'Vinexus' : settings.websiteName,
-    metaTitle: !settings.metaTitle || settings.metaTitle === 'Vi Nexus | B2B CCTV & Security Equipment Distributor' || settings.metaTitle === 'Vinexus | IT, Laptop, CCTV & Networking Products' ? defaultMetaTitle : settings.metaTitle,
-    metaDescription: !settings.metaDescription || settings.metaDescription.startsWith('Vi Nexus is a leading B2B distributor') || settings.metaDescription.startsWith('Browse laptops, computers, CCTV') ? defaultMetaDescription : settings.metaDescription,
+    metaTitle: !settings.metaTitle || settings.metaTitle === 'Vi Nexus | B2B CCTV & Security Equipment Distributor' || settings.metaTitle === 'Vinexus | IT, Laptop, CCTV & Networking Products' || settings.metaTitle.includes("India's #1 Networking") ? defaultMetaTitle : settings.metaTitle,
+    metaDescription: !settings.metaDescription || settings.metaDescription.startsWith('Vi Nexus is a leading B2B distributor') || settings.metaDescription.startsWith('Browse laptops, computers, CCTV') || settings.metaDescription.startsWith('Buy high-performance networking products') ? defaultMetaDescription : settings.metaDescription,
     favicon: { url: settings.favicon?.url || '/favicon.jpeg' },
     logo: { url: settings.logo?.url || '/logo.png' },
     ogImage: { url: !settings.ogImage?.url || settings.ogImage.url === '/favicon.jpeg' ? '/social-preview.png' : settings.ogImage.url },
     promoPopupIntervalMinutes: settings.promoPopupIntervalMinutes ?? 15,
     promoPopupEnabled: settings.promoPopupEnabled ?? true,
+    maintenanceEnabled: settings.maintenanceEnabled ?? false,
+    maintenanceMessage: settings.maintenanceMessage,
   };
 };
 

@@ -68,7 +68,7 @@ test('new arrival checkbox saves immediately and survives catalog reload', async
 });
 
 test('New Arrivals loads all selected pages, excludes automatic additions and auto slides', async ({ page }) => {
-  await page.clock.install(); await mockApi(page); await seedBrowserSession(page, 'storefront');
+  await page.clock.install(); await mockApi(page); await seedBrowserSession(page, 'account');
   const selected = Array.from({ length: 101 }, (_, index) => ({ _id: String(index + 1).padStart(24, '0'), name: `Selected Product ${index + 1}`, modelNumber: `MODEL-${index + 1}`, standardPrice: 1500, stockQuantity: 10, isActive: true, isNewArrival: true, images: [] }));
   const pages = [];
   await page.route('**/api/products?*', route => {
@@ -97,7 +97,7 @@ test('New Arrivals loads all selected pages, excludes automatic additions and au
   await page.mouse.move(0, 0); await page.clock.runFor(100);
   const start = await track.evaluate(el => el.scrollLeft);
   await page.clock.runFor(700);
-  expect(await track.evaluate(el => el.scrollLeft)).toBeGreaterThan(start);
+  expect(await track.evaluate(el => el.scrollLeft)).toBeLessThan(start);
   await track.focus();
   const paused = await track.evaluate(el => el.scrollLeft);
   await page.clock.runFor(300);

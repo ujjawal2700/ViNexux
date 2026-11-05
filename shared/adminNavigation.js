@@ -24,7 +24,9 @@ export const ADMIN_NAV_GROUPS = [
   ] },
   { label: 'People & Access', items: [
     { label: 'Dealer Verification', path: '/admin/dealers', icon: 'Users', keywords: 'kyc approval' },
+    { label: 'Dealer Accounts', path: '/admin/dealer-accounts', icon: 'Building2', keywords: 'dealer account wholesale status' },
     { label: 'Customer Accounts', path: '/admin/customers', icon: 'UserCheck' },
+    { label: 'Super Admins', path: '/admin/super-admins', icon: 'ShieldAlert', keywords: 'owner full access administrator' },
     { label: 'Team & Access', path: '/admin/access', icon: 'Users', keywords: 'employee role permission' },
     { label: 'Active User Sessions', path: '/admin/sessions', icon: 'ShieldAlert', keywords: 'login devices' },
     { label: 'Super Admin Logbook', path: '/admin/logbook', icon: 'BookOpen', keywords: 'audit history changes' },

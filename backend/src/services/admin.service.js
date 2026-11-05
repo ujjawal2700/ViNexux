@@ -28,7 +28,7 @@ export const getDashboardSummary = async () => {
   ] = await Promise.all([
     User.countDocuments({ role: 'customer' }),
     User.countDocuments({ role: 'dealer' }),
-    DealerProfile.countDocuments({ status: 'pending' }),
+    DealerProfile.countDocuments({ status: 'pending', applicationState: { $ne: 'draft' } }),
     DealerProfile.countDocuments({ status: 'approved' }),
     Product.countDocuments({}),
     Product.countDocuments({ isActive: true }),

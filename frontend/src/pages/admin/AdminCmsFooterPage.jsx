@@ -107,7 +107,7 @@ const AdminCmsFooterPage = () => {
 
       // Prepare whatsapp numbers
       const whatsapps = Array.isArray(data.whatsappNumbers) && data.whatsappNumbers.length > 0
-        ? data.whatsappNumbers.map((w) => ({ number: w.number || '', label: w.label || '' }))
+        ? data.whatsappNumbers.map((w) => ({ number: w.number || '', label: w.label || '', type: w.type || 'whatsapp' }))
         : (data.whatsappNumber ? [{ number: data.whatsappNumber, label: 'WhatsApp' }] : [{ number: '8769959424', label: 'Primary' }]);
 
       // Prepare emails
@@ -198,7 +198,10 @@ const AdminCmsFooterPage = () => {
 
   // WhatsApp numbers handlers
   const handleWhatsappChange = (index, field, value) => {
-    const updated = [...formData.whatsappNumbers];
+    const updated = formData.whatsappNumbers.map(item => ({ ...item }));
+    if (field === 'type' && /^(whatsapp|call)( \d+)?$/i.test(updated[index].label?.trim() || '')) {
+      updated[index].label = value === 'call' ? 'Call' : 'WhatsApp';
+    }
     updated[index][field] = value;
     setFormData({ ...formData, whatsappNumbers: updated });
   };
@@ -428,7 +431,7 @@ const AdminCmsFooterPage = () => {
       // Clean WhatsApp numbers
       const cleanedWhatsappNumbers = formData.whatsappNumbers
         .filter((w) => w.number && w.number.trim())
-        .map((w) => ({ number: w.number.trim(), label: (w.label || '').trim() }));
+        .map((w) => ({ number: w.number.trim(), label: (w.label || '').trim(), type: w.type || 'whatsapp' }));
 
       // Clean emails
       const cleanedEmails = formData.emails
@@ -450,7 +453,7 @@ const AdminCmsFooterPage = () => {
         }));
 
       const primaryPhone = cleanedPhoneNumbers[0]?.number || (formData.phone ? formData.phone.trim() : '');
-      const primaryWhatsapp = cleanedWhatsappNumbers[0]?.number || (formData.whatsappNumber ? formData.whatsappNumber.trim() : '8769959424');
+      const primaryWhatsapp = cleanedWhatsappNumbers.find(item => item.type !== 'call')?.number || (formData.whatsappNumber ? formData.whatsappNumber.trim() : '8769959424');
       const primaryEmail = cleanedEmails[0]?.email || (formData.email ? formData.email.trim() : '');
 
       const payload = {
@@ -708,30 +711,31 @@ const AdminCmsFooterPage = () => {
             <div className="space-y-3 bg-gray-50/70 p-4 rounded-xl border border-gray-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
-                  <h4 className="text-sm font-semibold text-gray-900">WhatsApp Numbers</h4>
+                  <Phone className="w-4 h-4 text-wine-600" />
+                  <h4 className="text-sm font-semibold text-gray-900">Sales &amp; Support Numbers</h4>
                   <span className="text-xs text-gray-400">({formData.whatsappNumbers.length})</span>
                 </div>
                 <Button type="button" variant="secondary" size="xs" onClick={handleAddWhatsapp} className="flex items-center gap-1">
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Add WhatsApp</span>
+                  <span>Add Support Number</span>
                 </Button>
               </div>
-              <p className="text-xs text-gray-500">Add WhatsApp numbers with labels for quick click-to-chat links. The WhatsApp icon is applied automatically.</p>
+              <p className="text-xs text-gray-500">Choose WhatsApp or call for each number to set its icon and contact link.</p>
 
               <div className="space-y-2.5 pt-1">
                 {formData.whatsappNumbers.map((waItem, idx) => (
-                  <div key={idx} className="flex items-center gap-2.5 bg-white p-2.5 rounded-lg border border-gray-200 shadow-2xs">
+                  <div key={idx} className="flex flex-wrap items-center gap-2.5 bg-white p-2.5 rounded-lg border border-gray-200 shadow-2xs">
                     <span className="text-xs font-bold text-gray-400 w-5 text-center">#{idx + 1}</span>
-                    <span
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#25D366]/10 text-[#25D366]"
-                      title="WhatsApp icon is added automatically"
-                    >
-                      <WhatsAppIcon className="h-5 w-5" />
-                    </span>
+                    {waItem.type === 'call' ? <Phone aria-label="Call contact" className="h-5 w-5 shrink-0" /> : <WhatsAppIcon title="WhatsApp contact" className="h-5 w-5 shrink-0 text-[#25D366]" />}
+                    <select aria-label={`Contact type for support number ${idx + 1}`} value={waItem.type || 'whatsapp'}
+                      onChange={(e) => handleWhatsappChange(idx, 'type', e.target.value)}
+                      className="h-10 rounded-lg border border-gray-200 bg-white px-2 text-sm">
+                      <option value="whatsapp">WhatsApp number</option>
+                      <option value="call">Call number</option>
+                    </select>
                     <Input
                       type="text"
-                      placeholder="WhatsApp No. (e.g. 8769959424)"
+                      placeholder="Support No. (e.g. 8769959424)"
                       value={waItem.number}
                       onChange={(e) => handleWhatsappChange(idx, 'number', e.target.value)}
                       className="flex-1"
@@ -748,7 +752,7 @@ const AdminCmsFooterPage = () => {
                         type="button"
                         onClick={() => handleRemoveWhatsapp(idx)}
                         className="text-red-500 hover:text-red-700 p-1.5 rounded hover:bg-red-50 transition cursor-pointer"
-                        title="Remove WhatsApp"
+                        title="Remove support number"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

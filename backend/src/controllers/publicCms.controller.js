@@ -36,6 +36,7 @@ export const fetchPublicFooterContent = asyncHandler(async (req, res) => {
 });
 
 export const fetchPublicWebsiteSettings = asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   const settings = await getPublicWebsiteSettings();
   return ApiResponse.success(res, 'Website settings retrieved successfully', { settings }, HTTP_STATUS.OK);
 });

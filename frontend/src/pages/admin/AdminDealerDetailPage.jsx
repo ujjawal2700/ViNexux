@@ -1,3 +1,5 @@
+import apiClient from '../../api/axios';
+import DealerReviewAttribution from '../../components/admin/DealerReviewAttribution';
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import adminService from '../../services/adminService';
@@ -26,7 +28,10 @@ import {
   ShieldAlert 
 } from 'lucide-react';
 
-const AdminDealerDetailPage = () => {
+const AdminDealerDetailPage = ({ mode = 'verification' }) => {
+  const accounts = mode === 'accounts';
+  const basePath = accounts ? '/admin/dealer-accounts' : '/admin/dealers';
+  const [statusSaving, setStatusSaving] = useState(false);
   const { id } = useParams();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -55,7 +60,7 @@ const AdminDealerDetailPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await adminService.getDealerById(id);
+      const res = accounts ? (await apiClient.get(`${basePath}/${id}`)).data : await adminService.getDealerById(id);
       setProfile(res.data?.profile || res.profile);
     } catch (err) {
       console.error('Error fetching dealer details:', err);
@@ -110,7 +115,7 @@ const AdminDealerDetailPage = () => {
   const handleRevokeConfirm = async () => {
     setRevokeLoading(true);
     try {
-      await adminService.revokeDealer(id, revokeReason.trim());
+      await apiClient.put(`${basePath}/${id}/revoke`, { reason: revokeReason.trim() });
       setToast({ message: 'Dealer wholesale access revoked', type: 'success' });
       setIsRevokeOpen(false);
       setRevokeReason('');
@@ -136,9 +141,9 @@ const AdminDealerDetailPage = () => {
   if (error || !profile) {
     return (
       <div className="space-y-6">
-        <Link to="/admin/dealers">
+        <Link to={basePath}>
           <Button variant="outline" size="sm">
-            <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Dealers Directory
+            <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to {accounts ? 'Dealer Accounts' : 'Dealer Verification'}
           </Button>
         </Link>
         <ErrorState title="Dealer Profile Not Found" message={error || 'Profile record unavailable'} onRetry={fetchProfile} />
@@ -154,11 +159,13 @@ const AdminDealerDetailPage = () => {
     <div className="space-y-6">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
+<div className="rounded-xl border border-border bg-card p-4"><DealerReviewAttribution profile={profile} /></div>
+
       {/* Header & Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border">
         <div>
-          <Link to="/admin/dealers" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2">
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Dealer Directory
+          <Link to={basePath} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2">
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to {accounts ? 'Dealer Accounts' : 'Dealer Verification'}
           </Link>
           <div className="flex items-center gap-3">
             <h1 className="text-xl md:text-2xl font-extrabold text-foreground">{profile.companyName}</h1>
@@ -167,7 +174,14 @@ const AdminDealerDetailPage = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {profile.status === 'pending' && (
+          {accounts && <Button variant={profile.userId?.accountStatus === 'blocked' ? 'primary' : 'danger'} size="sm" isLoading={statusSaving} onClick={async () => {
+            setStatusSaving(true);
+            try { await apiClient.put(`${basePath}/${id}/status`, { accountStatus: profile.userId?.accountStatus === 'blocked' ? 'active' : 'blocked' }); await fetchProfile(); }
+            catch (error) { setToast({ message: error.response?.data?.message || 'Unable to update account status.', type: 'error' }); }
+            finally { setStatusSaving(false); }
+          }}>{profile.userId?.accountStatus === 'blocked' ? 'Unblock Account' : 'Block Account'}</Button>}
+
+          {!accounts && profile.status === 'pending' && (
             <>
               <Button variant="primary" size="sm" onClick={() => setIsApproveOpen(true)}>
                 <CheckCircle2 className="w-4 h-4 mr-1.5" /> Approve KYC
@@ -178,7 +192,7 @@ const AdminDealerDetailPage = () => {
             </>
           )}
 
-          {profile.status === 'approved' && (
+          {accounts && profile.status === 'approved' && (
             <Button variant="outline" size="sm" onClick={() => { setIsRevokeOpen(true); setRevokeReason(''); }} className="text-rose-700 border-rose-200 hover:bg-rose-50">
               <RotateCcw className="w-4 h-4 mr-1.5" /> Revoke Access
             </Button>

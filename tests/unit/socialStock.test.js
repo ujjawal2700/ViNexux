@@ -34,7 +34,7 @@ describe('initial HTML social previews', () => {
     expect(html).toContain('&lt;script&gt;');
   });
   test('the server renderer fetches public product details without auth or browser JavaScript', async () => {
-    const fetchImpl = async url => ({ ok: true, json: async () => url.includes('/products/') ? { data: product } : { data: { settings: options.settings } } });
+    const fetchImpl = async () => ({ ok: true, json: async () => ({ data: { page: { status: 200, pathname: `/products/${id}`, product: { ...product, _id: id }, settings: options.settings } } }) });
     const result = await renderSharePage({ html: shell, ...options, pathname: `/products/${id}`, apiBase: 'https://api.example.test/api', fetchImpl });
     expect(result.cacheable).toBe(true); expect(result.html).toContain('adapter.webp'); expect(result.html).not.toContain('generic.png');
   });

@@ -1,6 +1,13 @@
 import apiClient from '../api/axios';
 
 export const dealerService = {
+  async getApplication() { return (await apiClient.get('/dealers/application', { skipGlobalLoader: true })).data; },
+  async saveApplication(data) { return (await apiClient.put('/dealers/application', data)).data; },
+  async uploadApplicationDocument(type, file) {
+    const data = new FormData(); data.append('file', file);
+    return (await apiClient.post(`/dealers/application/documents/${type}`, data)).data;
+  },
+  async submitApplication() { return (await apiClient.post('/dealers/application/submit')).data; },
   /**
    * Fetch authenticated dealer's profile and KYC document details.
    */

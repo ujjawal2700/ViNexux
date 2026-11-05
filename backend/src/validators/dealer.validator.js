@@ -242,3 +242,15 @@ export const getDealersQuerySchema = {
     sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
   }),
 };
+
+// Customer applications accept business details only. Documents must be uploaded
+// through the authenticated KYC endpoint; role and review fields are never input.
+export const dealerApplicationSchema = { body: createDealerProfileSchema.body.omit({ kycDocuments: true }).extend({
+  organisationType: z.enum(organisationTypes),
+  gstin: z.string().trim().toUpperCase().regex(gstinRegex),
+  pan: z.string().trim().toUpperCase().regex(panRegex),
+  aadhaarNumber: z.string().trim().regex(aadhaarRegex),
+  whatsappNumber: z.string().trim().regex(phoneRegex),
+  address: z.string().trim().min(1).max(255), city: z.string().trim().min(1).max(100), state: z.string().trim().min(1).max(100),
+  pincode: z.string().trim().regex(pincodeRegex), officeLocation: officeLocationSchema,
+}).strict() };

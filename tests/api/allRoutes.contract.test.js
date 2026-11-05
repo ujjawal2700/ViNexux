@@ -1,4 +1,5 @@
-import { beforeAll, describe, expect, test } from '@jest/globals';
+import WebsiteSettings from '../../backend/src/models/WebsiteSettings.js';
+import { afterAll, beforeAll, describe, expect, jest, test } from '@jest/globals';
 import mongoose from '../../backend/node_modules/mongoose/index.js';
 import supertest from 'supertest';
 import { discoverApiRoutes, materializeApiPath } from '../helpers/apiRouteInventory.js';
@@ -9,6 +10,7 @@ let app;
 const routes = discoverApiRoutes();
 
 beforeAll(async () => {
+  jest.spyOn(WebsiteSettings, 'findOne').mockReturnValue({ lean: async () => null, select: () => ({ lean: async () => null }) });
   ({ default: app } = await import('../../backend/src/app.js'));
 });
 
@@ -32,3 +34,5 @@ describe('API route inventory', () => {
     }
   );
 });
+
+afterAll(() => jest.restoreAllMocks());

@@ -16,12 +16,40 @@
       "continue": true
     },
     {
+      "src": "^/(?:admin/)?manifest\\.webmanifest$",
+      "headers": {
+        "Content-Type": "application/manifest+json; charset=utf-8",
+        "Cache-Control": "no-cache"
+      },
+      "continue": true
+    },
+    {
+      "src": "^/admin/sw\\.js$",
+      "headers": {
+        "Content-Type": "application/javascript; charset=utf-8",
+        "Cache-Control": "no-cache",
+        "Service-Worker-Allowed": "/admin/"
+      },
+      "continue": true
+    },
+    {
       "src": "^/$",
       "dest": "/api/page?path="
     },
     {
       "src": "^/index\\.html$",
       "dest": "/api/page?path=index.html"
+    },
+    {
+      "src": "^/sitemap\\.sxml$",
+      "status": 301,
+      "headers": {
+        "Location": "/sitemap.xml"
+      }
+    },
+    {
+      "src": "^/(sitemap(?:-pages|-products-[1-9][0-9]*)?\\.xml)$",
+      "dest": "/api/sitemap?file=$1"
     },
     {
       "handle": "filesystem"

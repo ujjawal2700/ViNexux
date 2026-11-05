@@ -45,6 +45,7 @@ const phoneContactSchema = new mongoose.Schema(
 
 const whatsappContactSchema = new mongoose.Schema(
   {
+    type: { type: String, enum: ['whatsapp', 'call'], default: 'whatsapp' },
     number: {
       type: String,
       required: [true, 'WhatsApp number is required'],

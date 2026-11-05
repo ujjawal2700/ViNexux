@@ -42,7 +42,7 @@ const StorageConsentBanner = () => {
 
             {/* Mobile short & simple text */}
             <p className="sm:hidden text-xs text-gray-600 leading-snug">
-              We use essential storage for your cart, login, and secure checkout. We never sell your data or use ad trackers.{' '}
+              We use essential storage for your cart, login, and secure checkout. Optional storage enables saved preferences and Google Analytics.{' '}
               <Link to="/privacy" className="font-semibold text-[var(--store-primary,#800020)] underline">
                 Privacy Policy
               </Link>
@@ -50,7 +50,7 @@ const StorageConsentBanner = () => {
 
             {/* Desktop & Tablet full description */}
             <p className="hidden sm:block text-xs sm:text-sm text-gray-600 leading-relaxed">
-              Vinexus uses essential browser storage to power shopping cart persistence, authentication, and secure checkout. With your consent, we also save your wishlist and recently viewed products on this device. We do not sell your personal data or use third-party advertising cookies. Read our{' '}
+              Vinexus uses essential browser storage to power shopping cart persistence, authentication, and secure checkout. With your consent, we also save your wishlist and recently viewed products on this device and use Google Analytics to understand website usage. We do not sell your personal data or use third-party advertising cookies. Read our{' '}
               <Link
                 to="/privacy"
                 className="font-semibold text-[var(--store-primary,#800020)] underline hover:text-[var(--store-primary-hover,#660019)]"
@@ -97,11 +97,11 @@ const StorageConsentBanner = () => {
                 </div>
                 <div className="text-xs">
                   <div className="flex items-center gap-1.5 font-semibold text-gray-800">
-                    <span>Transparency</span>
+                    <span>Google Analytics</span>
                     <span className="text-[10px] bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.2 rounded font-medium">No Ads</span>
                   </div>
                   <p className="text-gray-500 text-[11px] mt-0.5 line-clamp-2">
-                    Zero third-party trackers or cross-site advertising networks.
+                    Google Analytics measures visits only after you allow optional storage. Advertising features are disabled.
                   </p>
                 </div>
               </div>
@@ -115,7 +115,7 @@ const StorageConsentBanner = () => {
               onClick={() => choose(true)}
               className="flex-1 sm:flex-initial rounded-lg bg-[var(--store-primary,#800020)] hover:bg-[var(--store-primary-hover,#660019)] px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-xs transition-colors cursor-pointer text-center"
             >
-              Allow saved preferences
+              Allow optional storage
             </button>
             <button
               type="button"

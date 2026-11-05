@@ -2,21 +2,32 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="google-site-verification" content="BIdzIKiLz_srzFwDsNbqfYMPkuBRJpeEJhTRNMotlqU" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="application-name" content="ViNexus" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="ViNexus" />
+    <script>
+      if (/^\/admin(?:\/|$)/.test(window.location.pathname)) {
+        document.querySelector('link[rel="manifest"]').setAttribute('href', '/admin/manifest.webmanifest');
+        document.querySelector('meta[name="application-name"]').setAttribute('content', 'ViNexus Admin');
+        document.querySelector('meta[name="apple-mobile-web-app-title"]').setAttribute('content', 'ViNexus Admin');
+      }
+    </script>
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-    <title>
-      Vinexus | India's #1 Networking Products, Enterprise Switches, CCTV &amp;
-      IT Hardware Distributor
-    </title>
+    <title>ViNexus | Networking, CCTV &amp; IT Hardware</title>
 
     <!-- Primary SEO Metadata -->
     <meta
       name="title"
-      content="Vinexus | India's #1 Networking Products, Enterprise Switches, CCTV &amp; IT Hardware Distributor" />
+      content="ViNexus | Networking, CCTV &amp; IT Hardware" />
     <meta
       name="description"
       content="Buy high-performance networking products, managed PoE switches, WiFi 6 routers, patch panels, Cat6 cables, server racks, CCTV cameras &amp; IT hardware at wholesale dealer prices in India on Vinexus. Official warranty, GST commercial billing &amp; express delivery." />
@@ -49,7 +60,7 @@
     <meta property="og:site_name" content="Vinexus" />
     <meta
       property="og:title"
-      content="Vinexus | India's #1 Networking Products, Enterprise Switches, CCTV &amp; IT Hardware Distributor" />
+      content="ViNexus | Networking, CCTV &amp; IT Hardware" />
     <meta
       property="og:description"
       content="Buy high-performance networking products, managed PoE switches, WiFi 6 routers, patch panels, Cat6 cables, server racks, CCTV cameras &amp; IT hardware at wholesale dealer prices in India on Vinexus." />
@@ -63,7 +74,7 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta
       name="twitter:title"
-      content="Vinexus | India's #1 Networking Products, Enterprise Switches, CCTV &amp; IT Hardware Distributor" />
+      content="ViNexus | Networking, CCTV &amp; IT Hardware" />
     <meta
       name="twitter:description"
       content="Buy high-performance networking products, managed PoE switches, WiFi 6 routers, patch panels, Cat6 cables, server racks, CCTV cameras &amp; IT hardware at wholesale dealer prices in India on Vinexus." />
@@ -81,7 +92,7 @@
         "alternateName": "ViNexus Security & Networking Solutions",
         "url": "https://vinexus.in",
         "logo": "https://vinexus.in/logo.png",
-        "description": "India's leading B2B distributor of enterprise networking products, managed PoE switches, CCTV cameras, server racks, and IT hardware.",
+        "description": "Networking, CCTV, computers and IT hardware distributor based in Kota, Rajasthan.",
         "telephone": "+91-8003923316",
         "email": "vinexus2024@gmail.com",
         "address": {
@@ -110,6 +121,12 @@
           "query-input": "required name=search_term_string"
         }
       }
+    </script>
+
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function () { window.dataLayer.push(arguments); };
+      window.gtag('consent', 'default', { analytics_storage: 'denied', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' });
     </script>
 
     <!-- Enforce light theme across entire application -->

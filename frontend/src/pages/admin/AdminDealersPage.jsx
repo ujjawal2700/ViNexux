@@ -1,3 +1,5 @@
+import apiClient from '../../api/axios';
+import DealerReviewAttribution from '../../components/admin/DealerReviewAttribution';
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import adminService from '../../services/adminService';
@@ -18,7 +20,9 @@ import ErrorState from '../../components/ui/ErrorState';
 import Toast from '../../components/ui/Toast';
 import { Users, Eye, CheckCircle2, XCircle, RotateCcw } from 'lucide-react';
 
-const AdminDealersPage = () => {
+const AdminDealersPage = ({ mode = 'verification' }) => {
+  const accounts = mode === 'accounts';
+  const basePath = accounts ? '/admin/dealer-accounts' : '/admin/dealers';
   const [dealers, setDealers] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, totalPages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
@@ -28,7 +32,7 @@ const AdminDealersPage = () => {
   const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
+  const [statusFilter, setStatusFilter] = useState((accounts || ['pending', 'rejected'].includes(searchParams.get('status'))) ? (searchParams.get('status') || '') : 'pending');
   const [cityFilter, setCityFilter] = useState('');
   const [stateFilter, setStateFilter] = useState('');
   const [page, setPage] = useState(1);
@@ -77,7 +81,7 @@ const AdminDealersPage = () => {
       if (cityFilter.trim()) params.city = cityFilter.trim();
       if (stateFilter.trim()) params.state = stateFilter.trim();
 
-      const res = await adminService.getDealers(params);
+      const res = accounts ? (await apiClient.get(basePath, { params })).data : await adminService.getDealers(params);
       const dealerList = res.data?.dealers || [];
       const p = res.data?.pagination || {};
       const total = p.total ?? p.totalItems ?? p.totalCount ?? 0;
@@ -149,7 +153,7 @@ const AdminDealersPage = () => {
     if (!revokeTarget) return;
     setRevokeLoading(true);
     try {
-      await adminService.revokeDealer(revokeTarget._id, revokeReason.trim());
+      await apiClient.put(`${basePath}/${revokeTarget._id}/revoke`, { reason: revokeReason.trim() });
       setToast({ message: `Dealer status revoked for "${revokeTarget.companyName}".`, type: 'success' });
       setRevokeTarget(null);
       setRevokeReason('');
@@ -167,8 +171,8 @@ const AdminDealersPage = () => {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <AdminPageHeader
-        title="Dealer Verification & B2B Directory"
-        subtitle="Review business verification profiles, GST/PAN documents, and unlock wholesale catalog pricing"
+        title={accounts ? "Dealer Accounts" : "Dealer Verification"}
+        subtitle={accounts ? "Manage dealer accounts, account status and wholesale access" : "Review pending applications and rejected submissions before approving dealer access"}
         badge={`${pagination.total} Dealer Records`}
       />
 
@@ -189,9 +193,9 @@ const AdminDealersPage = () => {
               setPage(1);
             },
             options: [
-              { value: '', label: 'All Verification Statuses' },
+              { value: '', label: accounts ? 'All Verification Statuses' : 'Pending & Rejected Applications' },
               { value: 'pending', label: 'Pending Verification (Queue)' },
-              { value: 'approved', label: 'Approved Dealers' },
+              ...(accounts ? [{ value: 'approved', label: 'Approved Dealers' }] : []),
               { value: 'rejected', label: 'Rejected Applications' },
             ],
           },
@@ -210,7 +214,7 @@ const AdminDealersPage = () => {
         onReset={() => {
           setSearch('');
           setDebouncedSearch('');
-          setStatusFilter('');
+          setStatusFilter(accounts ? '' : 'pending');
           setCityFilter('');
           setStateFilter('');
           setPage(1);
@@ -244,6 +248,8 @@ const AdminDealersPage = () => {
                 <Table.Head>Location</Table.Head>
                 <Table.Head>Applicant</Table.Head>
                 <Table.Head>KYC Status</Table.Head>
+                {accounts && <Table.Head>Account Status</Table.Head>}
+                <Table.Head>Verification Record</Table.Head>
                 <Table.Head className="text-right">Actions</Table.Head>
               </Table.Row>
             </Table.Header>
@@ -272,15 +278,17 @@ const AdminDealersPage = () => {
                     <Table.Cell>
                       <StatusBadge status={dlr.status} />
                     </Table.Cell>
+                    {accounts && <Table.Cell><StatusBadge status={userObj?.accountStatus || 'pending'} /></Table.Cell>}
+                    <Table.Cell><DealerReviewAttribution profile={dlr} /></Table.Cell>
                     <Table.Cell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Link to={`/admin/dealers/${dlr._id}`}>
+                        <Link to={`${basePath}/${dlr._id}`}>
                           <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" title="Inspect Profile & Documents">
                             <Eye className="w-3.5 h-3.5 mr-1" /> Inspect
                           </Button>
                         </Link>
 
-                        {dlr.status === 'pending' && (
+                        {!accounts && dlr.status === 'pending' && (
                           <>
                             <Button
                               variant="ghost"
@@ -303,7 +311,7 @@ const AdminDealersPage = () => {
                           </>
                         )}
 
-                        {dlr.status === 'approved' && (
+                        {accounts && dlr.status === 'approved' && (
                           <Button
                             variant="ghost"
                             size="sm"

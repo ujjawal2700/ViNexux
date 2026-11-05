@@ -26,6 +26,7 @@ const SAMPLES = {
   '/:headerSlug/:param2': '/electronics/computers',
   '/:headerSlug': '/electronics',
   '/admin/products/:id': '/admin/products/507f1f77bcf86cd799439011',
+  '/admin/dealer-accounts/:id': '/admin/dealer-accounts/507f1f77bcf86cd799439011',
   '/admin/dealers/:id': '/admin/dealers/507f1f77bcf86cd799439011',
   '/admin/customers/:id': '/admin/customers/507f1f77bcf86cd799439011',
   '/admin/enquiries/:id': '/admin/enquiries/507f1f77bcf86cd799439011',

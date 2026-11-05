@@ -98,6 +98,7 @@ export const HomePage = () => {
   return (
     <div className="theme-home w-full max-w-full bg-[var(--store-background)] pb-16 space-y-6 sm:space-y-8 overflow-x-hidden">
       
+      <h1 className="sr-only">ViNexus — Networking, CCTV &amp; IT Hardware</h1>
       {/* Two independently rotating banner areas. */}
       <HeroBentoGrid grid={bannerGrid} />
 
@@ -108,7 +109,7 @@ export const HomePage = () => {
 
       <TrendingProducts products={trendingProducts} />
 
-      <TrendingProducts products={newArrivals} title="New Arrivals" eyebrow="Selected for you" label="New arrival products" viewAll={null} renderProduct={product => <ProductCard product={product} />} />
+      <TrendingProducts products={newArrivals} title="New Arrivals" direction="right" eyebrow="Selected for you" label="New arrival products" viewAll={null} renderProduct={product => <ProductCard product={product} />} />
 
       {/* 5. ALL PRODUCTS SECTION (2 horizontal rows of products + Show All button in front) */}
       {allProducts.length > 0 && (

@@ -1,8 +1,10 @@
+import usePageSeo from '../../hooks/usePageSeo';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Home, Search, SearchX } from 'lucide-react';
 
 const NotFoundPage = () => {
+  usePageSeo({ title: 'Page not found | ViNexus', description: 'This page is unavailable. Browse the ViNexus catalog for available products.', robots: 'noindex, follow' });
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
 

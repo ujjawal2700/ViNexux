@@ -1,12 +1,14 @@
+import { waitForServiceWorkerActivation } from '../../frontend/src/utils/serviceWorkerActivation.js';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { expect, jest, test } from '@jest/globals';
 
 // Run the browser adapter with SDK/browser boundaries stubbed.
 function browser({ permission = 'granted', error, supported = true } = {}) {
-  const registration = { scope: 'http://localhost/' }, messaging = {};
+  const registration = { scope: 'http://localhost/', active: { state: 'activated' } }, messaging = {};
   const calls = [], register = jest.fn(async () => registration), requestPermission = jest.fn(async () => { calls.push('permission'); return 'granted'; });
   const context = {
+    waitForServiceWorkerActivation,
     env: { VITE_FIREBASE_API_KEY: 'public-fixture-key', VITE_FIREBASE_PROJECT_ID: 'fixture-project', VITE_FIREBASE_VAPID_KEY: 'fixture-vapid' },
     window: { Notification: true }, Notification: { permission, requestPermission },
     navigator: { serviceWorker: { register, ready: Promise.resolve() } },

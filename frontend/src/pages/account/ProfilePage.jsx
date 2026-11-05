@@ -170,6 +170,7 @@ export const ProfilePage = () => {
                 <FileText className="w-5 h-5 shrink-0" /><span>My Invoices</span>
               </Link>
               <Link to="/account/notifications" className="block rounded-lg px-3.5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50">Notification preferences</Link>
+              {!isDealer && <Link to="/account/become-dealer" className="block rounded-lg bg-[var(--store-primary)]/5 px-3.5 py-3 text-sm font-bold text-[var(--store-primary)]">Become a Dealer</Link>}
               {/* 3. Delete Account (Opens warning confirmation dialog) */}
               <button
                 type="button"

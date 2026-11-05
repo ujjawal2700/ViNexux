@@ -1,3 +1,4 @@
+import { waitForServiceWorkerActivation } from '../utils/serviceWorkerActivation';
 import { initializeApp, getApps } from 'firebase/app';
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
 
@@ -37,7 +38,7 @@ export const getPushToken = async (requestPermission = false) => {
     if (!await isSupported()) return null;
 
     const registration = await navigator.serviceWorker.register(`/firebase-messaging-sw.js?config=${encodeURIComponent(JSON.stringify(firebaseConfig))}`);
-    await navigator.serviceWorker.ready;
+    await waitForServiceWorkerActivation(registration);
     const messaging = getMessaging(app);
 
     const options = {

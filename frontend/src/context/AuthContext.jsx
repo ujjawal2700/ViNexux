@@ -380,6 +380,26 @@ export const AuthProvider = ({ children }) => {
 
   const adminLogout = () => logout('admin');
 
+  const refreshUser = useCallback(async () => {
+    if (!accessToken) return null;
+    const response = await authService.getMe(accessToken, 'customer');
+    const fresh = response.data?.user || response.data;
+    if (fresh?.role) {
+      setUser(current => ({ ...current, ...fresh }));
+      setStoredUser({ ...getStoredUser('customer'), ...fresh }, 'customer');
+      if (fresh.role === ROLES.DEALER) {
+        setCustomerSessionExpiresAt(null); setStoredCustomerSessionExpiry(null);
+      }
+    }
+    return fresh;
+  }, [accessToken]);
+  useEffect(() => {
+    if (!accessToken) return undefined;
+    const refresh = () => { refreshUser().catch(() => {}); };
+    window.addEventListener('focus', refresh);
+    return () => window.removeEventListener('focus', refresh);
+  }, [accessToken, refreshUser]);
+
   // Update Profile
   const updateUserProfile = async (profileData, portal = 'customer') => {
     const isAdminSession = portal === 'admin';
@@ -446,6 +466,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     adminLogout,
     clearConflictState,
+    refreshUser,
     updateUserProfile,
     updateProfile: updateUserProfile,
   };

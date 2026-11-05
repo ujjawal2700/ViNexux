@@ -200,7 +200,8 @@ export const footerContentSchema = {
     whatsappNumbers: z
       .array(
         z.object({
-          number: z.string().trim().min(1, 'WhatsApp number cannot be empty').max(50),
+          number: z.string().trim().min(1, 'Support number cannot be empty').max(50),
+          type: z.enum(['whatsapp', 'call']).default('whatsapp'),
           label: z.string().trim().max(100).optional().default(''),
         })
       )

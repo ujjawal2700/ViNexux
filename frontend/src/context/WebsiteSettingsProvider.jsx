@@ -1,4 +1,4 @@
-import { productIdFromPath } from '../../../shared/socialMetadata.js';
+import { routeMetadata, SITE_TITLE, SITE_DESCRIPTION } from '../../../shared/seo.js';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import contentService from '../services/contentService';
@@ -6,13 +6,14 @@ import { WebsiteSettingsContext } from './websiteSettingsStore';
 
 const defaultSettings = {
   websiteName: 'Vinexus',
-  metaTitle: "Vinexus | India's #1 Networking Products, Enterprise Switches, CCTV & IT Hardware Distributor",
-  metaDescription: 'Buy high-performance networking products, managed PoE switches, WiFi 6 routers, patch panels, Cat6 cables, server racks, CCTV cameras & IT hardware at wholesale dealer prices in India on Vinexus.',
+  metaTitle: SITE_TITLE,
+  metaDescription: SITE_DESCRIPTION,
   favicon: { url: '/favicon.jpeg', publicId: '' },
   logo: { url: '/logo.png', publicId: '' },
   ogImage: { url: '/social-preview.png', publicId: '' },
   promoPopupIntervalMinutes: 15,
   promoPopupEnabled: true,
+  maintenanceEnabled: false,
 };
 
 const setMeta = (selector, attribute, value) => {
@@ -28,41 +29,28 @@ const setMeta = (selector, attribute, value) => {
 };
 
 const applyDocumentMetadata = (settings, pathname = '/') => {
-  const productPage = Boolean(productIdFromPath(pathname));
-  // Product metadata is owned by the product page; late CMS responses must not overwrite it.
-  if (!productPage) {
-    document.title = settings.metaTitle || settings.websiteName;
-    setMeta('meta[name="title"]', 'content', settings.metaTitle);
-    setMeta('meta[name="description"]', 'content', settings.metaDescription);
-    setMeta('meta[name="author"]', 'content', settings.websiteName);
-    setMeta('meta[property="og:site_name"]', 'content', settings.websiteName);
-    setMeta('meta[property="og:title"]', 'content', settings.metaTitle);
-    setMeta('meta[property="og:description"]', 'content', settings.metaDescription);
-    setMeta('meta[name="twitter:title"]', 'content', settings.metaTitle);
-    setMeta('meta[name="twitter:description"]', 'content', settings.metaDescription);
-
-  }
   const faviconUrl = settings.favicon?.url || defaultSettings.favicon.url;
   document.head.querySelectorAll('link[rel~="icon"], link[rel="apple-touch-icon"]').forEach((link) => {
     link.removeAttribute('type');
     link.setAttribute('href', faviconUrl);
   });
 
-  if (productPage) return;
-  const savedSocialImage = settings.ogImage?.url;
-  const socialImage = !savedSocialImage || savedSocialImage === '/favicon.jpeg'
-    ? defaultSettings.ogImage.url
-    : savedSocialImage;
-  const absoluteSocialImage = new URL(socialImage, window.location.origin).href;
-  setMeta('meta[property="og:type"]', 'content', 'website');
-  setMeta('meta[property="og:image"]', 'content', absoluteSocialImage);
-  setMeta('meta[name="twitter:image"]', 'content', absoluteSocialImage);
-  setMeta('meta[property="og:image:alt"]', 'content', settings.websiteName || 'Vinexus');
-  setMeta('meta[name="twitter:image:alt"]', 'content', settings.websiteName || 'Vinexus');
-  const currentUrl = new URL(pathname, window.location.origin).href;
-  setMeta('meta[property="og:url"]', 'content', currentUrl);
-  setMeta('meta[name="twitter:url"]', 'content', currentUrl);
-  setMeta('link[rel="canonical"]', 'href', currentUrl);
+  // A page hook owns its route-specific metadata, including late CMS refreshes.
+  if (document.head.dataset.pageSeoPath === pathname) return;
+  const meta = routeMetadata({ pathname, settings });
+  document.title = meta.title;
+  for (const name of ['title', 'description', 'robots']) setMeta(`meta[name="${name}"]`, 'content', meta[name]);
+  document.head.querySelectorAll('meta[name="googlebot"], meta[name="bingbot"]').forEach(element => element.remove());
+  for (const name of ['title', 'description', 'url', 'image']) {
+    setMeta(`meta[property="og:${name}"]`, 'content', meta[name]);
+    setMeta(`meta[name="twitter:${name}"]`, 'content', meta[name]);
+  }
+  setMeta('meta[property="og:image:alt"]', 'content', meta.heading);
+  setMeta('meta[name="twitter:image:alt"]', 'content', meta.heading);
+  setMeta('meta[name="keywords"]', 'content', 'ViNexus, networking, CCTV, IT hardware');
+  setMeta('meta[property="og:type"]', 'content', meta.type);
+  setMeta('meta[property="og:site_name"]', 'content', meta.siteName);
+  setMeta('link[rel="canonical"]', 'href', meta.url);
 };
 
 export const WebsiteSettingsProvider = ({ children }) => {
@@ -86,6 +74,10 @@ export const WebsiteSettingsProvider = ({ children }) => {
 
   useEffect(() => {
     refreshSettings();
+    const timer = window.setInterval(refreshSettings, 15000);
+    const onMaintenance = event => setSettings(current => ({ ...current, maintenanceEnabled: true, maintenanceMessage: event.detail }));
+    window.addEventListener('site-maintenance', onMaintenance);
+    return () => { window.clearInterval(timer); window.removeEventListener('site-maintenance', onMaintenance); };
   }, [refreshSettings]);
 
   useEffect(() => {

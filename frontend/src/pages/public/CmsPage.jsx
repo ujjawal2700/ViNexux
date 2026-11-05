@@ -1,3 +1,5 @@
+import usePageSeo from '../../hooks/usePageSeo';
+import { plainText } from '../../../../shared/seo.js';
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import contentService from '../../services/contentService';
@@ -39,6 +41,8 @@ export const CmsPage = () => {
       fetchPage();
     }
   }, [slug, legalDestination]);
+
+  usePageSeo({ title: error ? 'Page not found | ViNexus' : page?.title ? `${page.title} | ViNexus` : 'Page | ViNexus', description: page ? plainText(page.content).slice(0, 170) : undefined, robots: error ? 'noindex, follow' : undefined });
 
   if (legalDestination) return <Navigate to={legalDestination} replace />;
 

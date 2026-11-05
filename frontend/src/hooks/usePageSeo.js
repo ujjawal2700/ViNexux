@@ -1,3 +1,5 @@
+import useWebsiteSettings from './useWebsiteSettings';
+import { SITE_ORIGIN, routeMetadata } from '../../../shared/seo.js';
 import { useEffect } from 'react';
 
 /**
@@ -12,9 +14,13 @@ export const usePageSeo = ({
   imageAlt,
   type = 'website',
   jsonLd,
+  robots,
 }) => {
+  const { settings } = useWebsiteSettings();
+  const resolvedImage = type === 'product' ? image : image || settings.ogImage?.url || '/social-preview.png';
   useEffect(() => {
-    const originalTitle = document.title;
+    const pathname = window.location.pathname;
+    document.head.dataset.pageSeoPath = pathname;
 
     // Helper to safely set meta attributes
     const setMeta = (selector, attribute, value) => {
@@ -50,12 +56,12 @@ export const usePageSeo = ({
     }
 
     // Update keywords
-    if (keywords) {
-      setMeta('meta[name="keywords"]', 'content', keywords);
-    }
+    setMeta('meta[name="keywords"]', 'content', keywords || 'ViNexus, networking, CCTV, IT hardware');
 
     // Update canonical link
-    const pageUrl = canonical || (typeof window !== 'undefined' ? window.location.href : 'https://vinexus.in/');
+    const pageUrl = canonical || new URL(window.location.pathname, SITE_ORIGIN).href;
+    setMeta('meta[name="robots"]', 'content', robots || routeMetadata({ pathname }).robots);
+    document.head.querySelectorAll('meta[name="googlebot"], meta[name="bingbot"]').forEach(element => element.remove());
     let canonicalLink = document.head.querySelector('link[rel="canonical"]');
     if (!canonicalLink) {
       canonicalLink = document.createElement('link');
@@ -72,10 +78,10 @@ export const usePageSeo = ({
       if (!image) document.head.querySelectorAll('meta[property="og:image"], meta[name="twitter:image"]').forEach(element => element.remove());
     }
     // Update social image
-    if (image) {
-      const absoluteImage = image.startsWith('http')
-        ? image
-        : new URL(image, window.location.origin).href;
+    if (resolvedImage) {
+      const absoluteImage = resolvedImage.startsWith('http')
+        ? resolvedImage
+        : new URL(resolvedImage, SITE_ORIGIN).href;
       setMeta('meta[property="og:image"]', 'content', absoluteImage);
       setMeta('meta[name="twitter:image"]', 'content', absoluteImage);
       setMeta('meta[property="og:image:alt"]', 'content', imageAlt || title);
@@ -103,9 +109,9 @@ export const usePageSeo = ({
       // Clean up script on unmount
       const existingScript = document.getElementById('page-structured-data');
       if (existingScript) existingScript.remove();
-      document.title = originalTitle;
+      if (document.head.dataset.pageSeoPath === pathname) delete document.head.dataset.pageSeoPath;
     };
-  }, [title, description, keywords, canonical, image, imageAlt, type, jsonLd]);
+  }, [title, description, keywords, canonical, image, resolvedImage, imageAlt, type, jsonLd, robots]);
 };
 
 export default usePageSeo;

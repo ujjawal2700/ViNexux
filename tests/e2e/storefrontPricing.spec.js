@@ -27,13 +27,13 @@ test('guest detail hides prices and offer metadata, and the login button navigat
   await setup(page);
   await page.goto(`/products/${id}`);
   await expect(page.getByRole('heading', { name: product.name, exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Login to view the prices', exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Login to order', exact: true }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: /Add to cart/i })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Increase quantity', exact: true })).toHaveCount(0);
   await expect(page.locator('body')).not.toContainText(/₹\s?7,891|₹\s?6,789|₹\s?4,567/);
   const productSchemas = await page.locator('script[type="application/ld+json"]').allTextContents();
   expect(productSchemas.join('')).not.toContain('"price":7891');
-  await page.getByRole('link', { name: 'Login to view the prices', exact: true }).first().click();
+  await page.getByRole('link', { name: 'Login to order', exact: true }).first().click();
   await expect(page).toHaveURL(/\/login$/);
 });
 
@@ -43,7 +43,7 @@ for (const role of ['customer', 'dealer']) {
     await page.goto(`/products/${id}`);
     await expect(page.getByRole('heading', { name: product.name, exact: true })).toBeVisible();
     await expect(page.locator('body')).toContainText(role === 'dealer' ? /₹\s?4,567/ : /₹\s?7,891/);
-    await expect(page.getByRole('link', { name: 'Login to view the prices', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Login to order', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Add to cart/i }).first()).toBeVisible();
   });
 }
@@ -53,7 +53,7 @@ test('prices disappear immediately when a customer session expires', async ({ pa
   await page.goto(`/products/${id}`);
   await expect(page.locator('body')).toContainText(/₹\s?7,891/);
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('session-expired', { detail: { portal: 'customer' } })));
-  await expect(page.getByRole('link', { name: 'Login to view the prices', exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Login to order', exact: true }).first()).toBeVisible();
   await expect(page.locator('body')).not.toContainText(/₹\s?7,891/);
 });
 
@@ -64,7 +64,7 @@ test('guest cart hides historical saved prices and totals', async ({ page }) => 
   }, product);
   await page.goto('/cart');
   await expect(page.getByRole('heading', { name: 'Login to access your cart', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Login to view the prices', exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Login to order', exact: true }).first()).toBeVisible();
   await expect(page.locator('body')).not.toContainText(/₹\s?7,891|₹\s?15,782/);
 });
 
@@ -75,11 +75,11 @@ test('guest product cards show a login button instead of the price', async ({ pa
   } }));
   await page.goto('/products');
   await expect(page.getByRole('heading', { name: product.name, exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Login to view the prices', exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Login to order', exact: true }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: /Add to cart/i })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Increase quantity', exact: true })).toHaveCount(0);
   const card = page.locator('.theme-product-card').first();
-  const button = card.getByRole('link', { name: 'Login to view the prices', exact: true });
+  const button = card.getByRole('link', { name: 'Login to order', exact: true });
   const cardBox = await card.boundingBox();
   const buttonBox = await button.boundingBox();
   expect(buttonBox.width).toBeGreaterThan(cardBox.width - 40);
@@ -105,7 +105,7 @@ for (const authenticated of [false, true]) {
     if (authenticated) {
       await expect(page.locator('body')).toContainText(/₹\s?7,891/);
     } else {
-      await expect(page.getByRole('link', { name: 'Login to view the prices', exact: true }).first()).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Login to order', exact: true }).first()).toBeVisible();
       await expect(page.locator('body')).not.toContainText(/₹\s?7,891/);
       await expect(page.getByRole('button', { name: /Add to cart/i })).toHaveCount(0);
     }

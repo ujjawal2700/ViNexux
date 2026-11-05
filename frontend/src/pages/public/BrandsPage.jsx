@@ -288,6 +288,7 @@ export const BrandsPage = () => {
   return (
     <div className="w-full min-h-screen bg-[var(--store-background)]/70 text-[var(--store-text)] pb-16">
       
+      <h1 className="storefront-container px-4 pt-6 text-2xl font-bold">Shop by Brand</h1>
       {/* Search Bar Container (Centered exactly like Mega Jaipur screenshot) */}
       <div className="w-full px-4 pt-6 sm:pt-8 pb-4 sm:pb-6">
         <div className="max-w-xl mx-auto">

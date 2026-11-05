@@ -1,4 +1,5 @@
-import { beforeAll, describe, expect, test } from '@jest/globals';
+import WebsiteSettings from '../../backend/src/models/WebsiteSettings.js';
+import { afterAll, beforeAll, describe, expect, jest, test } from '@jest/globals';
 import mongoose from '../../backend/node_modules/mongoose/index.js';
 import supertest from 'supertest';
 
@@ -6,6 +7,7 @@ mongoose.set('bufferCommands', false);
 let request;
 
 beforeAll(async () => {
+  jest.spyOn(WebsiteSettings, 'findOne').mockReturnValue({ lean: async () => null, select: () => ({ lean: async () => null }) });
   const { default: app } = await import('../../backend/src/app.js');
   request = supertest(app);
 });
@@ -70,3 +72,5 @@ describe('core API behavior', () => {
     expect(rejected.status).toBeGreaterThanOrEqual(400);
   });
 });
+
+afterAll(() => jest.restoreAllMocks());

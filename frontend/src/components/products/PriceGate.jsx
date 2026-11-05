@@ -16,7 +16,7 @@ export const LoginToViewPrices = ({ className = '' }) => {
       state={{ from: { pathname: `${location.pathname}${location.search}` } }}
       onClick={event => event.stopPropagation()}
       className={`inline-flex min-h-9 w-full items-center justify-center whitespace-nowrap rounded-md bg-[#c65d0a] px-2 py-2 text-center text-[10px] font-bold leading-tight text-white transition-colors hover:bg-[#a94c06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c65d0a] focus-visible:ring-offset-2 sm:text-[11px] ${className}`}
-    >Login to view the prices</Link>
+    >Login to order</Link>
   );
 };
 

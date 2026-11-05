@@ -1,3 +1,4 @@
+import { renderPwaHtml } from './pwa.js';
 import { isInventorySpecification } from './productSpecifications.js';
 // Shared by the initial HTML response and client-side navigation.
 const RESERVED = new Set(['admin', 'account', 'customer', 'dealer', 'api', 'invoices', 'content', 'login', 'register', 'signup', 'verify-otp', 'forgot-password', 'reset-password']);
@@ -33,7 +34,7 @@ export const productShareDescription = product => {
   if (!groups.size) parts.push(plainText(product.shortDescription || product.description || product.name));
   return parts.filter(Boolean).join(' · ').slice(0, 300);
 };
-export const socialMetadata = ({ pathname = '/', origin, settings = {}, product = null }) => {
+export const socialMetadata = ({ pathname = '/', origin, settings = {}, product = null, metadata = {} }) => {
   const isProduct = Boolean(productIdFromPath(pathname));
   const image = isProduct
     ? [...(product?.images || [])].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)).find(asset => asset?.url)?.url || product?.imageUrl || product?.image || ''
@@ -46,11 +47,12 @@ export const socialMetadata = ({ pathname = '/', origin, settings = {}, product 
     url: absoluteUrl(pathname, origin),
     type: isProduct ? 'product' : 'website',
     siteName: settings.websiteName || 'Vinexus',
+    ...metadata,
   };
 };
 export const renderSocialHtml = (html, options) => {
   const meta = socialMetadata(options);
-  return html.replace(/<head>([\s\S]*?)<\/head>/i, (_, head) => {
+  return renderPwaHtml(html, options.pathname).replace(/<head>([\s\S]*?)<\/head>/i, (_, head) => {
     // Remove every old social tag, including generic image dimensions/types.
     const clean = head.replace(/<title\b[^>]*>[\s\S]*?<\/title>/gi, '')
       .replace(/<meta\b[^>]*>/gi, tag => /\b(?:name|property)\s*=\s*["'](?:og:[^"']*|twitter:[^"']*|title|description)["']/i.test(tag) ? '' : tag)

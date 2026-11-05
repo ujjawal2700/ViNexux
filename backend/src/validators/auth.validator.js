@@ -67,7 +67,6 @@ export const signupSchema = {
         ['organisationType', data.organisationType, 'Organisation type is required'],
         ['gstin', data.gstin, 'GSTIN is required'],
         ['pan', data.pan, 'PAN number is required'],
-        ['msmeNumber', data.msmeNumber, 'MSME / Udyam registration number is required'],
         ['whatsappNumber', data.whatsappNumber, 'WhatsApp number is required'],
         ['aadhaarNumber', data.aadhaarNumber, 'Aadhaar number is required'],
         ['address', data.address, 'Business address is required'],

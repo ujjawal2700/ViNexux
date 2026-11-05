@@ -508,8 +508,10 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
     return "Browse India's top B2B catalog of enterprise networking products, CCTV cameras, servers, laptops, and IT hardware on Vinexus.";
   }, [headerSlug, activeCategory, brandSlug, routeBrand]);
 
+  const missingSeoPage = (targetCategorySlug && categoriesLoaded && !routeCategory) || (brandSlug && !resolvedBrand);
   usePageSeo({
-    title: seoTitle,
+    title: missingSeoPage ? 'Page not found | ViNexus' : seoTitle,
+    robots: missingSeoPage || searchParams.toString() || location.pathname === '/search' ? 'noindex, follow' : undefined,
     description: seoDescription,
     keywords:
       "networking products, enterprise switches, managed PoE switch, WiFi 6 router, Cat6 cable, CCTV cameras India, Vinexus Kota",

@@ -1,3 +1,4 @@
+import { productPath, productStructuredData, SITE_ORIGIN } from '../../../../shared/seo.js';
 import PriceGate, { LoginToViewPrices, usePriceVisibility } from '../../components/products/PriceGate';
 import { isWarrantyLink, productModelVariant } from '../../../../shared/productPresentation.js';
 import { productShareDescription } from '../../../../shared/socialMetadata.js';
@@ -275,7 +276,8 @@ export const ProductDetailPage = () => {
 
   // Dynamic SEO metadata & Google Product Structured Data (JSON-LD)
   usePageSeo({
-    title: product?.name ? `${product.name} | Buy Online at Best Price - Vinexus` : 'Product Details | Vinexus',
+    robots: error || (!isLoading && !product) ? 'noindex, follow' : undefined,
+    title: error || (!isLoading && !product) ? 'Page not found | ViNexus' : product?.name ? `${product.name} | ViNexus` : 'Product Details | Vinexus',
     description: product ? productShareDescription(product) : undefined,
     keywords: product?.name
       ? `${product.name}, ${brandName || ''}, networking products, CCTV camera, enterprise switches, IT hardware India, Vinexus Kota`
@@ -283,28 +285,8 @@ export const ProductDetailPage = () => {
     image: product?.images?.[0]?.url || product?.imageUrl,
     imageAlt: product?.name,
     type: 'product',
-    jsonLd: product?.name
-      ? {
-          '@context': 'https://schema.org/',
-          '@type': 'Product',
-          name: product.name,
-          image: product.images?.map((i) => i.url) || [product.imageUrl],
-          description: product.description || product.shortDescription || product.name,
-          sku: product.sku || product._id,
-          brand: {
-            '@type': 'Brand',
-            name: brandName || 'Vinexus',
-          },
-          ...(pricesVisible ? { offers: {
-            '@type': 'Offer',
-            url: typeof window !== 'undefined' ? window.location.href : 'https://vinexus.in',
-            priceCurrency: 'INR',
-            price: displayPrice || standardPrice || 0,
-            availability: isInStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-            itemCondition: 'https://schema.org/NewCondition',
-          } } : {}),
-        }
-      : null,
+    canonical: product?._id ? new URL(productPath(product), SITE_ORIGIN).href : undefined,
+    jsonLd: product?.name ? productStructuredData(product) : null,
   });
 
   // Stepper handlers & disabled state (capped at available stock and 5 for manually flagged low-stock items)

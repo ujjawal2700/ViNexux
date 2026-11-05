@@ -2,7 +2,7 @@ export const ADMIN_SECTIONS = [
   ['campaigns', 'Email & push campaigns', 'Marketing'],
   ['dashboard', 'Overview dashboard', 'Operations'], ['categories', 'Categories', 'Catalog'],
   ['products', 'Products & inventory', 'Catalog'], ['filters', 'Product filters', 'Catalog'], ['brands', 'Brands', 'Catalog'],
-  ['pos', 'Offline POS billing', 'Operations'], ['dealers', 'Dealer verification', 'People'],
+  ['pos', 'Offline POS billing', 'Operations'], ['dealers', 'Dealer verification', 'People'], ['dealer-accounts', 'Dealer accounts', 'People'],
   ['customers', 'Customer accounts', 'People'], ['enquiries-customers', 'B2C enquiries', 'Operations'], ['enquiries-dealers', 'B2B enquiries', 'Operations'],
   ['sessions', 'Customer & dealer sessions', 'People'], ['reports', 'Analytics reports', 'Operations'],
   ['themes', 'Seasonal themes', 'Website'], ['website-settings', 'Website & SEO settings', 'Website'],

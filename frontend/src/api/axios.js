@@ -184,6 +184,9 @@ apiClient.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
+    if (error.response?.data?.error?.code === 'MAINTENANCE_MODE') {
+      window.dispatchEvent(new CustomEvent('site-maintenance', { detail: error.response.data.message }));
+    }
     if (error.response?.status === 403 && error.response?.data?.error?.code === 'WRITE_ACCESS_DENIED') {
       window.dispatchEvent(new CustomEvent('admin-write-denied'));
     }

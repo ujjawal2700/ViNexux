@@ -1,3 +1,9 @@
+import seoRoutes from './seo.routes.js';
+import dealerApplicationRoutes from './dealerApplication.routes.js';
+import dealerAccountsRoutes from './dealerAccounts.routes.js';
+import superAdminRoutes from './superAdmin.routes.js';
+import maintenanceRoutes from './maintenance.routes.js';
+import { maintenanceGuard } from '../middlewares/maintenance.middleware.js';
 import adminFilterRoutes from './adminFilter.routes.js';
 import { sharePage } from '../controllers/sharePage.controller.js';
 import campaignRoutes from './campaign.routes.js';
@@ -30,6 +36,9 @@ import publicPosRoutes from './publicPos.routes.js';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 
 const router = Router();
+router.use(maintenanceGuard);
+router.use('/seo', seoRoutes);
+router.use('/admin/maintenance', maintenanceRoutes);
 router.get('/share-page', sharePage);
 
 // Mount system routes
@@ -49,6 +58,7 @@ router.use('/content', publicCmsRoutes);
 router.use('/admin/campaigns', campaignRoutes);
 router.use('/communications', communicationsRoutes);
 router.use('/admin/access', adminAccessRoutes);
+router.use('/admin/super-admins', superAdminRoutes);
 router.use('/admin', adminRoutes);
 router.use('/admin/pos', posRoutes);
 router.use('/pos', publicPosRoutes);
@@ -57,6 +67,7 @@ router.use('/admin/products', adminProductRoutes);
 router.use('/admin/filters', adminFilterRoutes);
 router.use('/admin/brands', adminBrandRoutes);
 router.use('/admin/dealers', adminDealerRoutes);
+router.use('/admin/dealer-accounts', dealerAccountsRoutes);
 router.use('/admin/enquiries', adminEnquiryRoutes);
 router.use('/admin/customers', adminCustomerRoutes);
 router.use('/admin/sessions', adminSessionRoutes);
@@ -66,6 +77,7 @@ router.use('/admin/upload', authenticate, authorize('admin'), uploadRoutes);
 router.use('/upload', authenticate, authorize('admin'), uploadRoutes);
 
 // Mount dealer module
+router.use('/dealers/application', dealerApplicationRoutes);
 router.use('/dealers', dealerRoutes);
 
 // Mount cart, enquiry, and saved-address modules

@@ -12,7 +12,7 @@ function TrendingBrandLogo({ brand }) {
   return <img src={source} alt={`${brand.name || 'Brand'} logo`} className="trending-brand" loading="lazy" decoding="async" onError={() => setFailedSource(source)} />;
 }
 
-export default function TrendingProducts({ products = [], title = 'Trending Products', eyebrow = 'In the spotlight', label = 'Trending products', viewAll = '/trending', renderProduct }) {
+export default function TrendingProducts({ products = [], title = 'Trending Products', eyebrow = 'In the spotlight', label = 'Trending products', viewAll = '/trending', direction = 'left', renderProduct }) {
   const track = useRef(null);
   const group = useRef(null);
   const [paused, setPaused] = useState(false);
@@ -43,7 +43,9 @@ export default function TrendingProducts({ products = [], title = 'Trending Prod
     const step = time => {
       if (media.matches) return;
       if (!document.hidden && previous !== undefined) {
-        el.scrollLeft += Math.min(time - previous, 50) * 0.035;
+        const distance = Math.min(time - previous, 50) * 0.035;
+        if (direction === 'right' && el.scrollLeft <= 0 && group.current?.offsetWidth) el.scrollLeft += group.current.offsetWidth;
+        el.scrollLeft += direction === 'right' ? -distance : distance;
         const width = group.current?.offsetWidth;
         if (width && el.scrollLeft >= width) el.scrollLeft -= width;
       }
@@ -52,7 +54,7 @@ export default function TrendingProducts({ products = [], title = 'Trending Prod
     };
     frame = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frame);
-  }, [products.length, slides, paused, reducedMotion]);
+  }, [products.length, slides, paused, reducedMotion, direction]);
 
   const navigate = direction => {
     const el = track.current, width = group.current?.offsetWidth;

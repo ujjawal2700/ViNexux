@@ -1,7 +1,46 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import apiClient from '../../api/axios';
+import useWebsiteSettings from '../../hooks/useWebsiteSettings';
+import { isSuperAdmin } from '../../../../shared/adminAccess.js';
 import { Link } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import { ShieldCheck, User, Mail, Phone, Calendar, Edit3, KeyRound, Lock } from 'lucide-react';
+
+function MaintenanceSettings() {
+  const { refreshSettings } = useWebsiteSettings();
+  const [form, setForm] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    apiClient.get('/admin/maintenance').then(response => setForm(response.data.data))
+      .catch(error => setError(error.response?.data?.message || 'Unable to load maintenance settings.'));
+  }, []);
+  const save = async event => {
+    event.preventDefault(); setSaving(true); setError(''); setSaved(false);
+    try {
+      const response = await apiClient.put('/admin/maintenance', form);
+      setForm(response.data.data); setSaved(true); await refreshSettings();
+    } catch (error) { setError(error.response?.data?.message || 'Unable to save maintenance settings.'); }
+    finally { setSaving(false); }
+  };
+  return <section className="rounded-2xl border border-border bg-card p-6 space-y-4">
+    <h2 className="text-xl font-bold">Website maintenance</h2>
+    <p className="text-sm text-muted-foreground">Pause the storefront and ordering while you work. Admin sign-in stays available. Only super admins can change these settings.</p>
+    {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+    {form ? <form onSubmit={save} className="space-y-4">
+      <label className="flex items-center gap-3 font-semibold"><input type="checkbox" checked={form.maintenanceEnabled}
+        onChange={event => { setForm({ ...form, maintenanceEnabled: event.target.checked }); setSaved(false); }} /> Enable maintenance mode</label>
+      <label className="block text-sm font-semibold">Message shown to visitors
+        <textarea required maxLength={1000} rows={4} value={form.maintenanceMessage}
+          onChange={event => { setForm({ ...form, maintenanceMessage: event.target.value }); setSaved(false); }}
+          className="mt-2 block w-full rounded-xl border border-border bg-background p-3 font-normal" />
+      </label>
+      <button disabled={saving} className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground disabled:opacity-50">{saving ? 'Saving…' : 'Save maintenance settings'}</button>
+      {saved && <p role="status" className="text-sm text-emerald-600">Maintenance settings saved.</p>}
+    </form> : !error && <p role="status">Loading maintenance settings…</p>}
+  </section>;
+}
 
 const AdminProfilePage = () => {
   const { user, adminUser } = useAuth();
@@ -28,6 +67,8 @@ const AdminProfilePage = () => {
           Edit Profile & Credentials
         </Link>
       </div>
+
+      {isSuperAdmin(currentAdmin) && <MaintenanceSettings />}
 
       {/* Profile Details Card */}
       <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">

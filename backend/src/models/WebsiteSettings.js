@@ -14,6 +14,8 @@ const websiteSettingsSchema = new mongoose.Schema(
   {
     singletonKey: { type: String, default: 'primary', unique: true, immutable: true },
     quickSpecKeys: { type: [{ type: String, trim: true, maxlength: 80 }], default: () => [...DEFAULT_QUICK_SPEC_KEYS] },
+    maintenanceEnabled: { type: Boolean, default: false },
+    maintenanceMessage: { type: String, trim: true, maxlength: 1000, default: 'Our website is under maintenance. Please check back soon.' },
     activeThemeId: { type: String, default: null },
     websiteName: { type: String, trim: true, required: true, default: 'Vinexus', maxlength: 150 },
     metaTitle: {

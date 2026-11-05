@@ -18,3 +18,9 @@ test('search matches labels, aliases, groups and nested category sections', () =
   expect(category.children.map(child => child.path)).toEqual(['/admin/categories/main']);
   expect(visibleAdminNavigation(owner, 'does-not-exist')).toEqual([]);
 });
+
+test('super admin management is separate from employee permissions', () => {
+  const paths = user => visibleAdminNavigation(user).flatMap(group => group.items.map(item => item.path));
+  expect(paths({ role: 'admin', isEmployee: false })).toContain('/admin/super-admins');
+  expect(paths(posEmployee)).not.toContain('/admin/super-admins');
+});

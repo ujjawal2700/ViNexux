@@ -14,7 +14,14 @@ describe('dealer signup validation', () => {
     expect(signupSchema.body.safeParse(validDealer).success).toBe(true);
   });
 
-  test.each(['organisationType', 'pan', 'msmeNumber', 'whatsappNumber', 'officeLocation'])(
+  test.each([undefined, ''])('accepts dealer registration with optional Udyam number: %s', msmeNumber => {
+    expect(signupSchema.body.safeParse({ ...validDealer, msmeNumber }).success).toBe(true);
+  });
+  test('rejects a malformed supplied Udyam number', () => {
+    expect(signupSchema.body.safeParse({ ...validDealer, msmeNumber: 'invalid' }).success).toBe(false);
+  });
+
+  test.each(['organisationType', 'pan', 'whatsappNumber', 'officeLocation'])(
     'rejects a dealer missing %s',
     (field) => {
       const payload = { ...validDealer };

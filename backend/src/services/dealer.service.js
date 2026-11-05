@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+import { dealerApplicationSchema } from '../validators/dealer.validator.js';
 import { DealerProfile } from '../models/DealerProfile.js';
 import { User } from '../models/User.js';
 import { Session } from '../models/Session.js';
@@ -207,11 +209,9 @@ export const listDealers = async (query = {}) => {
     sortOrder = 'desc',
   } = query;
 
-  const filter = {};
-
-  if (status) {
-    filter.status = status;
-  }
+  const filter = { applicationState: { $ne: 'draft' } };
+  if (query.scope === 'verification') filter.status = status === 'rejected' ? 'rejected' : status === 'pending' ? 'pending' : { $in: ['pending', 'rejected'] };
+  else if (status) filter.status = status;
 
   if (city) {
     filter.city = new RegExp(escapeRegex(city), 'i');
@@ -258,7 +258,8 @@ export const listDealers = async (query = {}) => {
   const totalItems = await DealerProfile.countDocuments(filter);
   const dealers = await DealerProfile.find(filter)
     .populate('userId', 'fullName email phone role accountStatus isPhoneVerified isEmailVerified')
-    .populate('kycReviewedBy', 'fullName email role')
+    .populate('kycReviewedBy', 'fullName email role isEmployee')
+    .populate('kycVerifiedBy', 'fullName email role isEmployee')
     .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 })
     .skip(skip)
     .limit(limit)
@@ -283,7 +284,8 @@ export const listDealers = async (query = {}) => {
 export const getDealerById = async (dealerId) => {
   const profile = await DealerProfile.findById(dealerId)
     .populate('userId', 'fullName email phone role accountStatus isPhoneVerified isEmailVerified')
-    .populate('kycReviewedBy', 'fullName email role');
+    .populate('kycReviewedBy', 'fullName email role isEmployee')
+    .populate('kycVerifiedBy', 'fullName email role isEmployee');
 
   if (!profile) {
     throw new AppError('Dealer profile not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
@@ -296,30 +298,38 @@ export const getDealerById = async (dealerId) => {
  * Approve dealer KYC (Admin only)
  */
 export const approveDealerKyc = async (dealerId, adminId = null) => {
-  const profile = await DealerProfile.findById(dealerId);
-
-  if (!profile) {
-    throw new AppError('Dealer profile not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
-  }
-
-  profile.status = 'approved';
-  profile.rejectionReason = undefined;
-  if (adminId) {
-    profile.kycReviewedBy = adminId;
-    profile.kycReviewedAt = new Date();
-    profile.kycReviewAction = 'approved';
-  }
-  await profile.save();
-
-  // Sync user status to active if user exists
-  await User.findByIdAndUpdate(profile.userId, {
-    accountStatus: 'active',
-    status: 'active',
+  let profile;
+  await mongoose.connection.transaction(async session => {
+    profile = await DealerProfile.findById(dealerId).select('+aadhaarNumber').session(session);
+    if (!profile) throw new AppError('Dealer profile not found', 404, ERROR_CODES.NOT_FOUND);
+    if (profile.status === 'approved') throw new AppError('This dealer is already approved.', 409, ERROR_CODES.CONFLICT);
+    const user = await User.findById(profile.userId).session(session);
+    if (!user || !['customer', 'dealer'].includes(user.role)) throw new AppError('Dealer account not found.', 404, ERROR_CODES.NOT_FOUND);
+    if (user.accountStatus === 'blocked' || user.status === 'blocked') throw new AppError('Unblock this account before approving its application.', 409, ERROR_CODES.CONFLICT);
+    if (profile.applicationSource === 'customer') {
+      if (profile.applicationState !== 'submitted' || profile.status !== 'pending') throw new AppError('This application has not been submitted for review.', 409, ERROR_CODES.CONFLICT);
+      const data = profile.toObject(); delete data.kycDocuments;
+      const fields = Object.keys(dealerApplicationSchema.body.shape);
+      dealerApplicationSchema.body.parse(Object.fromEntries(fields.map(key => [key, data[key]])));
+      if (!['gst', 'aadhaar'].every(type => profile.kycDocuments.some(doc => doc.type === type && doc.url))) throw new AppError('GST and Aadhaar documents are required before approval.', 400, ERROR_CODES.VALIDATION_ERROR);
+    }
+    profile.status = 'approved'; profile.rejectionReason = undefined;
+    if (adminId) {
+      profile.kycReviewedBy = adminId; profile.kycReviewedAt = new Date(); profile.kycReviewAction = 'approved';
+      profile.kycVerifiedBy = adminId; profile.kycVerifiedAt = profile.kycReviewedAt;
+    }
+    await profile.save({ session });
+    user.role = 'dealer'; user.dealerProfileId = profile._id; user.accountStatus = 'active'; user.status = 'active';
+    await user.save({ session });
+    await Session.updateMany({ userId: user._id, isActive: true }, { $set: { userType: 'dealer' } }, { session });
   });
-
+  profile.$session(null);
+  // Aadhaar is needed to validate an application, but never returned by review APIs.
+  profile.set('aadhaarNumber', undefined);
   const updatedProfile = await profile.populate([
     { path: 'userId', select: 'fullName email phone role accountStatus isPhoneVerified isEmailVerified' },
-    { path: 'kycReviewedBy', select: 'fullName email role' },
+    { path: 'kycReviewedBy', select: 'fullName email role isEmployee' },
+    { path: 'kycVerifiedBy', select: 'fullName email role isEmployee' },
   ]);
 
   // Attempt WhatsApp notification (Isolated operation; does not throw if fails)
@@ -342,6 +352,8 @@ export const rejectDealerKyc = async (dealerId, rejectionReason, adminId = null)
     throw new AppError('Dealer profile not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
   }
 
+  if (profile.status === 'approved' || profile.applicationState === 'draft') throw new AppError('This application is no longer awaiting a review decision.', 409, ERROR_CODES.CONFLICT);
+
   profile.status = 'rejected';
   profile.rejectionReason = rejectionReason && rejectionReason.trim() ? rejectionReason.trim() : undefined;
   if (adminId) {
@@ -353,7 +365,8 @@ export const rejectDealerKyc = async (dealerId, rejectionReason, adminId = null)
 
   const updatedProfile = await profile.populate([
     { path: 'userId', select: 'fullName email phone role accountStatus isPhoneVerified isEmailVerified' },
-    { path: 'kycReviewedBy', select: 'fullName email role' },
+    { path: 'kycReviewedBy', select: 'fullName email role isEmployee' },
+    { path: 'kycVerifiedBy', select: 'fullName email role isEmployee' },
   ]);
 
   // Attempt WhatsApp notification (Isolated operation; does not throw if fails)
@@ -425,7 +438,8 @@ export const revokeDealerStatus = async (dealerId, reason, adminId = null) => {
 
   return await profile.populate([
     { path: 'userId', select: 'fullName email phone role accountStatus isPhoneVerified isEmailVerified' },
-    { path: 'kycReviewedBy', select: 'fullName email role' },
+    { path: 'kycReviewedBy', select: 'fullName email role isEmployee' },
+    { path: 'kycVerifiedBy', select: 'fullName email role isEmployee' },
   ]);
 };
 

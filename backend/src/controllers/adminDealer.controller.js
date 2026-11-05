@@ -10,7 +10,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 
 export const getDealers = asyncHandler(async (req, res) => {
-  const result = await listDealers(req.query);
+  const result = await listDealers({ ...req.query, scope: 'verification' });
 
   return ApiResponse.success(
     res,

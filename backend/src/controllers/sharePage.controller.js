@@ -1,20 +1,18 @@
 import { readFile } from 'node:fs/promises';
-import { renderSocialHtml, productIdFromPath } from '../../../shared/socialMetadata.js';
-import { getPublicProductById } from '../services/catalog.service.js';
-import { getPublicWebsiteSettings } from '../services/cms.service.js';
+import { renderSeoHtml, SITE_ORIGIN } from '../../../shared/seo.js';
+import { seoPage } from '../services/seo.service.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
-// nginx uses this endpoint for the HTML shell; assets continue to be served statically.
+// The same HTML, status and crawlable content are sent to people and crawlers.
 export const sharePage = asyncHandler(async (req, res) => {
   const html = await readFile(new URL('../../../frontend/dist/index.html', import.meta.url), 'utf8');
-  const pathname = `/${String(req.query.path || '').replace(/^\/+/, '').split('?')[0]}`;
-  const origin = `${req.protocol}://${req.get('host')}`;
-  const productId = productIdFromPath(pathname);
-  const [settings, product] = await Promise.all([
-    getPublicWebsiteSettings(),
-    productId ? getPublicProductById(productId).catch(error => { if (error.statusCode === 404) return null; throw error; }) : null,
-  ]);
-  res.setHeader('Content-Security-Policy', 'upgrade-insecure-requests');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.type('html').send(renderSocialHtml(html, { pathname, origin, settings, product }));
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(req.query)) if (key !== 'path') for (const item of Array.isArray(value) ? value : [value]) search.append(key, item);
+  const page = await seoPage(`${req.query.path || '/'}${search.size ? `?${search}` : ''}`);
+  if (page.redirect) return res.redirect(301, page.redirect);
+  if (page.status === 503) res.set('Retry-After', '60');
+  if (page.metadata?.robots?.includes('noindex')) res.set('X-Robots-Tag', 'noindex, follow');
+  res.set('Content-Security-Policy', 'upgrade-insecure-requests');
+  res.set('Cache-Control', 'no-cache');
+  res.status(page.status).type('html').send(renderSeoHtml(html, page, SITE_ORIGIN));
 });

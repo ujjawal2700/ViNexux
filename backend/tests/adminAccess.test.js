@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import bcrypt from 'bcryptjs';
+import { canAdmin, ADMIN_SECTIONS, isSuperAdmin } from '../../shared/adminAccess.js';
+import { config } from '../src/config/env.js';
 import { randomUUID } from 'node:crypto';
 import mongoose from 'mongoose';
 import supertest from '../../node_modules/supertest/index.js';
@@ -147,6 +150,56 @@ try {
   const listing = await auth('get', '/admin/access/logs?search=Asha');
   assert.equal(listing.status, 200, JSON.stringify(listing.body));
   assert.ok(listing.body.data.total > 0);
+  // Super-admin management uses real authentication, persistence and password hashing.
+  assert.equal((await request.get('/api/admin/super-admins')).status, 401);
+  assert.equal((await auth('put', `/admin/access/employees/${employee._id}`).send({ ...blockedEmployee, accountStatus: 'active' })).status, 200);
+  const activeEmployeeToken = (await login(employee)).token;
+  for (const method of ['get', 'post']) assert.equal((await auth(method, '/admin/super-admins', activeEmployeeToken).send({})).status, 403);
+  const newAdmin = { fullName: 'Second Super Admin', email: 'second-owner@example.test', phone: '9555555555', password: 'Second-owner-password' };
+  const ownerCreated = await auth('post', '/admin/super-admins').send(newAdmin);
+  assert.equal(ownerCreated.status, 201, JSON.stringify(ownerCreated.body));
+  assert.equal(ownerCreated.body.data.admin.passwordHash, undefined);
+  const secondOwner = await User.findById(ownerCreated.body.data.admin._id).select('+passwordHash');
+  assert.equal(isSuperAdmin(secondOwner), true);
+  assert.equal(secondOwner.isEmployee, false);
+  assert.equal(secondOwner.accessRoleId, null);
+  assert.equal(secondOwner.accountStatus, 'active');
+  assert.notEqual(secondOwner.passwordHash, newAdmin.password);
+  assert.ok(await bcrypt.compare(newAdmin.password, secondOwner.passwordHash));
+  for (const section of [...ADMIN_SECTIONS.map(section => section.key), 'access', 'logbook', 'maintenance', 'super-admins']) {
+    assert.equal(canAdmin(secondOwner, section, 'read'), true);
+    assert.equal(canAdmin(secondOwner, section, 'write'), true);
+  }
+  // Exercise the existing two-factor login with an isolated mock OTP provider.
+  config.mockOtpEnabled = true;
+  const otpResponse = await request.post('/api/auth/send-otp').send({ identifier: newAdmin.phone, portal: 'admin', purpose: 'login', password: newAdmin.password });
+  assert.equal(otpResponse.status, 200, JSON.stringify(otpResponse.body));
+  const signIn = await request.post('/api/auth/verify-otp').send({ identifier: newAdmin.phone, portal: 'admin', purpose: 'login', otp: config.mockOtpCode });
+  assert.equal(signIn.status, 200, JSON.stringify(signIn.body));
+  const secondToken = signIn.body.data.accessToken;
+  assert.ok(secondToken);
+  for (const path of ['/admin/access/self', '/admin/access/roles', '/admin/access/logs', '/admin/maintenance', '/admin/super-admins']) {
+    assert.equal((await auth('get', path, secondToken)).status, 200, path);
+  }
+  const thirdCreated = await auth('post', '/admin/super-admins', secondToken).send({ ...newAdmin, fullName: 'Third Super Admin', email: 'third-owner@example.test', phone: '9666666666' });
+  assert.equal(thirdCreated.status, 201);
+  const allOwners = await auth('get', '/admin/super-admins');
+  assert.equal(allOwners.body.data.total, 3);
+  assert.ok(allOwners.body.data.admins.every(admin => admin._id !== String(employee._id) && !('passwordHash' in admin) && !('currentSessionId' in admin)));
+  assert.equal((await auth('get', '/admin/super-admins?search=second-owner')).body.data.total, 1);
+  assert.equal((await auth('get', '/admin/super-admins?search=%5B')).body.data.total, 0);
+  assert.equal((await auth('post', '/admin/super-admins').send(newAdmin)).status, 409);
+  assert.equal((await auth('post', '/admin/super-admins').send({ ...newAdmin, email: 'unique@example.test', isEmployee: true })).status, 400);
+  assert.equal((await auth('post', '/admin/super-admins').send({ ...newAdmin, password: 'short' })).status, 400);
+
+  const supportNumbers = [{ number: '9555555555', label: 'Sales', type: 'call' }, { number: '9444444444', label: 'Support', type: 'whatsapp' }];
+  const footerSaved = await auth('put', '/admin/cms/footer-content').send({ companyName: 'Vinexus', whatsappNumbers: supportNumbers });
+  assert.equal(footerSaved.status, 200, JSON.stringify(footerSaved.body));
+  const publicFooter = await request.get('/api/content/footer-content');
+  assert.equal(publicFooter.status, 200);
+  assert.deepEqual(publicFooter.body.data.footer.whatsappNumbers, supportNumbers);
+  assert.equal(publicFooter.body.data.footer.whatsappNumber, '9444444444');
+  console.log('Super admin integration passed: real account creation, password hashing, OTP sign-in, full access, multiple owners, employee denial, validation, duplicates and persisted call/WhatsApp contacts.');
   console.log('Admin access integration passed: permissions, live role changes, employee management, session protection, exact concurrent audit diffs, location, secret redaction, bulk writes and transaction rollback.');
 } finally {
   await client.close();
