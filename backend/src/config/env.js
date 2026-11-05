@@ -46,7 +46,6 @@ export const config = {
   adminDefaultPassword: process.env.ADMIN_DEFAULT_PASSWORD || 'Admin@12345',
   smsProvider: process.env.SMS_PROVIDER || 'smsindiahub',
   smsApiKey: process.env.SMS_API_KEY || '',
-  smsApiSecret: process.env.SMS_API_SECRET || '',
   smsSenderId: process.env.SMS_SENDER_ID || '',
   smsTemplateId: process.env.SMS_TEMPLATE_ID || '',
   smsBaseUrl: process.env.SMS_BASE_URL || '',

@@ -1,17 +1,16 @@
 import { test, expect } from '@playwright/test';
 import { mockApi, seedBrowserSession } from './mockApi.js';
-
-test.skip(process.env.PLAYWRIGHT_PREVIEW === '1', 'Firebase source-module injection requires the development server; covered in the development browser suite.');
+import { mockFirebase } from './firebaseMock.js';
 
 for (const role of ['admin', 'customer', 'dealer']) {
   test(`${role} persists the registered browser token across reload and clears it on logout`, async ({ page }) => {
     await mockApi(page); await seedBrowserSession(page, role === 'admin' ? 'admin' : 'account');
     // No Firebase connection, permission prompt or notification is used here.
-    await page.route('**/src/lib/firebase.js*', route => route.fulfill({ contentType: 'application/javascript', body: `
+    await mockFirebase(page, `
       export const isFirebaseConfigured = true;
       export async function getPushToken() { return 'fixture-local-storage-token'; }
       export function onForegroundPush() { return () => {}; }
-    ` }));
+    `);
     const portal = role === 'admin' ? 'admin' : 'customer';
     const user = { id: '507f1f77bcf86cd799439011', fullName: 'Storage Tester', email: 'storage@example.test', phone: '9876543210', role };
     await page.route('**/api/auth/refresh-token', route => route.fulfill({ json: { success: true, data: {

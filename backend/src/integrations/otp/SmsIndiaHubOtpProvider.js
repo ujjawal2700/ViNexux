@@ -8,11 +8,8 @@ import { formatWithCountryCode } from '../../utils/phone.util.js';
 /**
  * SMSIndiaHub OTP Provider implementation for Indian transactional SMS.
  *
- * NOTE: SMSIndiaHub's HTTP API surface (vendorsms/pushsms.aspx, query-param
- * based) is the commonly documented one for this gateway, but confirm the
- * exact endpoint/param names against your SMSIndiaHub account dashboard -
- * gateway resellers occasionally differ. Adjust `baseUrl`/params below to
- * match what your account's API docs show if delivery fails.
+ * Uses APIKey authentication; no separate API secret is required.
+ * API reference: https://www.smsindiahub.in/api/india/
  */
 export class SmsIndiaHubOtpProvider extends OtpProvider {
   async sendOtp({ identifier, otp, purpose }) {
@@ -25,37 +22,41 @@ export class SmsIndiaHubOtpProvider extends OtpProvider {
     }
 
     const mobile = formatWithCountryCode(identifier);
-    const baseUrl = config.smsBaseUrl || 'https://cloud.smsindiahub.in/vendorsms/pushsms.aspx';
-    const message = `Your Vinexus verification code is ${otp}. Valid for ${config.otpExpiryMinutes} minutes. Do not share this code.`;
+    const baseUrl = config.smsBaseUrl || 'https://cloud.smsindiahub.in/api/mt/SendSMS';
+    // Match the approved template exactly; only ##var## is replaced by the OTP.
+    const message = `Dear customer ${otp} is your mobile OTP verification code .do not share it with anyone.SCHTRD`;
 
     const params = new URLSearchParams({
       APIKey: config.smsApiKey,
-      msisdn: mobile,
-      sid: config.smsSenderId || 'VNXSMS',
-      msg: message,
-      fl: '0',
-      gwid: '2',
+      number: mobile,
+      senderid: config.smsSenderId || 'VNXSMS',
+      text: message,
+      channel: 'Trans',
+      DCS: '0',
+      flashsms: '0',
     });
+    if (config.smsTemplateId) params.set('TemplateId', config.smsTemplateId);
 
     try {
-      const response = await fetch(`${baseUrl}?${params.toString()}`, { method: 'GET' });
+      const url = new URL(baseUrl);
+      for (const [key, value] of params) url.searchParams.set(key, value);
+      const response = await fetch(url.toString(), { method: 'GET' });
 
       if (!response.ok) {
         throw new Error(`SMSIndiaHub API error with HTTP status ${response.status}`);
       }
 
-      const data = await response.text();
-
-      // SMSIndiaHub typically returns a numeric message ID on success and an
-      // "ERR" or negative-prefixed code on failure.
-      if (/^err/i.test(data.trim())) {
-        throw new Error(`SMSIndiaHub dispatch failed: ${data.trim()}`);
+      const data = await response.json();
+      if (data?.ErrorCode !== '000') {
+        throw new Error('SMSIndiaHub rejected the SMS request.');
       }
+      const messageId = data.MessageData?.[0]?.MessageId || data.JobId;
+      if (!messageId) throw new Error('SMSIndiaHub did not return a message ID.');
 
       return {
         success: true,
         provider: 'smsindiahub',
-        messageId: data.trim() || `smsindiahub-${Date.now()}`,
+        messageId,
       };
     } catch (err) {
       throw new AppError(

@@ -31,7 +31,7 @@ const report = {
     liveCheck: 'Not run; use the connected product-sheet workflow to verify spreadsheet access',
   },
   smtp: { configured: Boolean(config.emailHost && config.emailUser && config.emailPassword), deliveryTest: 'Not sent' },
-  sms: { configured: Boolean(config.smsApiKey && config.smsApiSecret), deliveryTest: 'Not sent' },
+  sms: { configured: Boolean(config.smsApiKey), deliveryTest: 'Not sent' },
 };
 
 if (live && report.firebase.configured) {

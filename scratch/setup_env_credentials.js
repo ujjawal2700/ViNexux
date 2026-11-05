@@ -225,10 +225,9 @@ CLOUDINARY_API_SECRET=fEw5yFXGQlFWxQc4hiHASu4xgIA
 # ------------------------------------------------------------------------------
 SMS_PROVIDER=development
 SMS_API_KEY=
-SMS_API_SECRET=
 SMS_SENDER_ID=
 SMS_TEMPLATE_ID=
-SMS_BASE_URL=https://cloud.smsindiahub.in/vendorsms/pushsms.aspx
+SMS_BASE_URL=https://cloud.smsindiahub.in/api/mt/SendSMS
 
 # ------------------------------------------------------------------------------
 # EMAIL SERVICE (development | resend | smtp)
@@ -331,10 +330,9 @@ CLOUDINARY_API_SECRET=your_cloudinary_api_secret_placeholder
 # ------------------------------------------------------------------------------
 SMS_PROVIDER=development
 SMS_API_KEY=your_sms_api_key_placeholder
-SMS_API_SECRET=your_sms_api_secret_placeholder
 SMS_SENDER_ID=your_sms_sender_id_placeholder
 SMS_TEMPLATE_ID=your_sms_template_id_placeholder
-SMS_BASE_URL=https://cloud.smsindiahub.in/vendorsms/pushsms.aspx
+SMS_BASE_URL=https://cloud.smsindiahub.in/api/mt/SendSMS
 
 # ------------------------------------------------------------------------------
 # EMAIL SERVICE (development | resend | smtp)

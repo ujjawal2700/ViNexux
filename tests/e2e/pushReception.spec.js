@@ -1,17 +1,16 @@
 import { test, expect } from '@playwright/test';
 import { mockApi, seedBrowserSession } from './mockApi.js';
-
-test.skip(process.env.PLAYWRIGHT_PREVIEW === '1', 'Firebase source-module injection requires the development server; covered in the development browser suite.');
+import { mockFirebase } from './firebaseMock.js';
 
 for (const portal of ['admin', 'customer']) {
   test(`${portal} registers after auth restoration and shows foreground push for an id-only account`, async ({ page }) => {
     const errors = []; page.on('pageerror', error => errors.push(error.message));
     await mockApi(page); await seedBrowserSession(page, portal === 'admin' ? 'admin' : 'account');
-    await page.route('**/src/lib/firebase.js*', route => route.fulfill({ contentType: 'application/javascript', body: `
+    await mockFirebase(page, `
       export const isFirebaseConfigured = true;
       export async function getPushToken() { return 'fixture-browser-token'; }
       export function onForegroundPush(callback) { window.receiveFirebaseTest = callback; return () => { delete window.receiveFirebaseTest; }; }
-    ` }));
+    `);
     await page.route('**/api/auth/refresh-token', async route => {
       await route.fulfill({ json: { success: true, data: { accessToken: 'restored-access', refreshToken: `${portal}-refresh`,
         user: { id: '507f1f77bcf86cd799439011', fullName: 'Push Tester', email: 'push@example.test', role: portal, phone: '9876543210' },

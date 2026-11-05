@@ -1,0 +1,73 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { config } from '../src/config/env.js';
+import { SmsIndiaHubOtpProvider } from '../src/integrations/otp/SmsIndiaHubOtpProvider.js';
+
+const provider = new SmsIndiaHubOtpProvider();
+const request = { identifier: '9876543210', otp: '123456', purpose: 'login' };
+
+function configure(t) {
+  const original = { ...config };
+  Object.assign(config, {
+    smsApiKey: 'test-api-key', smsSenderId: 'VNXSMS',
+    smsBaseUrl: '', smsTemplateId: '',
+  });
+  t.after(() => Object.assign(config, original));
+}
+
+test('sends using API-key authentication and documented transactional parameters', async (t) => {
+  configure(t);
+  config.smsTemplateId = 'test-template-id';
+  t.mock.method(globalThis, 'fetch', async (input, options) => {
+    const url = new URL(input);
+    assert.equal(url.origin + url.pathname, 'https://cloud.smsindiahub.in/api/mt/SendSMS');
+    assert.equal(options.method, 'GET');
+    assert.deepEqual(Object.fromEntries(url.searchParams), {
+      APIKey: 'test-api-key', number: '919876543210', senderid: 'VNXSMS',
+      text: 'Dear customer 123456 is your mobile OTP verification code .do not share it with anyone.SCHTRD',
+      channel: 'Trans', DCS: '0', flashsms: '0', TemplateId: 'test-template-id',
+    });
+    return Response.json({ ErrorCode: '000', JobId: 'job-1', MessageData: [{ MessageId: 'message-1' }] });
+  });
+  assert.deepEqual(await provider.sendOtp(request), {
+    success: true, provider: 'smsindiahub', messageId: 'message-1',
+  });
+});
+
+test('preserves account-specific endpoint query parameters and accepts a job ID', async (t) => {
+  configure(t);
+  config.smsBaseUrl = 'https://example.test/api/mt/SendSMS?route=1';
+  t.mock.method(globalThis, 'fetch', async (input) => {
+    const url = new URL(input);
+    assert.equal(url.searchParams.get('route'), '1');
+    assert.equal(url.searchParams.has('TemplateId'), false);
+    return Response.json({ ErrorCode: '000', JobId: 'job-1' });
+  });
+  assert.equal((await provider.sendOtp(request)).messageId, 'job-1');
+});
+
+test('rejects a missing API key before contacting the gateway', async (t) => {
+  configure(t);
+  config.smsApiKey = '';
+  const fetchMock = t.mock.method(globalThis, 'fetch', () => assert.fail('Must not send SMS'));
+  await assert.rejects(provider.sendOtp(request), /API key is missing/);
+  assert.equal(fetchMock.mock.callCount(), 0);
+});
+
+for (const [name, response] of [
+  ['HTTP errors', () => new Response('', { status: 503 })],
+  ['provider errors returned with HTTP 200', () => Response.json({ ErrorCode: '002', ErrorMessage: 'Invalid credentials' })],
+  ['malformed responses', () => new Response('ERR: rejected')],
+  ['success without a message ID', () => Response.json({ ErrorCode: '000' })],
+]) {
+  test(`rejects ${name}`, async (t) => {
+    configure(t);
+    t.mock.method(globalThis, 'fetch', async () => response());
+    await assert.rejects(provider.sendOtp(request), (error) => {
+      assert.equal(error.statusCode, 502);
+      assert.match(error.message, /Failed to deliver OTP SMS/);
+      assert.equal(error.message.includes('test-api-key'), false);
+      return true;
+    });
+  });
+}

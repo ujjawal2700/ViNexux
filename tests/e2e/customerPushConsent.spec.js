@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { mockApi, seedBrowserSession } from './mockApi.js';
-
-test.skip(process.env.PLAYWRIGHT_PREVIEW === '1', 'Firebase adapter injection uses the development server.');
+import { mockFirebase } from './firebaseMock.js';
 
 async function setup(page, permission = 'default', subscribed = false) {
   await mockApi(page); await seedBrowserSession(page, 'account');
@@ -10,14 +9,14 @@ async function setup(page, permission = 'default', subscribed = false) {
     navigator.geolocation.getCurrentPosition = () => { throw new Error('Push must never request location'); };
     navigator.geolocation.watchPosition = () => { throw new Error('Push must never watch location'); };
   }, permission);
-  await page.route('**/src/lib/firebase.js*', route => route.fulfill({ contentType: 'application/javascript', body: `
+  await mockFirebase(page, `
     export const isFirebaseConfigured = true;
     export async function getPushToken(explicit = false) {
       if (explicit) { window.permissionRequests = (window.permissionRequests || 0) + 1; return 'customer-device'; }
       return Notification.permission === 'granted' ? 'customer-device' : null;
     }
     export function onForegroundPush(callback) { window.receiveFirebaseTest = callback; return () => {}; }
-  ` }));
+  `);
   let registered = false, consent = subscribed;
   await page.route('**/api/push/register-token', route => {
     registered = true; return route.fulfill({ json: { success: true } });
