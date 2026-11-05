@@ -50,7 +50,7 @@ async function seed() {
       fullName: 'System Administrator',
       name: 'System Administrator',
       email: adminDefaultEmail,
-      phone: '8949940610',
+      phone: process.env.ADMIN_DEFAULT_PHONE || '8003923316',
       role: 'admin',
       accountStatus: 'active',
       status: 'active',

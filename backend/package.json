@@ -16,6 +16,7 @@
     "backfill:catalog-fields": "node scripts/backfill_catalog_fields.js",
     "cleanup:business-data": "node scripts/delete_business_data.js",
     "seed:admin": "node scripts/seed_admin.js",
+    "admin:set-phone": "node scripts/update_admin_phone.js",
     "test:admin-access": "NODE_ENV=test node tests/adminAccess.test.js",
     "test:campaigns": "NODE_ENV=test node tests/campaigns.test.js",
     "test:all": "node tests/runAll.js"

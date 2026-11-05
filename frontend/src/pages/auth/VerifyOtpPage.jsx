@@ -290,7 +290,7 @@ export const VerifyOtpPage = () => {
               Verify OTP
             </h1>
             <p className="text-xs text-gray-500 font-medium mt-0.5">
-              Code sent to {displayIdentifier}
+              {portal === 'admin' ? 'Code sent by SMS to your registered mobile number' : `Code sent to ${displayIdentifier}`}
             </p>
           </div>
         </div>
@@ -300,7 +300,7 @@ export const VerifyOtpPage = () => {
           <div className="w-5 h-5 rounded bg-[var(--store-primary,#800020)] flex items-center justify-center text-white shrink-0">
             <span className="text-[9px] leading-none font-black tracking-tighter">•••</span>
           </div>
-          <span>{mockOtpEnabled ? `Mock mode is enabled. Use code ${mockOtp || '123456'}.` : `Check your ${identifier.includes('@') ? 'email' : 'SMS'} for the 6-digit code`}</span>
+          <span>{mockOtpEnabled ? `Mock mode is enabled. Use code ${mockOtp || '123456'}.` : `Check your ${portal === 'admin' || !identifier.includes('@') ? 'SMS' : 'email'} for the 6-digit code`}</span>
         </div>
 
         {/* Error Alert Notice */}

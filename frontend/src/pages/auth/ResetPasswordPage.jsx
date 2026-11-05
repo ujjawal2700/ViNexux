@@ -217,7 +217,7 @@ export const ResetPasswordPage = ({ portal = 'customer' }) => {
           <p className="text-xs text-muted-foreground font-medium mt-1.5">
             {step === 'otp' ? (
               <>
-                We sent a verification code to <span className="text-foreground font-semibold">{identifier}</span>
+                {isAdmin ? 'We sent a verification code by SMS to your registered mobile number.' : <>We sent a verification code to <span className="text-foreground font-semibold">{identifier}</span></>}
               </>
             ) : (
               `Choose a new password for your ${isAdmin ? 'administrator ' : ''}account`

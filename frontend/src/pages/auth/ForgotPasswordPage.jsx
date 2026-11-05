@@ -73,7 +73,7 @@ export const ForgotPasswordPage = ({ portal = 'customer' }) => {
           </h1>
           <p className="text-xs text-muted-foreground font-medium mt-1.5 leading-relaxed">
             Enter the email or phone number linked to your {isAdmin ? 'administrator ' : ''}account and we&apos;ll
-            send you a verification code to reset your password.
+            {isAdmin ? ' send a verification code by SMS to your registered mobile number.' : ' send you a verification code to reset your password.'}
           </p>
         </div>
 

@@ -132,6 +132,9 @@ const AdminLoginPage = () => {
             </div>
           </div>
 
+          <p className="text-xs text-muted-foreground">
+            Your OTP will be sent by SMS to the mobile number registered on your administrator account.
+          </p>
           <Button
             type="submit"
             variant="primary"

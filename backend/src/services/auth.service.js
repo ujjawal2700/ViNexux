@@ -21,7 +21,7 @@ import {
   verifyPasswordResetTicket,
 } from '../utils/token.util.js';
 
-import { normalizePhoneNumber } from '../utils/phone.util.js';
+import { normalizePhoneNumber, isValidIndianPhone } from '../utils/phone.util.js';
 import { emailService } from './email/email.service.js';
 import { LEGAL_DOCUMENT_VERSION } from '../constants/legal.js';
 import { getEffectiveSessionExpiry, getSessionExpiryForRole, isSessionExpired } from '../utils/session.util.js';
@@ -322,6 +322,7 @@ export const authService = {
    */
   async sendOtp({ identifier, purpose = 'login', portal, password }) {
     const normalized = normalizeIdentifier(identifier);
+    let smsRecipient = null;
     if (!normalized) {
       throw new AppError('Identifier is required', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
     }
@@ -403,6 +404,18 @@ export const authService = {
           }
         }
       }
+      // Keep the original identifier for verification, but deliver admin codes
+      // only to the phone stored on the authenticated/resolved admin account.
+      if (portal === 'admin') {
+        if (!isValidIndianPhone(user.phone)) {
+          throw new AppError(
+            'Your administrator account needs a valid registered mobile number to receive OTP SMS. Please contact support.',
+            HTTP_STATUS.BAD_REQUEST,
+            ERROR_CODES.VALIDATION_ERROR
+          );
+        }
+        smsRecipient = normalizePhoneNumber(user.phone);
+      }
     }
 
     const existingOtp = await OtpVerification.findOne({ identifier: normalized, purpose });
@@ -442,6 +455,9 @@ export const authService = {
       if (config.mockOtpEnabled) {
         // Fixed mock code is returned below for local/test UI use. No message
         // provider is contacted while mock mode is enabled.
+      } else if (smsRecipient) {
+        const provider = getOtpProvider();
+        await provider.sendOtp({ identifier: smsRecipient, otp, purpose });
       } else if (normalized.includes('@')) {
         await emailService.sendOtpEmail({ email: normalized, otp, purpose });
       } else {
