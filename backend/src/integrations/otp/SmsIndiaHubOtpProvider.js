@@ -37,23 +37,29 @@ export class SmsIndiaHubOtpProvider extends OtpProvider {
     });
     if (config.smsTemplateId) params.set('TemplateId', config.smsTemplateId);
 
+    let stage = 'endpoint';
     try {
       const url = new URL(baseUrl);
       for (const [key, value] of params) url.searchParams.set(key, value);
+      stage = 'connection';
       const response = await fetch(url.toString(), { method: 'GET' });
 
+      stage = 'http-status';
       if (!response.ok) {
         console.error('[SMSIndiaHub] Gateway HTTP failure:', response.status);
         throw new Error(`SMSIndiaHub API error with HTTP status ${response.status}`);
       }
 
+      stage = 'response-json';
       const data = await response.json();
+      stage = 'provider-status';
       if (data?.ErrorCode !== '000') {
         // Log only the provider code, never raw responses, credentials or OTPs.
         const code = String(data?.ErrorCode ?? '');
         console.error('[SMSIndiaHub] Gateway rejected request. ErrorCode:', /^\d{1,8}$/.test(code) ? code : 'unknown');
         throw new Error('SMSIndiaHub rejected the SMS request.');
       }
+      stage = 'message-id';
       const messageId = data.MessageData?.[0]?.MessageId || data.JobId;
       if (!messageId) throw new Error('SMSIndiaHub did not return a message ID.');
 
@@ -63,6 +69,19 @@ export class SmsIndiaHubOtpProvider extends OtpProvider {
         messageId,
       };
     } catch (err) {
+      // Never log raw errors: fetch URLs and response bodies may contain secrets.
+      const safeNetworkCodes = new Set([
+        'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT',
+        'ENETUNREACH', 'EHOSTUNREACH', 'UND_ERR_CONNECT_TIMEOUT',
+        'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_SOCKET', 'CERT_HAS_EXPIRED',
+        'DEPTH_ZERO_SELF_SIGNED_CERT', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+        'ERR_TLS_CERT_ALTNAME_INVALID',
+      ]);
+      const code = err?.cause?.code || err?.code;
+      console.error('[SMSIndiaHub] Dispatch failure:', {
+        stage,
+        ...(safeNetworkCodes.has(code) ? { networkCode: code } : {}),
+      });
       throw new AppError(
         'Failed to deliver OTP SMS via SMSIndiaHub. Please try again later.',
         HTTP_STATUS.BAD_GATEWAY,

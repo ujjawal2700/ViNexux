@@ -54,14 +54,16 @@ test('rejects a missing API key before contacting the gateway', async (t) => {
   assert.equal(fetchMock.mock.callCount(), 0);
 });
 
-for (const [name, response] of [
-  ['HTTP errors', () => new Response('', { status: 503 })],
-  ['provider errors returned with HTTP 200', () => Response.json({ ErrorCode: '002', ErrorMessage: 'Invalid credentials' })],
-  ['malformed responses', () => new Response('ERR: rejected')],
-  ['success without a message ID', () => Response.json({ ErrorCode: '000' })],
+for (const [name, response, stage] of [
+  ['HTTP errors', () => new Response('', { status: 503 }), 'http-status'],
+  ['provider errors returned with HTTP 200', () => Response.json({ ErrorCode: '002', ErrorMessage: 'Invalid credentials' }), 'provider-status'],
+  ['malformed responses', () => new Response('ERR: rejected test-api-key 123456'), 'response-json'],
+  ['success without a message ID', () => Response.json({ ErrorCode: '000' }), 'message-id'],
+  ['network errors', () => { throw new TypeError('URL contains test-api-key 123456', { cause: { code: 'ENOTFOUND' } }); }, 'connection'],
 ]) {
   test(`rejects ${name}`, async (t) => {
     configure(t);
+    const log = t.mock.method(console, 'error', () => {});
     t.mock.method(globalThis, 'fetch', async () => response());
     await assert.rejects(provider.sendOtp(request), (error) => {
       assert.equal(error.statusCode, 502);
@@ -69,5 +71,11 @@ for (const [name, response] of [
       assert.equal(error.message.includes('test-api-key'), false);
       return true;
     });
+    const diagnostic = log.mock.calls.at(-1).arguments;
+    assert.equal(diagnostic[1].stage, stage);
+    if (stage === 'connection') assert.equal(diagnostic[1].networkCode, 'ENOTFOUND');
+    const output = JSON.stringify(log.mock.calls.map(call => call.arguments));
+    assert.equal(output.includes('test-api-key'), false);
+    assert.equal(output.includes('123456'), false);
   });
 }
