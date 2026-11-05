@@ -1,7 +1,7 @@
 import contentService from '../../services/contentService';
 import { ErrorState } from '../../components/ui/ErrorState';
 import useAuth from '../../hooks/useAuth';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import categoryService from '../../services/categoryService';
 import productService from '../../services/productService';
@@ -35,7 +35,8 @@ const HomePageSkeleton = () => (
 );
 
 export const HomePage = () => {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const requestVersion = useRef(0);
   const [bannerGrid, setBannerGrid] = useState(null);
   const [error, setError] = useState(null);
   // Slider categories
@@ -59,6 +60,8 @@ export const HomePage = () => {
 
   // Load all homepage data
   const loadData = useCallback(async () => {
+    const version = ++requestVersion.current;
+    if (authLoading) return;
     setIsLoading(true);
     setError(null);
     try {
@@ -69,6 +72,7 @@ export const HomePage = () => {
         productService.getProducts({ page: 1, sortBy: 'categoryPriority', limit: 16, includeFacets: false }),
         contentService.getBannerGrid().catch(() => ({ data: { grid: null } })),
       ]);
+      if (version !== requestVersion.current) return;
       setBannerGrid(gridResponse.data?.grid || null);
       const rootCats = (catRes.data?.categories || []).filter((category) => !category.parentId);
       setCategories(rootCats);
@@ -76,12 +80,13 @@ export const HomePage = () => {
       setNewArrivals(newest.data?.products || []);
       setAllProducts(allRes.data?.products || []);
     } catch (err) {
+      if (version !== requestVersion.current) return;
       if (axios.isCancel(err)) return;
       setError('Unable to load the storefront. Please retry.');
     } finally {
-      setIsLoading(false);
+      if (version === requestVersion.current) setIsLoading(false);
     }
-  }, [user?.id, user?.dealerStatus]);
+  }, [authLoading, user?._id, user?.id, user?.role, user?.dealerStatus, user?.kycStatus]);
 
   useEffect(() => {
     loadData();

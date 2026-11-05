@@ -1,3 +1,4 @@
+import { usePriceVisibility } from '../../components/products/PriceGate';
 import { readProductFilters } from '../../../../shared/productFiltering.js';
 import CategoryFilters from '../../components/products/CategoryFilters';
 import { CATEGORY_FILTER_KEYS, readCategorySelections, splitFilterValues } from '../../../../shared/categoryFiltering.js';
@@ -73,6 +74,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
 
   // URL Query Parameters
   const { user } = useAuth();
+  const pricesVisible = usePriceVisibility();
   const initialSearch = searchParams.get("search") || "";
   const initialCategory =
     searchParams.get("categoryId") || searchParams.get("category") || "";
@@ -84,6 +86,9 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
   const customFiltersParam = searchParams.get("customFilters") || "";
   const selectedCustomFilters = useMemo(() => readProductFilters(customFiltersParam), [customFiltersParam]);
   const [sortOption, setSortOption] = useState("default");
+  useEffect(() => {
+    if (!pricesVisible) setSortOption(value => value.startsWith('price_') ? 'default' : value);
+  }, [pricesVisible]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 28;
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
@@ -314,6 +319,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
       categoryError,
       routeCategory,
       user,
+      pricesVisible,
     ],
   );
 
@@ -721,7 +727,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
               <DropdownMenuContent
                 align="end"
                 className="w-56 border-[var(--store-primary)]/25">
-                {SORT_OPTIONS.map((option) => (
+                {SORT_OPTIONS.filter(option => pricesVisible || !option.value.startsWith('price_')).map((option) => (
                   <DropdownMenuItem
                     key={option.value}
                     onSelect={() => {

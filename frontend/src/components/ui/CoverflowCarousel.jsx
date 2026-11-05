@@ -1,3 +1,4 @@
+import { usePriceVisibility } from '../products/PriceGate';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProductCard from '../products/ProductCard';
@@ -32,6 +33,7 @@ export function CoverflowCarousel({
   onCtaClick,
 }) {
   const navigate = useNavigate();
+  const pricesVisible = usePriceVisibility();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const touchStartX = useRef(0);
@@ -47,7 +49,7 @@ export function CoverflowCarousel({
     if (products && products.length > 0) {
       return products.map((prod, idx) => {
         const catName = typeof prod.categoryId === 'object' ? prod.categoryId?.name : 'SECURITY';
-        const priceStr = prod.standardPrice ? `₹${prod.standardPrice.toLocaleString('en-IN')}` : '';
+        const priceStr = pricesVisible && prod.standardPrice ? `₹${prod.standardPrice.toLocaleString('en-IN')}` : '';
         let primaryImg = prod.images?.[0]?.url || prod.image;
         if (!primaryImg || typeof primaryImg !== 'string' || !primaryImg.startsWith('http')) {
           primaryImg = fallbackImages[idx % fallbackImages.length];
@@ -73,7 +75,7 @@ export function CoverflowCarousel({
       });
     }
     return items;
-  }, [products, items]);
+  }, [products, items, pricesVisible]);
 
   const total = formattedItems.length;
 

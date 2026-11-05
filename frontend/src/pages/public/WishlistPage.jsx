@@ -1,3 +1,5 @@
+import PriceGate, { usePriceVisibility } from '../../components/products/PriceGate';
+import productService from '../../services/productService';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, Store, ShoppingCart, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -11,18 +13,31 @@ import { buildProductPath } from '../../utils/categoryUrls';
 
 export const WishlistPage = () => {
   const { isAuthenticated, user } = useAuth();
+  const pricesVisible = usePriceVisibility();
   const toast = useToast();
   const [items, setItems] = useState(() => wishlistService.getWishlist());
   const [page, setPage] = useState(1);
   const pageSize = 12; // Matching Mega Jaipur pagination (12 items per page)
 
   useEffect(() => {
-    const handleUpdate = () => {
-      setItems(wishlistService.getWishlist());
+    let version = 0;
+    let active = true;
+    const handleUpdate = async () => {
+      const currentVersion = ++version;
+      const stored = wishlistService.getWishlist();
+      setItems(stored);
+      if (!pricesVisible) return;
+      const refreshed = await Promise.allSettled(stored.map(item => productService.getProductById(item._id || item.id)));
+      if (!active || version !== currentVersion) return;
+      setItems(stored.map((item, index) => {
+        const result = refreshed[index];
+        return result.status === 'fulfilled' ? (result.value.data?.product || result.value.data || item) : item;
+      }));
     };
+    handleUpdate();
     window.addEventListener('wishlist-updated', handleUpdate);
-    return () => window.removeEventListener('wishlist-updated', handleUpdate);
-  }, []);
+    return () => { active = false; version++; window.removeEventListener('wishlist-updated', handleUpdate); };
+  }, [pricesVisible, user?._id, user?.role, user?.dealerStatus]);
 
   // Format Currency (INR ₹)
   const formatCurrency = (amount) => {
@@ -51,7 +66,7 @@ export const WishlistPage = () => {
   const handleAddToCart = async (product) => {
     try {
       const productId = product._id || product.id;
-      const unitPrice = product.standardPrice || product.price || 0;
+      const unitPrice = product.applicablePrice ?? product.standardPrice ?? product.price ?? 0;
 
       // Trigger instant toast notification
       window.dispatchEvent(
@@ -159,7 +174,7 @@ export const WishlistPage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {paginatedItems.map((product) => {
                 const prodId = product._id || product.id;
-                const unitPrice = product.standardPrice || product.price || 0;
+                const unitPrice = product.applicablePrice ?? product.standardPrice ?? product.price ?? 0;
                 const cdDiscount = Math.round(unitPrice * 0.015);
                 const stockInfo = getStockInfo(product);
 
@@ -206,15 +221,17 @@ export const WishlistPage = () => {
                         </Link>
 
                         {/* Price & CD Discount */}
+                        <PriceGate>
                         <div className="flex items-baseline gap-1.5 flex-wrap pt-0.5">
                           <span className="text-xs sm:text-[13px] font-bold text-[var(--store-text)]">
-                            {formatCurrency(unitPrice)}
+                            {product.applicablePrice == null && product.standardPrice == null && pricesVisible ? 'Loading prices…' : formatCurrency(unitPrice)}
                           </span>
                           <span className="text-[10px] font-medium bg-[#f5edf6] text-[#420b45] px-1.5 py-0.5 rounded leading-none">
                             CD DISCOUNT: {formatCurrency(cdDiscount)}
                           </span>
                         </div>
 
+                        </PriceGate>
                         {product.modelNumber && <div className="text-[10px] text-[var(--store-muted)]">Model Number: {product.modelNumber}</div>}
                       </div>
                     </div>

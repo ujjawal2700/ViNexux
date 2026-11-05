@@ -16,6 +16,7 @@ export const createProduct = asyncHandler(async (req, res) => {
 });
 
 export const getProducts = asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
   const result = await getPublicProducts(req.query, req.user);
 
   return ApiResponse.success(
@@ -27,6 +28,7 @@ export const getProducts = asyncHandler(async (req, res) => {
 });
 
 export const getProductHighlights = asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
   const products = await getCategoryHighlights(req.user);
 
   return ApiResponse.success(
@@ -38,6 +40,7 @@ export const getProductHighlights = asyncHandler(async (req, res) => {
 });
 
 export const getProductById = asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
   const { id } = req.params;
   const product = await getPublicProductById(id, req.user);
 

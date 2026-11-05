@@ -1,3 +1,4 @@
+import PriceGate, { usePriceVisibility } from '../../components/products/PriceGate';
 import { productModelVariant } from '../../../../shared/productPresentation.js';
 import { getRecentViews } from '../../utils/browsingHistory';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -69,6 +70,7 @@ const CartQuantityInput = ({ quantity, maximum, disabled, productName, onSave, c
 
 export const CartPage = () => {
   const { isAuthenticated, user } = useAuth();
+  const pricesVisible = usePriceVisibility();
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -626,17 +628,17 @@ export const CartPage = () => {
       text += `${itemIndex}. *${name}*\n`;
       if (model) text += `   • Model Number: ${model}\n`;
       if (productModelVariant(prod)) text += `   • Model Name / Variant: ${productModelVariant(prod)}\n`;
-      text += `   • Qty: *${qty}* | Unit: ${formatCurrency(unitPrice)} | Total: *${formatCurrency(itemTotal)}*\n\n`;
+      text += pricesVisible ? `   • Qty: *${qty}* | Unit: ${formatCurrency(unitPrice)} | Total: *${formatCurrency(itemTotal)}*\n\n` : `   • Qty: *${qty}*\n\n`;
     });
 
     text += `━━━━━━━━━━━━━━━━━━━━━\n`;
     text += `💰 *Order Summary:*\n`;
     text += `• Total Items: ${selectedCount}\n`;
-    text += `• Subtotal: ${formatCurrency(subtotal)}\n`;
-    if (totalDiscount > 0) {
+    if (pricesVisible) text += `• Subtotal: ${formatCurrency(subtotal)}\n`;
+    if (pricesVisible && totalDiscount > 0) {
       text += `• Verified Dealer Discount: -${formatCurrency(totalDiscount)}\n`;
     }
-    text += `👉 *Estimated Total: ${formatCurrency(grandTotal)}*\n`;
+    if (pricesVisible) text += `👉 *Estimated Total: ${formatCurrency(grandTotal)}*\n`;
     text += `━━━━━━━━━━━━━━━━━━━━━\n\n`;
     text += `💬 _${whatsappNote || 'Please confirm live stock availability, delivery timeline & share official GST commercial invoice.'}_\n`;
 
@@ -747,7 +749,7 @@ export const CartPage = () => {
                         <div className="min-w-0 flex-1">
                           <Link to={buildProductPath(prod)} className="line-clamp-2 text-xs font-semibold leading-snug text-gray-900">{prod.name || 'Vinexus Product'}</Link>
                           <p className="mt-1 truncate text-[10px] text-gray-600">Model Number: {prod.modelNumber || prod.model || '—'}</p>
-                          <p className="mt-1 text-[11px] font-semibold text-gray-800">{formatCurrency(unitPrice)} each</p>
+                          <p className="mt-1 text-[11px] font-semibold text-gray-800"><PriceGate>{formatCurrency(unitPrice)}</PriceGate>{pricesVisible ? ' each' : ''}</p>
                         </div>
                         <button type="button" onClick={() => handleRemoveItem(prodId, prod.name)} disabled={updatingItemId === prodId} aria-label={`Remove ${prod.name || 'product'}`} className="p-1 text-gray-500 hover:text-rose-600"><Trash2 className="h-4 w-4" /></button>
                       </div>
@@ -764,7 +766,7 @@ export const CartPage = () => {
                             </p>
                           )}
                         </div>
-                        <span className="text-sm font-bold text-[var(--store-primary)]">{formatCurrency(unitPrice * (item.quantity || 1))}</span>
+                        <span className="text-sm font-bold text-[var(--store-primary)]"><PriceGate>{formatCurrency(unitPrice * (item.quantity || 1))}</PriceGate></span>
                       </div>
                     </div>
                   );
@@ -864,12 +866,12 @@ export const CartPage = () => {
 
                           {/* UNIT PRICE */}
                           <td className="py-3 px-3 text-right text-gray-800 text-xs sm:text-[13px] whitespace-nowrap">
-                            {formatCurrency(unitPrice)}
+                            <PriceGate>{formatCurrency(unitPrice)}</PriceGate>
                           </td>
 
                           {/* CD DISCOUNT */}
                           <td className="py-3 px-3 text-right text-gray-800 text-xs sm:text-[13px] whitespace-nowrap">
-                            {formatCurrency(cdDiscount)}
+                            <PriceGate>{formatCurrency(cdDiscount)}</PriceGate>
                           </td>
 
                           {/* QUANTITY STEPPER (Matching Reference Image) */}
@@ -913,7 +915,7 @@ export const CartPage = () => {
                           <td className="py-3 px-4 text-right whitespace-nowrap">
                             <div className="inline-flex items-center justify-end gap-3">
                               <span className="font-semibold text-gray-900 text-xs sm:text-[13px]">
-                                {formatCurrency(lineTotal)}
+                                <PriceGate>{formatCurrency(lineTotal)}</PriceGate>
                               </span>
                               <button
                                 type="button"
@@ -954,25 +956,27 @@ export const CartPage = () => {
                 Order Summary
               </h2>
 
+              <PriceGate>
               <div className="space-y-2.5 text-xs">
                 <div className="flex items-center justify-between text-gray-600">
                   <span className="uppercase font-medium">SUBTOTAL ({selectedCount} ITEM{selectedCount === 1 ? '' : 'S'})</span>
-                  <span className="font-bold text-gray-900">{formatCurrency(subtotal)}</span>
+                  <span className="font-bold text-gray-900"><PriceGate>{formatCurrency(subtotal)}</PriceGate></span>
                 </div>
 
                 <div className="flex items-center justify-between text-orange-600 font-semibold">
                   <span>CD DISCOUNT</span>
-                  <span>- {formatCurrency(totalDiscount)}</span>
+                  <span>{pricesVisible ? '- ' : ''}<PriceGate>{formatCurrency(totalDiscount)}</PriceGate></span>
                 </div>
               </div>
 
               <div className="border-t border-gray-200 pt-3 flex items-baseline justify-between">
                 <span className="text-sm font-semibold text-gray-900">Grand Total</span>
                 <span className="text-xl sm:text-2xl font-bold text-[var(--store-primary)]">
-                  {formatCurrency(grandTotal)}
+                  <PriceGate>{formatCurrency(grandTotal)}</PriceGate>
                 </span>
               </div>
 
+              </PriceGate>
               {/* Primary cart actions */}
               <div className="space-y-2.5 pt-2">
                 <p role="note" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-950">
@@ -1084,7 +1088,7 @@ export const CartPage = () => {
       )}
 
       {items.length > 0 && <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-gray-200 bg-white px-4 py-3 shadow-[0_-6px_20px_rgba(0,0,0,0.08)] md:hidden">
-        <div className="min-w-0 flex-1"><p className="text-[10px] text-gray-600">TOTAL ({selectedCount} ITEMS)</p><p className="truncate text-base font-bold text-[var(--store-primary)]">{formatCurrency(grandTotal)}</p></div>
+        <div className="min-w-0 flex-1"><p className="text-[10px] text-gray-600">TOTAL ({selectedCount} ITEMS)</p><p className="truncate text-base font-bold text-[var(--store-primary)]"><PriceGate>{formatCurrency(grandTotal)}</PriceGate></p></div>
         <button type="button" onClick={handleProceedCheckout} disabled={selectedCount === 0} className="min-h-10 rounded-md bg-[var(--store-primary)] px-4 text-xs font-bold text-white disabled:opacity-50">Send Enquiry</button>
       </div>}
 

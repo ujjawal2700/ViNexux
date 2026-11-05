@@ -1,3 +1,4 @@
+import PriceGate, { usePriceVisibility } from '../../components/products/PriceGate';
 import { isWarrantyLink, productModelVariant } from '../../../../shared/productPresentation.js';
 import { productShareDescription } from '../../../../shared/socialMetadata.js';
 import { getRecentViews, rememberView } from '../../utils/browsingHistory';
@@ -38,6 +39,7 @@ import {
 } from 'lucide-react';
 
 export const ProductDetailPage = () => {
+  const pricesVisible = usePriceVisibility();
   const params = useParams();
   const { id, param2, param3, brandSlug } = params;
   const rawId = id || param3 || param2;
@@ -148,7 +150,7 @@ export const ProductDetailPage = () => {
     } finally {
       if (version === requestVersion.current) setIsLoading(false);
     }
-  }, [productId, user?._id, user?.id, user?.role, user?.dealerStatus, user?.kycStatus]);
+  }, [productId, pricesVisible, user?._id, user?.id, user?.role, user?.dealerStatus, user?.kycStatus]);
 
   useEffect(() => {
     fetchProduct();
@@ -176,7 +178,7 @@ export const ProductDetailPage = () => {
     }).catch(error => { if (active && error.code !== 'ERR_CANCELED') setRelatedError('Related products could not load. Please try again.'); })
       .finally(() => { if (active) setRelatedLoading(false); });
     return () => { active = false; controller.abort(); };
-  }, [product?._id, relatedHeader?._id, relatedPage, relatedRetry, user?._id, user?.role, user?.dealerStatus, user?.kycStatus]);
+  }, [pricesVisible, product?._id, relatedHeader?._id, relatedPage, relatedRetry, user?._id, user?.role, user?.dealerStatus, user?.kycStatus]);
 
   // Extracted Brand info
   const brandName = useMemo(() => {
@@ -293,14 +295,14 @@ export const ProductDetailPage = () => {
             '@type': 'Brand',
             name: brandName || 'Vinexus',
           },
-          offers: {
+          ...(pricesVisible ? { offers: {
             '@type': 'Offer',
             url: typeof window !== 'undefined' ? window.location.href : 'https://vinexus.in',
             priceCurrency: 'INR',
             price: displayPrice || standardPrice || 0,
             availability: isInStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
             itemCondition: 'https://schema.org/NewCondition',
-          },
+          } } : {}),
         }
       : null,
   });
@@ -744,6 +746,7 @@ export const ProductDetailPage = () => {
           <div className="bg-[var(--store-surface)] rounded-2xl border border-[var(--store-border)] p-5 shadow-xs space-y-4">
             
             {/* Price & Discount Row */}
+            <PriceGate>
             <div className="flex items-center justify-between gap-2 border-b border-[var(--store-border)] pb-3">
               <div className="flex flex-col">
                 <span className="text-2xl sm:text-3xl font-black text-[var(--store-text)] tracking-tight">
@@ -763,6 +766,7 @@ export const ProductDetailPage = () => {
               )}
             </div>
 
+            </PriceGate>
             {/* In Stock / Out of Stock Status Pill */}
             {isOutOfStock ? (
               <div className="w-full py-2.5 px-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center justify-center gap-2">

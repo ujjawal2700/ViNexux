@@ -85,7 +85,9 @@ try {
   check((await get('/products?category=laptop&availability=low-stock')).data.pagination.total === 1, 'Low-stock availability filter uses the manual flag');
   check((await get('/products?category=laptop&availability=out-of-stock')).data.pagination.total === 1, 'Out-of-stock availability filter uses stored quantity');
   check(branch.data.facets.availability.find((item) => item.status === 'low-stock').count === 1, 'Availability facet returns category-scoped counts');
-  check((await get('/products?category=laptop&minPrice=150&maxPrice=250')).data.pagination.total === 1, 'Price range is enforced server-side');
+  const guestPrices = await get('/products?category=laptop&minPrice=150&maxPrice=250');
+  check(guestPrices.data.pagination.total === 2, 'Guests cannot probe hidden prices with price range filters');
+  check(guestPrices.data.products.every(product => product.standardPrice === undefined && product.applicablePrice === undefined), 'Guest catalog omits pricing');
   check((await get('/products?brandSlug=unlisted-brand')).data.pagination.total === 4, 'New database brand is routable without frontend whitelist');
   check((await get('/products/brands')).data.brands.some((brand) => brand.name === 'UNLISTED BRAND'), 'Legacy database brands remain visible during migration');
   const acerProducts = await get('/products?brandSlug=acer');
@@ -111,6 +113,7 @@ try {
   await DealerPricing.create({ dealerId: profile._id, productId: second._id, price: 10 });
   const session = await Session.create({ userId: dealer._id, userType: 'dealer', sessionId: crypto.randomUUID(), expiresAt: new Date(Date.now() + 60000) });
   const token = generateAccessToken({ userId: dealer._id, role: 'dealer', sessionId: session.sessionId });
+  check((await get('/products?category=laptop&minPrice=5&maxPrice=15', token)).data.pagination.total === 1, 'Authenticated price range uses applicable dealer prices');
   const dealerResult = await get('/products?category=laptop&sortBy=standardPrice&sortOrder=asc', token);
   check(dealerResult.data.products[0]._id === String(second._id) && dealerResult.data.products[0].applicablePrice === 10, 'Approved dealer sort uses actual custom price');
   await DealerProfile.updateOne({ _id: profile._id }, { status: 'rejected' });

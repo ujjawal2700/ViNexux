@@ -1,3 +1,4 @@
+import PriceGate, { usePriceVisibility } from '../components/products/PriceGate';
 import { getRecentSearches, rememberSearch } from '../utils/browsingHistory';
 import { Image } from '../components/ui/Image';
 import React, { Suspense, useState, useEffect, useRef, useMemo, useCallback } from 'react';
@@ -92,6 +93,7 @@ const PublicLayout = () => {
   const { theme } = useSeasonalTheme();
   const toast = useToast();
   const { user, isAuthenticated, adminUser, isAdminAuthenticated, isLoading } = useAuth();
+  const pricesVisible = usePriceVisibility();
   const confirmLogout = useLogoutConfirmation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -711,7 +713,7 @@ const PublicLayout = () => {
         clearTimeout(searchDebounceRef.current);
       }
     };
-  }, [headerSearch, searchCategory]);
+  }, [headerSearch, searchCategory, pricesVisible, user?._id, user?.role, user?.dealerStatus]);
 
   // Click outside and keydown listeners to dismiss search dropdown
   useEffect(() => {
@@ -833,7 +835,7 @@ const PublicLayout = () => {
                           {brand}
                         </span>
                         <span className="font-bold text-[var(--store-text)]">
-                          ₹{price.toLocaleString('en-IN')}
+                          <PriceGate>₹{price.toLocaleString('en-IN')}</PriceGate>
                         </span>
                         <span className={stockClass}>
                           {stockText}
@@ -1194,7 +1196,7 @@ const PublicLayout = () => {
                   <span className="flex px-2 xl:px-2.5 text-xs xl:text-sm font-bold text-[var(--store-text)] bg-[var(--store-surface)] group-hover:bg-[var(--store-background)] transition-colors whitespace-nowrap rounded-l-[5px] h-full items-center">
                     <span className="hidden xl:inline">{cartCount} item(s) - </span>
                     <span className="xl:hidden">{cartCount} · </span>
-                    ₹{(Number(cartSubtotal) || 0).toLocaleString('en-IN')}
+                    {pricesVisible ? `₹${(Number(cartSubtotal) || 0).toLocaleString('en-IN')}` : 'Cart'}
                   </span>
                   <div className="relative bg-primary text-white w-10 min-[1600px]:w-9 h-full flex items-center justify-center rounded-r-[4px]">
                     <ShoppingCart className="w-5 h-5 min-[1600px]:w-4 min-[1600px]:h-4" />
@@ -1266,7 +1268,7 @@ const PublicLayout = () => {
                                     x {item.quantity || 1}
                                   </span>
                                   <span className="text-xs font-black text-[var(--store-text)]">
-                                    ₹{Number(price * (item.quantity || 1)).toLocaleString('en-IN')}
+                                    <PriceGate>₹{Number(price * (item.quantity || 1)).toLocaleString('en-IN')}</PriceGate>
                                   </span>
                                   <button
                                     type="button"
@@ -1286,7 +1288,7 @@ const PublicLayout = () => {
                           <div className="flex items-center justify-between px-1">
                             <span className="text-sm font-bold text-[var(--store-text)]">Total</span>
                             <span className="text-base font-black text-[var(--store-text)]">
-                              ₹{(Number(cartSubtotal) || 0).toLocaleString('en-IN')}
+                              <PriceGate>₹{(Number(cartSubtotal) || 0).toLocaleString('en-IN')}</PriceGate>
                             </span>
                           </div>
 
@@ -1707,7 +1709,7 @@ const PublicLayout = () => {
 
             {/* Product Details line matching Image 2 */}
             <p className="text-xs text-[var(--store-muted)] leading-snug pl-8 pr-1 font-medium">
-              {addedCartToast.quantity} unit · {addedCartToast.product.name} · ₹{Number(addedCartToast.price).toLocaleString('en-IN')}
+              {addedCartToast.quantity} unit · {addedCartToast.product.name}{pricesVisible ? ` · ₹${Number(addedCartToast.price).toLocaleString('en-IN')}` : ''}
             </p>
 
             {/* View Cart Button */}

@@ -88,7 +88,7 @@ test.each([undefined, 'categoryPriority', 'standardPrice', 'createdAt'])('catalo
   invalidateCategoryCache();
   jest.spyOn(Category, 'find').mockReturnValue({ sort: () => ({ lean: async () => categories.map(row => ({ ...row, parentId: row.parentId?._id || row.parentId })) }) });
   const aggregate = jest.spyOn(Product, 'aggregate').mockResolvedValue([{ products: [], total: [{ count: 30 }] }]);
-  const result = await getPublicProducts({ sortBy, includeFacets: false, page: 2, limit: 10 });
+  const result = await getPublicProducts({ sortBy, includeFacets: false, page: 2, limit: 10 }, { role: 'customer' });
   expect(result.pagination.total).toBe(30);
   const stages = aggregate.mock.calls[0][0].at(-1).$facet.products;
   const sort = stages.findIndex(stage => stage.$sort);

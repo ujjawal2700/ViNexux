@@ -1,3 +1,4 @@
+import PriceGate, { usePriceVisibility } from './PriceGate';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
@@ -12,6 +13,7 @@ import { getMaximumOrderQuantity, isLowStock } from '../../utils/inventory';
 
 export const ProductCard = ({ product, onCartUpdated, className }) => {
   const { user, isAuthenticated } = useAuth();
+  const pricesVisible = usePriceVisibility();
   const toast = useToast();
   const navigate = useNavigate();
   const [quantity, setQuantity] = useState(1);
@@ -205,17 +207,19 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
 
         {/* Price row with brand logo/name */}
         <div className="mt-2 flex min-h-9 items-center justify-between gap-2">
+          <PriceGate available={product.applicablePrice != null || product.standardPrice != null}>
           <div className="flex min-w-0 flex-wrap items-baseline gap-x-1 gap-y-0.5">
             <span className="text-lg font-bold text-[var(--store-text)] sm:text-xl leading-none">
               ₹{(Number(displayPrice) || 0).toLocaleString('en-IN')}
             </span>
-            {hasDealerDiscount && (
+            {pricesVisible && hasDealerDiscount && (
               <span className="text-[10px] sm:text-xs text-[var(--store-muted)] line-through">
                 ₹{(Number(standardPrice) || 0).toLocaleString('en-IN')}
               </span>
             )}
           </div>
 
+          </PriceGate>
           {brandLogo ? (
             <img loading="lazy" decoding="async" src={brandLogo} alt={`${brandName} logo`} title={brandName} className="h-8 w-[30%] max-w-16 shrink-0 object-contain object-right" />
           ) : (
@@ -243,7 +247,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
           )}
         </div>
 
-        {hasDealerDiscount && (
+        {pricesVisible && hasDealerDiscount && (
           <div className="mt-1 text-[10px] font-semibold text-[var(--store-primary)]">
             Dealer saving: ₹{(standardPrice - displayPrice).toLocaleString('en-IN')}
           </div>

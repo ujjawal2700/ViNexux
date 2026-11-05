@@ -15,6 +15,7 @@ import { Brand } from '../models/Brand.js';
 import { AppError } from '../utils/AppError.js';
 import { getCachedCategories } from '../utils/categoryCache.js';
 import { allowedTypos, editDistance, requiredSearchTokens, searchWords, toBrandKey } from '../utils/productCatalogFields.js';
+import { canViewStorefrontPrices, withoutStorefrontPrices } from '../../../shared/storefrontPricing.js';
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const slugify = (value = '') => (value || '').toString().toLowerCase().trim().replace(/^https?:\/\/(www\.)?/i, '').replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -254,6 +255,13 @@ const resolveBrandSlug = async (brandSlug) => {
 // `ids` restricts to those products; `searchWords` replaces the search term
 // with words that must each match (the spelling-corrected retry).
 export const getPublicProducts = async (query = {}, user = null, options = {}) => {
+  const pricesVisible = canViewStorefrontPrices(user);
+  if (!pricesVisible) {
+    query = { ...query };
+    delete query.minPrice;
+    delete query.maxPrice;
+    if (['standardPrice', 'dealerPrice', 'applicablePrice'].includes(query.sortBy)) query.sortBy = 'createdAt';
+  }
   const includeFacets = query.includeFacets !== 'false' && query.includeFacets !== false;
   const [categories, approvedDealer] = await Promise.all([
     getPublicCategories(),
@@ -463,6 +471,7 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   const products = result.products.map((product) => {
     if (approvedDealer) product.dealerPrice = product.applicablePrice;
     else delete product.dealerPrice;
+    if (!pricesVisible) product = withoutStorefrontPrices(product);
     const specStockRaw = product.specifications?.find((specification) => /^(stock|inventory)$/i.test(specification.key || ''))?.value;
     const specStock = specStockRaw !== undefined && !isNaN(Number(specStockRaw)) ? Number(specStockRaw) : null;
     const resolvedStock = (product.stockQuantity !== undefined && product.stockQuantity !== null && product.stockQuantity > 0)

@@ -1,3 +1,4 @@
+import { withoutStorefrontPrices } from '../../../shared/storefrontPricing';
 import { getMaximumEnquiryQuantity } from '../utils/inventory';
 
 const STORAGE_KEY = 'vinexus_guest_cart';
@@ -5,7 +6,13 @@ const STORAGE_KEY = 'vinexus_guest_cart';
 const read = () => {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed : [];
+    const items = Array.isArray(parsed) ? parsed.map(({ priceSnapshot: _price, price: _legacyPrice, ...item }) => ({
+      ...item,
+      productId: item.productId && typeof item.productId === 'object'
+        ? withoutStorefrontPrices(item.productId) : item.productId,
+    })) : [];
+    if (JSON.stringify(items) !== JSON.stringify(parsed)) localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    return items;
   } catch {
     return [];
   }
@@ -28,7 +35,7 @@ export const guestCartService = {
     const existing = items.find((item) => String(item.productId?._id || item.productId) === productId);
     const maximum = getMaximumEnquiryQuantity(product);
     if (existing) existing.quantity = Math.min(maximum, existing.quantity + quantity);
-    else items.push({ productId: product, quantity: Math.min(maximum, quantity), priceSnapshot: product.standardPrice || 0 });
+    else items.push({ productId: withoutStorefrontPrices(product), quantity: Math.min(maximum, quantity) });
     return write(items);
   },
   updateItem(productId, quantity) {

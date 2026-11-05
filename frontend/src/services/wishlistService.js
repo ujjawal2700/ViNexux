@@ -1,3 +1,4 @@
+import { withoutStorefrontPrices } from '../../../shared/storefrontPricing';
 import { allowsPreferences } from '../utils/storageConsent.js';
 
 const WISHLIST_KEY = 'vinexus_wishlist';
@@ -6,7 +7,10 @@ export const getWishlist = () => {
   if (!allowsPreferences()) return [];
   try {
     const data = localStorage.getItem(WISHLIST_KEY);
-    return data ? JSON.parse(data) : [];
+    const items = data ? JSON.parse(data) : [];
+    const cleaned = Array.isArray(items) ? items.map(withoutStorefrontPrices) : [];
+    if (JSON.stringify(cleaned) !== JSON.stringify(items)) localStorage.setItem(WISHLIST_KEY, JSON.stringify(cleaned));
+    return cleaned;
   } catch (e) {
     console.error('Error reading wishlist from localStorage:', e);
     return [];
@@ -32,7 +36,7 @@ export const toggleWishlist = (product) => {
   if (exists) {
     updated = items.filter((p) => (p._id || p.id) !== id);
   } else {
-    updated = [...items, product];
+    updated = [...items, withoutStorefrontPrices(product)];
   }
   try {
     localStorage.setItem(WISHLIST_KEY, JSON.stringify(updated));
