@@ -31,7 +31,16 @@ const report = {
     liveCheck: 'Not run; use the connected product-sheet workflow to verify spreadsheet access',
   },
   smtp: { configured: Boolean(config.emailHost && config.emailUser && config.emailPassword), deliveryTest: 'Not sent' },
-  sms: { configured: Boolean(config.smsApiKey), deliveryTest: 'Not sent' },
+  sms: {
+    configured: Boolean(config.smsApiKey),
+    mockOtpEnabled: config.mockOtpEnabled,
+    senderIdConfigured: Boolean(config.smsSenderId),
+    templateIdConfigured: Boolean(config.smsTemplateId),
+    apiKeyEndpointConfigured: (config.smsBaseUrl || 'https://cloud.smsindiahub.in/api/mt/SendSMS').split('?')[0] === 'https://cloud.smsindiahub.in/api/mt/SendSMS',
+    requestMax: config.otpRequestMax,
+    requestWindowMinutes: config.otpRequestWindowMinutes,
+    deliveryTest: 'Not sent',
+  },
 };
 
 if (live && report.firebase.configured) {

@@ -4,6 +4,15 @@ import { parseFirebaseServiceAccount } from './firebaseCredentials.js';
 dotenv.config();
 const firebaseAccount = parseFirebaseServiceAccount(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
 
+const requiredPositiveInteger = (name) => {
+  const raw = process.env[name];
+  const value = Number(raw);
+  if (!raw?.trim() || !Number.isSafeInteger(value) || value <= 0) {
+    throw new Error(`${name} must be explicitly set to a positive integer in the backend environment.`);
+  }
+  return value;
+};
+
 // TRUST_PROXY: unset/false (direct traffic), a hop count ("1"), "true", or an
 // Express preset/subnet list such as "loopback" (nginx on the same server).
 const parseTrustProxy = (value) => {
@@ -28,6 +37,10 @@ export const config = {
     : ['http://localhost:3000', 'http://localhost:5173', 'https://vi-nexux.vercel.app'],
   otpExpiryMinutes: Number(process.env.OTP_EXPIRY_MINUTES) || 5,
   otpMaxAttempts: Number(process.env.OTP_MAX_ATTEMPTS) || 3,
+  // Required environment values; no fallback or silent rounding/clamping.
+  // Sending quota is separate from incorrect-code verification attempts.
+  otpRequestMax: requiredPositiveInteger('OTP_REQUEST_MAX'),
+  otpRequestWindowMinutes: requiredPositiveInteger('OTP_REQUEST_WINDOW_MINUTES'),
   mockOtpCode: process.env.MOCK_OTP_CODE || process.env.DEV_OTP || '123456',
   // MOCK_OTP is deliberately explicit: true never contacts the SMS gateway,
   // false always uses the configured live provider for mobile OTP delivery.

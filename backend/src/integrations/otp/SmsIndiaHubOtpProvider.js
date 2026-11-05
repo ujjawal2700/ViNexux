@@ -43,11 +43,15 @@ export class SmsIndiaHubOtpProvider extends OtpProvider {
       const response = await fetch(url.toString(), { method: 'GET' });
 
       if (!response.ok) {
+        console.error('[SMSIndiaHub] Gateway HTTP failure:', response.status);
         throw new Error(`SMSIndiaHub API error with HTTP status ${response.status}`);
       }
 
       const data = await response.json();
       if (data?.ErrorCode !== '000') {
+        // Log only the provider code, never raw responses, credentials or OTPs.
+        const code = String(data?.ErrorCode ?? '');
+        console.error('[SMSIndiaHub] Gateway rejected request. ErrorCode:', /^\d{1,8}$/.test(code) ? code : 'unknown');
         throw new Error('SMSIndiaHub rejected the SMS request.');
       }
       const messageId = data.MessageData?.[0]?.MessageId || data.JobId;

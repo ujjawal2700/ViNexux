@@ -1,5 +1,6 @@
 import rateLimit from 'express-rate-limit';
 import { MongoRateLimitStore } from '../utils/mongoRateLimitStore.js';
+import { config } from '../config/env.js';
 
 const isDevOrTest = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
 const isTest = process.env.NODE_ENV === 'test';
@@ -60,19 +61,26 @@ export const otpRequestRateLimiter = rateLimit({
   store: new MongoRateLimitStore({ prefix: 'otp-request' }),
   // A database hiccup must not lock everyone out of signing in.
   passOnStoreError: true,
-  windowMs: 10 * 60 * 1000,
-  max: 5,
+  windowMs: config.otpRequestWindowMinutes * 60 * 1000,
+  max: config.otpRequestMax,
+  // Refund gateway/server failures; invalid requests still count against abuse limits.
+  skipFailedRequests: true,
+  requestWasSuccessful: (_req, res) => res.statusCode < 500,
   skip: () => isTest,
   keyGenerator: (req) => `otp:${normalizeIdentifier(req.body?.identifier) || 'missing'}`,
   standardHeaders: true,
   legacyHeaders: false,
-  message: {
-    success: false,
-    message: 'OTP request limit reached. Please wait 10 minutes before trying again.',
-    error: {
-      code: 'TOO_MANY_REQUESTS',
-      retryAfterSeconds: 600,
-    },
+  handler: (req, res) => {
+    const resetAt = req.rateLimit?.resetTime?.getTime();
+    const retryAfterSeconds = Math.max(1, Math.ceil(
+      ((resetAt || Date.now() + config.otpRequestWindowMinutes * 60 * 1000) - Date.now()) / 1000
+    ));
+    res.setHeader('Retry-After', retryAfterSeconds);
+    return res.status(429).json({
+      success: false,
+      message: `OTP request limit reached. Please wait ${retryAfterSeconds} seconds before trying again.`,
+      error: { code: 'TOO_MANY_REQUESTS', retryAfterSeconds },
+    });
   },
 });
 
