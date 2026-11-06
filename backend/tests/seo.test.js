@@ -1,3 +1,4 @@
+import express from 'express';
 import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
 import mongoose from 'mongoose';
@@ -16,6 +17,15 @@ try {
   await mongoose.connect(`${uri}/?replicaSet=vinexusAccessTest`, { dbName, serverSelectionTimeoutMS: 5000 }); connected = true;
   await Promise.all(Object.values(mongoose.models).map(model => model.init()));
   const request = supertest(app);
+  // Reproduce the deployed nginx catch-all, without any sitemap-specific rule.
+  const edge = express();
+  edge.use((req, res, next) => {
+    req.url = `/api/share-page?path=${encodeURIComponent(req.path)}`;
+    delete req.query;
+    next();
+  });
+  edge.use(app);
+  const publicRequest = supertest(edge);
   await WebsiteSettings.create({ singletonKey: 'primary' });
   const root = await Category.create({ name: 'Security', slug: 'security' });
   const child = await Category.create({ name: 'Cameras', slug: 'cameras', parentId: root._id });
@@ -41,6 +51,17 @@ try {
   assert.ok(products.text.includes('&amp;format=webp'));
   for (const [name, response] of [['index', index], ['pages', pages], ['products', products]]) writeFileSync(`/tmp/vinexus-sitemap-${name}.xml`, response.text);
   assert.equal((await request.get('/api/seo/sitemap-products-2.xml')).status, 404);
+  for (const [file, expected] of [['sitemap.xml', index], ['sitemap-pages.xml', pages], ['sitemap-products-1.xml', products]]) {
+    const fallback = await publicRequest.get(`/${file}`);
+    assert.equal(fallback.status, 200, `Public fallback ${file}`);
+    assert.match(fallback.headers['content-type'], /application\/xml/);
+    assert.equal(fallback.text, expected.text, 'The public URL must return the same XML as the API, not React HTML');
+    assert.ok(!fallback.text.includes('<!doctype html>'));
+  }
+  const missingPartition = await publicRequest.get('/sitemap-products-2.xml');
+  assert.equal(missingPartition.status, 404); assert.equal(missingPartition.text, '');
+  const typo = await publicRequest.get('/sitemap.sxml');
+  assert.equal(typo.status, 301); assert.equal(typo.headers.location, '/sitemap.xml');
   for (const path of ['/', '/products', '/brands', '/security', '/security/cameras', '/brands/example-cameras', '/content/pages/about-us', '/privacy', '/terms', '/shipping-policy']) {
     const response = await request.get('/api/share-page').query({ path });
     assert.equal(response.status, 200, path);
@@ -85,5 +106,8 @@ try {
   assert.equal(maintenance.status, 503); assert.equal(maintenance.headers['retry-after'], '60');
   assert.ok(maintenance.text.includes('Updating the catalog.'));
   assert.equal((await request.get('/api/seo/sitemap.xml')).status, 503);
+  const offlineSitemap = await publicRequest.get('/sitemap.xml');
+  assert.equal(offlineSitemap.status, 503); assert.equal(offlineSitemap.headers['retry-after'], '60');
+  assert.equal(offlineSitemap.text, '');
   console.log('SEO integration passed: live product/image sitemaps, active categories/brands/CMS, canonical URLs, initial crawlable HTML, schema without private prices, verification tag, noindex private pages, real 404s, redirects and maintenance 503s.');
 } finally { if (connected) await mongoose.connection.dropDatabase(); await mongoose.disconnect(); }

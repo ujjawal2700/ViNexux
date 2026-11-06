@@ -2,12 +2,17 @@ import { SITE_ORIGIN } from '../../shared/seo.js';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { renderSharePage } from '../server/sharePage.js';
+import sitemapHandler from './sitemap.js';
 let shell;
 export default async function page(req, res) {
   try {
+    const rawPath = Array.isArray(req.query?.path) ? req.query.path.join('/') : String(req.query?.path || '');
+    const path = `/${rawPath.replace(/^\/+|\/+$/g, '').split('?')[0]}`;
+    if (path === '/sitemap.sxml') return res.redirect(301, '/sitemap.xml');
+    const file = /^\/(sitemap(?:-pages|-products-[1-9]\d*)?\.xml)$/.exec(path)?.[1];
+    if (file) return sitemapHandler({ ...req, query: { ...req.query, file } }, res);
     shell ||= await readFile(join(process.cwd(), 'dist', 'index.html'), 'utf8');
     const origin = SITE_ORIGIN;
-    const rawPath = Array.isArray(req.query?.path) ? req.query.path.join('/') : String(req.query?.path || '');
     const search = new URLSearchParams();
     for (const [key, value] of Object.entries(req.query || {})) if (key !== 'path') for (const item of Array.isArray(value) ? value : [value]) search.append(key, item);
     const pathname = `/${rawPath.replace(/^\/+/, '').split('?')[0]}${search.size ? `?${search}` : ''}`;

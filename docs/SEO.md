@@ -21,9 +21,32 @@ Public Product markup intentionally omits login-only prices, zero-price offers a
 
 Deploy backend and frontend together. The new public API routes are `/api/seo/page?path=/...` and `/api/seo/sitemap*.xml`.
 
-For Vercel, the tracked `frontend/vercel.json` routes sitemaps to `api/sitemap.js` before filesystem handling, and HTML through `api/page.js`. Configure `VITE_API_BASE_URL` (or server-only `API_BASE_URL`) with the public backend URL ending in `/api`. The HTML function needs the built `dist/index.html`, already included in configuration. Preview deployments send `X-Robots-Tag: noindex`.
+For Vercel, the tracked `frontend/vercel.json` routes sitemaps to `api/sitemap.js` before filesystem handling, and HTML through `api/page.js`. Configure `VITE_API_BASE_URL` (or server-only `API_BASE_URL`) with the public backend URL ending in `/api`. The existing HTML catch-all also dispatches sitemap paths to the XML adapter, so a missing dedicated rewrite cannot turn sitemap requests into React 404 pages. The HTML function needs the built `dist/index.html`, already included in configuration. Preview deployments send `X-Robots-Tag: noindex`.
 
-For nginx, apply the sitemap locations in `backend/deploy/storefront-pages.nginx.conf` (or the updated complete example), preserving existing asset and API locations. Build `frontend/dist` on the same host as the backend, run `nginx -t`, then reload. A static-only SPA fallback will not provide the new initial HTML or dynamic sitemap behavior. Ensure the hosting/domain settings redirect the alternate www hostname and HTTP to the canonical HTTPS origin without a redirect loop.
+For nginx, the existing `/api/share-page?path=/sitemap.xml` fallback now serves XML directly, including all child sitemaps. This handles VPS installations that already use the HTML renderer but did not apply separate sitemap rules. Deploy the updated backend and reload the API process; a frontend rebuild alone does not update this backend controller. Explicit sitemap routing is still supported: apply the sitemap locations in `backend/deploy/storefront-pages.nginx.conf` (or the updated complete example), preserving existing asset and API locations. Build `frontend/dist` on the same host as the backend, run `nginx -t`, then reload. A static-only SPA fallback will not provide the new initial HTML or dynamic sitemap behavior. Ensure the hosting/domain settings redirect the alternate www hostname and HTTP to the canonical HTTPS origin without a redirect loop.
+
+## If `/sitemap.xml` shows the storefront 404 screen
+
+The live check on 6 November 2026 found that `/sitemap.xml` returned HTTP 404 with server-rendered HTML, while `/api/seo/sitemap.xml` and `/api/seo/sitemap-pages.xml` returned HTTP 200 with valid XML. nginx was routing the public URL through the page fallback. The generator was already working.
+
+The page fallback now recognizes sitemap filenames **before** rendering HTML and calls the same XML controller as the direct API. Deploy the backend fix and reload PM2 from the deployed `backend` directory:
+
+```sh
+pm2 reload ecosystem.config.cjs --env production
+curl -i https://vinexus.in/sitemap.xml
+curl -i https://vinexus.in/sitemap-pages.xml
+curl -i https://vinexus.in/sitemap-products-1.xml
+```
+
+All three public URLs must return HTTP 200 with `Content-Type: application/xml`, not the storefront HTML. Do not submit only the API index as a workaround: its child links use the canonical public sitemap URLs and those must work too. Regression checks reproduce nginx's catch-all without any sitemap-specific location block, including XML content, missing partitions, the spelling redirect and maintenance responses.
+
+## Google tag checker and strict opt-in
+
+The deployed bundle contains `G-L1LPWYW2V6`. The initial HTML deliberately does not load the external Google library until the visitor chooses **Allow optional storage**. This is basic consent mode. Google's automatic installation checker may not accept the banner and may report that the tag was not detected; that alone does not establish a missing or incorrect tag.
+
+Strict opt-in was explicitly retained. To test actual measurement, open the website, use **Storage choices** in the footer if the banner is already dismissed, choose **Allow optional storage**, and inspect Tag Assistant or this property's Realtime report. Check that `gtag/js?id=G-L1LPWYW2V6` loads and that Google receives a `page_view` event with this ID. Essential-only and private-page visits remain excluded. Browser tracking blockers may prevent measurement. The Google installation-check warning is not a reason to enable pre-consent collection.
+
+Reference: [Google's basic versus advanced consent mode](https://developers.google.com/tag-platform/security/concepts/consent-mode).
 
 ## Google checks after deployment
 

@@ -1,3 +1,4 @@
+import pageHandler from '../../frontend/api/page.js';
 import { afterEach, expect, jest, test } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import sitemapHandler from '../../frontend/api/sitemap.js';
@@ -24,4 +25,14 @@ test.each([404, 503])('the sitemap adapter preserves status %s instead of return
   const res = response(); await sitemapHandler({ query: { file: 'sitemap-products-2.xml' } }, res);
   expect(res.statusCode).toBe(status); expect(res.body).toBeNull();
   if (status === 503) expect(res.headers['Retry-After']).toBe('60');
+});
+
+test.each(['sitemap.xml', 'sitemap-pages.xml', 'sitemap-products-2.xml'])('the existing HTML catch-all serves %s as XML when dedicated rewrite rules are absent', async file => {
+  process.env.API_BASE_URL = 'https://api.example.test/api';
+  const fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, text: async () => '<?xml version="1.0"?><urlset />' });
+  const res = response(); await pageHandler({ query: { path: file } }, res);
+  expect(res.statusCode).toBe(200);
+  expect(res.headers['Content-Type']).toBe('application/xml; charset=utf-8');
+  expect(res.body).not.toContain('<html');
+  expect(fetchSpy.mock.calls[0][0]).toBe(`https://api.example.test/api/seo/${file}`);
 });
