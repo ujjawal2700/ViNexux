@@ -6,6 +6,8 @@ The fetched `origin/main` revision `7b20cb0` had diverged from the local branch.
 
 Static decoding identified a loader that resolved remote payload locations, downloaded code, evaluated it, and launched detached Node processes. The suspect code was not executed during this review. The clean merge `be11bb7` rejects both `init` files, the appended Vite payload, and the commands that invoked them. Environment-file ignore rules were restored. Website changes were preserved.
 
+A second fetch found another force-updated revision, `aa733c1`. Compared with `7b20cb0`, it changes only the two malicious loader files. Those files were again rejected while merging the latest remote history.
+
 ## Additional cleanup
 
 - Removed the obsolete `scratch/setup_env_credentials.js` script, which contained hardcoded credentials and could overwrite environment configuration.
