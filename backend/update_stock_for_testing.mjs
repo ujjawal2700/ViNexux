@@ -14,7 +14,9 @@ const productSchema = new mongoose.Schema({
 
 const Product = mongoose.model('Product', productSchema);
 
-const MONGO_URI = process.env.MONGODB_URI || 'mongodb+srv://dipeshgurjer000_db_user:FWyhcSlHzKC1KDR7@vinexusdatabase.onegosp.mongodb.net/vinexus';
+const MONGO_URI = process.env.MONGODB_URI;
+if (!MONGO_URI) throw new Error('MONGODB_URI must be configured explicitly.');
+if (process.env.NODE_ENV === 'production') throw new Error('This test-data script must not run in production.');
 
 async function run() {
   await mongoose.connect(MONGO_URI);

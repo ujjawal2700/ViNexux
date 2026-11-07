@@ -43,6 +43,7 @@ test('list and both exports use identical section, search, date and IST daily-ti
     expect(res.headers['content-disposition']).toContain(`.${format}`); expect(res.headers['cache-control']).toBe('no-store');
     if (format === 'pdf') { expect(res.headers['content-type']).toContain('application/pdf'); expect(res.body.subarray(0, 4).toString()).toBe('%PDF'); }
     else {
+      expect(res.headers['content-type']).toContain('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       const workbook = new ExcelJS.Workbook(); await workbook.xlsx.load(res.body);
       expect(workbook.worksheets.map(sheet => sheet.name)).toEqual(['Activity', 'Changes']);
       const activity = workbook.getWorksheet('Activity'), changes = workbook.getWorksheet('Changes');
@@ -77,7 +78,7 @@ test('employees, customers and anonymous users cannot download or read reports',
   expect(AuditLog.find).not.toHaveBeenCalled();
 });
 test('invalid windows and unsupported formats are rejected before a database query', async () => {
-  for (const query of [{ format: 'html' }, { format: 'pdf', startTime: '25:00' }, { format: 'xlsx', from: '2026-11-08T00:00:00Z', to: '2026-11-07T00:00:00Z' }]) {
+  for (const query of [{ format: 'html' }, { format: 'docx' }, { format: 'pdf', startTime: '25:00' }, { format: 'xlsx', from: '2026-11-08T00:00:00Z', to: '2026-11-07T00:00:00Z' }]) {
     expect((await request.get('/admin/access/logs/export').set('x-role', 'admin').query(query)).status).toBe(400);
   }
   expect(AuditLog.find).not.toHaveBeenCalled();
@@ -92,4 +93,10 @@ test('list IDs and dates survive BSON serialization, and bulk records stay compa
   expect(log.display.recordCount).toBe(91); expect(log.display.records).toHaveLength(2);
   expect(chain.select).toHaveBeenCalledWith(expect.not.stringContaining('documents.changes'));
   expect(log.display.records[0].changes).toEqual([]);
+});
+
+test('old log detail links are unavailable after 30 days even before the TTL cleanup sweep', async () => {
+  rows = [{ ...entry, createdAt: new Date(Date.now() - 31 * 86400000) }];
+  const res = await request.get(`/admin/access/logs/${id}`).set('x-role', 'admin');
+  expect(res.status).toBe(404); expect(res.body.message).toContain('30-day retention');
 });

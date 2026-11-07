@@ -25,7 +25,7 @@ test('admin can toggle low stock beside trending and the saved flag survives rel
 });
 
 for (const stockQuantity of [3, 6]) test(`flagged product with stock ${stockQuantity} caps the quantity at ${Math.min(stockQuantity, 5)}`, async ({ page }) => {
-  await mockApi(page); await seedBrowserSession(page, 'storefront');
+  await mockApi(page); await seedBrowserSession(page, 'account');
   await page.route(`**/api/products/${id}`, route => route.fulfill({ json: { success: true, data: product({ isLowStock: true, stockQuantity }) } }));
   await page.goto(`/products/${id}`);
   await expect(page.getByText('LOW STOCK', { exact: true })).toBeVisible();
@@ -81,17 +81,24 @@ test('a delayed or empty cart does not repeatedly render recommendations', async
 
 test('late website settings cannot replace a product photo and non-product pages regain the generic photo', async ({ page }) => {
   await mockApi(page); await seedBrowserSession(page, 'storefront');
+  await page.clock.install();
+  let settingsCalls = 0;
   let releaseSettings;
   const waiting = new Promise(resolve => { releaseSettings = resolve; });
   await page.route('**/api/content/website-settings', async route => {
-    await waiting;
+    settingsCalls++;
+    if (settingsCalls > 1) await waiting;
     return route.fulfill({ json: { success: true, data: { settings: { ogImage: { url: 'https://cdn.example.test/generic.png' }, metaTitle: 'Store default' } } } });
   });
   await page.route(`**/api/products/${id}`, route => route.fulfill({ json: { success: true, data: product() } }));
   await page.goto(`/products/${id}`, { waitUntil: 'domcontentloaded' });
   const image = page.locator('meta[property="og:image"]');
   await expect(image).toHaveAttribute('content', 'https://cdn.example.test/adapter.webp');
-  const settingsFinished = page.waitForResponse('**/api/content/website-settings'); releaseSettings(); await settingsFinished;
+  const settingsFinished = page.waitForResponse('**/api/content/website-settings');
+  await page.clock.fastForward(16000);
+  await expect.poll(() => settingsCalls).toBeGreaterThan(1);
+  await expect(image).toHaveAttribute('content', 'https://cdn.example.test/adapter.webp');
+  releaseSettings(); await settingsFinished;
   await expect(image).toHaveAttribute('content', 'https://cdn.example.test/adapter.webp');
   await page.locator('input[aria-label="Search products"]:visible').first().fill('CCTV');
   await page.locator('input[aria-label="Search products"]:visible').first().press('Enter');

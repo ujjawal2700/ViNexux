@@ -37,11 +37,26 @@ describe('repository integrity', () => {
     expect(backend.scripts.start).toBe('node src/server.js');
     expect(backend.scripts.dev).toBe('nodemon src/server.js');
     expect(existsSync(resolve(root, 'backend/api.js'))).toBe(false);
+    expect(existsSync(resolve(root, 'backend/init'))).toBe(false);
+    expect(existsSync(resolve(root, 'frontend/init'))).toBe(false);
+    const frontend = JSON.parse(readFileSync(resolve(root, 'frontend/package.json'), 'utf8'));
+    expect(frontend.scripts.dev).toBe('vite');
+    expect(frontend.scripts.build).toBe('vite build');
   });
 
   test('Vite has no injected require bridge or appended top-level script', () => {
     const config = readFileSync(resolve(root, 'frontend/vite.config.js'), 'utf8');
     expect(config).not.toMatch(/createRequire|global\s*\[|\beval\s*\(|\bnew\s+Function\b/);
     expect(config.trimEnd().endsWith('});')).toBe(true);
+  });
+
+  test('environment files remain ignored and credential setup scripts are not shipped', () => {
+    const paths = ['.env', 'backend/.env', 'frontend/.env', 'backend/.env.production', 'frontend/.env.production'];
+    const ignored = execFileSync('git', ['check-ignore', '--', ...paths], { cwd: root, encoding: 'utf8' });
+    expect(ignored.trim().split('\n')).toEqual(paths);
+    expect(existsSync(resolve(root, 'scratch/setup_env_credentials.js'))).toBe(false);
+    const stockScript = readFileSync(resolve(root, 'backend/update_stock_for_testing.mjs'), 'utf8');
+    expect(stockScript).not.toMatch(/mongodb(?:\+srv)?:\/\/[^\s'"]+:[^\s'"]+@/);
+    expect(stockScript).toContain("process.env.NODE_ENV === 'production'");
   });
 });

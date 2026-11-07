@@ -1,3 +1,4 @@
+import { getEffectiveSessionExpiry } from '../utils/session.util.js';
 import { SESSION_RETENTION_DAYS, retentionCutoff } from '../../../shared/dataRetention.js';
 import { auditContext } from '../audit/audit.js';
 import mongoose from 'mongoose';
@@ -108,7 +109,7 @@ export const listSessions = async (query = {}, currentSessionId = null) => {
     .limit(current && page === 1 ? Math.max(1, limit - 1) : limit)
     .lean();
   const sessions = [...(current && page === 1 ? [current] : []), ...(current && page === 1 && limit === 1 ? [] : rows)]
-    .map(session => ({ ...session, isCurrent: session.sessionId === currentSessionId }));
+    .map(session => ({ ...session, expiresAt: getEffectiveSessionExpiry(session), isCurrent: session.sessionId === currentSessionId }));
 
   return {
     sessions,
@@ -146,11 +147,11 @@ export const getSessionById = async (id) => {
     throw new AppError('Administrator sessions are restricted to super admins.', 403, ERROR_CODES.FORBIDDEN);
   }
 
-  if (!session) {
+  if (!session || (session.createdAt && new Date(session.createdAt) < retentionCutoff(SESSION_RETENTION_DAYS))) {
     throw new AppError('Session not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
   }
 
-  return session;
+  return { ...(session.toObject ? session.toObject() : session), expiresAt: getEffectiveSessionExpiry(session) };
 };
 
 /**

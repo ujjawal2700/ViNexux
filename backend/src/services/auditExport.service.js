@@ -116,7 +116,7 @@ export async function generateAuditExcel(logs, filters, generatedAt = new Date()
       if (n === 11) return;
       row.eachCell(cell => {
         if (n !== 1) cell.font = { name: 'Arial', size: 11 };
-        cell.alignment = { vertical: 'top', wrapText: true };
+        cell.alignment = { vertical: 'top', wrapText: true, ...(n > 11 ? { horizontal: typeof cell.value === 'number' || cell.value instanceof Date ? 'right' : 'left', indent: 1 } : {}) };
         if (n > 11 && n % 2 === 0) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8F3F4' } };
       });
       if (n > 11) {
