@@ -78,3 +78,25 @@ test('native theme number fields keep a blank edit instead of restoring zero on 
   await priority.blur();
   await expect(priority).toHaveValue('0');
 });
+
+test('variant prices and stock can be cleared, typed from zero and saved with decimals', async ({ page }) => {
+  const id = '507f1f77bcf86cd799439011'; let saved;
+  const product = { _id: id, name: 'Cable', modelNumber: 'CABLE', standardPrice: 0, dealerPrice: 0, stockQuantity: 0, isActive: true, images: [], specifications: [], variants: [] };
+  await page.route(`**/api/admin/products/${id}`, route => {
+    if (route.request().method() === 'PUT') saved = route.request().postDataJSON();
+    return route.fulfill({ json: { success: true, data: { ...product, ...saved } } });
+  });
+  await page.goto(`/admin/products/${id}`);
+  await page.getByRole('button', { name: /^Pricing & Media/ }).click();
+  await page.getByRole('button', { name: 'Add variant', exact: true }).click();
+  await page.getByLabel('Option name 1', { exact: true }).fill('5m');
+  for (const [label, value] of [['Retail price (₹) 1', '125.50'], ['Dealer price (₹) 1', '100.25'], ['Stock quantity 1', '12']]) {
+    const input = page.getByLabel(label, { exact: true });
+    await expect(input).toHaveValue('0');
+    await input.click(); await expect(input).toHaveValue('');
+    await input.pressSequentially('8'); await input.fill(''); await expect(input).toHaveValue('');
+    await input.pressSequentially(value); await expect(input).toHaveValue(value); await input.blur();
+  }
+  await page.getByRole('button', { name: 'Save & Publish', exact: true }).click();
+  await expect.poll(() => saved?.variants?.[0]).toMatchObject({ name: '5m', standardPrice: 125.5, dealerPrice: 100.25, stockQuantity: 12 });
+});

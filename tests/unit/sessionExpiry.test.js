@@ -8,9 +8,9 @@ describe('role-based session expiry', () => {
     expect(getSessionExpiryForRole('customer', issuedAt).toISOString()).toBe('2026-10-05T00:00:00.000Z');
   });
 
-  test('dealer and admin sessions retain the configured refresh lifetime', () => {
-    expect(getSessionExpiryForRole('dealer', issuedAt).toISOString()).toBe('2026-11-03T00:00:00.000Z');
-    expect(getSessionExpiryForRole('admin', issuedAt).toISOString()).toBe('2026-11-03T00:00:00.000Z');
+  test('dealer and admin sessions are capped at the seven-day retention limit', () => {
+    expect(getSessionExpiryForRole('dealer', issuedAt).toISOString()).toBe('2026-10-11T00:00:00.000Z');
+    expect(getSessionExpiryForRole('admin', issuedAt).toISOString()).toBe('2026-10-11T00:00:00.000Z');
   });
 
   test('legacy 30-day customer sessions are capped at 24 hours', () => {

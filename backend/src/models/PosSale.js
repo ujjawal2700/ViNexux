@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 
 const payment = new mongoose.Schema({ method: String, amount: Number, reference: String, requestId: String, createdAt: Date, createdBy: mongoose.Schema.Types.ObjectId }, { _id: false });
 const item = new mongoose.Schema({ productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' }, productName: String,
-  sku: String, modelNumber: String, quantity: Number, unitPrice: Number, discountPercent: Number, gstRate: Number,
+  variantId: { type: mongoose.Schema.Types.ObjectId, default: null }, variantName: String, sku: String, modelNumber: String, quantity: Number, unitPrice: Number, discountPercent: Number, gstRate: Number,
   hsn: String, unit: String, serialNumbers: [String], taxable: Number, cgst: Number, sgst: Number, igst: Number,
   originalAmount: Number, discountAmount: Number, lineTotal: Number, taxableUnitRate: Number, returnedQuantity: { type: Number, default: 0 } }, { _id: false });
 const saleSchema = new mongoose.Schema({

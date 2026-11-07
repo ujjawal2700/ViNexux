@@ -9,6 +9,8 @@ const enquiryItemSchema = new mongoose.Schema(
       ref: 'Product',
       required: [true, 'Product ID is required'],
     },
+    variantId: { type: mongoose.Schema.Types.ObjectId, default: null },
+    variantName: { type: String, default: '' },
     productName: {
       type: String,
       required: [true, 'Product name snapshot is required'],

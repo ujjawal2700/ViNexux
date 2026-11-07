@@ -18,9 +18,10 @@ const HEADERS = [
   'Model Number', 'Product Name / Model', 'Brand', 'Header Category (Optional)',
   'Main Category (Optional)', 'Sub Category (Optional)', 'Standard Price',
   'Dealer Price', 'Stock Quantity', 'Product URL (Optional)', 'Warranty (Optional)',
-  'Variant (Optional)', 'Specifications (Optional)', 'Image Files (Optional)', 'HSN Code (Optional)',
+  'Variant (Optional)', 'Specifications (Optional)', 'Image Files (Optional)', 'HSN Code (Optional)', 'Variants JSON (Optional)',
 ];
-const PRE_HSN_HEADERS = HEADERS.filter((header) => header !== 'HSN Code (Optional)');
+const PRE_VARIANT_HEADERS = HEADERS.filter(header => header !== 'Variants JSON (Optional)');
+const PRE_HSN_HEADERS = PRE_VARIANT_HEADERS.filter((header) => header !== 'HSN Code (Optional)');
 const PREVIOUS_CURRENT_HEADERS = [
   'Model Number', 'Model Name', 'Product Name', 'Brand', 'Header Category (Optional)',
   'Main Category (Optional)', 'Sub Category (Optional)', 'Standard Price',
@@ -93,7 +94,7 @@ export const createProductImportTemplate = async () => {
   sheet.getRow(1).height = 34;
   sheet.columns.forEach((column, index) => { column.width = index === 1 ? 38 : index === 12 ? 46 : index === 13 ? 32 : 24; });
   sheet.views = [{ state: 'frozen', ySplit: 1 }];
-  sheet.autoFilter = { from: 'A1', to: 'O1' };
+  sheet.autoFilter = { from: 'A1', to: 'P1' };
   sheet.getColumn('O').numFmt = '@';
   sheet.getColumn('A').numFmt = '@';
   const examples = workbook.addWorksheet('Examples');
@@ -143,7 +144,7 @@ const parseWorkbook = async (buffer) => {
   const sheet = workbook.getWorksheet('Products');
   if (!sheet) throw invalid('The workbook must contain a Products sheet.');
   const headers = sheet.getRow(1).values.slice(1).map(clean);
-  const expectedHeaders = [HEADERS, PRE_HSN_HEADERS, PREVIOUS_CURRENT_HEADERS, OLDER_CURRENT_HEADERS, PREVIOUS_HEADERS, LEGACY_HEADERS]
+  const expectedHeaders = [HEADERS, PRE_VARIANT_HEADERS, PRE_HSN_HEADERS, PREVIOUS_CURRENT_HEADERS, OLDER_CURRENT_HEADERS, PREVIOUS_HEADERS, LEGACY_HEADERS]
     .find((candidate) => headers.length === candidate.length && candidate.every((header, index) => headers[index] === header));
   if (!expectedHeaders) throw invalid('The Products sheet headers differ from the downloaded template.');
   const rows = [];
@@ -312,7 +313,10 @@ export const prepareProductImport = async (workbookBuffer, archiveBuffer) => {
     }
     const stockQuantity = numeric(fields['Stock Quantity'], 'Stock Quantity', errors, true);
     specifications.push({ key: 'Stock', value: String(stockQuantity) });
+    let variants = [];
+    try { variants = fields['Variants JSON (Optional)'] ? JSON.parse(fields['Variants JSON (Optional)']) : []; } catch { errors.push('Variants JSON must be a JSON array.'); }
     const payload = {
+      variants,
       sku, modelNumber,
       model: fields['Model Name'] ?? fields.Model ?? fields['Product Name / Model'],
       name: fields['Product Name / Model'] ?? fields['Product Name'],

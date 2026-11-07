@@ -15,12 +15,12 @@ export const productService = {
   },
 
   // Fetch every selected product through bounded API pages, without a section cap.
-  async getMerchandisingProducts(flag) {
-    const params = { [flag]: true, sortBy: 'updatedAt', sortOrder: 'desc', limit: 100, includeFacets: false };
+  async getMerchandisingProducts(flag, { firstPageOnly = false, limit = 100 } = {}) {
+    const params = { [flag]: true, sortBy: 'updatedAt', sortOrder: 'desc', limit, includeFacets: false };
     const first = await this.getProducts({ ...params, page: 1 });
     const products = [...(first.data?.products || [])];
     const totalPages = first.data?.pagination?.totalPages || 1;
-    for (let page = 2; page <= totalPages; page++) {
+    for (let page = 2; !firstPageOnly && page <= totalPages; page++) {
       const response = await this.getProducts({ ...params, page });
       products.push(...(response.data?.products || []));
     }

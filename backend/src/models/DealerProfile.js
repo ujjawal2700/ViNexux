@@ -120,7 +120,7 @@ const dealerProfileSchema = new mongoose.Schema(
       trim: true,
       maxlength: [500, 'Rejection reason cannot exceed 500 characters'],
     },
-    applicationSource: { type: String, enum: ['registration', 'customer'], default: 'registration' },
+    applicationSource: { type: String, enum: ['registration', 'customer', 'admin'], default: 'registration' },
     applicationState: { type: String, enum: ['draft', 'submitted'], default: 'submitted' },
     kycVerifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     kycVerifiedAt: { type: Date, default: null },

@@ -4,6 +4,9 @@ import { BENTO_TRANSITIONS, BENTO_IMAGE_LIMIT, BENTO_SECTION_COUNT } from '../..
 
 const image = new mongoose.Schema({
   url: { type: String, required: true }, publicId: String,
+  mediaType: { type: String, enum: ['image', 'video'], default: 'image' },
+  posterUrl: { type: String, default: '' }, posterPublicId: { type: String, default: '' },
+  duration: Number, bytes: Number,
   title: { type: String, maxlength: 150, default: '' },
   link: { type: String, maxlength: 2000, default: '' },
   fit: { type: String, enum: ['cover', 'contain'], default: 'cover' },

@@ -1,3 +1,4 @@
+import { isBannerVideo } from '../../../../shared/bannerMedia';
 import React, { useRef, useState } from 'react';
 import Modal from '../ui/Modal';
 import { bannerFramingStyle, BENTO_SECTION_COUNT, visibleBannerSections } from '../../../../shared/bannerGrid';
@@ -7,11 +8,11 @@ import { useSeasonalTheme } from '../../hooks/useSeasonalTheme';
 export function BentoGridPreview({ grid, section, candidate, device = 'desktop', onDragStart, onDragMove, onDragEnd }) {
   const { theme } = useSeasonalTheme();
   return <div style={themeVariables(theme.config)} className="mx-auto w-full" data-testid="bento-artwork-preview">
-    <div className="grid gap-2" style={{ maxWidth: device === 'mobile' ? 390 : device === 'tablet' ? 640 : undefined, margin: 'auto', gridTemplateColumns: '3fr 1fr', gridTemplateRows: '1fr', aspectRatio: '3.5' }}>
+    <div className="grid gap-2" style={{ maxWidth: device === 'mobile' ? 390 : device === 'tablet' ? 640 : undefined, margin: 'auto', gridTemplateColumns: '3fr 1fr', gridTemplateRows: '1fr' }}>
       {Array.from({ length: BENTO_SECTION_COUNT }, (_, i) => {
         const image = i === section && candidate ? candidate : visibleBannerSections(grid.sections)[i]?.images[0];
-        return <div key={i} className="relative min-h-0 min-w-0 overflow-hidden rounded-lg border bg-[var(--store-surface)]" data-preview-section={i + 1} style={{ borderColor: i === section ? 'var(--store-primary)' : 'var(--store-border)', outline: i === section ? '2px solid var(--store-primary)' : undefined, touchAction: i === section && onDragStart ? 'none' : undefined, cursor: i === section && onDragStart ? 'grab' : undefined }} onPointerDown={i === section ? onDragStart : undefined} onPointerMove={i === section ? onDragMove : undefined} onPointerUp={onDragEnd} onPointerCancel={onDragEnd}>
-          {image?.url ? <img src={image.url} alt={`Section ${i + 1} crop preview`} draggable={false} className="absolute inset-0 h-full w-full pointer-events-none" style={bannerFramingStyle(image)} /> : <div className="flex h-full items-center justify-center text-xs text-[var(--store-muted)]">Section {i + 1}</div>}
+        return <div key={i} className="relative min-h-0 min-w-0 overflow-hidden rounded-lg border bg-[var(--store-surface)]" data-preview-section={i + 1} style={{ aspectRatio: i === 1 ? '3 / 4' : undefined, borderColor: i === section ? 'var(--store-primary)' : 'var(--store-border)', outline: i === section ? '2px solid var(--store-primary)' : undefined, touchAction: i === section && onDragStart ? 'none' : undefined, cursor: i === section && onDragStart ? 'grab' : undefined }} onPointerDown={i === section ? onDragStart : undefined} onPointerMove={i === section ? onDragMove : undefined} onPointerUp={onDragEnd} onPointerCancel={onDragEnd}>
+          {image?.url && isBannerVideo(image) && !image.posterUrl ? <video src={image.url} muted playsInline preload="metadata" className="absolute inset-0 h-full w-full pointer-events-none" style={bannerFramingStyle(image)} /> : image?.url ? <img src={image.posterUrl || image.url} alt={`Section ${i + 1} crop preview`} draggable={false} className="absolute inset-0 h-full w-full pointer-events-none" style={bannerFramingStyle(image)} /> : <div className="flex h-full items-center justify-center text-xs text-[var(--store-muted)]">Section {i + 1}</div>}
           {image?.title && <span className="absolute bottom-2 left-2 max-w-[90%] truncate rounded bg-[var(--store-surface)] px-2 py-1 text-xs text-[var(--store-text)]">{image.title}</span>}
         </div>;
       })}
@@ -26,7 +27,7 @@ export default function BannerArtworkDialog({ staging, grid, busy, error, onClos
   const drag = useRef(null);
   const frame = drafts[index];
   const change = patch => setDrafts(previous => previous.map((d, i) => i === index ? { ...d, ...patch } : d));
-  const candidate = { url: staging.items[index].url, ...frame };
+  const candidate = { ...staging.items[index], ...frame };
   return <Modal isOpen onClose={() => { if (!busy) onClose(); }} size="xl" closeOnOutsideClick={false} title={`Preview, crop & adjust — section ${staging.section + 1}`} description="Adjust the visible crop without destroying your original image. Check all device previews before saving." footer={<><button type="button" className="rounded-lg border px-4 py-2" disabled={busy} onClick={onClose}>Cancel</button><button type="button" className="rounded-lg bg-primary px-4 py-2 font-semibold text-white" disabled={busy} onClick={() => onConfirm(drafts)}>{busy ? 'Saving…' : staging.existing ? 'Save crop & adjustments' : `Upload ${drafts.length} banner${drafts.length === 1 ? '' : 's'}`}</button></>}>
     {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-red-800">{error}</p>}
 <div className="flex flex-wrap gap-2">{staging.items.map((item, i) => <button type="button" key={i} aria-pressed={i === index} disabled={busy} className={`max-w-full break-all rounded-lg border px-3 py-2 text-xs ${i === index ? 'border-primary font-bold text-primary' : ''}`} onClick={() => setIndex(i)}>Image {i + 1}{item.file ? ` · ${item.file.name}` : ''}</button>)}</div>
@@ -38,6 +39,6 @@ export default function BannerArtworkDialog({ staging, grid, busy, error, onClos
       {[['zoom', 'Zoom', 1, 3, .05], ['positionX', 'Horizontal position', 0, 100, 1], ['positionY', 'Vertical position', 0, 100, 1]].map(([key, label, min, max, step]) => <label key={key} className="text-sm"><span className="flex justify-between">{label}<span>{key === 'zoom' ? `${Number(frame[key]).toFixed(2)}×` : `${Math.round(frame[key])}%`}</span></span><input aria-label={label} type="range" min={min} max={max} step={step} className="mt-2 w-full accent-[#800020]" value={frame[key]} onChange={e => change({ [key]: Number(e.target.value) })} /></label>)}
       <button type="button" className="w-fit text-sm font-semibold text-primary underline" onClick={() => change({ fit: 'cover', positionX: 50, positionY: 50, zoom: 1 })}>Reset crop</button>
     </fieldset>
-    <details><summary className="cursor-pointer text-sm">View original image</summary><img src={staging.items[index].url} alt="Original banner before cropping" className="mt-3 max-h-72 w-full object-contain" /></details>
+    <details><summary className="cursor-pointer text-sm">View original image</summary>{isBannerVideo(staging.items[index]) ? <video src={staging.items[index].url} poster={staging.items[index].posterUrl} controls muted playsInline preload="none" className="mt-3 max-h-72 w-full object-contain" /> : <img src={staging.items[index].url} alt="Original banner before cropping" className="mt-3 max-h-72 w-full object-contain" />}</details>
   </Modal>;
 }

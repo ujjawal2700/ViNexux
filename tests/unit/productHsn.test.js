@@ -59,7 +59,7 @@ test('downloaded template imports HSN codes as text and still accepts its previo
   const sheet = workbook.getWorksheet('Products');
   expect(sheet.getCell('O1').value).toBe('HSN Code (Optional)');
   expect(sheet.getColumn('O').numFmt).toBe('@');
-  expect(sheet.autoFilter).toEqual('A1:O1');
+  expect(sheet.autoFilter).toEqual('A1:P1');
   const row = (model, code) => [model, 'Test product', 'Test brand', '', '', '', 100, 90, 2, '', '', '', '', '', code];
   sheet.addRow(row('MODEL-1', '012345'));
   sheet.addRow(row('MODEL-2', '12AB'));

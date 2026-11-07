@@ -1,3 +1,4 @@
+import { SESSION_RETENTION_DAYS, retentionCutoff } from '../../../shared/dataRetention.js';
 import { auditContext } from '../audit/audit.js';
 import mongoose from 'mongoose';
 import { Session } from '../models/Session.js';
@@ -27,7 +28,7 @@ export const listSessions = async (query = {}, currentSessionId = null) => {
     sortOrder = 'desc',
   } = query;
 
-  const filter = {};
+  const filter = { createdAt: { $gte: retentionCutoff(SESSION_RETENTION_DAYS) } };
 
   if (userId) {
     filter.userId = userId;

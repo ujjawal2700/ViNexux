@@ -33,7 +33,7 @@ export const createEnquirySchema = {
       state: z.string().trim().min(1, 'Please enter the delivery state').max(100),
       pincode: z.string().trim().regex(/^\d{6}$/, 'Please enter a valid 6-digit pincode'),
     }),
-    selectedProductIds: z.array(z.string().refine(isValidObjectId)).min(1),
+    selectedProductIds: z.array(z.string().regex(/^[a-f\d]{24}(?::[a-f\d]{24})?$/i)).min(1),
     // The number admin should reach the submitter on via WhatsApp (wa.me
     // deep link - see admin enquiry pages). May differ from their account
     // phone, so it's collected explicitly rather than assumed.

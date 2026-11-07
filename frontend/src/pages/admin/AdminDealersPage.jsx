@@ -1,3 +1,4 @@
+import AccountManagementActions from '../../components/admin/AccountManagementActions';
 import apiClient from '../../api/axios';
 import DealerReviewAttribution from '../../components/admin/DealerReviewAttribution';
 import React, { useState, useEffect } from 'react';
@@ -172,6 +173,7 @@ const AdminDealersPage = ({ mode = 'verification' }) => {
 
       <AdminPageHeader
         title={accounts ? "Dealer Accounts" : "Dealer Verification"}
+        action={accounts ? <AccountManagementActions role="dealer" onSaved={fetchDealers} /> : undefined}
         subtitle={accounts ? "Manage dealer accounts, account status and wholesale access" : "Review pending applications and rejected submissions before approving dealer access"}
         badge={`${pagination.total} Dealer Records`}
       />
@@ -311,6 +313,7 @@ const AdminDealersPage = ({ mode = 'verification' }) => {
                           </>
                         )}
 
+                        <>{accounts && <AccountManagementActions role="dealer" record={dlr} onSaved={fetchDealers} />}</>
                         {accounts && dlr.status === 'approved' && (
                           <Button
                             variant="ghost"

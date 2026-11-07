@@ -129,7 +129,7 @@ const AdminSessionsPage = () => {
 
       <AdminPageHeader
         title="Active Sessions Audit & Control"
-        subtitle="Monitor active single-session device logins, IP access records & force terminate unauthorized active sessions"
+        subtitle="Monitor logins, device access and active sessions. Session records older than 7 days are automatically deleted."
         badge={`${pagination.total ?? 0} Session Records`}
       />
 

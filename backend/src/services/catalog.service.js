@@ -1,3 +1,4 @@
+import { activeVariants, hasVariants, variantSummary } from '../../../shared/productVariants.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../constants/errorCodes.js';
 import { ProductFilter } from '../models/ProductFilter.js';
@@ -207,7 +208,7 @@ const buildSearchOr = (categories, term) => {
   const regex = new RegExp(escapeRegex(term), 'i');
   const matchingCategories = categories.filter((category) => regex.test(category.name) || regex.test(category.slug));
   const textMatch = { $or: [
-    { name: regex }, { sku: regex }, { modelNumber: regex },
+    { name: regex }, { sku: regex }, { modelNumber: regex }, { 'variants.name': regex }, { 'variants.sku': regex },
     { specifications: { $elemMatch: { key: /^(brand|manufacturer)$/i, value: regex } } },
   ] };
   const tokens = requiredSearchTokens(term);
@@ -338,9 +339,14 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
       as: '_pricing',
     } });
   }
-  pricingStages.push({ $set: { applicablePrice: approvedDealer
+  const ordinaryPrice = approvedDealer
     ? { $ifNull: [{ $arrayElemAt: ['$_pricing.price', 0] }, { $cond: [{ $gt: ['$dealerPrice', 0] }, '$dealerPrice', '$standardPrice'] }] }
-    : '$standardPrice' } });
+    : '$standardPrice';
+  pricingStages.push({ $set: { applicablePrice: { $cond: [
+    { $gt: [{ $size: { $ifNull: ['$variants', []] } }, 0] },
+    { $ifNull: [{ $min: { $map: { input: { $filter: { input: '$variants', as: 'option', cond: { $ne: ['$$option.isActive', false] } } }, as: 'option',
+      in: approvedDealer ? { $cond: [{ $gt: ['$$option.dealerPrice', 0] }, '$$option.dealerPrice', '$$option.standardPrice'] } : '$$option.standardPrice' } } }, 0] }, ordinaryPrice,
+  ] } } });
 
   if (query.inStock === 'true' || query.inStock === true) selections.push({ dimension: 'availability', condition: { stockLevel: { $gt: 0 } } });
   if (query.inStock === 'false' || query.inStock === false) selections.push({ dimension: 'availability', condition: { stockLevel: { $lte: 0 } } });
@@ -469,10 +475,20 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
     return slugs.length ? `/${slugs.join('/')}` : null;
   };
   const products = result.products.map((product) => {
+    if (hasVariants(product)) {
+      product.variants = activeVariants(product).map(option => {
+        const row = { ...option, applicablePrice: approvedDealer && option.dealerPrice > 0 ? option.dealerPrice : option.standardPrice };
+        if (!approvedDealer) delete row.dealerPrice;
+        return row;
+      });
+      product.hasVariants = true;
+      product.stockQuantity = variantSummary(product.variants).availableStock;
+      product.applicablePrice = product.variants.length ? Math.min(...product.variants.map(option => option.applicablePrice)) : 0;
+    }
     if (approvedDealer) product.dealerPrice = product.applicablePrice;
     else delete product.dealerPrice;
     if (!pricesVisible) product = withoutStorefrontPrices(product);
-    const specStockRaw = product.specifications?.find((specification) => /^(stock|inventory)$/i.test(specification.key || ''))?.value;
+    const specStockRaw = product.hasVariants ? undefined : product.specifications?.find((specification) => /^(stock|inventory)$/i.test(specification.key || ''))?.value;
     const specStock = specStockRaw !== undefined && !isNaN(Number(specStockRaw)) ? Number(specStockRaw) : null;
     const resolvedStock = (product.stockQuantity !== undefined && product.stockQuantity !== null && product.stockQuantity > 0)
       ? product.stockQuantity

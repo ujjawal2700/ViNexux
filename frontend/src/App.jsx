@@ -1,3 +1,4 @@
+import MicrosoftClarity from './components/ui/MicrosoftClarity';
 import PwaSupport from './components/ui/PwaSupport';
 import GoogleAnalytics from './components/ui/GoogleAnalytics';
 import React from 'react';
@@ -45,6 +46,7 @@ function App() {
             <CustomerPushPrompt />
             <ScrollToTop />
             <GoogleAnalytics />
+            <MicrosoftClarity />
             <AppRoutes />
             <StorefrontOverlayScope>
               <StorageConsentBanner />

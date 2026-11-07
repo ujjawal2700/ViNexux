@@ -1,3 +1,4 @@
+import { resolveVariant, variantStockChange, productLineKey } from '../utils/productVariants.js';
 import mongoose from 'mongoose';
 import { randomBytes } from 'node:crypto';
 import { PosSale, PosCounter, PosSettings, PosHeldBill } from '../models/PosSale.js';
@@ -51,8 +52,9 @@ const findSale = async (id, session) => {
   if (!sale) fail('Sale not found.', 404);
   return sale;
 };
-const restock = async (productId, quantity, session) => {
-  const product = await Product.findOneAndUpdate({ _id: productId }, stockUpdate(quantity), { new: true, runValidators: true, session });
+const restock = async (productId, quantity, session, variantId) => {
+  const change = variantId ? variantStockChange(productId, variantId, quantity, { active: false }) : { filter: { _id: productId, 'variants.0': { $exists: false } }, update: stockUpdate(quantity) };
+  const product = await Product.findOneAndUpdate(change.filter, change.update, { new: true, runValidators: true, session });
   if (!product) fail('A product has been removed from the catalogue. Restore it before returning its stock.', 409);
 };
 
@@ -73,10 +75,11 @@ export const posService = {
     try { customer = await posCustomerService.lookup(input.customer.phone, adminId); }
     catch (error) { fail(error.message, error.statusCode || 400, [{ path: 'customer.phone', message: error.message }]); }
     if (customer.needsVerification) fail('Verify and save the new customer phone number first.', 403, [{ path: 'customer.phone', message: 'Verify this phone by OTP before payment.' }]);
-    const products = await Product.find({ _id: { $in: input.items.map(item => item.productId) }, isActive: true }).select('name sku stockQuantity').lean();
+    const products = await Product.find({ _id: { $in: input.items.map(item => item.productId) }, isActive: true }).select('name sku stockQuantity variants').lean();
     const byId = new Map(products.map(product => [String(product._id), product]));
     const issues = input.items.flatMap((item, index) => {
-      const product = byId.get(item.productId);
+      let product = byId.get(item.productId);
+      if (product) { try { product = resolveVariant(product, item.variantId); } catch (error) { return [{ path: `items.${index}.variantId`, message: error.message }]; } }
       return !product || product.stockQuantity < item.quantity ? [{ path: `items.${index}.quantity`,
         message: product ? `${product.name} (${product.sku}): only ${product.stockQuantity} units remain in stock.` : 'This product is unavailable. Remove it from the bill.' }] : [];
     });
@@ -95,10 +98,13 @@ export const posService = {
         const customer = await posCustomerService.persist(input.customer, adminId, session);
         const lines = [];
         for (const item of input.items) {
-          const product = await Product.findOneAndUpdate({ _id: item.productId, isActive: true, stockQuantity: { $gte: item.quantity } },
-            stockUpdate(-item.quantity), { new: true, runValidators: true, session });
+          const change = item.variantId ? variantStockChange(item.productId, item.variantId, -item.quantity) : {
+            filter: { _id: item.productId, isActive: true, 'variants.0': { $exists: false }, stockQuantity: { $gte: item.quantity } }, update: stockUpdate(-item.quantity),
+          };
+          const saved = await Product.findOneAndUpdate(change.filter, change.update, { new: true, runValidators: true, session });
+          const product = saved ? resolveVariant(saved, item.variantId) : null;
           if (!product) fail('Stock changed while the bill was open. Review the product quantity.', 409, [{ path: `items.${lines.length}.quantity`, message: 'The requested quantity is no longer available. Refresh stock and reduce this quantity.' }]);
-          lines.push({ ...item, productName: product.name, sku: product.sku, modelNumber: product.modelNumber, returnedQuantity: 0 });
+          lines.push({ ...item, productName: product.name, sku: product.sku, modelNumber: product.modelNumber, variantId: item.variantId || null, variantName: product.variant || '', returnedQuantity: 0 });
         }
         const bill = calculatePosBill(lines, { ...input, interstate });
         if (bill.total !== expectedBill.total) fail('The invoice total changed. Review the bill before retrying.');
@@ -146,7 +152,7 @@ export const posService = {
       if (sale.status === 'voided') return sale;
       for (const item of sale.items) {
         const remaining = item.quantity - item.returnedQuantity;
-        if (remaining) await restock(item.productId, remaining, session);
+        if (remaining) await restock(item.productId, remaining, session, item.variantId);
       }
       sale.status = 'voided'; sale.voidReason = reason; sale.voidedAt = new Date(); sale.voidedBy = adminId;
       syncPayment(sale);
@@ -159,13 +165,13 @@ export const posService = {
       const sale = await findSale(id, session);
       if (sale.returns.some(r => r.requestId === input.requestId)) return sale;
       if (sale.status !== 'completed') fail('Cannot return items from a voided sale.');
-      if (new Set(input.items.map(i => i.productId)).size !== input.items.length) fail('Duplicate return items.');
+      if (new Set(input.items.map(i => productLineKey(i.productId, i.variantId))).size !== input.items.length) fail('Duplicate return items.');
       const previousAmount = sale.returnedAmount;
       for (const requested of input.items) {
-        const item = sale.items.find(line => String(line.productId) === requested.productId);
+        const item = sale.items.find(line => productLineKey(line.productId, line.variantId) === productLineKey(requested.productId, requested.variantId));
         if (!item || requested.quantity > item.quantity - item.returnedQuantity) fail('Return quantity exceeds the remaining sold quantity.');
         item.returnedQuantity += requested.quantity;
-        await restock(item.productId, requested.quantity, session);
+        await restock(item.productId, requested.quantity, session, item.variantId);
       }
       const allReturned = sale.items.every(i => i.returnedQuantity === i.quantity);
       const unroundedTotal = sale.items.reduce((sum, item) => sum + item.lineTotal, 0);

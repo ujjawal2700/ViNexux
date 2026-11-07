@@ -5,7 +5,7 @@ const product = { _id: '507f1f77bcf86cd799439011', name: 'Power Adapter', stockQ
 
 for (const authenticated of [false, true]) {
   for (const mobile of [false, true]) {
-    test(`${authenticated ? 'signed-in' : 'guest'} cart edits and saves quantities on ${mobile ? 'mobile' : 'desktop'}`, async ({ page }) => {
+    test(`${authenticated ? 'signed-in cart edits and saves quantities' : 'guest cart requires sign-in before editing or viewing prices'} on ${mobile ? 'mobile' : 'desktop'}`, async ({ page }) => {
       if (mobile) await page.setViewportSize({ width: 390, height: 844 });
       await mockApi(page);
       await seedBrowserSession(page, authenticated ? 'account' : 'storefront');
@@ -27,6 +27,12 @@ for (const authenticated of [false, true]) {
         }, cart.items);
       }
       await page.goto('/cart');
+      if (!authenticated) {
+        await expect(page.getByRole('heading', { name: 'Login to access your cart' })).toBeVisible();
+        await expect(page.getByRole('spinbutton', { name: 'Quantity for Power Adapter' })).toHaveCount(0);
+        await expect(page.getByText('₹100', { exact: true })).toHaveCount(0);
+        return;
+      }
       const input = page.getByRole('spinbutton', { name: 'Quantity for Power Adapter' });
       await expect(input).toHaveValue('1');
       await input.fill('50');

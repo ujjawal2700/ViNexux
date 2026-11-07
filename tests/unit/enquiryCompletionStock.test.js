@@ -100,7 +100,7 @@ describe('Enquiry completion and inventory', () => {
     expect(state.read().status).toBe('completed');
     expect(Number.isFinite(new Date(state.read().stockDeductedAt).getTime())).toBe(true);
     expect(Product.findOneAndUpdate).toHaveBeenCalledWith(
-      { _id: productId, stockQuantity: { $gte: 3 } },
+      { _id: productId, 'variants.0': { $exists: false }, stockQuantity: { $gte: 3 } },
       expect.objectContaining({ $inc: { stockQuantity: -3 }, $set: { stockUpdatedAt: expect.any(Date) } }),
       expect.objectContaining({ session: state.session }),
     );

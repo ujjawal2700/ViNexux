@@ -1,0 +1,13 @@
+# Readable logbook and filtered reports
+
+The super-admin logbook shows compact clickable rows containing the administrator, section, short action summary, time in IST, affected-record count and save result. Bulk changes show a count such as “Updated 91 product records” rather than listing every product upfront. Click anywhere on a row, press Enter/Space while focused on it, or select Inspect changes to load full details. The list API excludes raw snapshots and individual change values; the detail API returns readable product/account names and before/after values. Variants and permissions expand into named fields. Passwords and authentication secrets remain hidden. Stored audit records are preserved.
+
+MongoDB ObjectIds and Date objects are now serialized as identifier/ISO strings before presentation. This fixes invalid record IDs and “Time unavailable” caused by recursively treating those values as generic objects. Product model numbers already contained in product names are not repeated in labels.
+
+Use From date / To date plus Time from / Time to to narrow activity. All inputs use IST independently of the browser timezone. The time window applies to each selected day: 12:00–18:00 shows noon to 6 PM on those dates, or every day if dates are blank. Boundaries include the selected minute. Overnight windows (for example 22:00–06:00) are supported. Search includes actor names/emails and recorded product names, model numbers and SKUs; section/result filters apply to list and exports alike.
+
+Export PDF and Export Word download readable A4 reports containing filter context, generation time, administrators, named records and all recorded before/after changes. Reports include all matching screen pages, with up to 1,000 entries per report. Larger selections receive an explicit request to narrow filters; no partial report is silently downloaded. Both exports remain super-admin-only and redact authentication secrets. The PDF includes page numbers; the Word file is a native editable DOCX with heading styles.
+
+Verification covers matching filters between screen and exports, cross-page exports, invalid dates/times, BSON IDs/dates, bulk summaries, whole-row inspection, role restrictions, and generated PDF/DOCX content. Sample reports were rendered with Poppler and the bundled LibreOffice renderer and checked for page breaks, readability and footer placement. No production audit records were changed during validation.
+
+Dealer cart summaries now use only applicable unit prices and payable totals. They display no dealer-discount breakdown or retail comparison, including in generated WhatsApp enquiry text.

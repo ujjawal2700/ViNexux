@@ -136,3 +136,13 @@ describe('Google product sheet sync', () => {
     expect(productSheetService.getClient).not.toHaveBeenCalled();
   });
 });
+
+
+test('an older connected sheet gains the variants column without clearing products or applying blank option edits', async () => {
+  const { rows, client, update, products } = setup();
+  rows[0] = HEADERS.slice(0, -1); rows[1] = rows[1].slice(0, -1);
+  const sku = products[0].sku;
+  const result = await productSheetService.sync({ _id: id });
+  expect(client.spreadsheets.batchUpdate).toHaveBeenCalledWith(expect.objectContaining({ requestBody: { requests: [{ appendDimension: { sheetId: 1, dimension: 'COLUMNS', length: 1 } }] } }), expect.anything());
+  expect(result.result.failed).toBe(0); expect(products[0].sku).toBe(sku); expect(update).not.toHaveBeenCalled();
+});

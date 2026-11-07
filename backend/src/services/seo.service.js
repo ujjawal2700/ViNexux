@@ -63,7 +63,7 @@ export const SITEMAP_PAGE_SIZE = 1000;
 const productMatch = categories => ({ isActive: true, $or: [{ categoryId: { $in: categories.map(category => category._id) } }, { categoryIds: { $in: categories.map(category => category._id) } }, { categoryId: null }, { categoryId: { $exists: false } }] });
 const modified = date => date && !Number.isNaN(new Date(date).valueOf()) ? `<lastmod>${new Date(date).toISOString()}</lastmod>` : '';
 const url = (path, date, images = []) => `<url><loc>${escapeHtml(new URL(path, SITE_ORIGIN).href)}</loc>${modified(date)}${images.slice(0, 5).filter(image => /^https?:\/\//.test(image?.url || '')).map(image => `<image:image><image:loc>${escapeHtml(image.url)}</image:loc></image:image>`).join('')}</url>`;
-const xml = body => `<?xml version="1.0" encoding="UTF-8"?>\n${body}`;
+const xml = body => `<?xml version="1.0" encoding="UTF-8"?>\n<!-- Sitemap index files link to page and product sitemaps. Open the listed sitemap URLs to see individual website URLs. -->\n${body}`;
 export const sitemap = async file => {
   const categories = await getPublicCategories();
   if (file === 'sitemap.xml') {

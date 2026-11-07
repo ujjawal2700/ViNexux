@@ -23,7 +23,7 @@ const ProductPriceHistory = ({ entries = [] }) => {
         </Table.Row></Table.Header>
         <Table.Body>{visible.map((entry, index) => <Table.Row key={`${entry.changedAt}-${entry.priceType}-${index}`}>
           <Table.Cell className="whitespace-nowrap">{new Date(entry.changedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' })}</Table.Cell>
-          <Table.Cell>{entry.priceType === 'standard' ? 'Standard' : 'Dealer'}</Table.Cell>
+          <Table.Cell>{entry.priceType === 'standard' ? 'Standard' : 'Dealer'}{entry.variantName ? ` · ${entry.variantName}` : ''}</Table.Cell>
           <Table.Cell>{price(entry.previousPrice)}</Table.Cell>
           <Table.Cell className="font-semibold">{price(entry.newPrice)}</Table.Cell>
           <Table.Cell>{entry.changedByName || 'System'}</Table.Cell>

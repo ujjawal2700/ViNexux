@@ -535,9 +535,9 @@ const AdminProductsPage = () => {
         variant="danger"
       />
       {stockTarget && <StockUpdateDialog product={stockTarget} onClose={() => setStockTarget(null)}
-        onUpdated={(updated) => setProducts((items) => items.map((item) => item._id === updated._id ? { ...item, stockQuantity: updated.stockQuantity } : item))} />}
+        onUpdated={(updated) => setProducts((items) => items.map((item) => item._id === updated._id ? { ...item, stockQuantity: updated.stockQuantity, variants: updated.variants } : item))} />}
       {priceTarget && <ProductPriceDialog product={priceTarget.product} field={priceTarget.field} onClose={() => setPriceTarget(null)}
-        onUpdated={(updated, field) => setProducts((items) => items.map((item) => item._id === updated._id ? { ...item, [field]: updated[field] } : item))} />}
+        onUpdated={(updated, field) => setProducts((items) => items.map((item) => item._id === updated._id ? { ...item, [field]: updated[field], variants: updated.variants } : item))} />}
       <ConfirmDialog isOpen={!!permanentDeleteTarget}
         onClose={() => { if (!permanentDeleteLoading) setPermanentDeleteTarget(null); }}
         onConfirm={handlePermanentDeleteConfirm} title="Delete Product Permanently"

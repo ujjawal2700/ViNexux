@@ -42,7 +42,7 @@ const StorageConsentBanner = () => {
 
             {/* Mobile short & simple text */}
             <p className="sm:hidden text-xs text-gray-600 leading-snug">
-              We use essential storage for your cart, login, and secure checkout. Optional storage enables saved preferences and Google Analytics.{' '}
+              We use essential storage for your cart, login, and secure checkout. Optional storage enables saved preferences, Google Analytics and Microsoft Clarity.{' '}
               <Link to="/privacy" className="font-semibold text-[var(--store-primary,#800020)] underline">
                 Privacy Policy
               </Link>
@@ -50,7 +50,7 @@ const StorageConsentBanner = () => {
 
             {/* Desktop & Tablet full description */}
             <p className="hidden sm:block text-xs sm:text-sm text-gray-600 leading-relaxed">
-              Vinexus uses essential browser storage to power shopping cart persistence, authentication, and secure checkout. With your consent, we also save your wishlist and recently viewed products on this device and use Google Analytics to understand website usage. We do not sell your personal data or use third-party advertising cookies. Read our{' '}
+              Vinexus uses essential browser storage to power shopping cart persistence, authentication, and secure checkout. With your consent, we also save your wishlist and recently viewed products on this device and use Google Analytics and Microsoft Clarity session replays and heatmaps to understand website usage. We do not sell your personal data or use third-party advertising cookies. Read our{' '}
               <Link
                 to="/privacy"
                 className="font-semibold text-[var(--store-primary,#800020)] underline hover:text-[var(--store-primary-hover,#660019)]"

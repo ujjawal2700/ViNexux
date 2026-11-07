@@ -129,3 +129,20 @@
   .storefront-theme .theme-product-card:hover { transform: none; }
   .storefront-theme .store-search { transition: none; }
 }
+
+/* A quiet, theme-coloured accent around the readable announcement. */
+.theme-announcement { position: relative; isolation: isolate; overflow: hidden; display: flex; justify-content: center; align-items: center; gap: clamp(12px, 3vw, 48px); }
+.announcement-message { position: relative; z-index: 1; }
+.announcement-sparkles { flex-shrink: 0; display: inline-flex; align-items: center; gap: 10px; opacity: .8; animation: announcement-twinkle 3.5s ease-in-out infinite alternate; }
+.announcement-sparkles::before { content: '✦'; }
+.announcement-sparkles::after { content: '✧'; }
+.announcement-sparkles:last-child { animation-delay: -1.75s; }
+.announcement-sparkles:last-child::before { content: '✧'; }
+.announcement-sparkles:last-child::after { content: '✦'; }
+.announcement-sparkles i { width: 4px; height: 4px; background: currentColor; border-radius: 50%; }
+.theme-announcement::after { content: ''; pointer-events: none; position: absolute; z-index: 0; inset: 0; background: linear-gradient(110deg, transparent 30%, currentColor 50%, transparent 70%); opacity: .09; transform: translateX(-100%); animation: announcement-glow 9s ease-in-out infinite; }
+.theme-announcement:hover::after, .theme-announcement:hover .announcement-sparkles { animation-play-state: paused; }
+@keyframes announcement-twinkle { from { opacity: .35; transform: translateY(1px) scale(.9); } to { opacity: 1; transform: translateY(-1px) scale(1.08); } }
+@keyframes announcement-glow { 0%, 15% { transform: translateX(-100%); } 75%, 100% { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .theme-announcement::after, .announcement-sparkles { animation: none; } .theme-announcement::after { display: none; } }
+@media (max-width: 420px) { .announcement-sparkles { gap: 4px; font-size: 10px; } }

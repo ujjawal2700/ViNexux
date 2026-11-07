@@ -1,9 +1,10 @@
+import { publicRequest } from '../utils/publicRequests';
 import apiClient from '../api/axios';
 
 export const contentService = {
   async getBannerGrid(options = {}) {
-    const response = await apiClient.get('/content/banner-grid', options);
-    return response.data;
+    if (options.signal) return (await apiClient.get('/content/banner-grid', options)).data;
+    return publicRequest('getBannerGrid', () => apiClient.get('/content/banner-grid', options).then(response => response.data), 15000);
   },
   /**
    * Fetch active promotional banners.
@@ -25,13 +26,13 @@ export const contentService = {
    * Fetch public footer contact info & quick links.
    */
   async getFooterContent(options = {}) {
-    const response = await apiClient.get('/content/footer-content', options);
-    return response.data;
+    if (options.signal) return (await apiClient.get('/content/footer-content', options)).data;
+    return publicRequest('getFooterContent', () => apiClient.get('/content/footer-content', options).then(response => response.data), 15000);
   },
 
   async getWebsiteSettings(options = {}) {
-    const response = await apiClient.get('/content/website-settings', options);
-    return response.data;
+    if (options.signal) return (await apiClient.get('/content/website-settings', options)).data;
+    return publicRequest('getWebsiteSettings', () => apiClient.get('/content/website-settings', options).then(response => response.data), 500);
   },
 
   /**

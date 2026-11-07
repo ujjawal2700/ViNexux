@@ -8,6 +8,7 @@ export const addItemSchema = {
     productId: z
       .string({ required_error: 'Product ID is required' })
       .refine(isValidObjectId, { message: 'Invalid product ID format. Must be a valid MongoDB ObjectId' }),
+    variantId: z.string().refine(isValidObjectId, 'Invalid variant ID').nullable().optional(),
     quantity: z
       .number({ invalid_type_error: 'Quantity must be a number' })
       .int({ message: 'Quantity must be an integer' })
@@ -25,6 +26,7 @@ export const updateCartItemSchema = {
       .refine(isValidObjectId, { message: 'Invalid product ID format. Must be a valid MongoDB ObjectId' }),
   }),
   body: z.object({
+    variantId: z.string().refine(isValidObjectId, 'Invalid variant ID').nullable().optional(),
     quantity: z
       .number({ required_error: 'Quantity is required', invalid_type_error: 'Quantity must be a number' })
       .int({ message: 'Quantity must be an integer' })
@@ -34,6 +36,7 @@ export const updateCartItemSchema = {
 };
 
 export const removeCartItemSchema = {
+  query: z.object({ variantId: z.string().refine(isValidObjectId, 'Invalid variant ID').optional() }),
   params: z.object({
     productId: z
       .string({ required_error: 'Product ID parameter is required' })

@@ -24,7 +24,7 @@ export const posSaleSchema = z.object({
   billType: z.enum(['b2b', 'b2c']).default('b2c'),
   requestId: z.string().uuid(), customer: customerSchema, shipping: customerSchema.optional(),
   delivery: deliverySchema.default({}), notes: text(1000),
-  items: z.array(z.object({ productId: z.string().regex(/^[a-f\d]{24}$/i), quantity: z.number().int().min(1).max(10000),
+  items: z.array(z.object({ productId: z.string().regex(/^[a-f\d]{24}$/i), variantId: z.string().regex(/^[a-f\d]{24}$/i).nullable().optional(), quantity: z.number().int().min(1).max(10000),
     unitPrice: amount, discountPercent: z.number().finite().min(0).max(100).default(0),
     gstRate: z.number().finite().min(0).max(100), hsn: z.string().trim().regex(/^\d{4,8}$/, 'Enter a 4 to 8 digit HSN/SAC.'),
     unit: z.string().trim().min(1).max(10).default('NOS'), serialNumbers: z.array(z.string().trim().min(1).max(100)).max(100).default([]),
@@ -32,7 +32,7 @@ export const posSaleSchema = z.object({
   taxMode: z.enum(['inclusive', 'exclusive']).default('inclusive'), roundOff: z.boolean().default(true),
   payments: z.array(salePaymentSchema).length(1, 'Choose Cash, UPI or Bank for the full invoice amount.'),
 }).superRefine((sale, ctx) => {
-  const ids = sale.items.map(item => item.productId);
+  const ids = sale.items.map(item => `${item.productId}:${item.variantId || ''}`);
   if (new Set(ids).size !== ids.length) ctx.addIssue({ code: 'custom', path: ['items'], message: 'Combine duplicate products into one line.' });
   const serials = sale.items.flatMap(item => item.serialNumbers);
   if (new Set(serials).size !== serials.length || sale.items.some(item => item.serialNumbers.length > item.quantity)) {
@@ -48,7 +48,7 @@ export const posSellerSchema = z.object({
   declarations: z.array(z.string().trim().min(1).max(200)).max(6),
 });
 export const returnSchema = z.object({ requestId: z.string().uuid(), reason: z.string().trim().min(3).max(500),
-  items: z.array(z.object({ productId: z.string().regex(/^[a-f\d]{24}$/i), quantity: z.number().int().min(1).max(10000) })).min(1).max(100),
+  items: z.array(z.object({ productId: z.string().regex(/^[a-f\d]{24}$/i), variantId: z.string().regex(/^[a-f\d]{24}$/i).nullable().optional(), quantity: z.number().int().min(1).max(10000) })).min(1).max(100),
 });
 export const posListSchema = z.object({
   search: text(150), from: date.optional(), to: date.optional(),

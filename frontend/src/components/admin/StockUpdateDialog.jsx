@@ -1,3 +1,4 @@
+import { activeVariants, hasVariants } from '../../../../shared/productVariants.js';
 import React, { useEffect, useState } from 'react';
 import adminService from '../../services/adminService';
 import useToast from '../../hooks/useToast';
@@ -8,6 +9,7 @@ import Button from '../ui/Button';
 const StockUpdateDialog = ({ product, onClose, onUpdated }) => {
   const toast = useToast();
   const [currentProduct, setCurrentProduct] = useState(null);
+  const [variantId, setVariantId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [operation, setOperation] = useState('add');
   const [loading, setLoading] = useState(true);
@@ -30,10 +32,13 @@ const StockUpdateDialog = ({ product, onClose, onUpdated }) => {
     return () => { cancelled = true; };
   }, [product?._id]);
 
-  const currentStock = Number(currentProduct?.stockQuantity || 0);
+  const options = activeVariants(currentProduct);
+  const chosenId = variantId || String(options[0]?._id || '');
+  const chosen = options.find(option => String(option._id) === chosenId);
+  const currentStock = Number(chosen ? chosen.stockQuantity : currentProduct?.stockQuantity || 0);
   const addition = Number(quantity);
   const adjustment = operation === 'remove' ? -addition : addition;
-  const valid = quantity !== '' && Number.isSafeInteger(addition) && addition > 0 && Number.isSafeInteger(currentStock + adjustment) && currentStock + adjustment >= 0;
+  const valid = (!hasVariants(currentProduct) || !!chosen) && quantity !== '' && Number.isSafeInteger(addition) && addition > 0 && Number.isSafeInteger(currentStock + adjustment) && currentStock + adjustment >= 0;
   const total = currentStock + (Number.isSafeInteger(addition) && addition > 0 ? adjustment : 0);
 
   const save = async (event) => {
@@ -42,7 +47,7 @@ const StockUpdateDialog = ({ product, onClose, onUpdated }) => {
     setSaving(true);
     setError('');
     try {
-      const res = await adminService.addProductStock(product._id, addition, operation);
+      const res = await adminService.addProductStock(product._id, addition, operation, chosenId || undefined);
       toast.success(`Product stock updated. Total stock quantity is ${res.data.stockQuantity}.`);
       onUpdated?.(res.data);
       onClose();
@@ -62,6 +67,7 @@ const StockUpdateDialog = ({ product, onClose, onUpdated }) => {
       </>}>
       {loading ? <p role="status">Loading current stock…</p> : currentProduct && <form onSubmit={save} className="space-y-4">
         <p className="text-xs text-gray-500">{product?.modelNumber} {product?.sku && `· ${product.sku}`}</p>
+        {options.length > 0 && <label className="block space-y-1 text-sm">Variant<select aria-label="Stock variant" className="w-full rounded-lg border p-2" value={chosenId} onChange={event => setVariantId(event.target.value)}>{options.map(option => <option key={option._id} value={String(option._id)}>{option.name}{option.sku ? ` · ${option.sku}` : ''}</option>)}</select></label>}
         <div className="rounded-lg bg-gray-50 border border-gray-200 p-3 flex justify-between">
           <span>Current stock</span><strong>{currentStock}</strong>
         </div>

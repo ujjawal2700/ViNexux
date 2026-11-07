@@ -1,3 +1,4 @@
+import AccountManagementActions from '../../components/admin/AccountManagementActions';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import adminService from '../../services/adminService';
@@ -107,6 +108,7 @@ const AdminCustomersPage = () => {
 
       <AdminPageHeader
         title="Retail Customer Accounts"
+        action={<AccountManagementActions role="customer" onSaved={fetchCustomers} />}
         subtitle="Manage customer user accounts, view contact verification status & update account access privileges"
         badge={`${pagination.total} Registered Customers`}
       />
@@ -223,6 +225,7 @@ const AdminCustomersPage = () => {
                           <Eye className="w-3.5 h-3.5 mr-1" /> View
                         </Button>
 
+                        <AccountManagementActions role="customer" record={cust} onSaved={fetchCustomers} />
                         {statusVal === 'blocked' ? (
                           <Button
                             variant="ghost"

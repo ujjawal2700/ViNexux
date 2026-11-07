@@ -11,7 +11,7 @@ import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 
 export const addItem = asyncHandler(async (req, res) => {
   const { productId, quantity } = req.body;
-  const cart = await addToCart(req.user._id, productId, quantity);
+  const cart = await addToCart(req.user._id, productId, quantity, req.body.variantId);
 
   return ApiResponse.success(
     res,
@@ -35,7 +35,7 @@ export const fetchCart = asyncHandler(async (req, res) => {
 export const updateItem = asyncHandler(async (req, res) => {
   const { productId } = req.params;
   const { quantity } = req.body;
-  const cart = await updateCartItem(req.user._id, productId, quantity);
+  const cart = await updateCartItem(req.user._id, productId, quantity, req.body.variantId);
 
   return ApiResponse.success(
     res,
@@ -47,7 +47,7 @@ export const updateItem = asyncHandler(async (req, res) => {
 
 export const removeItem = asyncHandler(async (req, res) => {
   const { productId } = req.params;
-  const cart = await removeCartItem(req.user._id, productId);
+  const cart = await removeCartItem(req.user._id, productId, req.query.variantId);
 
   return ApiResponse.success(
     res,

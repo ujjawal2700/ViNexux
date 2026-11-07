@@ -1,3 +1,4 @@
+import { mountAccountCrud } from '../services/adminAccount.service.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
@@ -12,6 +13,7 @@ import { revokeDealerStatus } from '../services/dealer.service.js';
 import { getDealerByIdSchema, getDealersQuerySchema, adminRevokeDealerSchema } from '../validators/dealer.validator.js';
 const router = Router();
 router.use(authenticate, authorize('admin'));
+mountAccountCrud(router, 'dealer');
 const userFields = 'fullName email phone role accountStatus isPhoneVerified isEmailVerified createdAt';
 const populate = query => query.populate('userId', userFields).populate('kycVerifiedBy', 'fullName email role isEmployee').populate('kycReviewedBy', 'fullName email role isEmployee');
 const withoutProfile = user => ({ _id: user._id, userId: user, companyName: user.fullName, status: 'pending', kycDocuments: [], hasDealerProfile: false, createdAt: user.createdAt });

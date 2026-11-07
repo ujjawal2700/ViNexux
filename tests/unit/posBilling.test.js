@@ -70,12 +70,13 @@ describe('POS calculation and input validation', () => {
 
 // Transaction test double snapshots committed data. Every stock and sale write
 // must use the same session; failures restore all data, including the counter.
-const setup = ({ stock = 10, retry = false } = {}) => {
+const setup = ({ stock = 10, retry = false, variants = [] } = {}) => {
   let records = new Map(), stocks = new Map([[posProductId, stock]]), sequence = 0;
+  let optionStock = new Map(variants.map(option => [option._id, option.stockQuantity]));
   const session = { endSession: jest.fn().mockResolvedValue(undefined) };
   session.withTransaction = jest.fn(async operation => {
-    const previous = { records: structuredClone(records), stocks: structuredClone(stocks), sequence };
-    const restore = () => { records = structuredClone(previous.records); stocks = structuredClone(previous.stocks); sequence = previous.sequence; };
+    const previous = { records: structuredClone(records), stocks: structuredClone(stocks), optionStock: structuredClone(optionStock), sequence };
+    const restore = () => { records = structuredClone(previous.records); stocks = structuredClone(previous.stocks); optionStock = structuredClone(previous.optionStock); sequence = previous.sequence; };
     try { await operation(); if (retry) { restore(); await operation(); } }
     catch (error) { restore(); throw error; }
   });
@@ -100,10 +101,16 @@ const setup = ({ stock = 10, retry = false } = {}) => {
     expect(options.session).toBe(session);
     const id = String(filter._id), current = stocks.get(id);
     if (current === undefined || filter.stockQuantity && current < filter.stockQuantity.$gte) return null;
+    const selected = filter.variants?.$elemMatch;
+    if (selected) {
+      const available = optionStock.get(String(selected._id));
+      if (available === undefined || selected.stockQuantity?.$gte > available) return null;
+      optionStock.set(String(selected._id), available + update.$inc['variants.$.stockQuantity']);
+    } else if (variants.length && filter['variants.0']) return null;
     stocks.set(id, current + update.$inc.stockQuantity);
-    return { _id: id, name: 'Camera', sku: 'CAM-1', modelNumber: 'CAM-MODEL' };
+    return { _id: id, name: 'Camera', sku: 'CAM-1', modelNumber: 'CAM-MODEL', variants: variants.map(option => ({ ...option, stockQuantity: optionStock.get(option._id) })) };
   });
-  return { stock: () => stocks.get(posProductId), records: () => records, session };
+  return { stock: () => stocks.get(posProductId), optionStock: variantId => optionStock.get(variantId), records: () => records, session };
 };
 
 describe('POS transactional stock and payment lifecycle', () => {
@@ -183,5 +190,41 @@ describe('POS document outputs', () => {
     expect(sales.getCell('B2').value).toBeInstanceOf(Date);
     expect(sales.getCell('B2').value.toISOString()).toBe('2026-10-13T10:00:00.000Z');
     expect(workbook.getWorksheet('Line items').getCell('F2').value).toBe(2);
+  });
+});
+
+
+describe('POS option stock lifecycle', () => {
+  const first = '507f1f77bcf86cd799439071', second = '507f1f77bcf86cd799439072';
+  const variants = () => [{ _id: first, name: '5m', sku: 'CABLE-5M', standardPrice: 150, dealerPrice: 120, stockQuantity: 4 },
+    { _id: second, name: '10m', sku: 'CABLE-10M', standardPrice: 250, dealerPrice: 210, stockQuantity: 7 }];
+  const input = () => {
+    const bill = posInput(); bill.items[0] = { ...bill.items[0], variantId: first, quantity: 2, unitPrice: 150, serialNumbers: [] };
+    bill.items.push({ ...bill.items[0], variantId: second, quantity: 3, unitPrice: 250 });
+    bill.payments[0].amount = calculatePosBill(bill.items, bill).total; return bill;
+  };
+  test('sells two lengths separately and returns only the chosen length; void restores remaining quantities once', async () => {
+    const state = setup({ stock: 11, variants: variants(), retry: true });
+    const sale = await posService.createSale(input(), posAdminId);
+    expect(sale.items.map(item => item.sku)).toEqual(['CABLE-5M', 'CABLE-10M']);
+    expect(state.optionStock(first)).toBe(2); expect(state.optionStock(second)).toBe(4); expect(state.stock()).toBe(6);
+    const request = { requestId: randomUUID(), reason: 'One 5m cable returned', items: [{ productId: posProductId, variantId: first, quantity: 1 }] };
+    await posService.returnItems(sale._id, request, posAdminId);
+    await posService.returnItems(sale._id, request, posAdminId);
+    expect(state.optionStock(first)).toBe(3); expect(state.optionStock(second)).toBe(4);
+    await posService.voidSale(sale._id, 'Void remaining sale', posAdminId);
+    await posService.voidSale(sale._id, 'Repeated request', posAdminId);
+    expect(state.optionStock(first)).toBe(4); expect(state.optionStock(second)).toBe(7); expect(state.stock()).toBe(11);
+  });
+  test('one insufficient option rolls back all earlier option deductions and the invoice', async () => {
+    const state = setup({ stock: 11, variants: variants() }); const bill = input();
+    bill.items[1].quantity = 8; bill.payments[0].amount = calculatePosBill(bill.items, bill).total;
+    await expect(posService.createSale(bill, posAdminId)).rejects.toMatchObject({ statusCode: 409 });
+    expect(state.optionStock(first)).toBe(4); expect(state.optionStock(second)).toBe(7); expect(state.records().size).toBe(0);
+  });
+  test('a parent-level request cannot bypass option selection to deduct pooled stock', async () => {
+    const state = setup({ stock: 11, variants: variants() });
+    await expect(posService.createSale(posInput(), posAdminId)).rejects.toMatchObject({ statusCode: 409 });
+    expect(state.stock()).toBe(11);
   });
 });

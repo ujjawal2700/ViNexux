@@ -2,7 +2,7 @@ import { allowedTypos, editDistance, searchWords } from './productCatalogFields.
 
 export const stockSearchScore = (product, query) => {
   const text = query.trim().toLowerCase();
-  const fields = [product.name, product.model, product.modelNumber, product.sku, String(product._id)]
+  const fields = [product.name, product.model, product.modelNumber, product.sku, ...(product.variants || []).flatMap(option => [option.name, option.sku]), String(product._id)]
     .filter(Boolean).map((value) => String(value).toLowerCase());
   if (fields.includes(text)) return 0;
   if (fields.some((value) => value.includes(text))) return 1;

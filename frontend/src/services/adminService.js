@@ -105,8 +105,8 @@ export const adminService = {
     return response.data;
   },
 
-  async addProductStock(id, quantity, operation = 'add') {
-    const response = await apiClient.post(`/admin/products/${id}/stock`, { quantity, operation });
+  async addProductStock(id, quantity, operation = 'add', variantId) {
+    const response = await apiClient.post(`/admin/products/${id}/stock`, { quantity, operation, ...(variantId ? { variantId } : {}) });
     return response.data;
   },
 

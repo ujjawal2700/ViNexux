@@ -1,3 +1,5 @@
+import { normalizeVariants, variantStockChange, hasVariants } from '../utils/productVariants.js';
+import { variantSummary } from '../../../shared/productVariants.js';
 import { isDraftIdentifier } from '../../../shared/productDrafts.js';
 import { isWarrantyLink } from '../../../shared/productPresentation.js';
 import { stockUpdate } from '../utils/productStockUpdate.js';
@@ -87,7 +89,7 @@ const escapeRegex = (text) => {
 
 export const productService = {
   async searchStockProducts({ search = '', page = 1, limit = 10 } = {}) {
-    const selection = 'name model modelNumber sku stockQuantity isActive';
+    const selection = 'name model modelNumber sku stockQuantity isActive variants';
     const skip = (page - 1) * limit;
     let products;
     let total;
@@ -106,12 +108,19 @@ export const productService = {
     return { products, pagination: { total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) } };
   },
 
-  async addProductStock(id, quantity, operation = 'add') {
+  async addProductStock(id, quantity, operation = 'add', variantId) {
     if (!mongoose.Types.ObjectId.isValid(id) || !Number.isSafeInteger(quantity) || quantity <= 0 || !['add', 'remove'].includes(operation)) {
       throw new AppError('Choose add or remove and enter a positive whole number of units.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
     }
+    if (variantId) {
+      const change = variantStockChange(id, variantId, operation === 'remove' ? -quantity : quantity, { active: false });
+      const updated = await Product.findOneAndUpdate(change.filter, change.update, { new: true, runValidators: true });
+      if (!updated) throw new AppError('Variant stock changed. Refresh and check the available quantity.', 409, ERROR_CODES.CONFLICT);
+      return updated;
+    }
     const product = await Product.findOneAndUpdate({
       _id: id,
+      'variants.0': { $exists: false },
       ...(operation === 'remove' ? { stockQuantity: { $gte: quantity } }
         : { $or: [{ stockQuantity: { $lte: Number.MAX_SAFE_INTEGER - quantity } }, { stockQuantity: { $exists: false } }] }),
     }, stockUpdate(operation === 'remove' ? -quantity : quantity, new Date(), operation === 'remove'), { new: true, runValidators: true });
@@ -158,6 +167,7 @@ export const productService = {
     model,
     stockQuantity = 0,
     variant = '',
+    variants = [],
     warranty = '',
     warrantyType = 'text',
     hsnCode = '',
@@ -247,6 +257,7 @@ export const productService = {
       model: resolvedModel,
       stockQuantity: Number(stockQuantity) >= 0 ? Number(stockQuantity) : 0,
       variant: variant?.trim() || '',
+      variants: normalizeVariants(variants),
       warranty: warranty?.trim() || '',
       warrantyType,
       hsnCode: hsnCode.trim(),
@@ -479,6 +490,21 @@ isActive,
       }
     }
 
+    if (updateData.variants !== undefined) {
+      const snapshot = rows => (rows || []).map(row => ({ _id: String(row._id), name: row.name, sku: row.sku || '', standardPrice: row.standardPrice, dealerPrice: row.dealerPrice || 0, stockQuantity: row.stockQuantity, isActive: row.isActive !== false }));
+      if (updateData.expectedVariants && JSON.stringify(snapshot(product.variants)) !== JSON.stringify(snapshot(updateData.expectedVariants))) {
+        throw new AppError('Variant prices or stock changed in another session. Refresh before saving.', 409, ERROR_CODES.CONFLICT);
+      }
+      updateData.expectedUpdatedAt ||= product.updatedAt;
+      product.$where = { ...(product.$where || {}), updatedAt: product.updatedAt };
+      if (JSON.stringify((product.variants || []).map(row => row.stockQuantity)) !== JSON.stringify(updateData.variants.map(row => row.stockQuantity))) product.stockUpdatedAt = new Date();
+      updateData.variants = normalizeVariants(updateData.variants, product.variants || []);
+      const summary = variantSummary(updateData.variants);
+      Object.assign(updateData, { stockQuantity: summary.stockQuantity, standardPrice: summary.standardPrice, dealerPrice: summary.dealerPrice });
+    }
+    if (hasVariants(product) && updateData.variants === undefined && ['stockQuantity', 'standardPrice', 'dealerPrice'].some(key => updateData[key] !== undefined && updateData[key] !== product[key])) {
+      throw new AppError('Edit prices and stock on the individual variants for this product.', 400, ERROR_CODES.VALIDATION_ERROR);
+    }
     const priceChanges = [];
     const originalPrices = {};
     const changedAt = new Date();
@@ -490,6 +516,15 @@ isActive,
         changedBy: actor?._id || null, changedByName: actor?.fullName || actor?.name || 'System' });
     }
 
+    if (updateData.variants) for (const option of updateData.variants) {
+      const previous = (product.variants || []).find(row => String(row._id) === String(option._id));
+      if (!previous) continue;
+      for (const [field, priceType] of [['standardPrice', 'standard'], ['dealerPrice', 'dealer']]) {
+        if (Number(previous[field] || 0) !== option[field]) priceChanges.push({ priceType, variantId: option._id, variantName: option.name,
+          previousPrice: Number(previous[field] || 0), newPrice: option[field], changedAt,
+          changedBy: actor?._id || null, changedByName: actor?.fullName || actor?.name || 'System' });
+      }
+    }
     const savingDraft = updateData.isActive === false || (updateData.isActive === undefined && product.isActive === false);
     if (savingDraft) {
       if (updateData.sku === '') updateData.sku = `__DRAFT__${new mongoose.Types.ObjectId()}`;
@@ -568,6 +603,7 @@ isActive,
         product.stockUpdatedAt = new Date();
       }
     }
+    if (updateData.variants !== undefined) product.variants = updateData.variants;
     if (updateData.variant !== undefined) product.variant = updateData.variant.trim();
     if (updateData.hsnCode !== undefined) product.hsnCode = updateData.hsnCode.trim();
     if (updateData.warrantyType !== undefined || updateData.warranty !== undefined) {
@@ -634,9 +670,9 @@ isActive,
       // visibility. Query validators cannot see that parent for nested rows.
       // Append the audit entries in the same write as the prices. Compare old
       // prices to avoid logging a stale previous value during simultaneous edits.
-      savedProduct = await Product.findOneAndUpdate({ _id: id, ...(updateData.expectedUpdatedAt ? { updatedAt: new Date(updateData.expectedUpdatedAt) } : {}), ...(updateData.images !== undefined ? { __v: product.__v } : {}), $and: Object.entries(originalPrices).map(([field, value]) => ({
+      savedProduct = await Product.findOneAndUpdate({ _id: id, ...(updateData.expectedUpdatedAt ? { updatedAt: new Date(updateData.expectedUpdatedAt) } : {}), ...(updateData.images !== undefined ? { __v: product.__v } : {}), ...(Object.keys(originalPrices).length ? { $and: Object.entries(originalPrices).map(([field, value]) => ({
         $or: [{ [field]: value }, { [field]: { $exists: false } }],
-      })) }, { $set: updates, $push: { priceHistory: { $each: priceChanges } }, ...(updateData.images !== undefined ? { $inc: { __v: 1 } } : {}) }, { new: true, runValidators: !savingDraft });
+      })) } : {}) }, { $set: updates, $push: { priceHistory: { $each: priceChanges } }, ...(updateData.images !== undefined ? { $inc: { __v: 1 } } : {}) }, { new: true, runValidators: !savingDraft });
       if (!savedProduct) {
         if (priceAttempt < 3) return this.updateProduct(id, updateData, actor, priceAttempt + 1);
         throw new AppError('Prices changed while saving. Refresh the product and try again.', HTTP_STATUS.CONFLICT, ERROR_CODES.BAD_REQUEST);

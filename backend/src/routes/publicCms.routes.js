@@ -21,7 +21,7 @@ router.use(publicCache());
 router.get('/theme', publicTheme);
 router.get('/banner-grid', publicBannerGrid);
 router.get('/theme-assets/:filename', (req, res, next) => {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.webp$/.test(req.params.filename)) return res.status(404).end();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(webp|mp4)$/.test(req.params.filename)) return res.status(404).end();
   res.set('Cache-Control', 'public, max-age=31536000, immutable');
   res.set('Cross-Origin-Resource-Policy', 'cross-origin');
   res.sendFile(req.params.filename, { root: THEME_ASSET_DIRECTORY, dotfiles: 'deny' }, err => { if (err) next(err); });

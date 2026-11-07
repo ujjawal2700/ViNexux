@@ -1,19 +1,10 @@
+import { publicRequest } from '../utils/publicRequests';
 import apiClient from '../api/axios';
-
-let categoryTreeRequest = null;
 
 export const categoryService = {
   async getCategoryTree(options = {}) {
-    // PublicLayout and the current page commonly mount together. Share their
-    // request instead of downloading the same category tree twice.
-    if (!categoryTreeRequest) {
-      categoryTreeRequest = apiClient.get('/categories/tree', options)
-        .then((response) => response.data)
-        .finally(() => {
-          categoryTreeRequest = null;
-        });
-    }
-    return categoryTreeRequest;
+    if (options.signal) return (await apiClient.get('/categories/tree', options)).data;
+    return publicRequest('category-tree', () => apiClient.get('/categories/tree', options).then(response => response.data));
   },
   /**
    * Fetch category listing with optional query parameters.

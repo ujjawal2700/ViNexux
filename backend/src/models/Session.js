@@ -1,3 +1,4 @@
+import { SESSION_RETENTION_DAYS } from '../../../shared/dataRetention.js';
 import '../audit/audit.js';
 import mongoose from 'mongoose';
 
@@ -68,6 +69,7 @@ const sessionSchema = new mongoose.Schema(
 );
 
 // Compound index for finding active user session and verifying refreshTokenHash
+sessionSchema.index({ createdAt: 1 }, { name: 'session_retention_7_days', expireAfterSeconds: SESSION_RETENTION_DAYS * 86400 });
 sessionSchema.index({ userId: 1, isActive: 1 });
 sessionSchema.index({ refreshTokenHash: 1 });
 

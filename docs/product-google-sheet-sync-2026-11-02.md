@@ -15,14 +15,14 @@ No new Google Drive file is created by the backend: the owner supplies a workboo
 
 - Edit existing rows or add a row with a unique SKU and blank Product ID. New rows default to Draft unless Status is Published. Published products must satisfy normal product validation.
 - Use **Sync Products** after editing. Sync is explicitly triggered; it does not poll Google or apply edits while the user is typing.
-- The sheet includes identity/model, brand/category memberships, description, standard/dealer prices, stock, publication status, Trending/New Arrival/Low Stock, variant, HSN, warranty, product URL, information phone, image URLs, specifications, additional details, updated time, and row sync results.
+- The sheet includes identity/model, brand/category memberships, description, standard/dealer prices, stock, publication status, Trending/New Arrival/Low Stock, variant, HSN, warranty, product URL, information phone, image URLs, specifications, additional details, updated time, and row sync results. A new **Variants JSON** column supports separately priced and stocked product options.
 - Image URLs are one HTTP/HTTPS link per line. Existing stored metadata/public IDs are retained for matching image URLs. New URLs are linked images, not files uploaded to application storage. Local image files still use the product editor.
 - Brand/category names or IDs must refer to managed entries; the reference tab lists them. Add new brands/categories in their admin sections, then sync again. Reference entries refresh after sync.
 - Specifications and additional details use JSON arrays of `{"key":"Resolution","value":"3MP"}` entries. Leading zeros in model numbers, SKUs and HSN are preserved. App exports use Google `RAW` values, so product text is not interpreted as a spreadsheet formula.
 - Blank text/relationship/list cells clear that field. Numeric cells use explicit zero; blank prices or stock on existing rows are errors. Use `[]` to clear specifications or additional details.
 - Deleting a spreadsheet row does **not** delete a catalogue product. Missing products are appended again. Use Draft to hide a product; permanent deletion remains in the catalogue UI.
 - Catalogue-only changes are copied back to the sheet; edits to different fields merge. If both places edited the same field differently, that row is skipped and its conflict is reported. Set conflicted cells to the current catalogue values, sync, then make the desired edit and sync again.
-- Errors are displayed in the admin result table and the sheet's last column. Successful rows remain applied when other rows fail. At most 500 row errors are retained in the admin summary; the sheet contains every row result.
+- Errors are displayed in the admin result table and the sheet's Sync Result column. Successful rows remain applied when other rows fail. At most 500 row errors are retained in the admin summary; the sheet contains every row result.
 - Finish editing before starting a sync; wait for it to finish before further Google edits. Google Sheets and MongoDB do not share a transaction. If a Google write fails after catalogue writes, successful catalogue changes remain. Retry Sync Products: stable IDs/SKUs and per-product baselines make normal retries idempotent.
 - Keep IDs and column headers unchanged. Full-row sorting is supported. Duplicate IDs/SKUs or altered headers block the operation before product writes.
 
@@ -38,3 +38,32 @@ No new Google Drive file is created by the backend: the owner supplies a workboo
 Tests cover field round trips, draft defaults, input validation, row conflicts, retry idempotency, lock contention, catalogue changes, request authorization, and the browser connection/sync/error flows. Live Google access still needs verification after deployment and credential setup.
 
 Google API references: [read/write values](https://developers.google.com/workspace/sheets/api/guides/values), [batch updates](https://developers.google.com/workspace/sheets/api/guides/batch).
+
+
+## Product variants
+
+Use **Products → edit product → Pricing & Media → Add variant** to create options such as 5m, 10m, 15m, and 20m. Each option has its own name, optional SKU, retail price, dealer price, stock quantity, and availability flag. Product prices are calculated as starting prices; public availability uses active-option stock. The admin stock total includes archived physical stock as well. Use **Update Stock → Variant** to adjust an individual option.
+
+The managed sheet adds **Variants JSON** in column AB automatically on the next sync for older connected workbooks. Existing columns and row values retain their positions. One product remains one sheet row. For example:
+
+```json
+[{"name":"5m","sku":"CAT6-5M","standardPrice":150,"dealerPrice":120,"stockQuantity":20,"isActive":true},{"name":"10m","sku":"CAT6-10M","standardPrice":250,"dealerPrice":210,"stockQuantity":10,"isActive":true}]
+```
+
+After syncing, retain the exported `_id` on each option when editing or renaming it. Without an ID, an existing matching option name is reused to make retries safe. Option names, non-empty SKUs, and IDs must be unique within the product. Use non-negative prices and whole-number stock. The normal price/stock columns become calculated summaries for products with variants: edit the corresponding values in Variants JSON instead. A dealer price of zero falls back to that option's retail price.
+
+Archiving an option hides it from new storefront and POS selections while keeping it addressable for historical sales returns. Removing an existing option from an update archives it rather than deleting its history. Returned archived stock does not make the product publicly available again. Old invoices without a variant cannot return pooled stock after conversion to a variant product; reconcile the correct option through the stock editor instead.
+
+Cart items, enquiry snapshots, completed-enquiry stock deductions, POS lines, returns/voids, PDF invoices and Excel exports retain the selected option. POS deductions and restocks update the selected option and product stock counter together inside the existing transaction. Stale editor saves and conflicting catalogue/Sheet edits are rejected rather than overwriting later sales stock changes. XLSX bulk-import templates also include an optional Variants JSON column, while older templates remain supported.
+
+Local verification covers model summaries, validation, privacy, independent cart lines, atomic stock predicates, POS transaction retries/rollback/returns/voids, Sheet round trips and conflicts, legacy header upgrades, and browser editor/selector/POS flows. Live Google API synchronization remains an environment/deployment check; implementation tests do not modify production workbooks.
+
+Verification for this change: 583 unit tests and 287 API tests passed. Twenty production-build browser tests passed across variant editing/selection, cart quantities and removal, stock/price shortcuts, existing POS billing/invoice/export, product details, and Sheets UI. The frontend production build and lint command completed; existing lint and bundle-size warnings remain.
+
+### Storefront variant selection and cart layout
+
+Product pages show a **Choose Configuration** group of selectable option cards with each variant's applicable price and stock state. Selecting a card updates the selected product name, SKU, price, availability and the variant ID submitted to the cart. Out-of-stock options remain viewable; price visibility still follows the existing sign-in policy. Different variants remain independent cart lines, including when multiple products are added together.
+
+The cart now uses responsive item cards at every screen size, keeping product names, model numbers, prices and quantity controls visible without a horizontally scrolling table. The former `CD DISCOUNT` label represented savings against the retail price. The discount breakdown is hidden from the cart; subtotal and payable total both use each selected line's actual applicable price.
+
+Variant numeric editors and the remaining native admin numeric fields use the shared `NumberInput` editing behavior. Zero can be cleared while editing, prices retain decimal drafts, and existing validation still applies when saving.

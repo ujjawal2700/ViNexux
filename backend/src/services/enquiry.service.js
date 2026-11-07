@@ -1,3 +1,4 @@
+import { resolveVariant, variantStockChange, productLineKey } from '../utils/productVariants.js';
 import { stockUpdate } from '../utils/productStockUpdate.js';
 import mongoose from 'mongoose';
 import { Product } from '../models/Product.js';
@@ -67,14 +68,14 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
   }
 
   const selectedIds = new Set(payload.selectedProductIds || []);
-  const matchingItems = cart.items.filter((item) => selectedIds.size === 0 || selectedIds.has(String(item.productId)));
+  const matchingItems = cart.items.filter((item) => selectedIds.size === 0 || (selectedIds.has(productLineKey(item.productId, item.variantId)) || selectedIds.has(String(item.productId))));
   // Older carts may contain repeated lines for the same product. Keep a single
   // enquiry line with the combined quantity so the saved record matches the UI.
   const selectedItems = [...matchingItems.reduce((byProduct, item) => {
-    const key = String(item.productId);
+    const key = productLineKey(item.productId, item.variantId);
     const existing = byProduct.get(key);
     if (existing) existing.quantity += item.quantity;
-    else byProduct.set(key, { productId: item.productId, quantity: item.quantity });
+    else byProduct.set(key, { productId: item.productId, variantId: item.variantId || null, quantity: item.quantity });
     return byProduct;
   }, new Map()).values()];
   if (!selectedItems.length) {
@@ -84,7 +85,7 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
   // 3. Validate selected products against the live catalog.
   const productById = await validateProductsAndCategoriesActive(selectedItems.map((item) => item.productId));
 
-  for (const item of selectedItems) assertQuantityAvailable(productById.get(String(item.productId)), item.quantity);
+  for (const item of selectedItems) assertQuantityAvailable(resolveVariant(productById.get(String(item.productId)), item.variantId), item.quantity);
 
   // 4. Build Contact Snapshot
   const contactName = payload.contactName || user.fullName || user.name || 'Vinexus Customer';
@@ -122,14 +123,16 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
 
   // 7. Build Enquiry Items Snapshot (productName & priceShown snapshots)
   const enquiryItems = [];
-  const pricesByProduct = await calculateApplicablePrices(userId, [...productById.values()]);
+  const pricesByProduct = await calculateApplicablePrices(userId, selectedItems.map(item => resolveVariant(productById.get(String(item.productId)), item.variantId)));
   for (const item of selectedItems) {
-    const product = productById.get(String(item.productId));
+    const product = resolveVariant(productById.get(String(item.productId)), item.variantId);
     const productName = product ? product.name : 'Vinexus Product';
-    const priceShown = product ? pricesByProduct.get(String(product._id)) : 0;
+    const priceShown = product ? pricesByProduct.get(productLineKey(product._id, item.variantId)) : 0;
 
     enquiryItems.push({
       productId: item.productId,
+      variantId: item.variantId || null,
+      variantName: product.variant || '',
       productName,
       sku: product?.sku || '',
       modelNumber: product?.modelNumber || '',
@@ -188,7 +191,7 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
   }
 
   // 10. Remove only the submitted products; unselected cart items stay available.
-  cart.items = cart.items.filter((item) => !selectedIds.has(String(item.productId)));
+  cart.items = cart.items.filter((item) => !(selectedIds.has(productLineKey(item.productId, item.variantId)) || selectedIds.has(String(item.productId))));
   await cart.save();
 
   // 11. Attempt Google Sheets Sync (Isolated operation; does not throw or break enquiry creation if sync fails)
@@ -436,17 +439,21 @@ export const updateEnquiryStatus = async (enquiryId, updateData = {}, adminUserI
         const quantities = new Map();
         for (const item of enquiry.items) {
           const productId = String(item.productId);
-          const quantity = (quantities.get(productId)?.quantity || 0) + item.quantity;
+          const key = productLineKey(productId, item.variantId);
+          const quantity = (quantities.get(key)?.quantity || 0) + item.quantity;
           if (!Number.isSafeInteger(quantity) || quantity <= 0) {
             throw new AppError('Cannot complete an enquiry with invalid item quantities.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
           }
-          quantities.set(productId, { quantity, name: item.productName });
+          quantities.set(key, { productId, variantId: item.variantId, quantity, name: item.productName });
         }
         if (!quantities.size) throw new AppError('No product items to complete.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
         const deductedAt = new Date();
-        for (const [productId, item] of quantities) {
-          const product = await Product.findOneAndUpdate({ _id: productId, stockQuantity: { $gte: item.quantity } },
-            stockUpdate(-item.quantity, deductedAt), { new: true, runValidators: true, session });
+        for (const item of quantities.values()) {
+          const productId = item.productId;
+          const change = item.variantId ? variantStockChange(productId, item.variantId, -item.quantity) : {
+            filter: { _id: productId, 'variants.0': { $exists: false }, stockQuantity: { $gte: item.quantity } }, update: stockUpdate(-item.quantity, deductedAt),
+          };
+          const product = await Product.findOneAndUpdate(change.filter, change.update, { new: true, runValidators: true, session });
           if (!product) {
             const existing = await Product.findById(productId).session(session);
             const message = existing

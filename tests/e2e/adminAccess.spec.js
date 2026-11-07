@@ -62,7 +62,7 @@ test('super admin builds a custom role, creates an employee and inspects the cha
   await page.goto('/admin/logbook');
   await expect(page.getByText('Asha Singh', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Inspect changes' }).click();
-  await expect(modal.getByRole('heading', { name: 'stockQuantity' })).toBeVisible();
+  await expect(modal.getByRole('heading', { name: 'Stock quantity' })).toBeVisible();
   await expect(modal.getByText(/browser-reported/)).toBeVisible();
   await expect(modal.getByRole('link', { name: '26.912434, 75.787271' })).toHaveAttribute('href', 'https://www.google.com/maps?q=26.912434,75.787271');
   await modal.screenshot({ path: testInfo.outputPath('logbook-detail.png') });
@@ -191,4 +191,33 @@ test('optional category lookup failure does not hide a successfully loaded catal
   await expect(page.getByRole('row').filter({ hasText: 'E2E Product' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Failed to load product catalog' })).toHaveCount(0);
   await expect(page.getByText('Electronics', { exact: true })).toBeVisible();
+});
+
+test('super admin deletes an employee with confirmation, keeps the role and can retry failures', async ({ page }) => {
+  await mockApi(page); await seedBrowserSession(page, 'admin');
+  let employees = [{ _id: employeeId, fullName: 'Asha Singh', email: 'asha@example.test', phone: '9876543210', accountStatus: 'active', accessRoleId: { _id: roleId, name: 'Warehouse', isActive: true } }];
+  let requests = 0, fail = true;
+  await page.route('**/api/admin/access/**', route => {
+    const url = new URL(route.request().url()); let data;
+    if (url.pathname.endsWith('/self')) data = { access: { role: 'admin', isEmployee: false } };
+    else if (route.request().method() === 'DELETE') {
+      expect(url.pathname).toBe(`/api/admin/access/employees/${employeeId}`); requests++;
+      if (fail) return route.fulfill({ status: 503, json: { success: false, message: 'Could not delete employee. Please retry.' } });
+      employees = []; data = { deleted: true };
+    } else if (url.pathname.endsWith('/roles')) data = { roles: [{ _id: roleId, name: 'Warehouse', isActive: true, permissions: {} }] };
+    else data = { employees, total: employees.length, pages: 1, page: 1 };
+    return route.fulfill({ json: { success: true, data } });
+  });
+  await page.goto('/admin/access');
+  const remove = page.getByRole('button', { name: 'Delete employee Asha Singh', exact: true });
+  await remove.click();
+  await expect(page.getByRole('dialog')).toContainText('historical work and audit records will remain');
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click(); expect(requests).toBe(0);
+  await remove.click(); await page.getByRole('button', { name: 'Delete Employee', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('Could not delete employee');
+  await expect(remove).toBeVisible();
+  fail = false; await remove.click(); await page.getByRole('button', { name: 'Delete Employee', exact: true }).click();
+  await expect(remove).toHaveCount(0); expect(requests).toBe(2);
+  await page.getByRole('tab', { name: 'Role studio', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Warehouse', exact: true })).toBeVisible();
 });

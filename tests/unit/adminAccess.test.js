@@ -66,3 +66,9 @@ describe('audit privacy and browser location', () => {
     expect(readAuditLocation({}).status).toBe('unavailable');
   });
 });
+
+test('audit serialization preserves real MongoDB identifiers and timestamps', async () => {
+  const { default: mongoose } = await import('../../backend/node_modules/mongoose/index.js');
+  const value = redactAudit({ _id: new mongoose.Types.ObjectId('507f1f77bcf86cd799439011'), createdAt: new Date('2026-11-07T12:00:00Z') });
+  expect(value).toEqual({ _id: '507f1f77bcf86cd799439011', createdAt: '2026-11-07T12:00:00.000Z' });
+});

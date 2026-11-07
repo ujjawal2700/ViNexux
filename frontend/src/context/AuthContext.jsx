@@ -98,7 +98,7 @@ export const AuthProvider = ({ children }) => {
           try {
             for (const item of guestItems) {
               const productId = item.productId?._id || item.productId;
-              if (productId) await cartService.addItem(productId, item.quantity || 1);
+              if (productId) await cartService.addItem(productId, item.quantity || 1, item.variantId);
             }
             guestCartService.clear();
           } catch (err) {

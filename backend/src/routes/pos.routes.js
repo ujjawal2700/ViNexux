@@ -1,3 +1,4 @@
+import { activeVariants, hasVariants, selectedVariantProduct, productLineKey } from '../../../shared/productVariants.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
@@ -28,9 +29,9 @@ router.get('/settings', asyncHandler(async (_req, res) => reply(res, await posSe
 router.put('/settings', validate({ body: posSellerSchema }), asyncHandler(async (req, res) => reply(res, await posService.updateSettings(req.body, req.user._id))));
 router.get('/products', validate(searchSchema), asyncHandler(async (req, res) => {
   const filter = { isActive: true };
-  if (req.query.search) filter.$or = ['name', 'sku', 'modelNumber'].map(key => ({ [key]: escapedRegex(req.query.search) }));
-  const products = await Product.find(filter).select('name sku modelNumber hsnCode standardPrice dealerPrice stockQuantity images specifications').sort({ name: 1 }).limit(40).lean();
-  reply(res, products);
+  if (req.query.search) filter.$or = ['name', 'sku', 'modelNumber', 'variants.name', 'variants.sku'].map(key => ({ [key]: escapedRegex(req.query.search) }));
+  const products = await Product.find(filter).select('name sku modelNumber hsnCode standardPrice dealerPrice stockQuantity images specifications variants').sort({ name: 1 }).limit(40).lean();
+  reply(res, products.flatMap(product => hasVariants(product) ? activeVariants(product).map(option => ({ ...selectedVariantProduct(product, option._id), dealerPrice: option.dealerPrice > 0 ? option.dealerPrice : option.standardPrice, lineKey: productLineKey(product._id, option._id) })) : [product]));
 }));
 router.get('/customers', validate(searchSchema), asyncHandler(async (req, res) => {
   if (req.query.search.length < 2) return reply(res, []);

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Users, ShieldCheck, Plus, Pencil, Search, KeyRound, ArrowUpRight, Layers, Trash2 } from 'lucide-react';
 import apiClient from '../../api/axios';
 import Modal from '../../components/ui/Modal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { ADMIN_SECTIONS } from '../../../../shared/adminAccess.js';
 
 const emptyPermissions = () => Object.fromEntries(ADMIN_SECTIONS.map(s => [s.key, { read: false, write: false }]));
@@ -36,6 +37,7 @@ export default function AdminAccessPage() {
   const [editor, setEditor] = useState(null);
   const [draft, setDraft] = useState(null);
   const [deletingRole, setDeletingRole] = useState(null);
+  const [deletingEmployee, setDeletingEmployee] = useState(null);
   const [assignments, setAssignments] = useState([]);
   const [checkingRole, setCheckingRole] = useState(false);
   const load = useCallback(async () => {
@@ -68,6 +70,16 @@ export default function AdminAccessPage() {
       if (err.response?.data?.error?.code === 'ROLE_IN_USE') setAssignments(err.response.data.details || []);
       setError(errorMessage(err));
     } finally { setBusy(false); }
+  };
+  const deleteEmployee = async () => {
+    setBusy(true); setError(''); setNotice('');
+    try {
+      await apiClient.delete(`/admin/access/employees/${deletingEmployee._id}`);
+      setDeletingEmployee(null); setNotice('Employee deleted. Their login access and sessions have been removed.');
+      if (employees.length === 1 && page > 1) setPage(value => value - 1);
+      else await load();
+    } catch (err) { setDeletingEmployee(null); setError(errorMessage(err)); }
+    finally { setBusy(false); }
   };
   const setGroup = (group, mode) => change({ permissions: { ...draft.permissions, ...Object.fromEntries(ADMIN_SECTIONS.filter(s => s.group === group).map(s => [s.key, modes[mode]])) } });
   const save = async event => {
@@ -102,7 +114,7 @@ export default function AdminAccessPage() {
       <label className="relative block max-w-sm"><Search size={16} className="absolute left-3 top-4 text-muted-foreground" /><input aria-label="Search employees" className={`${input} pl-9`} placeholder="Search name, email or phone" value={search} onChange={e => { setPage(1); setSearch(e.target.value); }} /></label>
       {!employees.length && <div className="rounded-xl border border-dashed bg-card p-10 text-center"><Users size={32} className="mx-auto text-primary/60" /><h2 className="mt-3 font-bold">Make room for your team</h2><p className="mt-2 text-sm text-muted-foreground">Create a role, then add an employee with their name, email, phone and password.</p><button className={`${button} mt-4`} onClick={() => openRole()}>Create a role</button></div>}
       <div className="grid gap-4 lg:grid-cols-2">{employees.map(employee => <article key={employee._id} className="rounded-xl border border-border bg-card p-5">
-        <div className="flex items-start justify-between gap-3"><div className="flex gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 font-bold text-primary">{employee.fullName.slice(0, 1).toUpperCase()}</span><div><h2 className="font-bold">{employee.fullName}</h2><p className="mt-1 break-all text-xs text-muted-foreground">{employee.email}</p><p className="mt-1 text-xs text-muted-foreground">{employee.phone}</p></div></div><button className={button} aria-label={`Edit ${employee.fullName}`} onClick={() => openEmployee(employee)}><Pencil size={14} /><span className="hidden sm:inline">Edit</span></button></div>
+        <div className="flex items-start justify-between gap-3"><div className="flex gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 font-bold text-primary">{employee.fullName.slice(0, 1).toUpperCase()}</span><div><h2 className="font-bold">{employee.fullName}</h2><p className="mt-1 break-all text-xs text-muted-foreground">{employee.email}</p><p className="mt-1 text-xs text-muted-foreground">{employee.phone}</p></div></div><div className="flex shrink-0 gap-1"><button className={button} aria-label={`Edit ${employee.fullName}`} onClick={() => openEmployee(employee)}><Pencil size={14} /><span className="hidden sm:inline">Edit</span></button><button type="button" className={`${button} text-rose-700`} aria-label={`Delete employee ${employee.fullName}`} onClick={() => { setError(''); setDeletingEmployee(employee); }}><Trash2 size={14} /><span className="hidden sm:inline">Delete</span></button></div></div>
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3 text-xs"><span className="rounded-full bg-primary/5 px-3 py-1 font-semibold text-primary">{employee.accessRoleId?.name || 'Unassigned role'}</span><span className={`rounded-full px-3 py-1 ${employee.accountStatus === 'active' && employee.accessRoleId?.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>{employee.accountStatus === 'blocked' ? 'Blocked' : employee.accessRoleId?.isActive ? 'Active' : 'Role disabled'}</span></div>
       </article>)}</div>
       {pages > 1 && <div className="flex items-center justify-between"><button className={button} disabled={page === 1} onClick={() => setPage(p => p - 1)}>Previous</button><span className="text-sm">Page {page} of {pages}</span><button className={button} disabled={page >= pages} onClick={() => setPage(p => p + 1)}>Next</button></div>}
@@ -111,6 +123,7 @@ export default function AdminAccessPage() {
       {!roles.length && <p className="p-4 text-sm text-muted-foreground">No roles yet. Create one from a starting point or build your own.</p>}
       <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">{roles.map(role => <article key={role._id} className="rounded-xl border border-border bg-card p-5"><div className="flex justify-between gap-3"><span className="rounded-lg bg-primary/5 p-2 text-primary"><ShieldCheck size={20} /></span><span className={`text-xs font-semibold ${role.isActive ? 'text-emerald-700' : 'text-rose-700'}`}>{role.isActive ? 'Active' : 'Disabled'}</span></div><h2 className="mt-3 font-bold">{role.name}</h2><p className="mt-2 min-h-10 text-xs leading-5 text-muted-foreground">{role.description || 'Custom section-level access.'}</p><div className="my-4 flex gap-4 border-y border-border py-3 text-xs"><span><strong>{Object.values(role.permissions || {}).filter(p => p.read).length}</strong> readable sections</span><span><strong>{Object.values(role.permissions || {}).filter(p => p.write).length}</strong> writable sections</span></div><div className="flex flex-wrap gap-2"><button className={`${button} flex-1`} onClick={() => openRole(role)}><Pencil size={14} />Edit permissions</button><button type="button" className={`${button} text-rose-700 hover:!bg-rose-50`} aria-label={`Delete role ${role.name}`} onClick={() => requestDeleteRole(role)}><Trash2 size={14} />Delete</button></div></article>)}</div>
     </div>}
+    <ConfirmDialog isOpen={!!deletingEmployee} onClose={busy ? undefined : () => setDeletingEmployee(null)} onConfirm={deleteEmployee} isLoading={busy} variant="danger" title="Delete Employee" confirmText="Delete Employee" message={`Permanently delete ${deletingEmployee?.fullName || 'this employee'}? Their login and active sessions will be removed. Their historical work and audit records will remain. This cannot be undone.`} />
     <Modal isOpen={!!deletingRole} onClose={() => !busy && !checkingRole && setDeletingRole(null)} size="lg"
       title={assignments.length ? 'This role is assigned to employees' : 'Delete role'}
       description={deletingRole ? `Role: ${deletingRole.name}` : ''}

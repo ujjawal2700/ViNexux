@@ -10,7 +10,7 @@ export const COLUMNS = [
   ['New Arrival', 'isNewArrival'], ['Low Stock', 'isLowStock'], ['Variant', 'variant'], ['HSN Code', 'hsnCode'],
   ['Warranty Type', 'warrantyType'], ['Warranty', 'warranty'], ['Product URL', 'productUrl'],
   ['Information Phone', 'informationPhone'], ['Image URLs', 'images'], ['Specifications JSON', 'specifications'],
-  ['Additional Details JSON', 'additionalDetails'], ['Updated At (read only)', 'updatedAt'], ['Sync Result (read only)', 'result'],
+  ['Additional Details JSON', 'additionalDetails'], ['Updated At (read only)', 'updatedAt'], ['Sync Result (read only)', 'result'], ['Variants JSON', 'variants'],
 ];
 export const HEADERS = COLUMNS.map(([header]) => header);
 const text = value => String(value ?? '').trim();
@@ -55,6 +55,7 @@ export function productValues(product) {
     isLowStock: Boolean(product.isLowStock), variant: product.variant || '', hsnCode: product.hsnCode || '',
     warrantyType: product.warrantyType || 'text', warranty: product.warranty || '', productUrl: product.productUrl || '',
     informationPhone: product.informationPhone || '', images: (product.images || []).map(image => image.url),
+    variants: (product.variants || []).map(option => ({ _id: String(option._id), name: option.name, sku: option.sku || '', standardPrice: option.standardPrice, dealerPrice: option.dealerPrice || 0, stockQuantity: option.stockQuantity, isActive: option.isActive !== false })),
     specifications: plainDetails(product.specifications), additionalDetails: plainDetails(product.additionalDetails),
   };
 }
@@ -69,7 +70,7 @@ export function exportProductRow(product, refs, result = '') {
     if (key === 'categoryId') return refs.categoryName(values[key]);
     if (key === 'categoryIds') return values[key].map(refs.categoryName).join('\n');
     if (key === 'images') return values[key].join('\n');
-    if (key === 'specifications' || key === 'additionalDetails') return JSON.stringify(values[key]);
+    if (key === 'specifications' || key === 'additionalDetails' || key === 'variants') return JSON.stringify(values[key]);
     if (key === 'isActive') return values[key] ? 'Published' : 'Draft';
     if (typeof values[key] === 'boolean') return values[key] ? 'Yes' : 'No';
     return values[key] ?? '';
@@ -83,6 +84,7 @@ export function parseProductRow(row, refs) {
   const payload = {};
   for (const [, key] of COLUMNS) {
     if (['id', 'updatedAt', 'result'].includes(key)) continue;
+    if (key === 'variants' && row[COLUMNS.findIndex(([, field]) => field === 'variants')] === undefined) continue;
     const value = text(values[key]);
     if (['standardPrice', 'dealerPrice', 'stockQuantity'].includes(key)) {
       if (!value || !Number.isFinite(Number(value)) || Number(value) < 0 || (key === 'stockQuantity' && !Number.isInteger(Number(value)))) {
@@ -105,7 +107,7 @@ export function parseProductRow(row, refs) {
     else if (key === 'images') {
       payload[key] = lines(value);
 
-    } else if (['specifications', 'additionalDetails'].includes(key)) {
+    } else if (['specifications', 'additionalDetails', 'variants'].includes(key)) {
       try { payload[key] = value ? JSON.parse(value) : []; } catch { throw new Error(`${key} must be a JSON array of {"key":"...","value":"..."} entries.`); }
       if (!Array.isArray(payload[key])) throw new Error(`${key} must be a JSON array.`);
     } else payload[key] = value;

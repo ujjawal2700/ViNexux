@@ -63,7 +63,7 @@ const QuickStockUpdater = () => {
         </div>
         {pagination.total > 0 && <Pagination currentPage={page} totalPages={pagination.totalPages} totalItems={pagination.total} pageSize={limit} onPageChange={setPage} />}
       </>}
-      {target && <StockUpdateDialog product={target} onClose={() => setTarget(null)} onUpdated={(updated) => setProducts((items) => items.map((item) => item._id === updated._id ? { ...item, stockQuantity: updated.stockQuantity } : item))} />}
+      {target && <StockUpdateDialog product={target} onClose={() => setTarget(null)} onUpdated={(updated) => setProducts((items) => items.map((item) => item._id === updated._id ? { ...item, stockQuantity: updated.stockQuantity, variants: updated.variants } : item))} />}
     </section>
   );
 };

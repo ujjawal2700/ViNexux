@@ -1,3 +1,4 @@
+import { storeBannerVideo, discardBannerMedia } from '../services/bannerMedia.service.js';
 import { Router } from 'express';
 import { BENTO_TRANSITIONS, BENTO_IMAGE_LIMIT, BENTO_SECTION_COUNT, visibleBannerSections } from '../../../shared/bannerGrid.js';
 import { z } from 'zod';
@@ -73,23 +74,27 @@ router.put('/:section', asyncHandler(async (req, res) => {
 }));
 const uploadImage = asyncHandler(async (req, res) => {
   const section = sectionIndex(req), data = input(req.body);
-  if (!req.file || !['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'].includes(req.file.mimetype) || req.file.size > 5 * 1024 * 1024) throw new AppError('Upload a PNG, JPG, WebP or SVG image up to 5 MB', 400, ERROR_CODES.VALIDATION_ERROR);
+  const video = req.file?.mimetype?.startsWith('video/');
+  if (!req.file || (!video && (!['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'].includes(req.file.mimetype) || req.file.size > 5 * 1024 * 1024))) throw new AppError('Upload an image up to 5 MB or an MP4, WebM or MOV video up to 50 MB and 60 seconds.', 400, ERROR_CODES.VALIDATION_ERROR);
   await BannerGrid.updateOne({ singletonKey: 'primary' }, { $setOnInsert: { singletonKey: 'primary', sections: emptySections(), revision: 0, configured: false } }, { upsert: true });
   const replacing = Boolean(req.params.id);
   const filter = { singletonKey: 'primary', revision: data.revision, ...(replacing ? { [`sections.${section}.images._id`]: req.params.id } : { [`sections.${section}.images.${BENTO_IMAGE_LIMIT - 1}`]: { $exists: false } }) };
   if (!await BannerGrid.exists(filter)) checked(null);
   let asset;
-  if (config.storageProvider === 'development') {
+  if (video) asset = await storeBannerVideo(req.file, `${req.protocol}://${req.get('host')}`);
+  else if (config.storageProvider === 'development') {
     const local = await storeLocalThemeImage(req.file);
     asset = { url: `${req.protocol}://${req.get('host')}${config.apiBaseUrl}/content/theme-assets/${local.filename}`, publicId: local.publicId };
   } else asset = await storageService.uploadFile({ buffer: req.file.buffer, originalname: req.file.originalname, mimetype: req.file.mimetype, folder: 'vinexus/bento-banners', category: 'cms' });
-  const image = { url: asset.url, publicId: asset.publicId, title: data.title, link: data.link, fit: data.fit, positionX: data.positionX, positionY: data.positionY, zoom: data.zoom };
+  const image = { mediaType: asset.mediaType || 'image', posterUrl: asset.posterUrl || '', posterPublicId: asset.posterPublicId || '', duration: asset.duration || null, bytes: asset.bytes || null, url: asset.url, publicId: asset.publicId, title: data.title, link: data.link, fit: data.fit, positionX: data.positionX, positionY: data.positionY, zoom: data.zoom };
   const update = replacing ? { $set: Object.fromEntries(Object.entries(image).map(([key, value]) => [`sections.${section}.images.$[image].${key}`, value])), $inc: { revision: 1 } } : { $push: { [`sections.${section}.images`]: image }, $set: { configured: true }, $inc: { revision: 1 } };
-  const grid = checked(await BannerGrid.findOneAndUpdate(filter, update, { ...(replacing ? { arrayFilters: [{ 'image._id': req.params.id }] } : {}), new: true, runValidators: true }));
-  return ApiResponse.success(res, 'Banner added to section', { grid });
+  try {
+    const grid = checked(await BannerGrid.findOneAndUpdate(filter, update, { ...(replacing ? { arrayFilters: [{ 'image._id': req.params.id }] } : {}), new: true, runValidators: true }));
+    return ApiResponse.success(res, 'Banner added to section', { grid });
+  } catch (error) { await discardBannerMedia(asset); throw error; }
 });
-router.post('/:section/images', uploadSingle('file', 'cms'), uploadImage);
-router.post('/:section/images/:id', uploadSingle('file', 'cms'), uploadImage);
+router.post('/:section/images', uploadSingle('file', 'banner'), uploadImage);
+router.post('/:section/images/:id', uploadSingle('file', 'banner'), uploadImage);
 router.put('/:section/images/:id', asyncHandler(async (req, res) => {
   const section = sectionIndex(req), data = input(req.body);
 const grid = checked(await BannerGrid.findOneAndUpdate({ singletonKey: 'primary', revision: data.revision, [`sections.${section}.images._id`]: req.params.id }, { $set: { [`sections.${section}.images.$[image].title`]: data.title, [`sections.${section}.images.$[image].link`]: data.link, [`sections.${section}.images.$[image].fit`]: data.fit, [`sections.${section}.images.$[image].positionX`]: data.positionX, [`sections.${section}.images.$[image].positionY`]: data.positionY, [`sections.${section}.images.$[image].zoom`]: data.zoom }, $inc: { revision: 1 } }, { arrayFilters: [{ 'image._id': req.params.id }], new: true, runValidators: true }));

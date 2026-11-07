@@ -3,7 +3,6 @@ import { ErrorState } from '../../components/ui/ErrorState';
 import useAuth from '../../hooks/useAuth';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import categoryService from '../../services/categoryService';
 import productService from '../../services/productService';
 import ProductCard from '../../components/products/ProductCard';
 import BrandCarousel from '../../components/home/BrandCarousel';
@@ -14,9 +13,9 @@ import Skeleton, { BrandCarouselSkeleton, ProductCardSkeleton } from '../../comp
 import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 
-const HomePageSkeleton = () => (
+const HomePageSkeleton = ({ grid, bannerReady }) => (
   <div className="w-full min-h-screen bg-[var(--store-background)] pb-16 space-y-6 sm:space-y-8" role="status" aria-label="Loading storefront">
-    <div className="hero-bento-grid storefront-container">{Array.from({ length: 2 }, (_, i) => <Skeleton key={i} className={`bento-banner-tile bento-banner-tile-${i + 1}`} />)}</div>
+    {bannerReady ? <HeroBentoGrid grid={grid} /> : <div className="hero-bento-grid storefront-container">{Array.from({ length: 2 }, (_, i) => <Skeleton key={i} className={`bento-banner-tile bento-banner-tile-${i + 1}`} />)}</div>}
 
     <div className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12">
       <BrandCarouselSkeleton count={8} className="px-0" />
@@ -38,9 +37,14 @@ export const HomePage = () => {
   const { user, isLoading: authLoading } = useAuth();
   const requestVersion = useRef(0);
   const [bannerGrid, setBannerGrid] = useState(null);
+  const [bannerReady, setBannerReady] = useState(false);
+  useEffect(() => {
+    let active = true;
+    contentService.getBannerGrid().then(response => { if (active) setBannerGrid(response.data?.grid || null); }).catch(() => {}).finally(() => { if (active) setBannerReady(true); });
+    return () => { active = false; };
+  }, []);
   const [error, setError] = useState(null);
   // Slider categories
-  const [categories, setCategories] = useState([]);
 
   // Products state
   const [trendingProducts, setTrendingProducts] = useState([]);
@@ -65,17 +69,12 @@ export const HomePage = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [catRes, featured, newest, allRes, gridResponse] = await Promise.all([
-        categoryService.getCategoryTree(),
-        productService.getMerchandisingProducts('isTrending'),
-        productService.getMerchandisingProducts('isNewArrival'),
+      const [featured, newest, allRes] = await Promise.all([
+        productService.getMerchandisingProducts('isTrending', { firstPageOnly: true, limit: 16 }),
+        productService.getMerchandisingProducts('isNewArrival', { firstPageOnly: true, limit: 16 }),
         productService.getProducts({ page: 1, sortBy: 'categoryPriority', limit: 16, includeFacets: false }),
-        contentService.getBannerGrid().catch(() => ({ data: { grid: null } })),
       ]);
       if (version !== requestVersion.current) return;
-      setBannerGrid(gridResponse.data?.grid || null);
-      const rootCats = (catRes.data?.categories || []).filter((category) => !category.parentId);
-      setCategories(rootCats);
       setTrendingProducts(featured.data?.products || []);
       setNewArrivals(newest.data?.products || []);
       setAllProducts(allRes.data?.products || []);
@@ -93,7 +92,7 @@ export const HomePage = () => {
   }, [loadData]);
 
   if (error) return <ErrorState title="Storefront unavailable" description={error} onRetry={loadData} />;
-  if (isLoading && showLoadingSkeleton) return <HomePageSkeleton />;
+  if (isLoading && showLoadingSkeleton) return <HomePageSkeleton grid={bannerGrid} bannerReady={bannerReady} />;
 
   return (
     <div className="theme-home w-full max-w-full bg-[var(--store-background)] pb-16 space-y-6 sm:space-y-8 overflow-x-hidden">
@@ -109,7 +108,7 @@ export const HomePage = () => {
 
       <TrendingProducts products={trendingProducts} />
 
-      <TrendingProducts products={newArrivals} title="New Arrivals" direction="right" eyebrow="Selected for you" label="New arrival products" viewAll={null} renderProduct={product => <ProductCard product={product} />} />
+      <TrendingProducts products={newArrivals} title="New Arrivals" direction="right" eyebrow="Selected for you" label="New arrival products" viewAll="/products?isNewArrival=true" renderProduct={product => <ProductCard product={product} />} />
 
       {/* 5. ALL PRODUCTS SECTION (2 horizontal rows of products + Show All button in front) */}
       {allProducts.length > 0 && (

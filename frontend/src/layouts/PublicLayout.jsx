@@ -1,3 +1,4 @@
+import { productLineKey } from '../../../shared/productVariants.js';
 import PriceGate, { LoginToViewPrices, usePriceVisibility } from '../components/products/PriceGate';
 import { getRecentSearches, rememberSearch } from '../utils/browsingHistory';
 import { Image } from '../components/ui/Image';
@@ -565,7 +566,7 @@ const PublicLayout = () => {
       let updatedList = [];
       setCartItems((prev) => {
         updatedList = prev.filter((item) => {
-          const id = String(item.productId?._id || item.productId || item._id);
+          const id = productLineKey(item.productId || item._id, item.variantId);
           return id !== prodIdStr;
         });
 
@@ -882,7 +883,7 @@ const PublicLayout = () => {
     <StorefrontScopeContext.Provider value={true}><div className="storefront-theme min-h-screen w-full max-w-full bg-[var(--store-background)] text-[var(--store-text)] flex flex-col font-sans overflow-x-hidden" style={themeVariables(theme.config)} {...themeStyleAttributes(theme.config)} data-theme={theme.id || 'default'} data-decoration={theme.config.decoration} data-custom-background={Boolean(theme.config.assets?.background?.url)}>
       {/* 1. STICKY HEADER CONTAINER (Locks top announcement + main header + category nav at top when scrolling) */}
       <header className="sticky top-0 z-50 w-full max-w-full bg-[var(--store-surface)] shadow-xs">
-        {theme.config.announcement && <div className="theme-announcement">{theme.config.announcement}</div>}
+        {theme.config.announcement && <div className="theme-announcement"><span className="announcement-sparkles" aria-hidden="true"><i /></span><span className="announcement-message">{theme.config.announcement}</span><span className="announcement-sparkles" aria-hidden="true"><i /></span></div>}
         <ThemeDecorations config={theme.config} placement="header" />
         
         {/* Top Announcement Bar */}
@@ -890,7 +891,7 @@ const PublicLayout = () => {
           {isAuthenticated ? (
             <span>
               Welcome back,{' '}
-              <strong className="text-[var(--store-primary)] font-bold uppercase tracking-tight">
+              <strong data-clarity-mask="true" className="text-[var(--store-primary)] font-bold uppercase tracking-tight">
                 {user?.fullName || user?.name || user?.contactPerson || 'Customer'}
               </strong>
               {user?.role === 'dealer' && ' (Verified Dealer)'}
@@ -1278,7 +1279,7 @@ const PublicLayout = () => {
                                   </span>
                                   <button
                                     type="button"
-                                    onClick={(e) => handleRemoveCartItem(e, product._id || item.productId || item._id)}
+                                    onClick={(e) => handleRemoveCartItem(e, productLineKey(product._id || item.productId || item._id, item.variantId))}
                                     className="text-[var(--store-muted)] hover:text-rose-600 transition-colors p-0.5 mt-0.5 cursor-pointer"
                                     title="Remove item from cart"
                                   >
@@ -1622,7 +1623,7 @@ const PublicLayout = () => {
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--store-surface)]/15"><User className="h-5 w-5" /></span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold">{isAuthenticated ? (user?.fullName || user?.name || 'My account') : 'Welcome to Vinexus'}</p>
+                <p data-clarity-mask="true" className="truncate text-sm font-bold">{isAuthenticated ? (user?.fullName || user?.name || 'My account') : 'Welcome to Vinexus'}</p>
                 <p className="text-xs text-white/80">{isAuthenticated ? 'Manage your account and enquiries' : 'Sign in to manage your enquiries'}</p>
               </div>
               <button type="button" onClick={() => setIsMobileMenuOpen(false)} aria-label="Close menu" className="rounded-full p-2 text-white hover:bg-[var(--store-surface)]/15"><X className="h-5 w-5" /></button>

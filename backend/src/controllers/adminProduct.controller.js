@@ -12,7 +12,7 @@ export const searchStockProducts = asyncHandler(async (req, res) => {
 });
 
 export const addProductStock = asyncHandler(async (req, res) => {
-  const product = await productService.addProductStock(req.params.id, req.body.quantity, req.body.operation);
+  const product = await productService.addProductStock(req.params.id, req.body.quantity, req.body.operation, req.body.variantId);
   return ApiResponse.success(res, `Product stock updated. Total stock quantity is ${product.stockQuantity}.`, product, HTTP_STATUS.OK);
 });
 

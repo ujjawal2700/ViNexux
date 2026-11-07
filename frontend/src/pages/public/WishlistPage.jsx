@@ -83,6 +83,7 @@ export const WishlistPage = () => {
         })
       );
 
+      if (product.variants?.length || product.hasVariants) { navigate(buildProductPath(product)); return; }
       if (isAuthenticated) {
         const res = await cartService.addItem(productId, 1);
         const updatedCart = res.data?.cart || res.data || res.cart || res;

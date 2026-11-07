@@ -1,3 +1,4 @@
+import { productLineKey } from '../../../../shared/productVariants.js';
 import PriceGate, { LoginToViewPrices, usePriceVisibility } from '../../components/products/PriceGate';
 import { productModelVariant } from '../../../../shared/productPresentation.js';
 import { getRecentViews } from '../../utils/browsingHistory';
@@ -75,6 +76,10 @@ export const CartPage = () => {
   const toast = useToast();
 
   const [cart, setCart] = useState(null);
+  // Publish committed state after rendering; state updaters stay pure.
+  useEffect(() => {
+    if (cart) window.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart, source: 'cart-page' } }));
+  }, [cart]);
   const [savedAddresses, setSavedAddresses] = useState([]);
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -114,7 +119,7 @@ export const CartPage = () => {
     if (!isAuthenticated) {
       const guestCart = guestCartService.getCart();
       setCart(guestCart);
-      setSelectedItemIds(new Set(guestCart.items.map((item) => String(item.productId?._id || item.productId))));
+      setSelectedItemIds(new Set(guestCart.items.map((item) => productLineKey(item.productId, item.variantId))));
       setIsLoading(false);
       return;
     }
@@ -128,7 +133,7 @@ export const CartPage = () => {
       const items = cartData?.items || [];
       const ids = new Set();
       items.forEach((item) => {
-        const id = item.productId?._id || item.productId || item._id;
+        const id = productLineKey(item.productId || item._id, item.variantId);
         if (id) ids.add(String(id));
       });
       setSelectedItemIds(ids);
@@ -161,7 +166,7 @@ export const CartPage = () => {
         // Fetch top featured / popular products as fallback / supplement
         const res = await productService.getProducts({ limit: 12, isActive: true, includeFacets: false });
         const list = res.data?.products || res.products || [];
-        
+
         // Merge stored with fetched
         const merged = [...stored];
         list.forEach((p) => {
@@ -210,7 +215,7 @@ export const CartPage = () => {
     const loadSimilarProducts = async () => {
       try {
         const cartProductIds = new Set(
-          items.map((i) => String(i.productId?._id || i.productId || i._id))
+          items.map((i) => productLineKey(i.productId || i._id, i.variantId))
         );
 
         const cartCatIds = new Set();
@@ -387,7 +392,7 @@ export const CartPage = () => {
 
   // Checkbox Selection Handlers
   const isAllSelected = items.length > 0 && items.every((i) => {
-    const id = String(i.productId?._id || i.productId || i._id);
+    const id = productLineKey(i.productId || i._id, i.variantId);
     return selectedItemIds.has(id);
   });
 
@@ -396,7 +401,7 @@ export const CartPage = () => {
       setSelectedItemIds(new Set());
     } else {
       const allIds = new Set(
-        items.map((i) => String(i.productId?._id || i.productId || i._id))
+        items.map((i) => productLineKey(i.productId || i._id, i.variantId))
       );
       setSelectedItemIds(allIds);
     }
@@ -440,18 +445,14 @@ export const CartPage = () => {
       setCart((prev) => {
         if (!prev) return prev;
         const updatedItems = (prev.items || []).map((item) => {
-          const id = item.productId?._id || item.productId || item._id;
+          const id = productLineKey(item.productId || item._id, item.variantId);
           if (String(id) === String(productId)) {
             return { ...item, quantity: newQuantity };
           }
           return item;
         });
         const nextCart = { ...prev, items: updatedItems };
-        window.dispatchEvent(
-          new CustomEvent('cart-updated', {
-            detail: { cart: nextCart },
-          })
-        );
+
         return nextCart;
       });
 
@@ -459,11 +460,7 @@ export const CartPage = () => {
       const updatedCart = isAuthenticated ? (res.data?.cart || res.data || res.cart || res) : res;
       if (updatedCart) {
         setCart(updatedCart);
-        window.dispatchEvent(
-          new CustomEvent('cart-updated', {
-            detail: { cart: updatedCart },
-          })
-        );
+
       }
     } catch (err) {
       console.error('Update item quantity error:', err);
@@ -484,15 +481,11 @@ export const CartPage = () => {
       setCart((prev) => {
         if (!prev) return prev;
         const remaining = (prev.items || []).filter((item) => {
-          const id = item.productId?._id || item.productId || item._id;
+          const id = productLineKey(item.productId || item._id, item.variantId);
           return String(id) !== String(productId);
         });
         const nextCart = { ...prev, items: remaining };
-        window.dispatchEvent(
-          new CustomEvent('cart-updated', {
-            detail: { cart: nextCart },
-          })
-        );
+
         return nextCart;
       });
 
@@ -506,11 +499,7 @@ export const CartPage = () => {
       const updatedCart = isAuthenticated ? (res?.data?.cart || res?.data || res?.cart || res) : res;
       if (updatedCart) {
         setCart(updatedCart);
-        window.dispatchEvent(
-          new CustomEvent('cart-updated', {
-            detail: { cart: updatedCart },
-          })
-        );
+
       }
       toast.success(productName ? `Removed "${productName}" from cart` : 'Item removed');
     } catch (err) {
@@ -523,33 +512,28 @@ export const CartPage = () => {
   };
 
   // Calculations for Order Summary based ONLY on selected items
-  const { subtotal, totalDiscount, grandTotal, selectedCount } = useMemo(() => {
+  const { subtotal, grandTotal, selectedCount } = useMemo(() => {
     let sub = 0;
-    let disc = 0;
     let count = 0;
 
     items.forEach((item) => {
       const prod = item.productId || {};
-      const id = String(prod._id || item.productId || item._id);
+      const id = productLineKey(prod._id || item.productId || item._id, item.variantId);
       if (!selectedItemIds.has(id)) return;
 
       const unitPrice =
         item.priceSnapshot !== undefined
           ? item.priceSnapshot
           : (prod.standardPrice || prod.price || 0);
-      const standardPrice = prod.standardPrice || prod.price || unitPrice;
-      const cdDiscount = Math.max(0, standardPrice - unitPrice);
       const qty = item.quantity || 1;
 
-      sub += standardPrice * qty;
-      disc += cdDiscount * qty;
+      sub += unitPrice * qty;
       count += qty;
     });
 
-    const grand = Math.max(0, sub - disc);
+    const grand = Math.max(0, sub);
     return {
       subtotal: sub,
-      totalDiscount: disc,
       grandTotal: grand,
       selectedCount: count,
     };
@@ -557,7 +541,7 @@ export const CartPage = () => {
 
   const selectedLineCount = items.filter((item) => {
     const product = item.productId || {};
-    return selectedItemIds.has(String(product._id || item.productId || item._id));
+    return selectedItemIds.has(productLineKey(product._id || item.productId || item._id, item.variantId));
   }).length;
 
   // Proceed to Checkout Handler
@@ -611,7 +595,7 @@ export const CartPage = () => {
     let itemIndex = 0;
     items.forEach((item) => {
       const prod = item.productId || {};
-      const id = String(prod._id || item.productId || item._id);
+      const id = productLineKey(prod._id || item.productId || item._id, item.variantId);
       if (!selectedItemIds.has(id)) return;
 
       itemIndex += 1;
@@ -635,9 +619,7 @@ export const CartPage = () => {
     text += `💰 *Order Summary:*\n`;
     text += `• Total Items: ${selectedCount}\n`;
     if (pricesVisible) text += `• Subtotal: ${formatCurrency(subtotal)}\n`;
-    if (pricesVisible && totalDiscount > 0) {
-      text += `• Verified Dealer Discount: -${formatCurrency(totalDiscount)}\n`;
-    }
+
     if (pricesVisible) text += `👉 *Estimated Total: ${formatCurrency(grandTotal)}*\n`;
     text += `━━━━━━━━━━━━━━━━━━━━━\n\n`;
     text += `💬 _${whatsappNote || 'Please confirm live stock availability, delivery timeline & share official GST commercial invoice.'}_\n`;
@@ -686,7 +668,7 @@ export const CartPage = () => {
       <div className="w-full px-4 sm:px-6 lg:px-8 2xl:px-12 py-8 space-y-6 bg-white min-h-screen">
         <Skeleton className="h-8 w-48" />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-8 space-y-4">
+          <div className="lg:col-span-8 min-w-0 space-y-4">
             <Skeleton className="h-64 w-full rounded-xl" />
           </div>
           <div className="lg:col-span-4">
@@ -699,7 +681,7 @@ export const CartPage = () => {
 
   return (
     <div className={`storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 py-6 space-y-8 bg-white text-gray-900 min-h-screen ${items.length ? 'pb-24 md:pb-6' : ''}`}>
-      
+
       {/* 1. TOP HEADER (Matching Mega Jaipur Reference Image) */}
       <div className="flex items-baseline gap-2.5 border-b border-gray-200 pb-3">
         <h1 className="text-xl sm:text-2xl font-bold text-[#420b45] flex items-center gap-2 tracking-tight">
@@ -732,13 +714,13 @@ export const CartPage = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
-          
+
           {/* ========================================================
               LEFT COLUMN: PRODUCTS TABLE WITH CHECKBOXES (Matching Mega Jaipur)
              ======================================================== */}
-          <div className="lg:col-span-8 space-y-4">
+          <div className="lg:col-span-8 min-w-0 space-y-4">
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-2xs">
-              <div className="space-y-3 p-3 md:hidden">
+              <div className="space-y-3 p-3">
                 <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs font-semibold text-gray-800">
                   <input type="checkbox" checked={selectedLineCount === items.length} onChange={handleToggleSelectAll} className="h-4 w-4 accent-[var(--store-primary)]" />
                   <span className="flex-1">Select all items</span>
@@ -746,7 +728,7 @@ export const CartPage = () => {
                 </label>
                 {items.map((item) => {
                   const prod = item.productId || {};
-                  const prodId = String(prod._id || item.productId || item._id);
+                  const prodId = productLineKey(prod._id || item.productId || item._id, item.variantId);
                   const unitPrice = item.priceSnapshot !== undefined ? item.priceSnapshot : (prod.standardPrice || prod.price || 0);
                   const availableStock = getAvailableStock(prod);
                   const maxAllowedQty = getMaximumEnquiryQuantity(prod);
@@ -754,15 +736,15 @@ export const CartPage = () => {
                   const isAtLimit = currentQty >= maxAllowedQty || (availableStock !== null && availableStock > 0 && currentQty >= availableStock);
                   const imgUrl = prod.images?.[0]?.url || prod.image || '';
                   return (
-                    <div key={prodId} className={`rounded-lg border border-gray-200 bg-white p-3 ${selectedItemIds.has(prodId) ? '' : 'opacity-60'}`}>
+                    <div key={prodId} data-cart-item={prodId} className={`min-w-0 rounded-lg border border-gray-200 bg-white p-3 sm:p-4 ${selectedItemIds.has(prodId) ? '' : 'opacity-60'}`}>
                       <div className="flex items-start gap-2.5">
                         <input type="checkbox" aria-label={`Select ${prod.name || 'product'}`} checked={selectedItemIds.has(prodId)} onChange={() => handleToggleSelectItem(prodId)} className="mt-3 h-4 w-4 shrink-0 accent-[var(--store-primary)]" />
                         <Link to={buildProductPath(prod)} className="flex h-16 w-16 shrink-0 items-center justify-center rounded border border-gray-200 bg-white p-1">
                           {imgUrl ? <img loading="lazy" decoding="async" src={imgUrl} alt={prod.name || 'Product'} className="max-h-full max-w-full object-contain" /> : <span className="text-[10px] text-gray-400">No image</span>}
                         </Link>
                         <div className="min-w-0 flex-1">
-                          <Link to={buildProductPath(prod)} className="line-clamp-2 text-xs font-semibold leading-snug text-gray-900">{prod.name || 'Vinexus Product'}</Link>
-                          <p className="mt-1 truncate text-[10px] text-gray-600">Model Number: {prod.modelNumber || prod.model || '—'}</p>
+                          <Link to={buildProductPath(prod)} className="block break-words [overflow-wrap:anywhere] text-sm font-semibold leading-snug text-gray-900">{prod.name || 'Vinexus Product'}</Link>
+                          <p className="mt-1 break-words [overflow-wrap:anywhere] text-xs text-gray-600">Model Number: {prod.modelNumber || prod.model || '—'}</p>
                           <p className="mt-1 text-[11px] font-semibold text-gray-800"><PriceGate>{formatCurrency(unitPrice)}</PriceGate>{pricesVisible ? ' each' : ''}</p>
                         </div>
                         <button type="button" onClick={() => handleRemoveItem(prodId, prod.name)} disabled={updatingItemId === prodId} aria-label={`Remove ${prod.name || 'product'}`} className="p-1 text-gray-500 hover:text-rose-600"><Trash2 className="h-4 w-4" /></button>
@@ -786,168 +768,7 @@ export const CartPage = () => {
                   );
                 })}
               </div>
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-[#f5edf6] text-xs font-semibold text-[#420b45] uppercase tracking-wider border-y border-[#eddced] select-none">
-                      <th className="py-2.5 px-3 w-14 text-center">
-                        <button
-                          type="button"
-                          onClick={handleToggleSelectAll}
-                          className="hover:underline font-bold text-xs cursor-pointer text-[#420b45]"
-                          title="Click to Toggle Select All"
-                        >
-                          SELECT
-                        </button>
-                      </th>
-                      <th className="py-2.5 px-2.5 text-left font-semibold whitespace-nowrap">MODEL</th>
-                      <th className="py-2.5 px-2.5 text-center font-semibold">IMAGE</th>
-                      <th className="py-2.5 px-3 text-left font-semibold min-w-[200px]">PRODUCT NAME</th>
-                      <th className="py-2.5 px-3 text-right font-semibold whitespace-nowrap">UNIT PRICE</th>
-                      <th className="py-2.5 px-3 text-right font-semibold whitespace-nowrap">CD DISCOUNT</th>
-                      <th className="py-2.5 px-3 text-center font-semibold whitespace-nowrap">QUANTITY</th>
-                      <th className="py-2.5 px-4 text-right font-semibold whitespace-nowrap">TOTAL</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {items.map((item) => {
-                      const prod = item.productId || {};
-                      const prodId = String(prod._id || item.productId || item._id);
-                      const isSelected = selectedItemIds.has(prodId);
 
-                      const unitPrice =
-                        item.priceSnapshot !== undefined
-                          ? item.priceSnapshot
-                          : (prod.standardPrice || prod.price || 0);
-                      const standardPrice = prod.standardPrice || prod.price || unitPrice;
-                      const cdDiscount = Math.max(0, standardPrice - unitPrice);
-                      const lineTotal = unitPrice * (item.quantity || 1);
-                      const availableStock = getAvailableStock(prod);
-                      const maxAllowedQty = getMaximumEnquiryQuantity(prod);
-                      const currentQty = item.quantity || 1;
-                      const isAtLimit = currentQty >= maxAllowedQty || (availableStock !== null && availableStock > 0 && currentQty >= availableStock);
-
-                      const imgUrl =
-                        prod.images?.[0]?.url ||
-                        prod.image ||
-                        'https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=300';
-                      
-                      const model = prod.modelNumber || prod.specifications?.find((s) => s.key?.toLowerCase().includes('model'))?.value || '—';
-
-                      return (
-                        <tr
-                          key={prodId}
-                          className={`hover:bg-gray-50/70 transition-colors ${
-                            !isSelected ? 'opacity-50 bg-gray-50/30' : ''
-                          }`}
-                        >
-                          {/* Checkbox */}
-                          <td className="py-3 px-3 text-center">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => handleToggleSelectItem(prodId)}
-                              className="w-4 h-4 rounded border-gray-300 text-[#420b45] focus:ring-[#420b45] accent-[#420b45] cursor-pointer"
-                            />
-                          </td>
-
-                          {/* MODEL */}
-                          <td className="py-3 px-2.5 font-mono text-xs sm:text-[13px] text-gray-700 whitespace-nowrap">
-                            {model}
-                          </td>
-
-                          {/* IMAGE (Thumbnail matching reference image) */}
-                          <td className="py-3 px-2.5 text-center">
-                            <div className="w-10 h-10 sm:w-11 sm:h-11 bg-white rounded border border-gray-200 p-0.5 inline-flex items-center justify-center overflow-hidden shrink-0">
-                              <img loading="lazy" decoding="async"
-                                src={imgUrl}
-                                alt={prod.name || 'Product'}
-                                className="max-h-full max-w-full object-contain"
-                              />
-                            </div>
-                          </td>
-
-                          {/* PRODUCT NAME (1 line with ellipsis) */}
-                          <td className="py-3 px-3 min-w-[200px] max-w-[320px]">
-                            <Link
-                              to={buildProductPath(prod)}
-                              className="text-xs sm:text-[13px] text-gray-800 hover:text-[#420b45] font-normal truncate block transition-colors"
-                              title={prod.name}
-                            >
-                              {prod.name || 'ViNexus Product'}
-                            </Link>
-                          </td>
-
-                          {/* UNIT PRICE */}
-                          <td className="py-3 px-3 text-right text-gray-800 text-xs sm:text-[13px] whitespace-nowrap">
-                            <PriceGate>{formatCurrency(unitPrice)}</PriceGate>
-                          </td>
-
-                          {/* CD DISCOUNT */}
-                          <td className="py-3 px-3 text-right text-gray-800 text-xs sm:text-[13px] whitespace-nowrap">
-                            <PriceGate>{formatCurrency(cdDiscount)}</PriceGate>
-                          </td>
-
-                          {/* QUANTITY STEPPER (Matching Reference Image) */}
-                          <td className="py-3 px-3 text-center whitespace-nowrap">
-                            <div className="inline-flex items-center border border-[#d2b8d5] rounded bg-white overflow-hidden">
-                              <button
-                                type="button"
-                                onClick={() => handleUpdateQuantity(prodId, (item.quantity || 1) - 1, prod)}
-                                disabled={(item.quantity || 1) <= 1 || updatingItemId === prodId}
-                                className="w-7 h-7 flex items-center justify-center text-[#420b45] hover:bg-[#fbf7fc] disabled:opacity-30 cursor-pointer transition-colors"
-                                title="Decrease quantity"
-                              >
-                                <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
-                              </button>
-                              <CartQuantityInput
-                                quantity={item.quantity || 1}
-                                maximum={maxAllowedQty}
-                                disabled={updatingItemId === prodId}
-                                productName={prod.name}
-                                onSave={(value) => handleUpdateQuantity(prodId, value, prod)}
-                                className="h-7 w-14 text-xs sm:text-sm font-semibold text-gray-800"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => handleUpdateQuantity(prodId, (item.quantity || 1) + 1, prod)}
-                                disabled={updatingItemId === prodId || isAtLimit}
-                                className="w-7 h-7 flex items-center justify-center text-[#420b45] hover:bg-[#fbf7fc] disabled:opacity-30 cursor-pointer transition-colors"
-                                title="Increase quantity"
-                              >
-                                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                              </button>
-                            </div>
-                            {isAtLimit && (
-                              <div className="mt-1 text-[11px] font-semibold text-[var(--store-primary)]">
-                                Enquiry quantity limit reached
-                              </div>
-                            )}
-                          </td>
-
-                          {/* TOTAL + TRASH BUTTON */}
-                          <td className="py-3 px-4 text-right whitespace-nowrap">
-                            <div className="inline-flex items-center justify-end gap-3">
-                              <span className="font-semibold text-gray-900 text-xs sm:text-[13px]">
-                                <PriceGate>{formatCurrency(lineTotal)}</PriceGate>
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveItem(prodId, prod.name)}
-                                disabled={updatingItemId === prodId}
-                                className="text-gray-400 hover:text-rose-600 transition-colors p-1 cursor-pointer"
-                                title="Remove item"
-                              >
-                                <Trash2 className="w-4 h-4 stroke-[1.5]" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
             </div>
 
             {/* Bottom Actions Row */}
@@ -964,7 +785,7 @@ export const CartPage = () => {
           {/* ========================================================
               RIGHT COLUMN: ORDER SUMMARY CARD (Matching Reference Image)
              ======================================================== */}
-          <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-4">
+          <div className="lg:col-span-4 min-w-0 lg:sticky lg:top-24 space-y-4">
             <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-2xs space-y-4 text-left">
               <h2 className="text-base font-semibold text-[#420b45] tracking-tight">
                 Order Summary
@@ -977,10 +798,7 @@ export const CartPage = () => {
                   <span className="font-bold text-gray-900"><PriceGate>{formatCurrency(subtotal)}</PriceGate></span>
                 </div>
 
-                <div className="flex items-center justify-between text-orange-600 font-semibold">
-                  <span>CD DISCOUNT</span>
-                  <span>{pricesVisible ? '- ' : ''}<PriceGate>{formatCurrency(totalDiscount)}</PriceGate></span>
-                </div>
+
               </div>
 
               <div className="border-t border-gray-200 pt-3 flex items-baseline justify-between">

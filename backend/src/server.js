@@ -1,3 +1,4 @@
+import { ensureRetentionIndexes } from './services/dataRetention.service.js';
 import app from './app.js';
 import { config, validateProductionConfig } from './config/env.js';
 import { connectDB, disconnectDB } from './config/db.js';
@@ -43,6 +44,8 @@ const startServer = async () => {
     // One-off data maintenance runs on a single instance only; under PM2
     // cluster mode the other instances would race it.
     if (!config.isPrimaryInstance) return;
+    await ensureRetentionIndexes();
+    console.log('[Server] Automatic retention enabled: audit logs 30 days; sessions 7 days.');
     const enquiryStatusesUpdated = await backfillEnquiryStatuses();
     if (enquiryStatusesUpdated) console.log(`[Server] Updated legacy statuses for ${enquiryStatusesUpdated} enquiries.`);
     const modelBackfill = await backfillProductModels();

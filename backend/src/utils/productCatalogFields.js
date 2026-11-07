@@ -1,11 +1,12 @@
+import { hasVariants, variantSummary } from '../../../shared/productVariants.js';
 // Catalog fields derived from a product's own data and stored on it, so the
 // storefront can filter and search with indexes instead of recomputing them
 // for every document on every request. Bump CATALOG_FIELDS_VERSION whenever
 // computeCatalogFields changes; startup re-derives older documents.
-export const CATALOG_FIELDS_VERSION = 3;
+export const CATALOG_FIELDS_VERSION = 4;
 
 // Paths the derived fields depend on.
-export const CATALOG_SOURCE_PATHS = ['name', 'sku', 'modelNumber', 'isLowStock', 'specifications', 'stockQuantity'];
+export const CATALOG_SOURCE_PATHS = ['name', 'sku', 'modelNumber', 'isLowStock', 'specifications', 'stockQuantity', 'variants'];
 
 const BRAND_KEYS = ['brand', 'manufacturer'];
 const STOCK_KEYS = ['stock', 'inventory'];
@@ -106,7 +107,7 @@ export const computeCatalogFields = (product) => {
   const brandValue = firstSpecValue(specifications, BRAND_KEYS);
   const specStock = toStockNumber(firstSpecValue(specifications, STOCK_KEYS));
   const rawStock = product.stockQuantity !== undefined && product.stockQuantity !== null ? product.stockQuantity : null;
-  const stockLevel = (rawStock !== null && rawStock > 0)
+  const stockLevel = hasVariants(product) ? variantSummary(product.variants).availableStock : (rawStock !== null && rawStock > 0)
     ? rawStock
     : (specStock !== null ? specStock : (rawStock ?? 0));
   const brandTexts = specifications
@@ -117,7 +118,7 @@ export const computeCatalogFields = (product) => {
     brandKey: brandValue === undefined || brandValue === null ? '' : toBrandKey(brandValue),
     stockLevel,
     stockStatus: stockStatusFor(stockLevel, product.isLowStock === true),
-    searchTokens: searchTokensFor([product.name, product.sku, product.modelNumber, ...brandTexts]),
+    searchTokens: searchTokensFor([product.name, product.sku, product.modelNumber, ...(product.variants || []).flatMap(option => [option.name, option.sku]), ...brandTexts]),
     catalogFieldsVersion: CATALOG_FIELDS_VERSION,
   };
 };

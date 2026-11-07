@@ -1,3 +1,4 @@
+import { activeVariants, hasVariants, selectedVariantProduct } from '../../../../shared/productVariants.js';
 import { productPath, productStructuredData, SITE_ORIGIN } from '../../../../shared/seo.js';
 import PriceGate, { LoginToViewPrices, usePriceVisibility } from '../../components/products/PriceGate';
 import { isWarrantyLink, productModelVariant } from '../../../../shared/productPresentation.js';
@@ -80,6 +81,7 @@ export const ProductDetailPage = () => {
   const [hasCopied, setHasCopied] = useState(false);
   const [hasNameCopied, setHasNameCopied] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [selectedVariantId, setSelectedVariantId] = useState("");
 
   useEffect(() => {
     setQuantity(1);
@@ -254,25 +256,28 @@ export const ProductDetailPage = () => {
   const isApprovedDealer = user?.role === 'dealer' && (user?.dealerStatus === 'approved' || user?.kycStatus === 'approved');
   const isAdmin = user?.role === 'admin';
 
-  const standardPrice = product?.standardPrice || 0;
-  const dealerPrice = product?.dealerPrice || 0;
+  const options = activeVariants(product);
+  const variantId = options.some(option => String(option._id) === selectedVariantId) ? selectedVariantId : String(options.find(option => option.stockQuantity > 0)?._id || options[0]?._id || '');
+  const purchaseProduct = hasVariants(product) ? selectedVariantProduct(product, variantId) : product;
+  const standardPrice = purchaseProduct?.standardPrice || 0;
+  const dealerPrice = purchaseProduct?.dealerPrice || 0;
 
-  let displayPrice = product?.applicablePrice ?? standardPrice;
+  let displayPrice = purchaseProduct?.applicablePrice ?? standardPrice;
   let hasDealerDiscount = false;
 
   if (isApprovedDealer && dealerPrice > 0) {
-    displayPrice = product?.applicablePrice ?? dealerPrice;
+    displayPrice = purchaseProduct?.applicablePrice ?? dealerPrice;
     if (standardPrice > dealerPrice) {
       hasDealerDiscount = true;
     }
   }
 
   // Stock status: isActive = true means available in stock
-  const availableStock = getAvailableStock(product);
-  const maxAllowedQuantity = getMaximumOrderQuantity(product);
-  const isOutOfStock = product?.stockStatus === 'out-of-stock' || availableStock === 0 || maxAllowedQuantity === 0;
+  const availableStock = getAvailableStock(purchaseProduct);
+  const maxAllowedQuantity = getMaximumOrderQuantity(purchaseProduct);
+  const isOutOfStock = !purchaseProduct || purchaseProduct?.stockStatus === 'out-of-stock' || availableStock === 0 || maxAllowedQuantity === 0;
   const isInStock = !isOutOfStock;
-  const productIsLowStock = !isOutOfStock && isLowStock(product);
+  const productIsLowStock = !isOutOfStock && isLowStock(purchaseProduct);
 
   // Dynamic SEO metadata & Google Product Structured Data (JSON-LD)
   usePageSeo({
@@ -329,7 +334,7 @@ export const ProductDetailPage = () => {
 
     try {
       setIsAdding(true);
-      const res = await cartService.addItem(product._id, quantity);
+      const res = await cartService.addItem(product._id, quantity, variantId || undefined);
       const updatedCart = res.data?.cart || res.data || res.cart || res;
       window.dispatchEvent(
         new CustomEvent('cart-updated', {
@@ -339,7 +344,7 @@ export const ProductDetailPage = () => {
       window.dispatchEvent(
         new CustomEvent('cart-item-added', {
           detail: {
-            product,
+            product: purchaseProduct,
             quantity,
             displayPrice,
             cart: updatedCart,
@@ -583,7 +588,7 @@ export const ProductDetailPage = () => {
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2 flex-1">
               <h1 className="text-xl sm:text-2xl font-bold text-[var(--store-text)] tracking-tight leading-snug">
-                {product.name}
+                {purchaseProduct?.name || product.name}
               </h1>
 
               {/* Product actions */}
@@ -726,11 +731,28 @@ export const ProductDetailPage = () => {
         <div className="min-w-0">
           <div className="bg-[var(--store-surface)] rounded-2xl border border-[var(--store-border)] p-5 shadow-xs space-y-4">
             
+            {options.length > 0 && <fieldset className="min-w-0 space-y-3" aria-label="Choose Configuration">
+              <legend className="flex items-center gap-2 text-base font-bold text-[var(--store-primary)]"><ListFilter className="h-5 w-5" aria-hidden="true" />Choose Configuration</legend>
+              <p className="text-sm font-semibold text-[var(--store-muted)]">Variant</p>
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,120px),1fr))] gap-2">
+                {options.map(option => {
+                  const selected = String(option._id) === variantId;
+                  const price = option.applicablePrice ?? (isApprovedDealer && option.dealerPrice > 0 ? option.dealerPrice : option.standardPrice);
+                  const inStock = getMaximumOrderQuantity(selectedVariantProduct(product, option._id)) > 0;
+                  return <label key={option._id} className={`relative min-w-0 cursor-pointer rounded-lg border p-3 transition-colors focus-within:ring-2 focus-within:ring-[var(--store-primary)] ${selected ? 'border-[var(--store-primary)] bg-[var(--store-primary)]/5 ring-1 ring-[var(--store-primary)]' : 'border-[var(--store-border)] hover:border-[var(--store-primary)]'}`}>
+                    <input type="radio" name="product-variant" aria-label={option.name} value={String(option._id)} checked={selected} onChange={() => { setSelectedVariantId(String(option._id)); setQuantity(1); }} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
+                    <span className="block break-words text-base font-semibold text-[var(--store-primary)]">{option.name}</span>
+                    <span className="mt-1 block text-xs leading-5">{pricesVisible && <><span className="text-[var(--store-muted)]">{formatCurrency(price)}</span><span aria-hidden="true"> · </span></>}<span className={inStock ? 'text-emerald-700' : 'text-rose-600'}>{inStock ? 'In Stock' : 'Out of Stock'}</span></span>
+                  </label>;
+                })}
+              </div>
+              {purchaseProduct?.sku && <p className="text-xs text-[var(--store-muted)]">SKU: {purchaseProduct.sku}</p>}
+            </fieldset>}
             {/* Price & Discount Row */}
             {pricesVisible && <PriceGate>
             <div className="flex items-center justify-between gap-2 border-b border-[var(--store-border)] pb-3">
               <div className="flex flex-col">
-                <span className="text-2xl sm:text-3xl font-black text-[var(--store-text)] tracking-tight">
+                <span data-testid="purchase-price" aria-live="polite" className="text-2xl sm:text-3xl font-black text-[var(--store-text)] tracking-tight">
                   {formatCurrency(displayPrice)}
                 </span>
                 {hasDealerDiscount && (
@@ -811,7 +833,7 @@ export const ProductDetailPage = () => {
 
             {isOutOfStock && <p className="text-sm text-[var(--store-muted)]">Send an enquiry to ask about availability and restocking.</p>}
             {pricesVisible && whatsappPhone && (
-              <a href={`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(`Hello, I would like to order ${product.name}${product.modelNumber ? ` (Model: ${product.modelNumber})` : ''}. Quantity: ${quantity}. Please confirm pricing and availability. ${window.location.href}`)}`} target="_blank" rel="noopener noreferrer" className="flex h-11 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700">
+              <a href={`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(`Hello, I would like to order ${purchaseProduct?.name || product.name}${product.modelNumber ? ` (Model: ${product.modelNumber})` : ''}. Quantity: ${quantity}. Please confirm pricing and availability. ${window.location.href}`)}`} target="_blank" rel="noopener noreferrer" className="flex h-11 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700">
                 Order on WhatsApp
               </a>
             )}

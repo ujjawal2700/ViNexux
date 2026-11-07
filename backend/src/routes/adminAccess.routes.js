@@ -1,9 +1,14 @@
+import { AUDIT_RETENTION_DAYS, retentionCutoff } from '../../../shared/dataRetention.js';
+import { logQuery, buildAuditFilter, readableAuditLogs, auditLogsQuery, auditSummaryQuery } from '../services/auditReport.service.js';
+import { generateAuditPdf, generateAuditExcel } from '../services/auditExport.service.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import { User } from '../models/User.js';
 import { Session } from '../models/Session.js';
+import { PushDevice } from '../models/PushDevice.js';
+import { OtpVerification } from '../models/OtpVerification.js';
 import { AccessRole } from '../models/AccessRole.js';
 import { AuditLog } from '../audit/audit.js';
 import { authenticate } from '../middlewares/auth.middleware.js';
@@ -105,25 +110,43 @@ router.put('/employees/:id', asyncHandler(async (req, res) => {
   } finally { employee.$session(null); }
   reply(res, { employee: publicEmployee(employee) });
 }));
+router.delete('/employees/:id', asyncHandler(async (req, res) => {
+  const employeeId = id(req.params.id);
+  if (String(employeeId) === String(req.user._id)) fail('You cannot delete your own account.', 403);
+  await mongoose.connection.transaction(async session => {
+    const employee = await User.findOne({ _id: employeeId, role: 'admin', isEmployee: true }).session(session);
+    if (!employee) fail('Employee not found.', 404);
+    await Session.deleteMany({ userId: employee._id }, { session });
+    await PushDevice.deleteMany({ userId: employee._id }, { session });
+    await OtpVerification.deleteMany({ identifier: { $in: [employee.email, employee.phone].filter(Boolean) } }, { session });
+    await User.deleteOne({ _id: employee._id, role: 'admin', isEmployee: true }, { session });
+    // Keep roles, historical work and audit records; deleting a login never deletes its work.
+  });
+  reply(res, { deleted: true });
+}));
+router.get('/logs/export', asyncHandler(async (req, res) => {
+  const query = logQuery.parse(req.query);
+  const format = z.enum(['pdf', 'xlsx']).parse(req.query.format);
+  const filter = buildAuditFilter(query);
+  const raw = await auditLogsQuery(filter).limit(1001).lean();
+  if (raw.length > 1000) throw new AppError('This report has more than 1,000 entries. Narrow the dates, time window or other filters and export again. No partial report was generated.', 413, 'REPORT_TOO_LARGE');
+  const logs = await readableAuditLogs(raw);
+  const buffer = await (format === 'pdf' ? generateAuditPdf(logs, query) : generateAuditExcel(logs, query));
+  res.set('Cache-Control', 'no-store');
+  res.set('Content-Type', format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.set('Content-Disposition', `attachment; filename="vinexus-logbook-${new Date().toISOString().slice(0, 10)}.${format}"`);
+  res.send(buffer);
+}));
 router.get('/logs', asyncHandler(async (req, res) => {
-  const query = parse(z.object({ page: z.coerce.number().int().min(1).default(1), actorId: z.string().optional(),
-    section: z.enum(ADMIN_SECTIONS.map(s => s.key).concat(['access', 'profile', 'auth', 'enquiries'])).optional(),
-    from: z.string().datetime().optional(), to: z.string().datetime().optional(),
-    status: z.enum(['pending', 'applied', 'failed']).optional(), search: z.string().trim().max(100).default(''),
-  }), req.query);
-  const filter = {};
-  if (query.search) { const regex = new RegExp(query.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'); filter.$or = ['actor.name', 'actor.email', 'entity', 'documents.id'].map(key => ({ [key]: regex })); }
-  if (query.actorId) filter['actor.id'] = id(query.actorId);
-  if (query.section) filter.section = query.section;
-  if (query.status) filter.status = query.status;
-  if (query.from || query.to) filter.createdAt = { ...(query.from ? { $gte: new Date(query.from) } : {}), ...(query.to ? { $lte: new Date(query.to) } : {}) };
-  const [logs, total] = await Promise.all([AuditLog.find(filter).select('-attempted -documents.before -documents.after').sort({ createdAt: -1, _id: -1 }).skip((query.page - 1) * 25).limit(25).lean(), AuditLog.countDocuments(filter)]);
-  reply(res, { logs, total, page: query.page, pages: Math.ceil(total / 25) });
+  const query = logQuery.parse(req.query);
+  const filter = buildAuditFilter(query);
+  const [raw, total] = await Promise.all([auditSummaryQuery(filter).skip((query.page - 1) * 25).limit(25).lean(), AuditLog.countDocuments(filter)]);
+  reply(res, { logs: await readableAuditLogs(raw, { compact: true }), total, page: query.page, pages: Math.ceil(total / 25) });
 }));
 router.get('/logs/:id', asyncHandler(async (req, res) => {
-  const log = await AuditLog.findById(id(req.params.id)).lean();
-  if (!log) fail('Log entry not found.', 404);
-  reply(res, { log });
+  const log = await AuditLog.findById(id(req.params.id)).select('-attempted').lean();
+  if (!log || !log.createdAt || new Date(log.createdAt) < retentionCutoff(AUDIT_RETENTION_DAYS)) fail('Log entry not found or outside the 30-day retention period.', 404);
+  reply(res, { log: (await readableAuditLogs([log]))[0] });
 }));
 router.use((error, req, res, next) => { if (error.code === 11000) return next(new AppError('That name, email, or phone number is already in use.', 409, 'CONFLICT')); next(error); });
 export default router;

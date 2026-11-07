@@ -1,7 +1,9 @@
+import BannerMedia from './BannerMedia';
+import { isBannerVideo } from '../../../../shared/bannerMedia';
 import React, { useEffect, useState, useId, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, ArrowUpRight } from 'lucide-react';
-import { bannerFramingStyle, BENTO_IMAGE_LIMIT, BENTO_SECTION_COUNT, BENTO_TRANSITIONS, visibleBannerSections } from '../../../../shared/bannerGrid';
+import { BENTO_IMAGE_LIMIT, BENTO_SECTION_COUNT, BENTO_TRANSITIONS, visibleBannerSections } from '../../../../shared/bannerGrid';
 
 function BannerTile({ images = [], section, transition = 'fade' }) {
   const filterId = `banner-pixel-${useId().replace(/:/g, '')}`;
@@ -43,14 +45,14 @@ function BannerTile({ images = [], section, transition = 'fade' }) {
   const current = images[index] || images[0];
   const art = current ? <>
     <svg aria-hidden="true" width="0" height="0" className="absolute"><defs><filter id={filterId} x="0" y="0" width="100%" height="100%"><feFlood x="0" y="0" width="1" height="1" result="sample" /><feComposite in="sample" in2="sample" operator="over" x="0" y="0" width="12" height="12" /><feTile result="grid" /><feComposite in="SourceGraphic" in2="grid" operator="in" /><feMorphology operator="dilate" radius="6" /></filter></defs></svg>
-    {images.map((image, i) => <div key={image._id || image.url} className={`bento-banner-slide effect-${effect} ${i === index ? `is-current ${previous !== null ? 'is-entering' : ''}` : i === previous ? 'is-leaving' : ''}`} onAnimationEnd={e => { if (e.target === e.currentTarget && i === index) setSlide(slide => ({ ...slide, previous: null })); }} style={{ '--banner-pixel-filter': `url(#${filterId})` }}><img key={image._id || image.url} src={image.url} alt={image.title || `Featured banner in section ${section + 1}`} aria-hidden={i !== index} loading={i === 0 ? 'eager' : 'lazy'} draggable={false} className={`bento-banner-image ${i === index ? 'is-active' : ''}`} style={bannerFramingStyle(image)} /></div>)}
+    {images.map((image, i) => <div key={image._id || image.url} className={`bento-banner-slide effect-${effect} ${i === index ? `is-current ${previous !== null ? 'is-entering' : ''}` : i === previous ? 'is-leaving' : ''}`} onAnimationEnd={e => { if (e.target === e.currentTarget && i === index) setSlide(slide => ({ ...slide, previous: null })); }} style={{ '--banner-pixel-filter': `url(#${filterId})` }}><BannerMedia asset={image} active={i === index} shown={i === index || i === previous} first={i === 0} /></div>)}
     {(current.title || current.buttonText) && <div className="bento-banner-caption"><span>{current.title || current.buttonText}</span><ArrowUpRight size={18} /></div>}
   </> : <div className="bento-banner-empty"><span className="text-xs uppercase tracking-[.2em] text-[var(--store-muted)]">ViNexus collections</span><span className="text-xl font-semibold text-[var(--store-text)]">{['Explore our range', 'Find your essentials'][section]}</span><span className="inline-flex items-center gap-2 text-sm text-[var(--store-primary)]">Shop products <ArrowUpRight size={16} /></span></div>;
   const link = current?.link || (!current ? '/products' : '');
   const external = /^https?:\/\//i.test(link);
   const validLink = external || /^\/(?!\/)/.test(link);
   return <div className={`bento-banner-tile bento-banner-tile-${section + 1}`} role="region" aria-roledescription="carousel" aria-label={`Banner section ${section + 1}`} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} onFocusCapture={() => setFocused(true)} onBlurCapture={e => { if (!e.currentTarget.contains(e.relatedTarget)) setFocused(false); }}>
-    {validLink ? external ? <a href={link} target="_blank" rel="noopener noreferrer" className="bento-banner-content">{art}</a> : <Link to={link} className="bento-banner-content">{art}</Link> : <div className="bento-banner-content">{art}</div>}
+    {isBannerVideo(current) ? <div className="bento-banner-content">{art}{validLink && (external ? <a href={link} target="_blank" rel="noopener noreferrer" className="absolute bottom-3 right-3 z-10 rounded bg-black/70 px-3 py-2 text-xs font-bold text-white">Learn more</a> : <Link to={link} className="absolute bottom-3 right-3 z-10 rounded bg-black/70 px-3 py-2 text-xs font-bold text-white">Learn more</Link>)}</div> : validLink ? external ? <a href={link} target="_blank" rel="noopener noreferrer" className="bento-banner-content">{art}</a> : <Link to={link} className="bento-banner-content">{art}</Link> : <div className="bento-banner-content">{art}</div>}
     {images.length > 1 && <div className="bento-banner-controls">
       <button type="button" onClick={() => nav(-1)} aria-label={`Previous image in section ${section + 1}`}><ChevronLeft size={16} /></button>
       <button type="button" onClick={() => nav(1)} aria-label={`Next image in section ${section + 1}`}><ChevronRight size={16} /></button>

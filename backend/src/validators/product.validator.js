@@ -4,9 +4,25 @@ import mongoose from 'mongoose';
 
 const isValidObjectId = (val) => mongoose.Types.ObjectId.isValid(val);
 
+export const productVariantsSchema = z.array(z.object({
+  _id: z.string().refine(isValidObjectId, 'Invalid variant ID').optional(),
+  name: z.string().trim().min(1).max(100),
+  sku: z.string().trim().max(50).optional().default(''),
+  standardPrice: z.number().finite().min(0).max(100000000).refine(value => Math.abs(value * 100 - Math.round(value * 100)) < 0.00001, 'Use at most two decimal places.'),
+  dealerPrice: z.number().finite().min(0).max(100000000).refine(value => Math.abs(value * 100 - Math.round(value * 100)) < 0.00001, 'Use at most two decimal places.').default(0),
+  stockQuantity: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+  isActive: z.boolean().optional().default(true),
+})).max(100).superRefine((rows, ctx) => {
+  for (const field of ['name', 'sku', '_id']) {
+    const values = rows.map(row => String(row[field] || '').trim().toLowerCase()).filter(Boolean);
+    if (new Set(values).size !== values.length) ctx.addIssue({ code: 'custom', message: `Variant ${field} values must be unique.` });
+  }
+  if (!Number.isSafeInteger(rows.reduce((sum, row) => sum + row.stockQuantity, 0))) ctx.addIssue({ code: 'custom', message: 'Total variant stock exceeds the supported limit.' });
+});
+
 export const addProductStockSchema = {
   params: z.object({ id: z.string().refine(isValidObjectId, 'Invalid product ID') }),
-  body: z.object({ quantity: z.number().int().positive().max(Number.MAX_SAFE_INTEGER), operation: z.enum(['add', 'remove']).default('add') }),
+  body: z.object({ quantity: z.number().int().positive().max(Number.MAX_SAFE_INTEGER), operation: z.enum(['add', 'remove']).default('add'), variantId: z.string().refine(isValidObjectId, 'Invalid variant ID').optional() }),
 };
 
 export const stockSearchSchema = {
@@ -51,6 +67,7 @@ export const createProductSchema = {
     modelNumber: z.string({ required_error: 'Model number is required' }).trim().min(1).max(100),
     model: z.string().trim().max(100).optional().default('Standard Model'),
     stockQuantity: z.coerce.number().min(0, { message: 'Stock quantity cannot be negative' }).default(0).optional(),
+    variants: productVariantsSchema.optional(),
     variant: z.string().trim().max(100).optional().default(''),
     warrantyType: z.enum(['text', 'link']).optional().default('text'),
     warranty: z.string().trim().max(200).optional().default(''),
@@ -117,6 +134,8 @@ export const updateProductSchema = {
     modelNumber: z.string().trim().min(1).max(100).optional(),
     model: z.string().trim().max(100).optional(),
     stockQuantity: z.coerce.number().min(0, { message: 'Stock quantity cannot be negative' }).optional(),
+    variants: productVariantsSchema.optional(),
+    expectedVariants: productVariantsSchema.optional(),
     variant: z.string().trim().max(100).optional(),
     warrantyType: z.enum(['text', 'link']).optional(),
     warranty: z.string().trim().max(200).optional(),

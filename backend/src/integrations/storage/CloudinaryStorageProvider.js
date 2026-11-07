@@ -47,7 +47,7 @@ export class CloudinaryStorageProvider extends StorageProvider {
     }
 
     const isImage = mimetype && mimetype.startsWith('image/');
-    const resourceType = isImage ? 'image' : 'raw';
+    const resourceType = isImage ? 'image' : mimetype?.startsWith('video/') ? 'video' : 'raw';
     const cleanFolder = (folder || 'vinexus/uploads').replace(/^\/+|\/+$/g, '');
     const cloudinary = await this.getClient();
 

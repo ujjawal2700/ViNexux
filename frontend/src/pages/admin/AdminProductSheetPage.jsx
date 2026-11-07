@@ -66,6 +66,7 @@ export default function AdminProductSheetPage() {
       <ol className="list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
         <li>Edit existing rows, or add a row with a unique SKU and leave Product ID blank for a new product.</li>
         <li>Choose Published or Draft. Use Yes / No for Trending, New Arrival, and Low Stock. The reference and guide tabs explain categories, brands, images, and specifications.</li>
+        <li>Use Variants JSON for options such as 5m or 10m, with separate retail/dealer prices and stock. Keep existing variant IDs unchanged; the product guide includes an example. Parent prices and stock are calculated from the options.</li>
         <li>Finish editing, then click Sync Products below. Wait for it to finish before editing the sheet again.</li>
       </ol>
       <p className="text-xs text-muted-foreground">Conflicting edits are reported for you to fix. Removing a row doesn’t delete a product; it returns on sync. Use Draft to hide a product.</p>

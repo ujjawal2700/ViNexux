@@ -1,3 +1,4 @@
+import { bannerVideoMime, BANNER_VIDEO_MAX_BYTES } from '../../../shared/bannerMedia.js';
 import multer from 'multer';
 import { AppError } from '../utils/AppError.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
@@ -13,6 +14,7 @@ const PROHIBITED_EXTENSIONS = [
 const ALLOWED_MIME_TYPES = {
   kyc: ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'],
   product: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'],
+  banner: ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml', 'video/mp4', 'video/webm', 'video/quicktime'],
   cms: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'],
   general: ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'],
 };
@@ -52,7 +54,7 @@ export const uploadSingle = (fieldName = 'file', category = 'general') => {
   const upload = multer({
     storage,
     limits: {
-      fileSize: MAX_FILE_SIZE,
+      fileSize: category === 'banner' ? BANNER_VIDEO_MAX_BYTES : MAX_FILE_SIZE,
     },
     fileFilter: (req, file, cb) => {
       if (!file) {
@@ -85,9 +87,9 @@ export const uploadSingle = (fieldName = 'file', category = 'general') => {
 
 
       // Check allowed MIME type
-      const mimetype = (file.mimetype || '').toLowerCase() !== 'application/pdf'
+      const mimetype = (category === 'banner' && bannerVideoMime(file.originalname, file.mimetype)) || ((file.mimetype || '').toLowerCase() !== 'application/pdf'
         ? getProductImageMimeType(file.originalname, file.mimetype)
-        : (file.mimetype || '').toLowerCase();
+        : (file.mimetype || '').toLowerCase());
       if (!allowedMimes.includes(mimetype)) {
         return cb(
           new AppError(
@@ -112,7 +114,7 @@ export const uploadSingle = (fieldName = 'file', category = 'general') => {
           if (err.code === 'LIMIT_FILE_SIZE') {
             return next(
               new AppError(
-                'File size exceeds the maximum limit of 5MB.',
+                category === 'banner' ? 'Banner media must be under 50 MB (images under 5 MB).' : 'File size exceeds the maximum limit of 5MB.',
                 HTTP_STATUS.BAD_REQUEST,
                 ERROR_CODES.VALIDATION_ERROR
               )

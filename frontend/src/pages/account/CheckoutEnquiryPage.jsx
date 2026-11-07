@@ -1,3 +1,4 @@
+import { productLineKey } from '../../../../shared/productVariants.js';
 import { normalizeEnquiryPhone, validateEnquiryContact } from '../../utils/enquiryValidation';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -92,7 +93,7 @@ export const CheckoutEnquiryPage = () => {
       } catch { /* Ignore invalid stale selection state. */ }
       const allItems = cartData?.items || [];
       const items = selectedIds.length
-        ? allItems.filter((item) => selectedIds.includes(String(item.productId?._id || item.productId)))
+        ? allItems.filter((item) => selectedIds.includes(productLineKey(item.productId, item.variantId)))
         : allItems;
 
       if (!items || items.length === 0) {
@@ -145,7 +146,7 @@ export const CheckoutEnquiryPage = () => {
         contactEmail: contact.email.trim().toLowerCase(),
         contactPhone: normalizeEnquiryPhone(contact.phone),
         deliveryAddress,
-        selectedProductIds: items.map((item) => String(item.productId?._id || item.productId)),
+        selectedProductIds: items.map((item) => productLineKey(item.productId, item.variantId)),
         whatsappNumber: cleanedWhatsapp,
         message: message.trim() || undefined,
       };

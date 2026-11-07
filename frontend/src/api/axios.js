@@ -1,3 +1,4 @@
+import { clearPublicRequests } from '../utils/publicRequests';
 import { adminLocation } from '../utils/adminLocation';
 import { getAdminAccessState } from '../utils/adminAccessState';
 import { canAdmin, sectionForAdminPath } from '../../../shared/adminAccess.js';
@@ -175,6 +176,7 @@ const processQueue = (error, token = null) => {
 
 apiClient.interceptors.response.use(
   (response) => {
+    if (!['get', 'head', 'options'].includes((response.config?.method || 'get').toLowerCase()) && /\/admin\//.test(response.config?.url || '')) clearPublicRequests();
     releaseRequest(response.config);
     if (response.config?._globalLoaderTracked) {
       response.config._globalLoaderTracked = false;

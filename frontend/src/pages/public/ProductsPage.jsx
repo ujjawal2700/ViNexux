@@ -75,6 +75,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
   // URL Query Parameters
   const { user } = useAuth();
   const pricesVisible = usePriceVisibility();
+  const newArrivalsOnly = searchParams.get('isNewArrival') === 'true';
   const initialSearch = searchParams.get("search") || "";
   const initialCategory =
     searchParams.get("categoryId") || searchParams.get("category") || "";
@@ -230,6 +231,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
         };
 
         if (trendingOnly) query.isTrending = true;
+        if (newArrivalsOnly) query.isNewArrival = true;
 
         if (searchTerm.trim()) {
           query.search = searchTerm.trim();
@@ -304,6 +306,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
     [
       lowStockOnly,
       trendingOnly,
+      newArrivalsOnly,
       currentPage,
       itemsPerPage,
       searchTerm,

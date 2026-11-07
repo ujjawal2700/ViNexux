@@ -1,3 +1,4 @@
+import { productLineKey } from '../../../shared/productVariants.js';
 import { withoutStorefrontPrices } from '../../../shared/storefrontPricing';
 import { getMaximumEnquiryQuantity } from '../utils/inventory';
 
@@ -32,18 +33,18 @@ export const guestCartService = {
     const productId = String(product?._id || product?.id || '');
     if (!productId) return this.getCart();
     const items = read();
-    const existing = items.find((item) => String(item.productId?._id || item.productId) === productId);
+    const existing = items.find((item) => productLineKey(item.productId, item.variantId) === productLineKey(productId, product._variantId));
     const maximum = getMaximumEnquiryQuantity(product);
     if (existing) existing.quantity = Math.min(maximum, existing.quantity + quantity);
-    else items.push({ productId: withoutStorefrontPrices(product), quantity: Math.min(maximum, quantity) });
+    else items.push({ variantId: product._variantId || null, productId: withoutStorefrontPrices(product), quantity: Math.min(maximum, quantity) });
     return write(items);
   },
   updateItem(productId, quantity) {
-    return write(read().map((item) => String(item.productId?._id || item.productId) === String(productId)
+    return write(read().map((item) => productLineKey(item.productId, item.variantId) === String(productId)
       ? { ...item, quantity: Math.min(getMaximumEnquiryQuantity(item.productId), Math.max(1, quantity)) } : item));
   },
   removeItem(productId) {
-    return write(read().filter((item) => String(item.productId?._id || item.productId) !== String(productId)));
+    return write(read().filter((item) => productLineKey(item.productId, item.variantId) !== String(productId)));
   },
   clear: () => write([]),
 };

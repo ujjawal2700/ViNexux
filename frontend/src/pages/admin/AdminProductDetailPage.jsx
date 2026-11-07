@@ -1,3 +1,5 @@
+import ProductVariantsEditor from '../../components/admin/ProductVariantsEditor';
+import { variantSummary } from '../../../../shared/productVariants.js';
 import { editableProductIdentifier } from '../../../../shared/productDrafts.js';
 import { isWarrantyLink } from '../../../../shared/productPresentation.js';
 import SpecificationTemplates from '../../components/admin/SpecificationTemplates';
@@ -122,6 +124,8 @@ const AdminProductDetailPage = () => {
   const [isNewArrival, setIsNewArrival] = useState(false);
   const [isTrending, setIsTrending] = useState(false);
   const [isLowStock, setIsLowStock] = useState(false);
+  const [variants, setVariants] = useState([]);
+  const [variantError, setVariantError] = useState("");
   const [variant, setVariant] = useState("");
   const [hsnCode, setHsnCode] = useState("");
   const [warranty, setWarranty] = useState("");
@@ -246,6 +250,7 @@ const AdminProductDetailPage = () => {
       setModel(prod.model || "");
       setStockQuantity(prod.stockQuantity !== undefined ? String(prod.stockQuantity) : "0");
       setVariant(prod.variant || "");
+      setVariants(prod.variants || []);
       setWarrantyType(prod.warrantyType || "text");
       setHsnCode(getProductHsnCode(prod));
       setWarranty(prod.warranty === "1 Year ON-SITE / Direct Replacement Warranty" ? "" : (prod.warranty || ""));
@@ -269,6 +274,7 @@ const AdminProductDetailPage = () => {
         modelNumber: editableProductIdentifier(prod.modelNumber), model: prod.model || "",
         stockQuantity: prod.stockQuantity !== undefined ? String(prod.stockQuantity) : "0",
         warrantyType: prod.warrantyType || "text",
+        variants: prod.variants || [],
         variant: prod.variant || "", hsnCode: getProductHsnCode(prod),
         warranty: prod.warranty === "1 Year ON-SITE / Direct Replacement Warranty" ? "" : (prod.warranty || ""),
         productUrl: prod.productUrl || "", brandId: String(prod.brandId?._id || prod.brandId || ""),
@@ -674,10 +680,14 @@ const AdminProductDetailPage = () => {
     if (formSubmitting) return;
     setFormError("");
     setFieldErrors({});
+    setVariantError("");
+    if (variants.some(row => !row.name.trim() || !Number.isSafeInteger(row.stockQuantity) || row.stockQuantity < 0 || !Number.isFinite(row.standardPrice) || row.standardPrice < 0 || !Number.isFinite(row.dealerPrice) || row.dealerPrice < 0) || new Set(variants.map(row => row.name.trim().toLowerCase())).size !== variants.length) {
+      setVariantError('Give every variant a unique name, non-negative prices and whole-number stock.'); setActiveTab('variants'); return;
+    }
 
     const currentFields = {
       name, sku, description, modelNumber, model, stockQuantity, variant, hsnCode, warranty, warrantyType, productUrl,
-      additionalDetails,
+      additionalDetails, variants: variants.map(({ _key, ...row }) => row),
       brandId: selectedBrandId, standardPrice, dealerPrice, isNewArrival, isTrending, isLowStock, isActive: !savingDraft,
       categoryId: selectedSubIds[0] || selectedMainIds[0] || selectedHeaderId,
       categoryIds: [selectedHeaderId, ...selectedMainIds, ...selectedSubIds].filter(Boolean),
@@ -861,6 +871,7 @@ const AdminProductDetailPage = () => {
         isLowStock,
         stockQuantity: Number(stockQuantity) >= 0 ? Number(stockQuantity) : 0,
         variant: variant.trim(),
+        variants: variants.map(({ _key, ...row }) => row),
         warranty: warranty.trim(),
         warrantyType,
         hsnCode: hsnCode.trim(),
@@ -930,6 +941,7 @@ const AdminProductDetailPage = () => {
           ...uploadedGalleryIdsRef.current,
         ])];
       }
+      if (!isCreateMode && update.variants) update.expectedVariants = product.variants || [];
       if (savingDraft) update.isActive = false;
       await adminService.updateProduct(productId, update);
       setStatus(targetStatus);
@@ -1392,6 +1404,7 @@ const AdminProductDetailPage = () => {
                       type="number"
                       min="0"
                       value={stockQuantity}
+                      disabled={variants.length > 0}
                       error={Boolean(fieldErrors.stockQuantity)}
                       onChange={(e) => {
                         setStockQuantity(e.target.value);
@@ -1525,6 +1538,11 @@ const AdminProductDetailPage = () => {
                 </p>
               </div>
 
+              <ProductVariantsEditor value={variants} disabled={formSubmitting} onChange={next => {
+                setVariants(next); setVariantError('');
+                if (next.length) { const totals = variantSummary(next); setStandardPrice(String(totals.standardPrice)); setDealerPrice(String(totals.dealerPrice)); setStockQuantity(String(totals.stockQuantity)); }
+              }} />
+              {variantError && <p role="alert" className="text-sm text-rose-700">{variantError}</p>}
               {/* Clean 2-Column Pricing Grid matching DB Schema */}
               <div className="bg-[#fdfbfb] p-5 rounded-xl border border-[#f0e6e8] space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -1536,6 +1554,7 @@ const AdminProductDetailPage = () => {
                       type="number"
                       min="0"
                       value={standardPrice}
+                      disabled={variants.length > 0}
                       error={Boolean(fieldErrors.standardPrice)}
                       onChange={(e) => {
                         setStandardPrice(e.target.value);
@@ -1565,6 +1584,7 @@ const AdminProductDetailPage = () => {
                       type="number"
                       min="0"
                       value={dealerPrice}
+                      disabled={variants.length > 0}
                       error={Boolean(fieldErrors.dealerPrice)}
                       onChange={(e) => {
                         setDealerPrice(e.target.value);

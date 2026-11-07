@@ -1,3 +1,4 @@
+import { productLineKey } from './productVariants.js';
 const labels = { name: 'Name', phone: 'Phone', whatsappNumber: 'WhatsApp number', email: 'Email', address: 'Street address', city: 'City',
   state: 'State', stateCode: 'GST state code', pincode: 'PIN code', gstin: 'GSTIN', quantity: 'Quantity', unitPrice: 'Unit price',
   discountPercent: 'Discount', gstRate: 'GST rate', hsn: 'HSN/SAC', unit: 'Unit', serialNumbers: 'Serial numbers', productId: 'Product',
@@ -44,8 +45,8 @@ export function validatePosItems(items = []) {
   if (!items.length || items.length > 100) issues.push({ path: 'items', message: 'Add between 1 and 100 products.' });
   items.forEach((item, index) => {
     const add = (field, message) => issues.push({ path: `items.${index}.${field}`, message });
-    if (!/^[a-f\d]{24}$/i.test(item.productId || '') || ids.has(item.productId)) add('productId', 'Remove this line and add the product once from the catalogue.');
-    ids.add(item.productId);
+    if (!/^[a-f\d]{24}$/i.test(item.productId || '') || ids.has(productLineKey(item.productId, item.variantId))) add('productId', 'Remove this line and add the product once from the catalogue.');
+    ids.add(productLineKey(item.productId, item.variantId));
     if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 10000) add('quantity', 'Enter a whole number from 1 to 10,000.');
     else if (Number.isFinite(item.stockQuantity) && item.quantity > item.stockQuantity) add('quantity', `Only ${item.stockQuantity} units are available.`);
     if (!Number.isFinite(item.unitPrice) || item.unitPrice < 0 || item.unitPrice > 100000000 || Math.abs(item.unitPrice * 100 - Math.round(item.unitPrice * 100)) > 0.00001) add('unitPrice', 'Enter a non-negative price with at most two decimal places.');

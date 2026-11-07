@@ -1,3 +1,4 @@
+import { hasVariants, resolveVariant, productLineKey } from '../utils/productVariants.js';
 import { Cart } from '../models/Cart.js';
 import { Product } from '../models/Product.js';
 import { Category } from '../models/Category.js';
@@ -126,8 +127,9 @@ export const calculateApplicablePrices = async (userId, products) => {
     dealerProfile = await DealerProfile.findOne({ userId }).select('_id status').lean();
   }
 
+  prices.approvedDealer = dealerProfile?.status === 'approved';
   if (dealerProfile?.status !== 'approved') {
-    for (const product of products) prices.set(String(product._id), fallbackPrice(product));
+    for (const product of products) prices.set(productLineKey(product._id, product._variantId), fallbackPrice(product));
     return prices;
   }
 
@@ -139,17 +141,17 @@ export const calculateApplicablePrices = async (userId, products) => {
   const customPriceByProduct = new Map(customPricing.map((row) => [String(row.productId), row.price]));
 
   for (const product of products) {
-    const customPrice = customPriceByProduct.get(String(product._id));
-    if (customPrice !== undefined && customPrice !== null) prices.set(String(product._id), customPrice);
-    else if (product.dealerPrice !== undefined && product.dealerPrice > 0) prices.set(String(product._id), product.dealerPrice);
-    else prices.set(String(product._id), fallbackPrice(product));
+    const customPrice = product._variantId ? undefined : customPriceByProduct.get(String(product._id));
+    if (customPrice !== undefined && customPrice !== null) prices.set(productLineKey(product._id, product._variantId), customPrice);
+    else if (product.dealerPrice !== undefined && product.dealerPrice > 0) prices.set(productLineKey(product._id, product._variantId), product.dealerPrice);
+    else prices.set(productLineKey(product._id, product._variantId), fallbackPrice(product));
   }
   return prices;
 };
 
 export const calculateApplicablePrice = async (userId, product) => {
   const prices = await calculateApplicablePrices(userId, [product]);
-  return prices.get(String(product._id));
+  return prices.get(productLineKey(product._id, product._variantId));
 };
 
 /**
@@ -171,11 +173,16 @@ const formatPopulatedCart = async (cart, userId) => {
   // on the next cart read without trusting an older snapshot.
   let pricingChanged = false;
   const products = await Product.find({ _id: { $in: (cart.items || []).map((item) => item.productId) } })
-    .select('standardPrice dealerPrice')
+    .select('standardPrice dealerPrice variants')
     .lean();
-  const currentPrices = await calculateApplicablePrices(userId, products);
+  const selectedProducts = (cart.items || []).flatMap(item => {
+    const product = products.find(row => String(row._id) === String(item.productId));
+    if (!product) return [];
+    try { return [resolveVariant(product, item.variantId, { includeInactive: true })]; } catch { return []; }
+  });
+  const currentPrices = await calculateApplicablePrices(userId, selectedProducts);
   for (const item of cart.items || []) {
-    const currentPrice = currentPrices.get(String(item.productId));
+    const currentPrice = currentPrices.get(productLineKey(item.productId, item.variantId));
     if (currentPrice === undefined) continue;
     if (item.priceSnapshot !== currentPrice) {
       item.priceSnapshot = currentPrice;
@@ -186,7 +193,7 @@ const formatPopulatedCart = async (cart, userId) => {
 
   await cart.populate({
     path: 'items.productId',
-    select: 'sku name categoryId brandId description images specifications isFeatured isActive standardPrice dealerPrice stockQuantity stockStatus isLowStock modelNumber',
+    select: 'sku name categoryId brandId description images specifications isFeatured isActive standardPrice dealerPrice stockQuantity stockStatus isLowStock modelNumber variants',
     populate: [
       {
         path: 'categoryId',
@@ -210,7 +217,16 @@ const formatPopulatedCart = async (cart, userId) => {
     await cart.save();
   }
 
-  const items = validItems;
+  const items = validItems.map(item => {
+    const row = item.toObject ? item.toObject() : item;
+    if (!row.variantId) return row;
+    try { return { ...row, variantName: resolveVariant(row.productId, row.variantId, { includeInactive: true }).variant, productId: resolveVariant(row.productId, row.variantId, { includeInactive: true }) }; }
+    catch { return { ...row, unavailable: true }; }
+  });
+  if (!currentPrices.approvedDealer) for (const item of items) {
+    delete item.productId.dealerPrice;
+    if (Array.isArray(item.productId.variants)) item.productId.variants = item.productId.variants.map(({ dealerPrice: _private, ...option }) => option);
+  }
   const itemCount = items.length;
   const totalQuantity = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
   const subtotal = items.reduce((sum, item) => {
@@ -235,8 +251,8 @@ const formatPopulatedCart = async (cart, userId) => {
 /**
  * Add item to authenticated user's cart with priceSnapshot
  */
-export const addToCart = async (userId, productId, quantity = 1) => {
-  const product = await validateProductAndCategoryActive(productId);
+export const addToCart = async (userId, productId, quantity = 1, variantId) => {
+  const product = resolveVariant(await validateProductAndCategoryActive(productId), variantId);
   const priceSnapshot = await calculateApplicablePrice(userId, product);
 
   let cart = await Cart.findOne({ userId });
@@ -245,7 +261,7 @@ export const addToCart = async (userId, productId, quantity = 1) => {
   }
 
   const existingItemIndex = cart.items.findIndex(
-    (item) => item.productId.toString() === productId.toString()
+    (item) => productLineKey(item.productId, item.variantId) === productLineKey(productId, variantId)
   );
 
   if (existingItemIndex > -1) {
@@ -257,6 +273,7 @@ export const addToCart = async (userId, productId, quantity = 1) => {
     assertQuantityAvailable(product, quantity);
     cart.items.push({
       productId,
+      variantId: variantId || null,
       quantity: Math.min(1000, quantity),
       priceSnapshot,
     });
@@ -277,14 +294,14 @@ export const getCart = async (userId) => {
 /**
  * Update quantity for a specific product in user's cart
  */
-export const updateCartItem = async (userId, productId, quantity) => {
+export const updateCartItem = async (userId, productId, quantity, variantId) => {
   const cart = await Cart.findOne({ userId });
   if (!cart) {
     throw new AppError('Cart not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
   }
 
   const itemIndex = cart.items.findIndex(
-    (item) => item.productId.toString() === productId.toString()
+    (item) => productLineKey(item.productId, item.variantId) === productLineKey(productId, variantId)
   );
 
   if (itemIndex === -1) {
@@ -295,7 +312,7 @@ export const updateCartItem = async (userId, productId, quantity) => {
     );
   }
 
-  const product = await validateProductAndCategoryActive(productId);
+  const product = resolveVariant(await validateProductAndCategoryActive(productId), variantId);
   assertQuantityAvailable(product, quantity);
 
   cart.items[itemIndex].quantity = quantity;
@@ -307,14 +324,14 @@ export const updateCartItem = async (userId, productId, quantity) => {
 /**
  * Remove specific product from user's cart
  */
-export const removeCartItem = async (userId, productId) => {
+export const removeCartItem = async (userId, productId, variantId) => {
   const cart = await Cart.findOne({ userId });
   if (!cart) {
     throw new AppError('Cart not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
   }
 
   const itemIndex = cart.items.findIndex(
-    (item) => item.productId.toString() === productId.toString()
+    (item) => productLineKey(item.productId, item.variantId) === productLineKey(productId, variantId)
   );
 
   if (itemIndex === -1) {

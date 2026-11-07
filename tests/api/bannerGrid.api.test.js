@@ -1,3 +1,4 @@
+import { bannerVideoFixture } from '../helpers/bannerVideoFixture.js';
 import { beforeEach, afterEach, expect, jest, test } from '@jest/globals';
 import express from '../../backend/node_modules/express/index.js';
 import supertest from 'supertest';
@@ -94,3 +95,22 @@ test('legacy grids retain first and fourth artwork and migrate admin revision on
   expect(response.status).toBe(200);
   expect(storageService.uploadFile).toHaveBeenCalledWith(expect.objectContaining({ buffer: svg, mimetype: 'image/svg+xml' }));
  });
+
+for (const section of [0, 1]) test(`banner section ${section + 1} uploads only compressed MP4 and a separate thumbnail`, async () => {
+  const source = bannerVideoFixture();
+  storageService.uploadFile.mockResolvedValueOnce({ url: 'https://media.example/banner.mp4', publicId: 'banner/video', resourceType: 'video' }).mockResolvedValueOnce({ url: 'https://media.example/poster.webp', publicId: 'banner/poster', resourceType: 'image' });
+  const response = await request.post(`/grid/${section}/images`).field('revision', 0).attach('file', source, { filename: 'promo.mp4', contentType: 'video/mp4' });
+  expect(response.status).toBe(200);
+  const media = response.body.data.grid.sections[section].images[0];
+  expect(media.mediaType).toBe('video'); expect(media.posterUrl).toBe('https://media.example/poster.webp'); expect(media.duration).toBeCloseTo(1, 0);
+  expect(storageService.uploadFile).toHaveBeenCalledTimes(2);
+  const [video, thumbnail] = storageService.uploadFile.mock.calls.map(([params]) => params);
+  expect(video.mimetype).toBe('video/mp4'); expect(video.buffer.length).toBeLessThan(source.length);
+  expect(video.buffer.indexOf(Buffer.from('moov'))).toBeLessThan(video.buffer.indexOf(Buffer.from('mdat')));
+  expect(thumbnail.mimetype).toBe('image/webp');
+}, 30000);
+
+test('invalid video bytes never reach Cloudinary', async () => {
+  const response = await request.post('/grid/0/images').field('revision', 0).attach('file', Buffer.from('not a movie'), { filename: 'bad.mp4', contentType: 'video/mp4' });
+  expect(response.status).toBe(400); expect(storageService.uploadFile).not.toHaveBeenCalled();
+});

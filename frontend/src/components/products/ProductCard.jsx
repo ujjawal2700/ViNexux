@@ -116,6 +116,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
       return;
     }
 
+    if (product.variants?.length || product.hasVariants) { navigate(buildProductPath(product)); return; }
     try {
       setIsAdding(true);
       const res = await cartService.addItem(product._id, quantity);
@@ -206,7 +207,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
           {pricesVisible && <PriceGate available={product.applicablePrice != null || product.standardPrice != null}>
           <div className="flex min-w-0 flex-wrap items-baseline gap-x-1 gap-y-0.5">
             <span className="text-lg font-bold text-[var(--store-text)] sm:text-xl leading-none">
-              ₹{(Number(displayPrice) || 0).toLocaleString('en-IN')}
+              {(product.variants?.length || product.hasVariants) ? 'From ' : ''}₹{(Number(displayPrice) || 0).toLocaleString('en-IN')}
             </span>
             {pricesVisible && hasDealerDiscount && (
               <span className="text-[10px] sm:text-xs text-[var(--store-muted)] line-through">
@@ -262,7 +263,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
         {/* Quantity Selector + Add to Cart / Out of Stock Button */}
         <div className="product-card-actions mt-auto pt-3 border-t border-[var(--store-border)] flex w-full items-center gap-2 translate-y-0">
           {/* Qty Stepper - only shown when not OOS */}
-          {!isOutOfStock && (
+          {!isOutOfStock && !product.variants?.length && !product.hasVariants && (
             <div
               onClick={(e) => e.stopPropagation()}
               className="flex shrink-0 h-9 overflow-hidden rounded border border-[var(--store-border)] bg-[var(--store-surface)] text-xs shadow-xs"
@@ -322,7 +323,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
                   <span>ADDED</span>
                 </>
               ) : (
-                <span>Add to cart</span>
+                <span>{product.variants?.length || product.hasVariants ? 'Choose variant' : 'Add to cart'}</span>
               )}
             </button>
           )}

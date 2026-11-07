@@ -1,4 +1,6 @@
+import { AUDIT_RETENTION_DAYS } from '../../../shared/dataRetention.js';
 import mongoose from 'mongoose';
+import { auditRecordLabel } from '../../../shared/auditPresentation.js';
 import { AppError } from '../utils/AppError.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
@@ -11,12 +13,15 @@ const schema = new mongoose.Schema({
   attempted: mongoose.Schema.Types.Mixed, documents: [mongoose.Schema.Types.Mixed],
   createdAt: { type: Date, default: Date.now }, completedAt: Date,
 }, { versionKey: false });
+schema.index({ createdAt: 1 }, { name: 'audit_retention_30_days', expireAfterSeconds: AUDIT_RETENTION_DAYS * 86400 });
 schema.index({ createdAt: -1, _id: -1 });
 schema.index({ 'actor.id': 1, createdAt: -1 });
 export const AuditLog = mongoose.model('AuditLog', schema);
 
 const secret = /password|token|secret|credential|otp|privatekey|authorization|cookie/i;
 export const redactAudit = value => {
+  if (value instanceof Date) return value.toISOString();
+  if (value && typeof value.toHexString === 'function') return value.toHexString();
   if (Array.isArray(value)) return value.map(redactAudit);
   if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, entry]) =>
     [key, secret.test(key) ? '[REDACTED]' : redactAudit(entry)]));
@@ -98,7 +103,7 @@ export const installAuditCollection = (model) => {
         const documents = [...new Set([...beforeMap.keys(), ...afterMap.keys()])].flatMap(id => {
           const old = beforeMap.get(id) || null, current = afterMap.get(id) || null;
           const changes = auditChanges(old, current);
-          return changes.length ? [{ id, before: redactAudit(old), after: redactAudit(current), changes }] : [];
+          return changes.length ? [{ id, label: auditRecordLabel({ id, before: old, after: current }, model.modelName), before: redactAudit(old), after: redactAudit(current), changes }] : [];
         });
         if (documents.length) await AuditLog.collection.insertOne({ ...context, entity: model.modelName, operation,
           status: 'applied', attempted: redactAudit(plain(args.slice(0, optionsIndex))), documents,

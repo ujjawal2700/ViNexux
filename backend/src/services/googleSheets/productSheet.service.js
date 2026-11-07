@@ -86,11 +86,12 @@ const guideRows = [
   ['Brand: managed brand name or ID. Categories: full paths or IDs from the reference tab, one per line.'],
   ['Image URLs: full HTTP/HTTPS links, one per line. Existing image metadata is retained for matching URLs.'],
   ['Specifications JSON / Additional Details JSON: [{"key":"Resolution","value":"3MP"}]. Use [] to clear.'],
+  ['Variants JSON: [{"name":"5m","sku":"CABLE-5M","standardPrice":150,"dealerPrice":120,"stockQuantity":20}]. Keep existing variant _id values unchanged. Parent prices/stock are calculated from variants.'],
   ['Empty editable cells clear text/relationships/lists. Set numeric fields to 0 instead of leaving them blank.'],
   ['Removing a row does not delete a product. Missing catalogue products are added back on the next sync. Use Draft to hide a product.'],
   ['Catalogue and sheet changes to different fields merge. Conflicting edits are skipped and reported by row.'],
   ['Finish editing before clicking Sync Products. Wait for it to finish before making further sheet edits.'],
-  ['Errors appear in the last column. Correct the row and sync again; successful rows are kept.'],
+  ['Errors appear in the Sync Result column. Correct the row and sync again; successful rows are kept.'],
 ];
 
 export const productSheetService = {
@@ -117,7 +118,7 @@ export const productSheetService = {
         state.guideSheetId = added.data.replies[2].addSheet.properties.sheetId;
         await state.save();
       }
-      const ranges = [{ range: `${quote(state.sheetTitle)}!A1:AA1`, values: [HEADERS] }];
+      const ranges = [{ range: `${quote(state.sheetTitle)}!A1:AB1`, values: [HEADERS] }];
       for (let offset = 0; offset < products.length; offset += 200) ranges.push({ range: `${quote(state.sheetTitle)}!A${offset + 2}`, values: products.slice(offset, offset + 200).map(product => exportProductRow(product, refs)) });
       ranges.push({ range: `${quote(state.referenceTitle)}!A1`, values: [['Type', 'Name / Category Path', 'ID', 'Active'],
         ...refs.brands.map(brand => ['Brand', brand.name, String(brand._id), brand.isActive ? 'Yes' : 'No']),
@@ -149,8 +150,14 @@ export const productSheetService = {
       if (!state.initializedAt) throw invalid('Create the product sheet before syncing.');
       const client = await this.getClient();
       const refs = await references();
-      const { data } = await googleCall(() => client.spreadsheets.values.get({ spreadsheetId: state.spreadsheetId, range: `${quote(state.sheetTitle)}!A:AA`, valueRenderOption: 'UNFORMATTED_VALUE' }, { timeout: 30000 }));
+      const { data } = await googleCall(() => client.spreadsheets.values.get({ spreadsheetId: state.spreadsheetId, range: quote(state.sheetTitle), valueRenderOption: 'UNFORMATTED_VALUE' }, { timeout: 30000 }));
       const rows = data.values || [];
+      const legacyHeaders = HEADERS.slice(0, -1);
+      if (rows[0]?.length === legacyHeaders.length && legacyHeaders.every((header, index) => rows[0][index] === header)) {
+        await googleCall(() => client.spreadsheets.batchUpdate({ spreadsheetId: state.spreadsheetId, requestBody: { requests: [{ appendDimension: { sheetId: state.sheetId, dimension: 'COLUMNS', length: 1 } }] } }, { timeout: 30000 }));
+        await writeRanges(client, state.spreadsheetId, [{ range: `${quote(state.sheetTitle)}!AB1`, values: [['Variants JSON']] }], renew);
+        rows[0] = HEADERS;
+      }
       if (!HEADERS.every((header, index) => rows[0]?.[index] === header)) throw invalid('The product sheet headers changed. Restore the original column names and order before syncing.');
       const entries = rows.slice(1).map((row, index) => ({ row, number: index + 2 })).filter(entry => entry.row.slice(0, 25).some(value => String(value ?? '').trim()));
       const ids = new Set(), skus = new Set();
@@ -194,7 +201,7 @@ export const productSheetService = {
           }
           seen.add(String(result._id));
           completed.push(result);
-          ranges.push({ range: `${quote(state.sheetTitle)}!A${number}:AA${number}`, values: [exportProductRow(result, refs, label)] });
+          ranges.push({ range: `${quote(state.sheetTitle)}!A${number}:AB${number}`, values: [exportProductRow(result, refs, label)] });
         } catch (error) {
           const message = error.name === 'ZodError' ? error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; ') : error.message;
           summary.failed++;

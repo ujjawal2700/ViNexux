@@ -1,9 +1,12 @@
+import { variantSummary } from '../../../shared/productVariants.js';
 import '../audit/audit.js';
 import mongoose from 'mongoose';
 import { randomBytes } from 'node:crypto';
 import { CATALOG_FIELDS_VERSION, CATALOG_SOURCE_PATHS, computeCatalogFields } from '../utils/productCatalogFields.js';
 
 const priceHistoryEntrySchema = new mongoose.Schema({
+  variantId: { type: mongoose.Schema.Types.ObjectId, default: null },
+  variantName: { type: String, default: '' },
   priceType: { type: String, enum: ['standard', 'dealer'], required: true },
   previousPrice: { type: Number, min: 0, required: true },
   newPrice: { type: Number, min: 0, required: true },
@@ -54,6 +57,15 @@ const productSpecificationSchema = new mongoose.Schema(
   },
   { _id: false }
 );
+
+const variantSchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true, maxlength: 100 },
+  sku: { type: String, trim: true, uppercase: true, maxlength: 50, default: '' },
+  standardPrice: { type: Number, required: true, min: 0 },
+  dealerPrice: { type: Number, min: 0, default: 0 },
+  stockQuantity: { type: Number, min: 0, default: 0, validate: Number.isSafeInteger },
+  isActive: { type: Boolean, default: true },
+});
 
 const productSchema = new mongoose.Schema(
   {
@@ -108,6 +120,7 @@ const productSchema = new mongoose.Schema(
     isNewArrival: { type: Boolean, default: false },
     isTrending: { type: Boolean, default: false },
     isLowStock: { type: Boolean, default: false },
+    variants: { type: [variantSchema], default: [], validate: { validator: rows => rows.length <= 100, message: 'Use up to 100 variants per product' } },
     variant: {
       type: String,
       trim: true,
@@ -224,6 +237,13 @@ const touchesCatalogSources = (update) => {
   ));
   return paths.some((path) => CATALOG_SOURCE_PATHS.some((source) => path === source || path.startsWith(`${source}.`)));
 };
+
+productSchema.pre('validate', function summarizeVariants() {
+  if (this.variants?.length) {
+    const { stockQuantity, standardPrice, dealerPrice } = variantSummary(this.variants);
+    this.set({ stockQuantity, standardPrice, dealerPrice });
+  }
+});
 
 productSchema.pre('save', function deriveCatalogFields() {
   if (CATALOG_SOURCE_PATHS.every((path) => this.isSelected(path))) {

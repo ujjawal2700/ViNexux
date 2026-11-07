@@ -1,3 +1,4 @@
+import { mountAccountCrud } from '../services/adminAccount.service.js';
 import { Router } from 'express';
 import {
   getCustomers,
@@ -16,6 +17,7 @@ const router = Router();
 
 // Protected Admin Customer Management Operations
 router.use(authenticate, authorize('admin'));
+mountAccountCrud(router, 'customer');
 
 router.get('/', validate(getCustomersQuerySchema), getCustomers);
 router.get('/:id', validate(getCustomerByIdSchema), getCustomer);
