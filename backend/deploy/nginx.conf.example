@@ -22,7 +22,18 @@ server {
     client_max_body_size 100m;  # product import: 2 files x 50 MB (multer limit)
 
     gzip on;
-    gzip_types text/css application/javascript application/json image/svg+xml;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_comp_level 5;
+    gzip_types text/css application/javascript application/json image/svg+xml application/xml application/manifest+json;
+
+    # Cache only public static files; authenticated API responses are untouched.
+    location /theme-assets/ {
+        expires 7d;
+        add_header Cache-Control "public";
+        try_files $uri =404;
+    }
+
 
     location /api/ {
         proxy_pass http://vinexus_api;

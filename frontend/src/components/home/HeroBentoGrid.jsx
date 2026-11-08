@@ -9,6 +9,9 @@ function BannerTile({ images = [], section, transition = 'fade' }) {
   const filterId = `banner-pixel-${useId().replace(/:/g, '')}`;
   const effect = BENTO_TRANSITIONS.includes(transition) ? transition : 'fade';
   const [{ index, previous }, setSlide] = useState({ index: 0, previous: null });
+  const constrained = () => { const connection = navigator.connection; return !!connection && (connection.saveData || ['slow-2g', '2g', '3g'].includes(connection.effectiveType) || Number(connection.downlink) > 0 && Number(connection.downlink) < 2.5); };
+  const [limitedConnection, setLimitedConnection] = useState(constrained);
+  useEffect(() => { const change = () => setLimitedConnection(constrained()); navigator.connection?.addEventListener('change', change); return () => navigator.connection?.removeEventListener('change', change); }, []);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(document.hidden);
@@ -31,10 +34,10 @@ function BannerTile({ images = [], section, transition = 'fade' }) {
     });
   }, [images.length, directional, reducedMotion]);
   useEffect(() => {
-    if (images.length < 2 || hovered || focused || hidden || reducedMotion) return;
+    if (images.length < 2 || hovered || focused || hidden || reducedMotion || limitedConnection) return;
     const timer = setInterval(() => nav(1), 5000 + section * 700);
     return () => clearInterval(timer);
-  }, [images.length, hovered, focused, hidden, reducedMotion, section, nav]);
+  }, [images.length, hovered, focused, hidden, reducedMotion, limitedConnection, section, nav]);
   useEffect(() => {
     if (previous === null) return;
     // Also release the swipe when animation events are suppressed (hidden tabs
@@ -45,7 +48,7 @@ function BannerTile({ images = [], section, transition = 'fade' }) {
   const current = images[index] || images[0];
   const art = current ? <>
     <svg aria-hidden="true" width="0" height="0" className="absolute"><defs><filter id={filterId} x="0" y="0" width="100%" height="100%"><feFlood x="0" y="0" width="1" height="1" result="sample" /><feComposite in="sample" in2="sample" operator="over" x="0" y="0" width="12" height="12" /><feTile result="grid" /><feComposite in="SourceGraphic" in2="grid" operator="in" /><feMorphology operator="dilate" radius="6" /></filter></defs></svg>
-    {images.map((image, i) => <div key={image._id || image.url} className={`bento-banner-slide effect-${effect} ${i === index ? `is-current ${previous !== null ? 'is-entering' : ''}` : i === previous ? 'is-leaving' : ''}`} onAnimationEnd={e => { if (e.target === e.currentTarget && i === index) setSlide(slide => ({ ...slide, previous: null })); }} style={{ '--banner-pixel-filter': `url(#${filterId})` }}><BannerMedia asset={image} active={i === index} shown={i === index || i === previous} first={i === 0} /></div>)}
+    {images.map((image, i) => <div key={image._id || image.url} className={`bento-banner-slide effect-${effect} ${i === index ? `is-current ${previous !== null ? 'is-entering' : ''}` : i === previous ? 'is-leaving' : ''}`} onAnimationEnd={e => { if (e.target === e.currentTarget && i === index) setSlide(slide => ({ ...slide, previous: null })); }} style={{ '--banner-pixel-filter': `url(#${filterId})` }}><BannerMedia asset={image} active={i === index} shown={i === index || i === previous} first={i === 0} sizes={section === 0 ? '75vw' : '25vw'} /></div>)}
     {(current.title || current.buttonText) && <div className="bento-banner-caption"><span>{current.title || current.buttonText}</span><ArrowUpRight size={18} /></div>}
   </> : <div className="bento-banner-empty"><span className="text-xs uppercase tracking-[.2em] text-[var(--store-muted)]">ViNexus collections</span><span className="text-xl font-semibold text-[var(--store-text)]">{['Explore our range', 'Find your essentials'][section]}</span><span className="inline-flex items-center gap-2 text-sm text-[var(--store-primary)]">Shop products <ArrowUpRight size={16} /></span></div>;
   const link = current?.link || (!current ? '/products' : '');
@@ -59,9 +62,9 @@ function BannerTile({ images = [], section, transition = 'fade' }) {
     </div>}
   </div>;
 }
-export default function HeroBentoGrid({ grid }) {
+export default function HeroBentoGrid({ grid, loading = false }) {
   const sections = grid?.configured ? visibleBannerSections(grid.sections) : [];
-  return <section className="hero-bento-grid storefront-container" aria-label="Featured collections">
+  return <section className="hero-bento-grid storefront-container" aria-label="Featured collections" aria-busy={loading}>
     {Array.from({ length: BENTO_SECTION_COUNT }, (_, section) => { const images = (sections?.[section]?.images || []).slice(0, BENTO_IMAGE_LIMIT); return <BannerTile key={`${section}:${images.map(i => `${i._id}:${i.url}`).join('|')}`} section={section} images={images} transition={sections?.[section]?.transition || 'fade'} />; })}
   </section>;
 }

@@ -1,6 +1,5 @@
 import { waitForServiceWorkerActivation } from '../utils/serviceWorkerActivation';
-import { initializeApp, getApps } from 'firebase/app';
-import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
+
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -14,10 +13,8 @@ const firebaseConfig = {
 
 const isFirebaseConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
 
-let app = null;
-if (isFirebaseConfigured) {
-  app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-}
+let sdkPromise;
+const loadSdk = () => sdkPromise ||= Promise.all([import('firebase/app'), import('firebase/messaging')]).then(([core, messaging]) => ({ ...messaging, app: core.getApps().length ? core.getApps()[0] : core.initializeApp(firebaseConfig) }));
 
 /**
  * Requests notification permission, registers the service worker, and
@@ -25,7 +22,7 @@ if (isFirebaseConfigured) {
  * Explicit registration reports errors; automatic registration remains optional.
  */
 export const getPushToken = async (requestPermission = false) => {
-  if (!isFirebaseConfigured || !app) return null;
+  if (!isFirebaseConfigured) return null;
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return null;
 
   try {
@@ -35,6 +32,7 @@ export const getPushToken = async (requestPermission = false) => {
     const permission = requestPermission && Notification.permission === 'default'
       ? await Notification.requestPermission() : Notification.permission;
     if (permission !== 'granted') return null;
+    const { app, getMessaging, getToken, isSupported } = await loadSdk();
     if (!await isSupported()) return null;
 
     const registration = await navigator.serviceWorker.register(`/firebase-messaging-sw.js?config=${encodeURIComponent(JSON.stringify(firebaseConfig))}`);
@@ -67,20 +65,17 @@ export const getPushToken = async (requestPermission = false) => {
  * service worker itself. Returns an unsubscribe function, or a no-op.
  */
 export const onForegroundPush = (callback) => {
-  if (!isFirebaseConfigured || !app) return () => {};
-  try {
-    const messaging = getMessaging(app);
-    return onMessage(messaging, (payload) => {
-      callback({
-        title: payload.notification?.title || payload.data?.title,
-        body: payload.notification?.body || payload.data?.body,
-        data: payload.data,
-      });
-    });
-  } catch (err) {
-    console.warn('[Push] Failed to attach foreground message listener:', err.message);
-    return () => {};
-  }
+  let cancelled = false;
+  let unsubscribe = () => {};
+  if (isFirebaseConfigured) loadSdk().then(async ({ app, getMessaging, onMessage, isSupported }) => {
+    if (cancelled || !await isSupported() || cancelled) return;
+    unsubscribe = onMessage(getMessaging(app), payload => callback({
+      title: payload.notification?.title || payload.data?.title,
+      body: payload.notification?.body || payload.data?.body,
+      data: payload.data,
+    }));
+  }).catch(error => console.warn('[Push] Failed to attach foreground message listener:', error.message));
+  return () => { cancelled = true; unsubscribe(); };
 };
 
 export { isFirebaseConfigured };

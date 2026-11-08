@@ -2,7 +2,7 @@ import api from '../api/axios';
 const base = '/admin/cms/themes';
 const unwrap = response => response.data.data;
 export const themeService = {
-  public: () => api.get('/content/theme', { skipGlobalLoader: true }).then(unwrap),
+  public: () => api.get('/content/theme', { skipGlobalLoader: true, timeout: 3000 }).then(unwrap),
   list: () => api.get(base).then(unwrap),
   get: id => api.get(`${base}/${id}`).then(unwrap),
   create: data => api.post(base, data).then(unwrap),

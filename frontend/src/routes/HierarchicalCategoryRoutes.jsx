@@ -1,7 +1,6 @@
 import React from 'react';
 import { useParams, Navigate } from 'react-router-dom';
-import ProductsPage from '../pages/public/ProductsPage';
-import ProductDetailPage from '../pages/public/ProductDetailPage';
+import { ProductsPage, ProductDetailPage } from './publicCatalogPages';
 import NotFoundPage from '../pages/public/NotFoundPage';
 import { RESERVED_ROOT_SLUGS, isProductIdParam } from '../utils/categoryUrls';
 

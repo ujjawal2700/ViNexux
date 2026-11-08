@@ -495,7 +495,7 @@ export const ProductDetailPage = () => {
                     aria-pressed={selectedImageIndex === index}
                     aria-label={`Select photo ${index + 1}`}
                   >
-                    <Image src={img.url} alt="" aspectRatio="aspect-square" className="object-contain w-full h-full" />
+                    <Image src={img.url} sizes="96px" alt="" aspectRatio="aspect-square" className="object-contain w-full h-full" />
                   </button>
                 ))}
                 </div>
@@ -519,6 +519,8 @@ export const ProductDetailPage = () => {
               >
                 <Image
                   src={currentImage}
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  responsiveWidths={[320, 640, 960, 1280, 1600, 2048]}
                   alt={product.name}
                   objectFit="object-contain"
                   className="h-full w-full rounded-lg"

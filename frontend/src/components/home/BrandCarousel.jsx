@@ -1,3 +1,4 @@
+import { logoImage } from '../../utils/responsiveImage';
 import useCatalogBrands from '../../hooks/useCatalogBrands';
 import React, { useRef, useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -11,7 +12,7 @@ import { BrandCarouselSkeleton } from '../ui/Skeleton';
  */
 const BrandLogo = ({ brand }) => {
   const { name } = brand;
-  if (brand.logo?.url) return <img loading="lazy" decoding="async" src={brand.logo.url} alt={name} className="max-h-full max-w-full object-contain" />;
+  if (brand.logo?.url) return <img loading="lazy" decoding="async" {...logoImage(brand.logo.url)} width={160} height={80} alt={name} className="max-h-full max-w-full object-contain" />;
 
   switch (name) {
     case 'XPG':
@@ -300,14 +301,20 @@ export const BrandCarousel = () => {
     const el = scrollRef.current;
     if (!el || !displayBrands.length) return;
 
-    let animId;
+    let animId, loopWidth = 0;
+    const measure = () => {
+      const halfwayItem = el.children[displayBrands.length / 2];
+      loopWidth = halfwayItem ? halfwayItem.offsetLeft - el.children[0].offsetLeft : 0;
+    };
+    measure();
+    const resize = new ResizeObserver(measure);
+    resize.observe(el);
+    const motion = matchMedia('(prefers-reduced-motion: reduce)');
 
     const step = () => {
-      if (!isPaused && el) {
+      if (!isPaused && !document.hidden && !motion.matches) {
         // Move toward the start so the logos travel to the right. Wrap to
         // the identical second copy before reaching the left boundary.
-        const halfwayItem = el.children[displayBrands.length / 2];
-        const loopWidth = halfwayItem ? halfwayItem.offsetLeft - el.children[0].offsetLeft : 0;
         if (loopWidth && el.scrollLeft <= 1) el.scrollLeft += loopWidth;
         el.scrollLeft -= 0.75;
       }
@@ -315,7 +322,7 @@ export const BrandCarousel = () => {
     };
 
     animId = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(animId);
+    return () => { cancelAnimationFrame(animId); resize.disconnect(); };
   }, [isPaused, displayBrands]);
 
   const scrollManual = (direction) => {

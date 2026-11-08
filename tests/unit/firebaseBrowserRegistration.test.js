@@ -22,7 +22,7 @@ function browser({ permission = 'granted', error, supported = true } = {}) {
     onMessage: () => () => {}, console: { warn: jest.fn() },
   };
   const source = readFileSync(new URL('../../frontend/src/lib/firebase.js', import.meta.url), 'utf8')
-    .replace(/^import .*;\n/gm, '').replaceAll('import.meta.env', 'env').replaceAll('export const ', 'const ')
+    .replace(/^import .*;\n/gm, '').replace(/^const loadSdk = .*;$/m, 'const loadSdk = async () => ({ app: initializeApp(), getMessaging, getToken, onMessage, isSupported });').replaceAll('import.meta.env', 'env').replaceAll('export const ', 'const ')
     .replace(/export \{ isFirebaseConfigured \};/, '') + '\nglobalThis.acquireToken = getPushToken;';
   vm.runInNewContext(source, context);
   return { acquire: context.acquireToken, calls, register, requestPermission };

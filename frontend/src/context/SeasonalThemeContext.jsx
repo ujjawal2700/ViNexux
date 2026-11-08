@@ -1,17 +1,22 @@
+import contentService from '../services/contentService';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { themeService } from '../services/themeService';
-import { themeVariables, themeStyles, themeStyleAttributes, normalizeThemeConfig, themeArtworkFrame } from '../../../shared/seasonalThemes';
+import { themeVariables, themeStyles, themeStyleAttributes, normalizeThemeConfig, themeArtworkFrame, themeAssetUrl } from '../../../shared/seasonalThemes';
 import { useLocation } from 'react-router-dom';
 import { SeasonalThemeContext as Context, defaultSeasonalTheme as fallback } from './seasonalThemeStore';
 import { useSeasonalTheme } from '../hooks/useSeasonalTheme';
 import { StorefrontScopeContext } from './seasonalThemeStore';
 export function SeasonalThemeProvider({ children }) {
+  const { pathname } = useLocation();
+  useEffect(() => { if (pathname === '/') contentService.getBannerGrid().catch(() => {}); }, [pathname]);
   const isPreview = useRef(false);
   const [theme, setTheme] = useState(fallback);
+  const [ready, setReady] = useState(false);
   const refresh = useCallback(async () => {
     if (isPreview.current) return;
     try { const data = await themeService.public(); if (!isPreview.current) setTheme(data?.theme?.config ? { ...data.theme, config: normalizeThemeConfig(data.theme.config) } : fallback); }
     catch { if (!isPreview.current) setTheme(fallback); }
+    finally { setReady(true); }
   }, []);
   useEffect(() => {
     refresh();
@@ -42,6 +47,7 @@ export function SeasonalThemeProvider({ children }) {
     document.addEventListener('submit', blockInteraction, true);
     return () => { window.removeEventListener('message', receive); document.removeEventListener('click', blockInteraction, true); document.removeEventListener('submit', blockInteraction, true); };
   }, []);
+  if (!ready) return <main className="min-h-screen grid place-items-center" role="status">Loading…</main>;
   return <Context.Provider value={{ theme, refresh }}>{children}</Context.Provider>;
 }
 export function ThemeDecorations({ config, placement }) {
@@ -52,12 +58,12 @@ export function ThemeDecorations({ config, placement }) {
     const frame = themeArtworkFrame(asset.url);
     const height = frame ? frame.bottom - frame.top : null;
     return <div aria-hidden="true" className={`theme-decoration theme-decoration-asset theme-decoration-${placement} theme-decoration-framed`}
-      style={frame ? { backgroundImage: `url(${JSON.stringify(asset.url)})`,
+      style={frame ? { backgroundImage: `url(${JSON.stringify(themeAssetUrl(asset.url))})`,
         backgroundSize: `calc(var(--theme-band-height) * ${frame.width / height}) auto`,
         backgroundPosition: `left calc(var(--theme-band-height) * ${-frame.top / height})` } : {
-          backgroundImage: `url(${JSON.stringify(asset.url)})`, backgroundSize: 'auto var(--theme-band-height)', backgroundPosition: 'left center',
+          backgroundImage: `url(${JSON.stringify(themeAssetUrl(asset.url))})`, backgroundSize: 'auto var(--theme-band-height)', backgroundPosition: 'left center',
         }}>
-      <img src={asset.url} alt="" />
+      <img src={themeAssetUrl(asset.url)} alt="" loading={placement === 'footer' ? 'lazy' : 'eager'} decoding="async" />
     </div>;
   }
   if (config.decoration === 'none') return null;

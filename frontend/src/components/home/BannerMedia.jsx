@@ -1,9 +1,10 @@
+import { responsiveImage } from '../../utils/responsiveImage';
 import { useEffect, useRef, useState } from 'react';
 import { Play } from 'lucide-react';
 import { bannerFramingStyle } from '../../../../shared/bannerGrid';
 import { isBannerVideo, suitableBannerConnection } from '../../../../shared/bannerMedia';
 
-export default function BannerMedia({ asset, active, shown = active, first = false }) {
+export default function BannerMedia({ asset, active, shown = active, first = false, sizes }) {
   const video = useRef(null), frame = useRef(null), waiting = useRef(null);
   const [visible, setVisible] = useState(false), [ready, setReady] = useState(false), [manual, setManual] = useState(false), [failed, setFailed] = useState(false), [playing, setPlaying] = useState(false);
   const [hidden, setHidden] = useState(document.hidden);
@@ -40,9 +41,9 @@ export default function BannerMedia({ asset, active, shown = active, first = fal
     return () => { clearTimeout(waiting.current); element.pause(); };
   }, [load]);
   const style = bannerFramingStyle(asset);
-  if (!isVideo) return <img src={first || shown ? asset.url : undefined} alt={asset.title || 'Featured collection'} aria-hidden={!active} loading={first ? 'eager' : 'lazy'} draggable={false} className={`bento-banner-image ${active ? 'is-active' : ''}`} style={style} />;
+  if (!isVideo) return <img {...responsiveImage(first || shown ? asset.url : undefined, { widths: [320, 640, 960, 1280, 1600], sizes })} width={1600} height={900} fetchPriority={first ? 'high' : 'low'} decoding="async" alt={asset.title || 'Featured collection'} aria-hidden={!active} loading={first ? 'eager' : 'lazy'} draggable={false} className={`bento-banner-image ${active ? 'is-active' : ''}`} style={style} />;
   return <div ref={frame} className="absolute inset-0" data-testid="banner-video-frame">
-    <img src={first || shown ? asset.posterUrl : undefined} alt={asset.title || 'Promotional video thumbnail'} loading={first ? 'eager' : 'lazy'} className={`bento-banner-image ${playing ? 'opacity-0' : ''}`} style={style} />
+    <img {...responsiveImage(first || shown ? asset.posterUrl : undefined, { widths: [320, 640, 960, 1280], sizes })} width={1280} height={720} fetchPriority={first ? 'high' : 'low'} decoding="async" alt={asset.title || 'Promotional video thumbnail'} loading={first ? 'eager' : 'lazy'} className={`bento-banner-image ${playing ? 'opacity-0' : ''}`} style={style} />
     <video ref={video} src={load ? asset.url : undefined} preload="none" muted playsInline loop aria-hidden="true" className={`bento-banner-image ${playing ? 'opacity-100' : 'opacity-0'}`} style={style}
       onEmptied={() => setPlaying(false)} onPlaying={() => { clearTimeout(waiting.current); setPlaying(true); }} onCanPlay={() => clearTimeout(waiting.current)} onError={() => { if (load) { setFailed(true); setPlaying(false); } }} onWaiting={() => { clearTimeout(waiting.current); waiting.current = setTimeout(() => { setFailed(true); setPlaying(false); }, 2500); }} onStalled={() => { setFailed(true); setPlaying(false); }} />
     {active && !playing && <button type="button" aria-label={failed ? 'Retry banner video' : 'Play banner video'} className="absolute bottom-3 left-3 z-10 flex items-center gap-1 rounded-full bg-black/70 px-3 py-2 text-xs font-bold text-white" onClick={event => { event.preventDefault(); event.stopPropagation(); setFailed(false); setManual(true); }}><Play size={14} />{failed ? 'Retry video' : 'Play video'}</button>}

@@ -9,29 +9,9 @@ import BrandCarousel from '../../components/home/BrandCarousel';
 import TrendingProducts from '../../components/home/TrendingProducts';
 import HeroBentoGrid from '../../components/home/HeroBentoGrid';
 import '../../styles/banner-grid.css';
-import Skeleton, { BrandCarouselSkeleton, ProductCardSkeleton } from '../../components/ui/Skeleton';
+import { ProductCardSkeleton } from '../../components/ui/Skeleton';
 import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
-
-const HomePageSkeleton = ({ grid, bannerReady }) => (
-  <div className="w-full min-h-screen bg-[var(--store-background)] pb-16 space-y-6 sm:space-y-8" role="status" aria-label="Loading storefront">
-    {bannerReady ? <HeroBentoGrid grid={grid} /> : <div className="hero-bento-grid storefront-container">{Array.from({ length: 2 }, (_, i) => <Skeleton key={i} className={`bento-banner-tile bento-banner-tile-${i + 1}`} />)}</div>}
-
-    <div className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12">
-      <BrandCarouselSkeleton count={8} className="px-0" />
-    </div>
-
-    <div className="storefront-container px-3 sm:px-6 lg:px-8 2xl:px-12 space-y-4">
-      <Skeleton className="h-6 w-44" />
-      <div className="home-product-grid gap-3 sm:gap-4">
-        {Array.from({ length: 8 }).map((_, index) => (
-          <ProductCardSkeleton key={index} />
-        ))}
-      </div>
-    </div>
-    <span className="sr-only">Loading catalog</span>
-  </div>
-);
 
 export const HomePage = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -51,17 +31,6 @@ export const HomePage = () => {
   const [newArrivals, setNewArrivals] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showLoadingSkeleton, setShowLoadingSkeleton] = useState(false);
-
-  useEffect(() => {
-    if (!isLoading) {
-      setShowLoadingSkeleton(false);
-      return undefined;
-    }
-    const timer = window.setTimeout(() => setShowLoadingSkeleton(true), 300);
-    return () => window.clearTimeout(timer);
-  }, [isLoading]);
-
   // Load all homepage data
   const loadData = useCallback(async () => {
     const version = ++requestVersion.current;
@@ -92,20 +61,20 @@ export const HomePage = () => {
   }, [loadData]);
 
   if (error) return <ErrorState title="Storefront unavailable" description={error} onRetry={loadData} />;
-  if (isLoading && showLoadingSkeleton) return <HomePageSkeleton grid={bannerGrid} bannerReady={bannerReady} />;
 
   return (
-    <div className="theme-home w-full max-w-full bg-[var(--store-background)] pb-16 space-y-6 sm:space-y-8 overflow-x-hidden">
+    <div className="theme-home min-h-screen w-full max-w-full bg-[var(--store-background)] pb-16 space-y-6 sm:space-y-8 overflow-x-hidden">
       
       <h1 className="sr-only">ViNexus — Networking, CCTV &amp; IT Hardware</h1>
       {/* Two independently rotating banner areas. */}
-      <HeroBentoGrid grid={bannerGrid} />
+      <HeroBentoGrid grid={bannerGrid} loading={!bannerReady} />
 
       {/* 2. ALL BRANDS WITH LOGOS SLIDING LEFT TO RIGHT */}
       <section className="w-full">
         <BrandCarousel />
       </section>
 
+      {isLoading && <div className="storefront-container px-3 sm:px-6 lg:px-8" role="status" aria-label="Loading products"><div className="home-product-grid gap-3 sm:gap-4">{Array.from({ length: 4 }, (_, index) => <ProductCardSkeleton key={index} />)}</div></div>}
       <TrendingProducts products={trendingProducts} />
 
       <TrendingProducts products={newArrivals} title="New Arrivals" direction="right" eyebrow="Selected for you" label="New arrival products" viewAll="/products?isNewArrival=true" renderProduct={product => <ProductCard product={product} />} />

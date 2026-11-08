@@ -18,8 +18,7 @@ import { ROLES } from '../constants';
 // Storefront core pages stay in the main bundle; everything else is split
 // into per-route chunks so shoppers never download the admin panel.
 import HomePage from '../pages/public/HomePage';
-import ProductsPage from '../pages/public/ProductsPage';
-import ProductDetailPage from '../pages/public/ProductDetailPage';
+import { ProductsPage, ProductDetailPage } from './publicCatalogPages';
 import NotFoundPage from '../pages/public/NotFoundPage';
 import {
   CategoryRoute,

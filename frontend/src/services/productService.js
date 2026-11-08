@@ -1,9 +1,9 @@
+import { publicRequest } from '../utils/publicRequests';
 import apiClient from '../api/axios';
 
 export const productService = {
   async getBrands() {
-    const response = await apiClient.get('/products/brands');
-    return response.data;
+    return publicRequest('catalog-brands', () => apiClient.get('/products/brands').then(response => response.data));
   },
   /**
    * Fetch catalog product listing with search, filtering, and pagination.

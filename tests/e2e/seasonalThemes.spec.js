@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { mockApi, seedBrowserSession } from './mockApi.js';
-import { presetConfig } from '../../shared/seasonalThemes.js';
+import { presetConfig, themeAssetUrl } from '../../shared/seasonalThemes.js';
 
 test('header and footer artwork fills full-width strips on desktop and mobile', async ({ page }, testInfo) => {
   await mockApi(page); await seedBrowserSession(page, 'storefront');
@@ -107,8 +107,8 @@ test('festival presets load matching artwork and restore bundled images', async 
       await expect(preview.locator('.theme-decoration-asset')).toHaveCount(0);
     } else {
       for (const slot of ['header', 'background', 'footer']) await expect(page.getByAltText(`${slot} decoration`)).toHaveAttribute('src', config.assets[slot].url);
-      await expect(preview.locator('.theme-decoration-header img')).toHaveAttribute('src', config.assets.header.url);
-      await expect(preview.locator('.theme-decoration-header img')).toHaveJSProperty('naturalWidth', key === 'diwali' ? 2172 : 1440);
+      await expect(preview.locator('.theme-decoration-header img')).toHaveAttribute('src', themeAssetUrl(config.assets.header.url));
+      await expect(preview.locator('.theme-decoration-header img')).toHaveJSProperty('naturalWidth', key === 'diwali' ? 1400 : 1440);
       await expect(preview.locator('.theme-announcement')).toHaveText(config.announcement);
     }
   }

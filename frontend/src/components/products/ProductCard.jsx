@@ -1,3 +1,4 @@
+import { responsiveImage, logoImage } from '../../utils/responsiveImage';
 import PriceGate, { LoginToViewPrices, usePriceVisibility } from './PriceGate';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -168,7 +169,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
         {/* Product Image – full size, no wrapper box clipping PNG */}
         {primaryImage && !imgError ? (
           <img
-            src={primaryImage}
+            {...responsiveImage(primaryImage)} width={640} height={640} decoding="async"
             alt={product.name}
             onError={() => setImgError(true)}
             className="w-full h-full object-contain transition-transform duration-300 motion-safe:group-hover:scale-105 p-4 sm:p-5"
@@ -218,7 +219,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
 
           </PriceGate>}
           {brandLogo ? (
-            <img loading="lazy" decoding="async" src={brandLogo} alt={`${brandName} logo`} title={brandName} className="h-8 w-[30%] max-w-16 shrink-0 object-contain object-right" />
+            <img loading="lazy" decoding="async" {...logoImage(brandLogo)} width={160} height={80} alt={`${brandName} logo`} title={brandName} className="h-8 w-[30%] max-w-16 shrink-0 object-contain object-right" />
           ) : (
             <span className="max-w-[30%] shrink-0 truncate text-right text-[10px] font-extrabold uppercase text-[var(--store-primary)]" title={brandName}>{brandName}</span>
           )}

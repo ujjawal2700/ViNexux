@@ -1,3 +1,4 @@
+import { responsiveImage } from '../../utils/responsiveImage';
 import React, { useState } from 'react';
 import { ImageOff } from 'lucide-react';
 import Skeleton from './Skeleton';
@@ -10,6 +11,7 @@ const ImageContent = ({
   objectFit = 'object-cover',
   imgClassName = '',
   fallbackSrc = null,
+  responsiveWidths,
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -37,7 +39,7 @@ const ImageContent = ({
         </div>
       ) : (
         <img
-          src={src || fallbackSrc}
+          {...responsiveImage(src || fallbackSrc, { ...(responsiveWidths ? { widths: responsiveWidths } : {}), sizes: props.sizes })} width={640} height={640}
           alt={alt}
           loading="lazy"
           decoding="async"

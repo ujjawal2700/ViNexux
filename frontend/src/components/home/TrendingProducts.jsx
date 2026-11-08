@@ -1,3 +1,4 @@
+import { logoImage } from '../../utils/responsiveImage';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -9,7 +10,7 @@ function TrendingBrandLogo({ brand }) {
   const [failedSource, setFailedSource] = useState(null);
   const source = brand?.logo?.url;
   if (!source || failedSource === source) return null;
-  return <img src={source} alt={`${brand.name || 'Brand'} logo`} className="trending-brand" loading="lazy" decoding="async" onError={() => setFailedSource(source)} />;
+  return <img {...logoImage(source)} width={160} height={80} alt={`${brand.name || 'Brand'} logo`} className="trending-brand" loading="lazy" decoding="async" onError={() => setFailedSource(source)} />;
 }
 
 export default function TrendingProducts({ products = [], title = 'Trending Products', eyebrow = 'In the spotlight', label = 'Trending products', viewAll = '/trending', direction = 'left', renderProduct }) {
@@ -39,21 +40,23 @@ export default function TrendingProducts({ products = [], title = 'Trending Prod
     const el = track.current;
     if (!el || products.length < 2 || paused || reducedMotion) return;
     let frame, previous;
+    let width = group.current?.offsetWidth || 0;
+    const resize = new ResizeObserver(entries => { width = entries[0]?.borderBoxSize?.[0]?.inlineSize || group.current?.offsetWidth || 0; });
+    if (group.current) resize.observe(group.current);
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
     const step = time => {
       if (media.matches) return;
       if (!document.hidden && previous !== undefined) {
         const distance = Math.min(time - previous, 50) * 0.035;
-        if (direction === 'right' && el.scrollLeft <= 0 && group.current?.offsetWidth) el.scrollLeft += group.current.offsetWidth;
+        if (direction === 'right' && el.scrollLeft <= 0 && width) el.scrollLeft += width;
         el.scrollLeft += direction === 'right' ? -distance : distance;
-        const width = group.current?.offsetWidth;
         if (width && el.scrollLeft >= width) el.scrollLeft -= width;
       }
       previous = time;
       frame = requestAnimationFrame(step);
     };
     frame = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frame);
+    return () => { cancelAnimationFrame(frame); resize.disconnect(); };
   }, [products.length, slides, paused, reducedMotion, direction]);
 
   const navigate = direction => {

@@ -22,6 +22,9 @@ export const THEME_STYLE_LOOKS = {
 export const themeStyles = config => ({ ...DEFAULT_THEME_STYLES, ...config?.styles });
 // The Diwali PNGs include large cream margins. Frame their artwork instead
 // of scaling that empty canvas into the website header/footer.
+export function themeAssetUrl(url) {
+  return /^\/theme-assets\/diwali\/(header-marigold|footer-diyas|section-background)\.png$/.test(url || '') ? url.replace('.png', '-v1.webp') : url;
+}
 export function themeArtworkFrame(url) {
   const path = typeof url === 'string' ? url.split(/[?#]/)[0] : '';
   if (path.endsWith('/theme-assets/diwali/header-marigold.png')) return { width: 2172, top: 240, bottom: 452 };
@@ -97,7 +100,7 @@ export function resolveTheme(campaigns, manualId, now = Date.now()) {
 export function themeVariables(config) {
   const colors = { ...DEFAULT_THEME, ...config?.colors };
   const variables = Object.fromEntries(Object.entries(colors).map(([key, value]) => [`--store-${key.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`)}`, value]));
-  if (config?.assets?.background?.url) variables['--store-background-image'] = `url(${JSON.stringify(config.assets.background.url)})`;
+  if (config?.assets?.background?.url) variables['--store-background-image'] = `url(${JSON.stringify(themeAssetUrl(config.assets.background.url))})`;
   const styles = themeStyles(config);
   const pattern = styles.pattern === 'auto' ? (config?.decoration === 'diyas' ? 'dots' : 'none') : styles.pattern;
   const ink = 'color-mix(in srgb, var(--store-accent) 20%, transparent)';

@@ -1,3 +1,4 @@
+import { responsiveImage } from '../utils/responsiveImage';
 import { productLineKey } from '../../../shared/productVariants.js';
 import PriceGate, { LoginToViewPrices, usePriceVisibility } from '../components/products/PriceGate';
 import { getRecentSearches, rememberSearch } from '../utils/browsingHistory';
@@ -928,7 +929,7 @@ const PublicLayout = () => {
               {hasCustomLogo ? (
                 <Link to="/" className="flex items-center shrink-0 group bg-[var(--store-surface)]/95 rounded px-2 py-0.5 shadow-xs" aria-label="Vinexus home">
                   <img
-                    src={websiteSettings.logo.url}
+                    {...responsiveImage(websiteSettings.logo.url, { widths: [160, 320, 560], sizes: '(max-width: 1023px) 140px, 240px' })} width={280} height={70} decoding="async"
                     alt={websiteName || 'Vinexus'}
                     className="h-7 sm:h-8 w-auto max-w-[140px] sm:max-w-[170px] object-contain"
                   />
@@ -1028,7 +1029,7 @@ const PublicLayout = () => {
             {hasCustomLogo ? (
               <Link to="/" className="flex items-center shrink-0 group py-0.5" aria-label="Vinexus home">
                 <img
-                  src={websiteSettings.logo.url}
+                  {...responsiveImage(websiteSettings.logo.url, { widths: [160, 320, 560], sizes: '(max-width: 1023px) 140px, 240px' })} width={280} height={70} decoding="async"
                   alt={websiteName || 'Vinexus'}
                   className="h-10 lg:h-12 w-auto max-w-[240px] xl:max-w-[280px] object-contain group-hover:scale-105 transition-transform"
                 />
