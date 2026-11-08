@@ -1890,6 +1890,7 @@ const PublicLayout = () => {
                         >
                           <img
                             src={bank.qrCodeUrl}
+                            loading="lazy" decoding="async" width={320} height={320}
                             alt="Payment QR Code"
                             className="max-h-full max-w-full object-contain"
                           />

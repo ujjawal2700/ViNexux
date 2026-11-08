@@ -34,3 +34,9 @@ test('SEO renderer includes startup hints while preserving the canonical and cra
   expect(html).toContain('id="storefront-startup"');
   expect(html).toContain('id="seo-content"');
 });
+
+test('responsive image preloads follow the mobile viewport but precede application scripts', () => {
+  const html = renderStorefrontStartup(shell.replace('<head>', '<head><meta name="viewport" content="width=device-width, initial-scale=1">'), page);
+  expect(html.indexOf('rel="preload"')).toBeGreaterThan(html.indexOf('name="viewport"'));
+  expect(html.indexOf('rel="preload"')).toBeLessThan(html.indexOf('type="module"'));
+});

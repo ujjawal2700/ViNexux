@@ -9,7 +9,7 @@ const defaultSettings = {
   websiteName: 'Vinexus',
   metaTitle: SITE_TITLE,
   metaDescription: SITE_DESCRIPTION,
-  favicon: { url: '/favicon.jpeg', publicId: '' },
+  favicon: { url: '/favicon-32x32.png', publicId: '' },
   logo: { url: '/logo.png', publicId: '' },
   ogImage: { url: '/social-preview.png', publicId: '' },
   promoPopupIntervalMinutes: 15,
@@ -30,10 +30,12 @@ const setMeta = (selector, attribute, value) => {
 };
 
 const applyDocumentMetadata = (settings, pathname = '/') => {
-  const faviconUrl = settings.favicon?.url || defaultSettings.favicon.url;
+  const savedFavicon = settings.favicon?.url || defaultSettings.favicon.url;
+  const bundledFavicon = ['/favicon.jpeg', '/favicon-32x32.png'].includes(savedFavicon);
+  const faviconUrl = bundledFavicon ? '/favicon-32x32.png' : savedFavicon;
   document.head.querySelectorAll('link[rel~="icon"], link[rel="apple-touch-icon"]').forEach((link) => {
     link.removeAttribute('type');
-    link.setAttribute('href', faviconUrl);
+    link.setAttribute('href', bundledFavicon && link.rel === 'apple-touch-icon' ? '/apple-touch-icon.png' : faviconUrl);
   });
 
   // A page hook owns its route-specific metadata, including late CMS refreshes.

@@ -27,5 +27,9 @@ export function renderStorefrontStartup(html, page) {
   const json = JSON.stringify(startup).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
   // Preloads go ahead of Vite's scripts/styles so the HTML scanner discovers
   // critical images before JavaScript executes or any browser API calls finish.
-  return html.replace('</head>', `<script id="storefront-startup" type="application/json">${json}</script>\n</head>`).replace('<head>', `<head>\n${hints.join('\n')}`);
+  const output = html.replace('</head>', `<script id="storefront-startup" type="application/json">${json}</script>\n</head>`);
+  const viewport = /<meta\b[^>]*name=["']viewport["'][^>]*>/i;
+  // Mobile preloads must follow the viewport declaration; otherwise the HTML
+  // scanner can choose an unnecessarily wide image using its 980px default.
+  return viewport.test(output) ? output.replace(viewport, match => `${match}\n${hints.join('\n')}`) : output.replace('<head>', `<head>\n${hints.join('\n')}`);
 }
