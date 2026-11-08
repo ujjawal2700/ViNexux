@@ -41,3 +41,11 @@ JavaScript should include `Content-Encoding: gzip`, `Vary: Accept-Encoding`, and
 - Real Cloudinary checks returned HTTP 200: one banner decreased from 120,861 to 44,092 bytes at width 640; one product image decreased from 127,248 to 23,153 bytes at width 320. Results depend on the image and the visitor's viewport/pixel density.
 - Build, lint and repository integrity checks are run before pushing. Existing lint warnings remain.
 - These measurements are not a new live PageSpeed score. Redeploy the frontend and apply/reload the Nginx configuration before retesting mobile and desktop PageSpeed. No score or response-time guarantee is implied.
+
+## Follow-up mobile loading fix
+
+The repeat mobile report improved CLS to 0.005 and TBT to 50 ms, but LCP was still 7.6 seconds. A throttled live trace found the first images were not discovered until about 5.4 seconds, behind JavaScript, settings and theme requests. The live VPS was still serving JavaScript and CSS without gzip.
+
+The homepage SEO response now carries public settings, the active theme, and banner metadata as escaped JSON in the initial HTML. Responsive first-image/poster preload hints precede Vite's scripts/styles. The app uses this document data immediately, removing the three initial browser content requests while retaining 15-second maintenance polling and normal fallback requests when data is missing or expired. This data contains no user accounts, carts or product prices. Private routes and maintenance/error pages do not receive it. Portrait banner candidates now include width 160 to avoid sending a width-320 poster for a much smaller mobile tile.
+
+On 8 November 2026 the live Nginx configuration was backed up, validated with `nginx -t`, and reloaded. Live HTTPS responses now confirm HTTP/2, gzip, `Vary: Accept-Encoding`, year-long immutable caching for hashed JavaScript, and seven-day public caching for theme artwork. These settings must be retained in future server configuration updates. The backup is `/etc/nginx/sites-available/vinexus.conf.pre-performance-20261108T141510Z`.

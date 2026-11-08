@@ -1,3 +1,4 @@
+import { storefrontStartup } from '../../utils/storefrontStartup';
 import contentService from '../../services/contentService';
 import { ErrorState } from '../../components/ui/ErrorState';
 import useAuth from '../../hooks/useAuth';
@@ -16,9 +17,10 @@ import { ChevronRight } from 'lucide-react';
 export const HomePage = () => {
   const { user, isLoading: authLoading } = useAuth();
   const requestVersion = useRef(0);
-  const [bannerGrid, setBannerGrid] = useState(null);
-  const [bannerReady, setBannerReady] = useState(false);
+  const [bannerGrid, setBannerGrid] = useState(storefrontStartup?.grid || null);
+  const [bannerReady, setBannerReady] = useState(Boolean(storefrontStartup));
   useEffect(() => {
+    if (storefrontStartup) return undefined;
     let active = true;
     contentService.getBannerGrid().then(response => { if (active) setBannerGrid(response.data?.grid || null); }).catch(() => {}).finally(() => { if (active) setBannerReady(true); });
     return () => { active = false; };

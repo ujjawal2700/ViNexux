@@ -1,3 +1,5 @@
+import { getActiveTheme } from './theme.service.js';
+import BannerGrid from '../models/BannerGrid.js';
 import { Product } from '../models/Product.js';
 import { CmsPage } from '../models/CmsPage.js';
 import { getPublicCategories, getPublicBrands, getPublicProducts, getPublicProductById } from './catalog.service.js';
@@ -14,6 +16,7 @@ export const seoPage = async pathname => {
     return { ...data, status: 503, metadata: { ...routeMetadata({ pathname: path, settings }), heading: 'Website under maintenance', title: 'Under maintenance | ViNexus', description: settings.maintenanceMessage || 'Please check back soon.' } };
   }
   if (privatePath(path)) return { ...data, metadata: routeMetadata({ pathname: path, settings }) };
+  const startup = path === '/' ? Promise.all([getActiveTheme(), BannerGrid.findOne({ singletonKey: 'primary' }).lean()]).then(([theme, grid]) => ({ settings, theme, grid })).catch(() => null) : null;
   const categories = await getPublicCategories();
   const breadcrumbs = [{ name: 'Home', path: '/' }];
   let productQuery = { limit: 24, includeFacets: 'false' };
@@ -53,6 +56,7 @@ export const seoPage = async pathname => {
       if (path === '/') data.links.unshift(...categories.map(category => ({ name: category.name, path: categoryPath(category, categories) })), ...Object.entries(STATIC_PAGES).filter(([key]) => key !== '/').map(([key, [name]]) => ({ name, path: key })));
     }
   }
+  if (startup) data.startup = await startup;
   data.metadata = routeMetadata({ ...data, pathname, notFound: data.status === 404 });
   if (!id && path !== '/' && data.status === 200) breadcrumbs.push({ name: data.metadata.heading, path });
   if (breadcrumbs.length > 1 && data.status === 200) data.jsonLd.push(breadcrumbData(breadcrumbs));
