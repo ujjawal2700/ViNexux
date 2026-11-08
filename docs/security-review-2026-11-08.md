@@ -40,3 +40,7 @@ The backend high-severity finding is [Zod resource exhaustion](https://github.co
 Rotate the database, Cloudinary, signing, and administrator credentials present in the old setup scripts. Removing files does not remove credentials from Git history. If the malicious incoming revision was built or started on any machine, treat credentials accessible to that machine as potentially exposed, investigate that machine and deployment, and rebuild from a trusted clean checkout. Review GitHub account/repository access and the origin of the force-updated revision.
 
 This normal merge/push preserves Git history, including the malicious historical revision. Do not check out or execute that revision. History rewriting and production credential rotation were not performed as part of this push.
+
+## Subsequent performance-work sync
+
+The final fetch before the performance push found `origin/main` force-updated from the previously verified clean `8613fc4` to `4b9f912`, with the same commit message. The only tree differences were the same six injection-related paths: `.gitignore`, the two package files, the two `init` files, and `frontend/vite.config.js`. The malicious changes were again rejected in a clean merge, and repository integrity tests rerun. The source of these repeated branch replacements remains unresolved; repository/account access requires investigation.
