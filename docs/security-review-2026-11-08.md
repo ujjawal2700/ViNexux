@@ -44,3 +44,5 @@ This normal merge/push preserves Git history, including the malicious historical
 ## Subsequent performance-work sync
 
 The final fetch before the performance push found `origin/main` force-updated from the previously verified clean `8613fc4` to `4b9f912`, with the same commit message. The only tree differences were the same six injection-related paths: `.gitignore`, the two package files, the two `init` files, and `frontend/vite.config.js`. The malicious changes were again rejected in a clean merge, and repository integrity tests rerun. The source of these repeated branch replacements remains unresolved; repository/account access requires investigation.
+
+During the mobile performance follow-up, `origin/main` was again replaced with `e0a7f47`, carrying the same message as clean `6ae97b1` and differing only in the same six malicious injection paths. These changes were rejected again; the VPS deployment uses an explicitly pinned reviewed commit rather than blindly deploying the remote branch.
