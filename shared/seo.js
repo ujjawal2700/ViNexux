@@ -1,3 +1,4 @@
+import { renderStorefrontStartup } from './storefrontStartup.js';
 import { productIdFromPath, productShareDescription, renderSocialHtml } from './socialMetadata.js';
 export const SITE_ORIGIN = 'https://vinexus.in';
 export const SITE_TITLE = 'ViNexus | Networking, CCTV & IT Hardware';
@@ -78,5 +79,5 @@ export const renderSeoHtml = (html, data, origin = SITE_ORIGIN) => {
     const content = `<main id="seo-content"><h1>${escapeHtml(meta.heading)}</h1><p>${escapeHtml(bodyText)}</p>${data.product && meta.image ? `<img src="${escapeHtml(meta.image)}" alt="${escapeHtml(data.product.name)}" width="400">` : ''}${specifications ? `<dl>${specifications}</dl>` : ''}${links ? `<nav aria-label="Browse ViNexus"><ul>${links}</ul></nav>` : ''}<p><a href="/products">Browse all products</a></p></main>`;
     output = output.replace(/<div id="root">[\s\S]*?<\/div>/, `<div id="root">${content}</div>`);
   }
-  return output;
+  return renderStorefrontStartup(output, data);
 };

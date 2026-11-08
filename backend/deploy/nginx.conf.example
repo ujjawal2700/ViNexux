@@ -109,3 +109,6 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
+
+# Optional on Nginx >= 1.25.1 compiled with http_v2 (enabled on the live VPS):
+# Add `http2 on;` inside the HTTPS server block.

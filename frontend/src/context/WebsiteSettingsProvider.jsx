@@ -1,3 +1,4 @@
+import { storefrontStartup } from '../utils/storefrontStartup';
 import { routeMetadata, SITE_TITLE, SITE_DESCRIPTION } from '../../../shared/seo.js';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -55,8 +56,8 @@ const applyDocumentMetadata = (settings, pathname = '/') => {
 
 export const WebsiteSettingsProvider = ({ children }) => {
   const location = useLocation();
-  const [settings, setSettings] = useState(defaultSettings);
-  const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState(() => ({ ...defaultSettings, ...storefrontStartup?.settings }));
+  const [loading, setLoading] = useState(!storefrontStartup);
 
   const refreshSettings = useCallback(async () => {
     try {
@@ -73,7 +74,8 @@ export const WebsiteSettingsProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    refreshSettings();
+    // Server HTML already checked maintenance; polling still picks up changes.
+    if (!storefrontStartup) refreshSettings();
     const timer = window.setInterval(refreshSettings, 15000);
     const onMaintenance = event => setSettings(current => ({ ...current, maintenanceEnabled: true, maintenanceMessage: event.detail }));
     window.addEventListener('site-maintenance', onMaintenance);

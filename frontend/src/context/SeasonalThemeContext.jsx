@@ -1,3 +1,4 @@
+import { storefrontStartup } from '../utils/storefrontStartup';
 import contentService from '../services/contentService';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { themeService } from '../services/themeService';
@@ -8,10 +9,10 @@ import { useSeasonalTheme } from '../hooks/useSeasonalTheme';
 import { StorefrontScopeContext } from './seasonalThemeStore';
 export function SeasonalThemeProvider({ children }) {
   const { pathname } = useLocation();
-  useEffect(() => { if (pathname === '/') contentService.getBannerGrid().catch(() => {}); }, [pathname]);
+  useEffect(() => { if (pathname === '/' && !storefrontStartup) contentService.getBannerGrid().catch(() => {}); }, [pathname]);
   const isPreview = useRef(false);
-  const [theme, setTheme] = useState(fallback);
-  const [ready, setReady] = useState(false);
+  const [theme, setTheme] = useState(() => storefrontStartup?.theme?.config ? { ...storefrontStartup.theme, config: normalizeThemeConfig(storefrontStartup.theme.config) } : fallback);
+  const [ready, setReady] = useState(Boolean(storefrontStartup?.theme));
   const refresh = useCallback(async () => {
     if (isPreview.current) return;
     try { const data = await themeService.public(); if (!isPreview.current) setTheme(data?.theme?.config ? { ...data.theme, config: normalizeThemeConfig(data.theme.config) } : fallback); }
@@ -19,7 +20,7 @@ export function SeasonalThemeProvider({ children }) {
     finally { setReady(true); }
   }, []);
   useEffect(() => {
-    refresh();
+    if (!storefrontStartup?.theme) refresh();
     const onVisible = () => { if (!document.hidden) refresh(); };
     window.addEventListener('focus', onVisible);
     document.addEventListener('visibilitychange', onVisible);
