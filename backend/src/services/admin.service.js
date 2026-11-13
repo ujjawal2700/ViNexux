@@ -25,6 +25,10 @@ export const getDashboardSummary = async () => {
     inProgressEnquiries,
     closedEnquiries,
     spamEnquiries,
+    dealerEnquiries,
+    customerEnquiries,
+    newDealerEnquiries,
+    newCustomerEnquiries,
   ] = await Promise.all([
     User.countDocuments({ role: 'customer' }),
     User.countDocuments({ role: 'dealer' }),
@@ -42,6 +46,10 @@ export const getDashboardSummary = async () => {
     Enquiry.countDocuments({ status: 'in-progress' }),
     Enquiry.countDocuments({ status: 'closed' }),
     Enquiry.countDocuments({ status: 'spam' }),
+    Enquiry.countDocuments({ userType: 'dealer' }),
+    Enquiry.countDocuments({ userType: 'customer' }),
+    Enquiry.countDocuments({ userType: 'dealer', status: 'new' }),
+    Enquiry.countDocuments({ userType: 'customer', status: 'new' }),
   ]);
 
   return {
@@ -70,6 +78,8 @@ export const getDashboardSummary = async () => {
       inProgress: inProgressEnquiries,
       closed: closedEnquiries,
       spam: spamEnquiries,
+      b2b: { total: dealerEnquiries, new: newDealerEnquiries },
+      b2c: { total: customerEnquiries, new: newCustomerEnquiries },
     },
   };
 };

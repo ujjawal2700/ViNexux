@@ -1,6 +1,7 @@
 import useWebsiteSettings from './useWebsiteSettings';
-import { SITE_ORIGIN, routeMetadata } from '../../../shared/seo.js';
+import { SITE_ORIGIN, pageRobots } from '../../../shared/seo.js';
 import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 
 /**
  * Custom SEO hook to dynamically update document title, meta tags, and structured JSON-LD data
@@ -17,9 +18,9 @@ export const usePageSeo = ({
   robots,
 }) => {
   const { settings } = useWebsiteSettings();
+  const { pathname, search } = useLocation();
   const resolvedImage = type === 'product' ? image : image || settings.ogImage?.url || '/social-preview.png';
   useEffect(() => {
-    const pathname = window.location.pathname;
     document.head.dataset.pageSeoPath = pathname;
 
     // Helper to safely set meta attributes
@@ -60,7 +61,7 @@ export const usePageSeo = ({
 
     // Update canonical link
     const pageUrl = canonical || new URL(window.location.pathname, SITE_ORIGIN).href;
-    setMeta('meta[name="robots"]', 'content', robots || routeMetadata({ pathname }).robots);
+    setMeta('meta[name="robots"]', 'content', robots || pageRobots(`${pathname}${search}`, { isProduct: type === 'product' }));
     document.head.querySelectorAll('meta[name="googlebot"], meta[name="bingbot"]').forEach(element => element.remove());
     let canonicalLink = document.head.querySelector('link[rel="canonical"]');
     if (!canonicalLink) {
@@ -111,7 +112,7 @@ export const usePageSeo = ({
       if (existingScript) existingScript.remove();
       if (document.head.dataset.pageSeoPath === pathname) delete document.head.dataset.pageSeoPath;
     };
-  }, [title, description, keywords, canonical, image, resolvedImage, imageAlt, type, jsonLd, robots]);
+  }, [title, description, keywords, canonical, image, resolvedImage, imageAlt, type, jsonLd, robots, pathname, search]);
 };
 
 export default usePageSeo;

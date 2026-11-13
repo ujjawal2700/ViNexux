@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import adminService from '../../services/adminService';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import StatsCard from '../../components/admin/StatsCard';
@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 
 const AdminDashboardPage = () => {
-  const navigate = useNavigate();
   const [summary, setSummary] = useState(null);
   const [recentEnquiries, setRecentEnquiries] = useState([]);
   const [pendingDealers, setPendingDealers] = useState([]);
@@ -58,8 +57,8 @@ const AdminDashboardPage = () => {
     return (
       <div className="space-y-6">
         <AdminPageHeader title="Admin Dashboard" subtitle="System Control Center Overview" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((n) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map((n) => (
             <Skeleton key={n} className="h-28 rounded-xl" />
           ))}
         </div>
@@ -93,13 +92,22 @@ const AdminDashboardPage = () => {
       />
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
         <StatsCard
-          title="Total Enquiries"
-          value={summary?.enquiries?.total || 0}
-          subtext={`${summary?.enquiries?.new || 0} New Unprocessed Leads`}
+          title="B2B Enquiries"
+          value={summary?.enquiries?.b2b?.total || 0}
+          subtext={`${summary?.enquiries?.b2b?.new || 0} New Dealer Leads`}
           icon={Inbox}
           color="crimson"
+          to="/admin/enquiries/dealers"
+        />
+        <StatsCard
+          title="B2C Enquiries"
+          value={summary?.enquiries?.b2c?.total || 0}
+          subtext={`${summary?.enquiries?.b2c?.new || 0} New Customer Leads`}
+          icon={Inbox}
+          color="purple"
+          to="/admin/enquiries/customers"
         />
         <StatsCard
           title="Pending KYC Queue"
@@ -112,7 +120,7 @@ const AdminDashboardPage = () => {
           icon={Clock}
           color="amber"
           attention={(summary?.dealers?.pending || 0) > 0}
-          onClick={() => navigate('/admin/dealers?status=pending')}
+          to="/admin/dealers?status=pending"
         />
         <StatsCard
           title="Customer Accounts"
@@ -120,6 +128,7 @@ const AdminDashboardPage = () => {
           subtext={`${summary?.dealers?.total || 0} Total B2B Dealer Accounts`}
           icon={UserCheck}
           color="emerald"
+          to="/admin/customers"
         />
         <StatsCard
           title="Product Catalog"
@@ -127,6 +136,7 @@ const AdminDashboardPage = () => {
           subtext={`${summary?.products?.active || 0} Active / ${summary?.categories?.active || 0} Categories`}
           icon={Package}
           color="blue"
+          to="/admin/products"
         />
       </div>
 

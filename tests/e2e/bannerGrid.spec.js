@@ -5,6 +5,42 @@ const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
 const emptyGrid = () => ({ revision: 0, configured: false, sections: Array.from({ length: 2 }, () => ({ images: [] })) });
 const artwork = (section, n) => `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600"><defs><linearGradient id="g"><stop stop-color="${['#143049', '#234b47', '#542a48', '#493823'][section]}"/><stop offset="1" stop-color="#101c29"/></linearGradient></defs><rect width="900" height="600" fill="url(#g)"/><circle cx="750" cy="140" r="200" fill="white" opacity=".07"/><circle cx="710" cy="450" r="140" fill="white" opacity=".08"/><text x="60" y="220" font-family="sans-serif" font-size="22" fill="#ffffff" opacity=".65">VINEXUS COLLECTIONS</text><text x="60" y="290" font-family="sans-serif" font-size="48" fill="#ffffff">${['Security solutions', 'Network essentials', 'New arrivals', 'Smart accessories'][section]}</text><text x="60" y="345" font-family="sans-serif" font-size="22" fill="#ffffff" opacity=".8">Banner ${n + 1}</text></svg>`;
 
+test('admin saves independent section rotation times and the homepage uses them', async ({ page }) => {
+  await page.clock.install(); await mockApi(page); await seedBrowserSession(page, 'admin');
+  const grid = { revision: 0, configured: true, sections: [0, 1].map(section => ({ transition: 'fade', images: [0, 1].map(n => ({ _id: `${section}-${n}`, url: `/rotation-test/${section}-${n}.svg`, title: `Section ${section + 1} banner ${n + 1}` })) })) };
+  await page.route('**/rotation-test/*.svg', route => route.fulfill({ contentType: 'image/svg+xml', body: artwork(0, 0) }));
+  await page.route('**/api/admin/cms/banner-grid**', async route => {
+    if (route.request().method() === 'PUT') {
+      const section = Number(new URL(route.request().url()).pathname.split('/').at(-1));
+      const data = route.request().postDataJSON();
+      expect(data.revision).toBe(grid.revision);
+      Object.assign(grid.sections[section], { rotationSeconds: data.rotationSeconds }); grid.revision++;
+    }
+    await route.fulfill({ json: { success: true, data: { grid } } });
+  });
+  await page.route('**/api/content/banner-grid', route => route.fulfill({ json: { success: true, data: { grid } } }));
+  await page.goto('/admin/cms/banners');
+  for (const [section, seconds] of [[1, '2'], [2, '7']]) {
+    const panel = page.getByRole('group', { name: `Manage banner section ${section}`, exact: true });
+    await panel.getByLabel(`Rotation seconds for section ${section}`).fill(seconds);
+    await panel.getByRole('button', { name: 'Save rotation time', exact: true }).click();
+    await expect(panel.getByRole('button', { name: 'Save rotation time', exact: true })).toBeEnabled();
+  }
+  await page.reload();
+  await expect(page.getByLabel('Rotation seconds for section 1')).toHaveValue('2');
+  await expect(page.getByLabel('Rotation seconds for section 2')).toHaveValue('7');
+  await page.goto('/'); await page.mouse.move(0, 0);
+  const first = page.locator('.bento-banner-tile-1 .is-active');
+  const second = page.locator('.bento-banner-tile-2 .is-active');
+  await expect(first).toHaveAttribute('src', '/rotation-test/0-0.svg');
+  await expect(second).toHaveAttribute('src', '/rotation-test/1-0.svg');
+  await page.clock.runFor(2100);
+  await expect(first).toHaveAttribute('src', '/rotation-test/0-1.svg');
+  await expect(second).toHaveAttribute('src', '/rotation-test/1-0.svg');
+  await page.clock.runFor(5000);
+  await expect(second).toHaveAttribute('src', '/rotation-test/1-1.svg');
+});
+
 test('admin uploads five images per section, edits and replaces; independent bento carousels render', async ({ page }, testInfo) => {
   test.setTimeout(60000);
   await page.clock.install(); await mockApi(page); await seedBrowserSession(page, 'admin');

@@ -3,6 +3,25 @@ import { mockApi, seedBrowserSession } from './mockApi.js';
 const id = '507f1f77bcf86cd799439011';
 const product = { _id: id, name: '8 MP SEO Camera', categoryPath: '/security/cameras', modelNumber: 'CAM-8MP', sku: 'CAM-8MP', standardPrice: 4500, stockQuantity: 3, images: [{ url: 'https://cdn.example/camera.jpg' }], description: 'Detailed business surveillance.', specifications: [{ key: 'Resolution', value: '8 MP' }] };
 
+test('tracking links stay indexable after rendering and client navigation preserves filter exclusions', async ({ page }) => {
+  await mockApi(page); await seedBrowserSession(page, 'public');
+  await page.goto('/products?utm_source=google&gclid=click');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow, max-image-preview:large');
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://vinexus.in/products');
+  // Navigate within the mounted router so query-only updates also exercise the hook.
+  await page.evaluate(() => {
+    history.pushState({}, '', '/products?search=camera&utm_source=google');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex, follow');
+  await page.evaluate(() => {
+    history.pushState({}, '', '/products?fbclid=click');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow, max-image-preview:large');
+});
+
 test('verification, public titles, canonical product URLs and private noindex survive navigation and settings refresh', async ({ page }) => {
   await page.clock.install(); await mockApi(page); await seedBrowserSession(page, 'account');
   await page.route(`**/api/products/${id}`, route => route.fulfill({ json: { success: true, data: product } }));

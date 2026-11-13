@@ -6,7 +6,7 @@ import { visibleAdminNavigation } from '../../../../shared/adminNavigation.js';
 
 const icons = { LayoutDashboard, BarChart3, FolderTree, Layers, GitBranch, Package, Tags, Receipt, Inbox, Building2,
   Users, UserCheck, ShieldAlert, BookOpen, Sparkles, Settings2, Image, FileText, LayoutList };
-export default function AdminSidebarNav({ access, pendingKycCount, onNavigate }) {
+export default function AdminSidebarNav({ access, attentionCounts = {}, onNavigate }) {
   const { pathname } = useLocation();
   const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState({});
@@ -14,11 +14,13 @@ export default function AdminSidebarNav({ access, pendingKycCount, onNavigate })
   const groups = visibleAdminNavigation(access, search);
   const renderLink = (item, nested = false) => {
     const Icon = icons[item.icon];
+    const count = Number(attentionCounts[item.path]) || 0;
+    const countLabel = item.path === '/admin/dealers' ? `${count} pending dealer verifications` : `${count} new enquiries`;
     const active = pathname === item.path || (!item.children?.length && !nested && pathname.startsWith(`${item.path}/`));
     return <Link key={item.path} to={item.path} onClick={onNavigate} aria-current={active ? 'page' : undefined}
       className={`flex min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs leading-5 font-semibold transition-colors ${active ? 'bg-primary/8 text-primary font-semibold' : 'text-gray-700 dark:text-gray-200 hover:bg-muted/60 hover:text-foreground'}`}>
       <Icon size={nested ? 14 : 16} className="shrink-0" /><span className="min-w-0 flex-1">{item.label}</span>
-      {item.path === '/admin/dealers' && pendingKycCount > 0 && <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">{pendingKycCount > 99 ? '99+' : pendingKycCount}</span>}
+      {count > 0 && <span aria-label={countLabel} title={countLabel} className="inline-flex min-h-5 min-w-5 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-primary px-1.5 text-[10px] font-bold leading-5 tabular-nums text-primary-foreground">{count}{item.path !== '/admin/dealers' ? ' New' : ''}</span>}
     </Link>;
   };
   return <>

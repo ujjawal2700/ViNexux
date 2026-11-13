@@ -32,6 +32,11 @@ export const productPath = product => product?.categoryPath?.startsWith('/') && 
   ? `${product.categoryPath}/${product._id}` : `/products/${product?._id}`;
 export const privatePath = path => /^\/(?:admin|account|customer|dealer|invoices|email-preferences|api)(?:\/|$)/.test(path)
   || ['/cart', '/wishlist', '/login', '/register', '/verify-otp', '/forgot-password', '/reset-password', '/search', '/theme-preview', '/ui-preview', '/unauthorized', '/not-found'].includes(path);
+export const pageRobots = (pathname, { isProduct = false, notFound = false } = {}) => {
+  const query = new URL(pathname, SITE_ORIGIN).searchParams;
+  const filtered = !isProduct && [...query.keys()].some(key => !key.startsWith('utm_') && !['gclid', 'fbclid'].includes(key));
+  return notFound || privatePath(cleanPath(pathname)) || filtered ? 'noindex, follow' : INDEX_ROBOTS;
+};
 const humanize = path => path.split('/').filter(Boolean).at(-1)?.replace(/-/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase()) || 'ViNexus';
 export const routeMetadata = ({ pathname = '/', origin = SITE_ORIGIN, settings = {}, product, category, brand, page, notFound = false }) => {
   const path = cleanPath(pathname), target = REDIRECTS[path] || path;
@@ -41,8 +46,6 @@ export const routeMetadata = ({ pathname = '/', origin = SITE_ORIGIN, settings =
     heading = path.startsWith('/invoices/') ? 'Invoice' : humanize(`/${meaningful.slice(-2).join(' ')}`);
     description = `${heading} on ViNexus. Sign in to manage your account securely.`;
   }
-  const query = new URL(pathname, origin).searchParams;
-  const filtered = !product && [...query.keys()].some(key => !key.startsWith('utm_') && !['gclid', 'fbclid'].includes(key));
   let canonical = path.startsWith('/invoices/') ? '/invoices' : target, image = settings.ogImage?.url || '/social-preview.png', type = 'website';
   if (product) { heading = product.name; description = productShareDescription(product); canonical = productPath(product); image = product.images?.find(item => item?.url)?.url || product.imageUrl || ''; type = 'product'; }
   else if (category) { heading = category.name; description = category.description || `Explore ${category.name} at ViNexus. Browse specifications, compare products and enquire about business and dealer orders.`; canonical = category.canonicalPath || path; }
@@ -52,7 +55,7 @@ export const routeMetadata = ({ pathname = '/', origin = SITE_ORIGIN, settings =
   const title = path === '/' && !notFound ? settings.metaTitle || SITE_TITLE : `${heading} | ViNexus`;
   return { title, heading, description: plainText(path === '/' ? settings.metaDescription || SITE_DESCRIPTION : description).slice(0, 300),
     url: new URL(canonical, origin).href, image: image ? safeUrl(image, origin) : '', imageAlt: product?.name || heading,
-    type, siteName: settings.websiteName || 'ViNexus', robots: notFound || privatePath(path) || filtered ? 'noindex, follow' : INDEX_ROBOTS };
+    type, siteName: settings.websiteName || 'ViNexus', robots: pageRobots(pathname, { isProduct: Boolean(product), notFound }) };
 };
 export const productStructuredData = (product, origin = SITE_ORIGIN) => ({
   '@context': 'https://schema.org', '@type': 'Product', '@id': `${new URL(productPath(product), origin).href}#product`,
