@@ -67,3 +67,11 @@ The official `@microsoft/clarity` package is configured with project ID `z9lnjg4
 After deployment, allow optional storage on a public page and check for one request to `https://www.clarity.ms/tag/z9lnjg4lha?ref=npm`. Confirm sessions in that Clarity project's dashboard; vendor processing and browser blockers can affect visibility. Essential-only visits and private-page entry visits must not load the tag. The implementation does not use pre-consent cookieless collection.
 
 References: [Google sitemap guidance](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap), [Microsoft Clarity NPM integration](https://clarity.microsoft.com/blog/npm-integration/), [Microsoft consent API](https://learn.microsoft.com/en-us/clarity/setup-and-installation/clarity-consent-api-v2).
+
+## Indexing audit: 12 November 2026
+
+A read-only live check of all 188 URLs in the public child sitemaps (106 page/category/brand URLs and 82 product URLs) found HTTP 200 responses, indexable robots metadata, matching canonical URLs and initial HTML headings for every URL. This verifies the current HTTP responses; it does not establish what Google last crawled or chose to index.
+
+The browser previously changed catalog URLs containing any query string to `noindex`, including tracking-only `utm_*`, `gclid` and `fbclid` links that the server allowed. Browser and server now share the same robots policy. Tracking-only links remain indexable with a query-free canonical; search/filter variants, private pages and missing pages retain `noindex`. Query-only browser navigation also refreshes the policy.
+
+Deploy the updated frontend and backend together. In Search Console, inspect the affected public URLs and compare the last crawl with a live test before requesting indexing. Intentional private-page `noindex` exclusions and private API robots.txt exclusions should remain. The report's seven excluded URLs cannot be matched to these categories without its affected URL lists; do not remove all exclusions to make the report count zero. “Crawled – currently not indexed” is Google's indexing decision and is not automatically fixed by changing robots metadata or requesting indexing.

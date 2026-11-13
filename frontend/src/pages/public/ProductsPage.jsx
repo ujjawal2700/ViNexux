@@ -514,7 +514,7 @@ export const ProductsPage = ({ lowStockOnly = false, trendingOnly = false }) => 
   const missingSeoPage = (targetCategorySlug && categoriesLoaded && !routeCategory) || (brandSlug && !resolvedBrand);
   usePageSeo({
     title: missingSeoPage ? 'Page not found | ViNexus' : seoTitle,
-    robots: missingSeoPage || searchParams.toString() || location.pathname === '/search' ? 'noindex, follow' : undefined,
+    robots: missingSeoPage ? 'noindex, follow' : undefined,
     description: seoDescription,
     keywords:
       "networking products, enterprise switches, managed PoE switch, WiFi 6 router, Cat6 cable, CCTV cameras India, Vinexus Kota",

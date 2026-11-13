@@ -176,6 +176,9 @@ const processQueue = (error, token = null) => {
 
 apiClient.interceptors.response.use(
   (response) => {
+    if (!['get', 'head', 'options'].includes((response.config?.method || 'get').toLowerCase()) && /\/admin\/(?:enquiries|dealers)(?:\/|$|\?)/.test(response.config?.url || '')) {
+      window.dispatchEvent(new Event('admin-work-queue-updated'));
+    }
     if (!['get', 'head', 'options'].includes((response.config?.method || 'get').toLowerCase()) && /\/admin\//.test(response.config?.url || '')) clearPublicRequests();
     releaseRequest(response.config);
     if (response.config?._globalLoaderTracked) {

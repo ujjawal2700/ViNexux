@@ -10,7 +10,6 @@ import RouteFallback from '../components/ui/RouteFallback';
 import { Outlet, Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 import useLogoutConfirmation from '../hooks/useLogoutConfirmation';
-import adminService from '../services/adminService';
 import Logo from '../components/ui/Logo';
 import ErrorBoundary from '../components/ui/ErrorBoundary';
 import { AdminNumberInputContext } from '../context/AdminNumberInputContext';
@@ -35,7 +34,7 @@ const AdminLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [pendingKycCount, setPendingKycCount] = useState(0);
+  const [attentionCounts, setAttentionCounts] = useState({});
   const [writeDenied, setWriteDenied] = useState(false);
   useEffect(() => {
     const denied = () => setWriteDenied(true);
@@ -50,25 +49,52 @@ const AdminLayout = () => {
   };
 
   useEffect(() => {
-    if (!canAdmin(access, 'dashboard', 'read')) return undefined;
     let cancelled = false;
-    const fetchPendingCount = async () => {
+    let requestVersion = 0;
+    const fetchAttentionCounts = async () => {
+      const version = ++requestVersion;
       try {
-        const res = await adminService.getDashboardSummary();
-        const count = res.data?.dealers?.pending ?? res.dealers?.pending ?? 0;
-        if (!cancelled) setPendingKycCount(count);
+        let counts;
+        if (canAdmin(access, 'dashboard', 'read')) {
+          const response = await apiClient.get('/admin/dashboard', { skipGlobalLoader: true });
+          const summary = response.data.data || response.data;
+          counts = {
+            '/admin/dealers': summary.dealers?.pending || 0,
+            '/admin/enquiries/customers': summary.enquiries?.b2c?.new || 0,
+            '/admin/enquiries/dealers': summary.enquiries?.b2b?.new || 0,
+          };
+        } else {
+          // Employees without dashboard access can only count queues their role can read.
+          const queues = [
+            ['dealers', '/admin/dealers', '/admin/dealers', { status: 'pending' }],
+            ['enquiries-customers', '/admin/enquiries/customers', '/admin/enquiries', { userType: 'customer', status: 'new' }],
+            ['enquiries-dealers', '/admin/enquiries/dealers', '/admin/enquiries', { userType: 'dealer', status: 'new' }],
+          ].filter(([section]) => canAdmin(access, section, 'read'));
+          const results = await Promise.allSettled(queues.map(async ([, path, url, params]) => {
+            const response = await apiClient.get(url, { params: { ...params, limit: 1 }, skipGlobalLoader: true });
+            return [path, response.data.data?.pagination?.total || 0];
+          }));
+          counts = Object.fromEntries(results.flatMap(result => result.status === 'fulfilled' ? [result.value] : []));
+        }
+        if (!cancelled && version === requestVersion) setAttentionCounts(counts);
       } catch {
-        // Non-critical - sidebar badge simply stays hidden on failure
+        // Keep the last known counts through a temporary connection failure.
       }
     };
-    fetchPendingCount();
-    // Re-check periodically so the flag clears/appears without a full reload
-    const interval = setInterval(fetchPendingCount, 60000);
+    fetchAttentionCounts();
+    const refreshVisible = () => { if (!document.hidden) fetchAttentionCounts(); };
+    const interval = setInterval(refreshVisible, 60000);
+    window.addEventListener('focus', refreshVisible);
+    document.addEventListener('visibilitychange', refreshVisible);
+    window.addEventListener('admin-work-queue-updated', fetchAttentionCounts);
     return () => {
       cancelled = true;
       clearInterval(interval);
+      window.removeEventListener('focus', refreshVisible);
+      document.removeEventListener('visibilitychange', refreshVisible);
+      window.removeEventListener('admin-work-queue-updated', fetchAttentionCounts);
     };
-  }, [location.pathname, access]);
+  }, [location.pathname, location.search, access]);
 
   const availableNav = visibleAdminNavigation(access).flatMap(group => group.items);
 
@@ -102,7 +128,7 @@ const AdminLayout = () => {
           </button>
         </div>
 
-        <AdminSidebarNav access={access} pendingKycCount={pendingKycCount} onNavigate={() => setMobileOpen(false)} />
+        <AdminSidebarNav access={access} attentionCounts={attentionCounts} onNavigate={() => setMobileOpen(false)} />
 
         <div className="pt-4 border-t border-border flex flex-col gap-2">
           <button

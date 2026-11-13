@@ -3,9 +3,10 @@ import { isBannerVideo } from '../../../../shared/bannerMedia';
 import React, { useEffect, useState, useId, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, ArrowUpRight } from 'lucide-react';
-import { BENTO_IMAGE_LIMIT, BENTO_SECTION_COUNT, BENTO_TRANSITIONS, visibleBannerSections } from '../../../../shared/bannerGrid';
+import { BENTO_IMAGE_LIMIT, BENTO_SECTION_COUNT, BENTO_TRANSITIONS, visibleBannerSections, bannerRotationSeconds } from '../../../../shared/bannerGrid';
 
-function BannerTile({ images = [], section, transition = 'fade' }) {
+function BannerTile({ images = [], section, transition = 'fade', rotationSeconds }) {
+  const intervalMs = bannerRotationSeconds({ rotationSeconds }, section) * 1000;
   const filterId = `banner-pixel-${useId().replace(/:/g, '')}`;
   const effect = BENTO_TRANSITIONS.includes(transition) ? transition : 'fade';
   const [{ index, previous }, setSlide] = useState({ index: 0, previous: null });
@@ -35,9 +36,9 @@ function BannerTile({ images = [], section, transition = 'fade' }) {
   }, [images.length, directional, reducedMotion]);
   useEffect(() => {
     if (images.length < 2 || hovered || focused || hidden || reducedMotion || limitedConnection) return;
-    const timer = setInterval(() => nav(1), 5000 + section * 700);
+    const timer = setInterval(() => nav(1), intervalMs);
     return () => clearInterval(timer);
-  }, [images.length, hovered, focused, hidden, reducedMotion, limitedConnection, section, nav]);
+  }, [images.length, hovered, focused, hidden, reducedMotion, limitedConnection, intervalMs, nav]);
   useEffect(() => {
     if (previous === null) return;
     // Also release the swipe when animation events are suppressed (hidden tabs
@@ -65,6 +66,6 @@ function BannerTile({ images = [], section, transition = 'fade' }) {
 export default function HeroBentoGrid({ grid, loading = false }) {
   const sections = grid?.configured ? visibleBannerSections(grid.sections) : [];
   return <section className="hero-bento-grid storefront-container" aria-label="Featured collections" aria-busy={loading}>
-    {Array.from({ length: BENTO_SECTION_COUNT }, (_, section) => { const images = (sections?.[section]?.images || []).slice(0, BENTO_IMAGE_LIMIT); return <BannerTile key={`${section}:${images.map(i => `${i._id}:${i.url}`).join('|')}`} section={section} images={images} transition={sections?.[section]?.transition || 'fade'} />; })}
+    {Array.from({ length: BENTO_SECTION_COUNT }, (_, section) => { const images = (sections?.[section]?.images || []).slice(0, BENTO_IMAGE_LIMIT); return <BannerTile key={`${section}:${images.map(i => `${i._id}:${i.url}`).join('|')}`} section={section} images={images} transition={sections?.[section]?.transition || 'fade'} rotationSeconds={sections?.[section]?.rotationSeconds} />; })}
   </section>;
 }

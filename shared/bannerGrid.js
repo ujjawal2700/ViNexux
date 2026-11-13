@@ -2,6 +2,12 @@ export const BENTO_TRANSITIONS = ['fade', 'top-to-bottom', 'bottom-to-top', 'lef
 export const BENTO_TRANSITION_LABELS = ['Fade (current effect)', 'Top to bottom', 'Bottom to top', 'Left to right', 'Right to left', 'Blur', 'Pixelate'];
 export const BENTO_SECTION_COUNT = 2;
 export const BENTO_IMAGE_LIMIT = 5;
+export const BANNER_ROTATION_MIN_SECONDS = 1;
+export const BANNER_ROTATION_MAX_SECONDS = 120;
+export const bannerRotationSeconds = (section = {}, index = 0) => {
+  const seconds = Number(section.rotationSeconds);
+  return Number.isFinite(seconds) && seconds >= BANNER_ROTATION_MIN_SECONDS && seconds <= BANNER_ROTATION_MAX_SECONDS ? seconds : 5 + index * 0.7;
+};
 export function bannerFramingStyle(image = {}) {
   const x = Math.max(0, Math.min(100, Number(image.positionX ?? 50)));
   const y = Math.max(0, Math.min(100, Number(image.positionY ?? 50)));

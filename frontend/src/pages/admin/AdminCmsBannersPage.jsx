@@ -3,7 +3,7 @@ import AdminPageHeader from '../../components/admin/AdminPageHeader';
 
 export default function AdminCmsBannersPage() {
   return <div className="space-y-6">
-    <AdminPageHeader title="Homepage Banners" subtitle="Manage the four independently rotating homepage banner sections" />
+    <AdminPageHeader title="Homepage Banners" subtitle="Manage the artwork, effects and rotation time for each homepage banner section" />
     <BentoBannerEditor />
   </div>;
 }

@@ -1,8 +1,9 @@
 import React from 'react';
 import Card from '../ui/Card';
 import { AlertCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-const StatsCard = ({ title, value, subtext, icon: Icon, color = 'crimson', onClick, attention = false }) => {
+const StatsCard = ({ title, value, subtext, icon: Icon, color = 'crimson', onClick, to, attention = false }) => {
   const colorMap = {
     crimson: 'bg-muted text-primary border-border',
     blue: 'bg-blue-50 text-blue-800 border-blue-200',
@@ -13,12 +14,12 @@ const StatsCard = ({ title, value, subtext, icon: Icon, color = 'crimson', onCli
 
   const badgeStyle = colorMap[color] || colorMap.crimson;
 
-  return (
+  const card = (
     <Card
       onClick={onClick}
-      className={`relative overflow-hidden transition-all duration-200 bg-card shadow-xs ${
+      className={`h-full relative overflow-hidden transition-all duration-200 bg-card shadow-xs ${
         attention ? 'border-rose-400 dark:border-rose-500 ring-1 ring-rose-400/40' : 'border-border'
-      } ${onClick ? 'cursor-pointer hover:border-primary hover:shadow-md' : ''}`}
+      } ${onClick || to ? 'cursor-pointer hover:border-primary hover:shadow-md' : ''}`}
     >
       {attention && (
         <span className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-600 text-white text-[9px] font-bold uppercase tracking-wide shadow-sm animate-pulse">
@@ -42,6 +43,7 @@ const StatsCard = ({ title, value, subtext, icon: Icon, color = 'crimson', onCli
       </div>
     </Card>
   );
+  return to ? <Link to={to} className="block rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary">{card}</Link> : card;
 };
 
 export default StatsCard;

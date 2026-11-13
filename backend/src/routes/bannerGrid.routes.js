@@ -1,6 +1,6 @@
 import { storeBannerVideo, discardBannerMedia } from '../services/bannerMedia.service.js';
 import { Router } from 'express';
-import { BENTO_TRANSITIONS, BENTO_IMAGE_LIMIT, BENTO_SECTION_COUNT, visibleBannerSections } from '../../../shared/bannerGrid.js';
+import { BENTO_TRANSITIONS, BENTO_IMAGE_LIMIT, BENTO_SECTION_COUNT, visibleBannerSections, BANNER_ROTATION_MIN_SECONDS, BANNER_ROTATION_MAX_SECONDS } from '../../../shared/bannerGrid.js';
 import { z } from 'zod';
 import BannerGrid from '../models/BannerGrid.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -22,9 +22,10 @@ export const gridImageInput = z.object({
   revision: z.coerce.number().int().min(0),
 });
 export const gridSectionInput = z.object({
-  transition: z.enum(BENTO_TRANSITIONS),
+  transition: z.enum(BENTO_TRANSITIONS).optional(),
+  rotationSeconds: z.coerce.number().min(BANNER_ROTATION_MIN_SECONDS).max(BANNER_ROTATION_MAX_SECONDS).optional(),
   revision: z.coerce.number().int().min(0),
-});
+}).refine(data => data.transition !== undefined || data.rotationSeconds !== undefined, 'Choose a transition or rotation time');
 const emptySections = () => Array.from({ length: BENTO_SECTION_COUNT }, () => ({ images: [], transition: 'fade' }));
 const input = body => {
   const result = gridImageInput.safeParse(body);
@@ -63,14 +64,14 @@ router.get('/', asyncHandler(async (req, res) => {
 router.put('/:section', asyncHandler(async (req, res) => {
   const section = sectionIndex(req);
   const parsed = gridSectionInput.safeParse(req.body);
-  if (!parsed.success) throw new AppError('Choose a valid transition and revision', 400, ERROR_CODES.VALIDATION_ERROR);
+  if (!parsed.success) throw new AppError('Choose a valid transition or rotation time (1–120 seconds) and revision', 400, ERROR_CODES.VALIDATION_ERROR);
   await BannerGrid.updateOne({ singletonKey: 'primary' }, { $setOnInsert: { singletonKey: 'primary', sections: emptySections(), revision: 0, configured: false } }, { upsert: true });
   const grid = checked(await BannerGrid.findOneAndUpdate(
     { singletonKey: 'primary', revision: parsed.data.revision },
-    { $set: { [`sections.${section}.transition`]: parsed.data.transition }, $inc: { revision: 1 } },
+    { $set: Object.fromEntries(Object.entries(parsed.data).filter(([key]) => key !== 'revision').map(([key, value]) => [`sections.${section}.${key}`, value])), $inc: { revision: 1 } },
     { new: true, runValidators: true }
   ));
-  return ApiResponse.success(res, 'Section transition updated', { grid });
+  return ApiResponse.success(res, 'Section settings updated', { grid });
 }));
 const uploadImage = asyncHandler(async (req, res) => {
   const section = sectionIndex(req), data = input(req.body);

@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { readFileSync } from 'node:fs';
-import { routeMetadata, renderSeoHtml, categoryPath, productStructuredData, productPath, STATIC_PAGES } from '../../shared/seo.js';
+import { routeMetadata, renderSeoHtml, categoryPath, productStructuredData, productPath, STATIC_PAGES, pageRobots, INDEX_ROBOTS } from '../../shared/seo.js';
 import { renderSharePage } from '../../frontend/server/sharePage.js';
 const shell = readFileSync(new URL('../../frontend/index.html', import.meta.url), 'utf8');
 const product = { _id: '507f1f77bcf86cd799439011', name: '8 MP Camera', categoryPath: '/security/cameras', description: '<p>Clear & detailed surveillance.</p>', standardPrice: 5000, dealerPrice: 4000, images: [{ url: 'https://cdn.example/camera.jpg' }], specifications: [{ key: 'Resolution', value: '8 MP' }] };
@@ -13,6 +13,20 @@ test.each(['/admin', '/admin/dealers', '/account/profile', '/account/become-deal
 test.each(Object.keys(STATIC_PAGES))('%s has unique descriptive page metadata', pathname => {
   const meta = routeMetadata({ pathname }); expect(meta.title).toBeTruthy(); expect(meta.description.length).toBeGreaterThan(30);
   expect(meta.url).toBe(`https://vinexus.in${pathname}`); expect(meta.robots).toContain('index, follow');
+});
+test.each(['/products?utm_source=google&utm_campaign=catalog', '/security/cameras?gclid=click', '/brands/acme?fbclid=click'])('%s remains indexable with a clean canonical', pathname => {
+  expect(pageRobots(pathname)).toBe(INDEX_ROBOTS);
+  const meta = routeMetadata({ pathname });
+  expect(meta.robots).toBe(INDEX_ROBOTS);
+  expect(meta.url).toBe(`https://vinexus.in${pathname.split('?')[0]}`);
+});
+test.each(['/products?search=camera', '/security/cameras?brand=acme&utm_source=google', '/brands/acme?sort=name', '/login?utm_source=google'])('%s stays excluded despite tracking parameters', pathname => {
+  expect(pageRobots(pathname)).toBe('noindex, follow');
+  expect(routeMetadata({ pathname }).robots).toBe('noindex, follow');
+});
+test('product queries retain the server indexing policy and missing pages stay excluded', () => {
+  expect(pageRobots(`/products/${product._id}?variant=black`, { isProduct: true })).toBe(INDEX_ROBOTS);
+  expect(pageRobots('/missing?utm_source=google', { notFound: true })).toBe('noindex, follow');
 });
 test('product aliases share a canonical URL and have public schema without gated prices', () => {
   for (const pathname of [`/products/${product._id}`, `/brands/acme/${product._id}`, `${productPath(product)}`]) {

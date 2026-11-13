@@ -31,7 +31,10 @@ beforeEach(() => {
     }
     for (const [path, value] of Object.entries(update.$set || {})) {
       if (path === 'configured') grid.configured = value;
-      else { const section = Number(path.split('.')[1]); grid.sections[section].images.find(i => String(i._id) === filter[`sections.${section}.images._id`])[path.split('.').at(-1)] = value; }
+      else { const section = Number(path.split('.')[1]);
+        if (path.split('.').length === 3) grid.sections[section][path.split('.')[2]] = value;
+        else grid.sections[section].images.find(i => String(i._id) === filter[`sections.${section}.images._id`])[path.split('.').at(-1)] = value;
+      }
     }
     grid.revision += update.$inc.revision;
     return grid;
@@ -41,6 +44,20 @@ beforeEach(() => {
 });
 afterEach(() => { config.storageProvider = previousProvider; jest.restoreAllMocks(); });
 const upload = (section, revision) => request.post(`/grid/${section}/images`).field('revision', revision).attach('file', Buffer.from('test fixture'), { filename: 'banner.png', contentType: 'image/png' });
+test('section rotation settings persist independently, preserve transitions and reject invalid or stale edits', async () => {
+  await upload(0, 0);
+  expect((await request.put('/grid/0').send({ revision: 1, transition: 'blur', rotationSeconds: 3 })).status).toBe(200);
+  expect((await request.put('/grid/1').send({ revision: 2, rotationSeconds: 12 })).status).toBe(200);
+  expect((await request.put('/grid/0').send({ revision: 2, rotationSeconds: 8 })).status).toBe(409);
+  for (const rotationSeconds of [0, -1, 121, 'invalid', null]) {
+    expect((await request.put('/grid/0').send({ revision: 3, rotationSeconds })).status).toBe(400);
+  }
+  expect((await request.put('/grid/0').send({ revision: 3, rotationSeconds: 4 })).status).toBe(200);
+  const sections = (await request.get('/public')).body.data.grid.sections;
+  expect(sections.map(s => s.rotationSeconds)).toEqual([4, 12]);
+  expect(sections[0].transition).toBe('blur');
+  expect(sections[0].images).toHaveLength(1);
+});
 test('two sections initialize; uploads are capped at five independently', async () => {
   expect((await request.get('/grid')).body.data.grid.sections).toHaveLength(2);
   expect((await request.get('/public')).body.data.grid).toBeNull();

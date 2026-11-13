@@ -1,7 +1,16 @@
 import { describe, expect, test } from '@jest/globals';
-import { bannerFramingStyle } from '../../shared/bannerGrid.js';
+import { bannerFramingStyle, bannerRotationSeconds } from '../../shared/bannerGrid.js';
 import { gridImageInput, gridSectionInput } from '../../backend/src/routes/bannerGrid.routes.js';
 describe('bento banner grid', () => {
+  test('rotation settings validate seconds and preserve legacy timings', () => {
+    expect(bannerRotationSeconds({}, 0)).toBe(5);
+    expect(bannerRotationSeconds({}, 1)).toBe(5.7);
+    expect(bannerRotationSeconds({ rotationSeconds: 0 }, 1)).toBe(5.7);
+    expect(bannerRotationSeconds({ rotationSeconds: 10 }, 1)).toBe(10);
+    expect(gridSectionInput.safeParse({ revision: 0, rotationSeconds: 2.5 }).success).toBe(true);
+    for (const rotationSeconds of [0, 121, -1, 'no']) expect(gridSectionInput.safeParse({ revision: 0, rotationSeconds }).success).toBe(false);
+    expect(gridSectionInput.safeParse({ revision: 0 }).success).toBe(false);
+  });
   test('safe destinations, bounded captions and optimistic revisions', () => {
     expect(gridImageInput.safeParse({ revision: '0', link: '/products' }).success).toBe(true);
     expect(gridImageInput.safeParse({ revision: 2, fit: 'contain', link: 'https://example.com' }).success).toBe(true);
