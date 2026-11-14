@@ -49,3 +49,9 @@ test('storefront specifications retain the saved technical and brand order while
     { key: 'Resolution', value: '4 MP' }, { key: 'Brand', value: 'Managed Brand' }, { key: 'Power', value: 'PoE' },
   ]);
 });
+
+test('products without a managed brand omit specification-only brand labels', () => {
+  expect(orderedProductSpecifications({ specifications: [
+    { key: 'Brand', value: 'Honeylink' }, { key: 'Ports', value: '8' },
+  ] }, '')).toEqual([{ key: 'Ports', value: '8' }]);
+});

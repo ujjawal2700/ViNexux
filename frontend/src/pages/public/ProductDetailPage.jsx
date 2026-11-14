@@ -183,32 +183,8 @@ export const ProductDetailPage = () => {
     return () => { active = false; controller.abort(); };
   }, [pricesVisible, product?._id, relatedHeader?._id, relatedPage, relatedRetry, user?._id, user?.role, user?.dealerStatus, user?.kycStatus]);
 
-  // Extracted Brand info
-  const brandName = useMemo(() => {
-    if (product?.brandId?.name) return product.brandId.name;
-    const fromSpec = product?.specifications?.find((s) => s.key.toLowerCase() === 'brand')?.value;
-    if (fromSpec) return fromSpec;
-    if (product?.brand) return product.brand;
-    const firstWord = product?.name?.split(' ')[0];
-    return firstWord || 'ViNexus';
-  }, [product]);
-
-  const brandUrl = useMemo(() => {
-    if (product?.brandId?.slug || product?.brandId?.name) {
-      return buildBrandUrl(product.brandId);
-    }
-    const fromSpec = product?.specifications?.find((s) => s.key?.toLowerCase() === 'brand')?.value;
-    if (fromSpec) {
-      return buildBrandUrl(fromSpec);
-    }
-    if (product?.brand) {
-      return buildBrandUrl(product.brand);
-    }
-    if (brandName && brandName.toLowerCase() !== 'vinexus') {
-      return buildBrandUrl(brandName);
-    }
-    return null;
-  }, [product, brandName]);
+  const brandName = product?.brandId?.name || '';
+  const brandUrl = product?.brandId?.name ? buildBrandUrl(product.brandId) : null;
 
   // Compute Breadcrumb Trail
   const breadcrumbTrail = useMemo(() => {
@@ -631,7 +607,7 @@ export const ProductDetailPage = () => {
             </div>
 
             {/* Brand Logo / Box (Clickable link to specific brand page) */}
-            {brandUrl ? (
+            {brandUrl && (
               <Link
                 to={brandUrl}
                 className="border border-[var(--store-border)] hover:border-[var(--store-primary)] rounded-lg px-3 py-1.5 min-w-[70px] text-center font-black text-sm text-[var(--store-primary)] bg-[var(--store-surface)] hover:bg-[var(--store-background)]/80 shadow-2xs hover:shadow-sm shrink-0 flex items-center justify-center uppercase tracking-wider transition-all group/brand cursor-pointer"
@@ -647,18 +623,8 @@ export const ProductDetailPage = () => {
                   <span className="group-hover/brand:underline">{brandName}</span>
                 )}
               </Link>
-            ) : (
-              <div
-                className="border border-[var(--store-border)] rounded-lg px-3 py-1.5 min-w-[70px] text-center font-black text-sm text-[var(--store-primary)] bg-[var(--store-surface)] shadow-2xs shrink-0 flex items-center justify-center uppercase tracking-wider"
-                title={`Brand: ${brandName}`}
-              >
-                {product?.brandId?.logo?.url ? (
-                  <img src={product.brandId.logo.url} alt={brandName} className="max-h-12 max-w-24 object-contain" />
-                ) : (
-                  brandName
-                )}
-              </div>
             )}
+
           </div>
 
           {/* Product Overview Specs Table (Matching Given Image) */}

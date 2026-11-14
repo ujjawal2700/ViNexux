@@ -88,9 +88,16 @@ try {
   const guestPrices = await get('/products?category=laptop&minPrice=150&maxPrice=250');
   check(guestPrices.data.pagination.total === 2, 'Guests cannot probe hidden prices with price range filters');
   check(guestPrices.data.products.every(product => product.standardPrice === undefined && product.applicablePrice === undefined), 'Guest catalog omits pricing');
-  check((await get('/products?brandSlug=unlisted-brand')).data.pagination.total === 4, 'New database brand is routable without frontend whitelist');
-  check((await get('/products/brands')).data.brands.some((brand) => brand.name === 'UNLISTED BRAND'), 'Legacy database brands remain visible during migration');
+  check((await get('/products?brandSlug=unlisted-brand')).data.pagination.total === 0, 'Specification-only brand routes return no products');
+  check((await get('/products/brands')).data.brands.every((brand) => brand.name !== 'UNLISTED BRAND'), 'Specification-only brands are excluded from the brand directory');
+  check(all.data.facets.brands.length === 1 && all.data.facets.brands[0].name === 'ACER', 'Brand facets use managed brand links rather than specifications');
+  check((await get('/products?brand=Unlisted%20Brand')).data.pagination.total === 0, 'Name filters cannot select specification-only brands');
+  const disabled = await Brand.create({ name: 'Unlisted Brand', slug: 'unlisted-brand', isActive: false });
+  check(!(await get('/products/brands')).data.brands.some(brand => brand._id === String(disabled._id)), 'Inactive managed brands stay out of the directory');
+  check((await get('/products?brandSlug=unlisted-brand')).data.pagination.total === 0, 'Inactive brand cannot reappear through product specifications');
+  await disabled.deleteOne();
   const acerProducts = await get('/products?brandSlug=acer');
+  check(acerProducts.data.products.every(product => product.brand === 'ACER'), 'Product brand labels use the managed brand instead of conflicting specifications');
   check(acerProducts.data.pagination.total === 2, 'Managed brand route returns linked products across category levels');
   check((await get('/products?specs=broken')).status === 400, 'Malformed specification filters rejected');
   check((await get(`/products/${inactive._id}`)).status === 404, 'Inactive product detail hidden');

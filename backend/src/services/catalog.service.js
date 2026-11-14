@@ -15,7 +15,7 @@ import { DealerPricing } from '../models/DealerPricing.js';
 import { Brand } from '../models/Brand.js';
 import { AppError } from '../utils/AppError.js';
 import { getCachedCategories } from '../utils/categoryCache.js';
-import { allowedTypos, editDistance, requiredSearchTokens, searchWords, toBrandKey } from '../utils/productCatalogFields.js';
+import { allowedTypos, editDistance, requiredSearchTokens, searchWords } from '../utils/productCatalogFields.js';
 import { canViewStorefrontPrices, withoutStorefrontPrices } from '../../../shared/storefrontPricing.js';
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -171,25 +171,11 @@ export const getPublicBrands = async () => {
     { $group: { _id: '$brandId', count: { $sum: 1 } } },
   ]);
   const countById = new Map(counts.filter((row) => row._id).map((row) => [String(row._id), row.count]));
-  // Compatibility until existing specification-only brands are migrated in admin.
-  const legacy = await Product.aggregate([
-    { $match: { isActive: true, ...categoryMatch } },
-    { $match: { brandKey: { $ne: '' } } },
-    { $group: { _id: '$brandKey', count: { $sum: 1 } } },
-    { $sort: { _id: 1 } },
-  ]);
-  const managedNames = new Set(managed.map((brand) => brand.name.toLowerCase()));
-  const legacyCountByName = new Map(legacy.map((brand) => [brand._id.toLowerCase(), brand.count]));
-  const allActiveBrands = [
-    ...managed.map((brand) => ({
-      ...brand,
-      slug: (/https?:|\/|www\./i.test(brand.slug) || !brand.slug) ? slugify(brand.name) : slugify(brand.slug),
-      count: Math.max(countById.get(String(brand._id)) || 0, legacyCountByName.get(brand.name.toLowerCase()) || 0),
-    })),
-    ...legacy.filter((brand) => !managedNames.has(brand._id.toLowerCase()))
-      .map((brand) => ({ name: brand._id, slug: slugify(brand._id), count: brand.count, sortOrder: 9999, legacy: true })),
-  ];
-  const sorted = allActiveBrands.sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0) || a.name.localeCompare(b.name));
+  const sorted = managed.map((brand) => ({
+    ...brand,
+    slug: (/https?:|\/|www\./i.test(brand.slug) || !brand.slug) ? slugify(brand.name) : slugify(brand.slug),
+    count: countById.get(String(brand._id)) || 0,
+  }));
   const seen = new Set();
   const dedupedBrands = [];
   for (const brand of sorted) {
@@ -220,23 +206,7 @@ const buildSearchOr = (categories, term) => {
   ];
 };
 
-// Brand names compare case-insensitively against the stored brandKey. ASCII
-// names become an indexed equality; names with other letters keep the
-// anchored case-insensitive regex, since brandKey only upper-cases ASCII.
-const brandKeyValue = (name) => (/^[\x00-\x7F]*$/.test(name.trim())
-  ? toBrandKey(name)
-  : new RegExp(`^${escapeRegex(name.trim())}$`, 'i'));
-const buildBrandMatch = (brand, managedBrandId) => (managedBrandId ? {
-  $or: [
-    { brandId: new mongoose.Types.ObjectId(managedBrandId) },
-    { brandKey: brandKeyValue(brand) },
-  ],
-} : {
-  brandKey: { $in: String(brand).split(',').map(brandKeyValue) },
-});
-
-// Resolve a brand slug with one indexed lookup; only legacy specification-only
-// brands (no Brand document) need the full brand aggregation.
+// Resolve only active brands from the managed directory.
 const resolveBrandSlug = async (brandSlug) => {
   const normalizedSlug = slugify(brandSlug);
   let managed = await Brand.findOne({ slug: normalizedSlug, isActive: true }).select('_id name').lean();
@@ -248,8 +218,7 @@ const resolveBrandSlug = async (brandSlug) => {
     });
   }
   if (managed) return { brand: managed.name, managedBrandId: managed._id };
-  const legacy = (await getPublicBrands()).find((item) => item.slug === normalizedSlug);
-  return { brand: legacy?.name || '__unknown_brand__', managedBrandId: legacy?._id || null };
+  return { brand: '__unknown_brand__', managedBrandId: null };
 };
 
 // `options` is for internal callers only (never taken from the request):
@@ -314,7 +283,13 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   let brand = query.brand;
   let managedBrandId = null;
   if (query.brandSlug) ({ brand, managedBrandId } = await resolveBrandSlug(query.brandSlug));
-  const brandMatch = brand ? buildBrandMatch(brand, managedBrandId) : null;
+  const managedBrands = await Brand.find({ isActive: true }).lean();
+  const managedById = new Map(managedBrands.map(item => [String(item._id), item]));
+  const requestedNames = String(brand || '').split(',').map(name => name.trim().toLowerCase());
+  const selectedBrandIds = query.brandSlug
+    ? (managedBrandId ? [managedBrandId] : [])
+    : managedBrands.filter(item => requestedNames.includes(item.name.toLowerCase())).map(item => item._id);
+  const brandMatch = brand ? { brandId: { $in: selectedBrandIds } } : null;
   if (brandMatch) selections.push({ dimension: 'brand', condition: brandMatch });
   if (query.lowStock === 'true' || query.lowStock === true) pipeline.push({ $match: { isLowStock: true } });
 
@@ -400,7 +375,7 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
       { $skip: (page - 1) * limit },
       { $limit: limit },
       ...(priceNeededBeforePaging ? [] : pricingStages),
-      { $set: { brand: '$brandKey', stockQuantity: '$stockLevel' } },
+      { $set: { stockQuantity: '$stockLevel' } },
       { $unset: ['filterOptionIds', '_pricing', '_categoryPriority', '__v', 'priceHistory', ...INTERNAL_CATALOG_FIELDS] },
     ],
     total: [...facetFilters, { $count: 'count' }],
@@ -422,7 +397,7 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
     selectedSpecKeys.forEach((key, index) => {
       resultFacets[`specCounts${index}`] = [...matchingStages(dimension => dimension === `spec:${key}`), ...specificationCountStages];
     });
-    resultFacets.brands = [{ $match: { brandKey: { $ne: '' } } }, { $group: { _id: '$brandKey', count: { $sum: 1 } } }, { $sort: { _id: 1 } }];
+    resultFacets.brands = [{ $match: { brandId: { $in: managedBrands.map(item => item._id) } } }, { $group: { _id: '$brandId', count: { $sum: 1 } } }];
     resultFacets.brandCounts = [...matchingStages(dimension => dimension === 'brand'), ...resultFacets.brands];
     resultFacets.availability = [...matchingStages(dimension => dimension === 'availability'), ...availabilityCountStages];
     resultFacets.categories = categoryMembershipStages;
@@ -435,7 +410,7 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   const categoryGroupCounts = categories.filter(category => universeCategoryCounts.has(String(category._id)))
     .map(category => ({ _id: category._id, count: universeCategoryCounts.get(String(category._id)) }));
   const categoryCountsByLevel = CATEGORY_FILTER_KEYS.map((_, index) => rollupCategoryCounts(result[`categoryCounts${index}`], categories));
-  const categoryBrands = (result.brands || []).map(brand => ({ ...brand, count: (result.brandCounts || []).find(item => item._id === brand._id)?.count || 0 }));
+  const categoryBrands = (result.brands || []).map(brand => ({ ...brand, count: (result.brandCounts || []).find(item => String(item._id) === String(brand._id))?.count || 0 }));
 
   // No exact matches for a search: retry once with spelling-corrected words,
   // each required to match, keeping every other filter. The response says so
@@ -451,8 +426,7 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
 
   const availabilityCounts = result.availability || [];
   const byId = new Map(categories.map((category) => [String(category._id), category]));
-  const productBrandIds = result.products.map((product) => product.brandId).filter(Boolean);
-  const productBrands = productBrandIds.length ? await Brand.find({ _id: { $in: productBrandIds }, isActive: true }).lean() : [];
+  const productBrands = managedBrands;
   const cleanBrand = (brand) => {
     if (!brand) return brand;
     const raw = (brand.slug || '').toString().trim();
@@ -508,7 +482,8 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
       stockQuantity: resolvedStock,
       stockStatus: resolvedStatus,
       categoryPath: categoryPathFor(product.categoryId),
-      brandId: brandById.get(String(product.brandId)) || product.brandId,
+      brand: brandById.get(String(product.brandId))?.name || '',
+      brandId: brandById.get(String(product.brandId)) || null,
       categoryId: byId.get(String(product.categoryId)),
     };
   });
@@ -592,7 +567,7 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
         const cat = byId.get(String(item._id));
         return cat ? { _id: String(cat._id), name: cat.name, slug: cat.slug, parentId: cat.parentId?._id || cat.parentId || null, level: levels.get(String(cat._id)), count: categoryCountsByLevel[(levels.get(String(cat._id)) || 1) - 1].get(String(cat._id)) || 0, availableCount: item.count } : null;
       }).filter(Boolean),
-      brands: categoryBrands.map((item) => ({ name: item._id, count: item.count })),
+      brands: categoryBrands.map((item) => ({ name: managedById.get(String(item._id)).name, count: item.count })).sort((a, b) => a.name.localeCompare(b.name)),
       availability: ['in-stock', 'low-stock', 'on-order', 'out-of-stock'].map((status) => ({
         status,
         count: availabilityCounts.find((item) => item._id === status)?.count || 0,

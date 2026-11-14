@@ -1,6 +1,7 @@
 import { afterEach, expect, jest, test } from '@jest/globals';
 import { categoryProductPriorities } from '../../backend/src/utils/storefrontOrdering.js';
 import { getPublicProducts } from '../../backend/src/services/catalog.service.js';
+import { Brand } from '../../backend/src/models/Brand.js';
 import { Category } from '../../backend/src/models/Category.js';
 import { Product } from '../../backend/src/models/Product.js';
 import { ProductPositionCounter } from '../../backend/src/models/ProductPositionCounter.js';
@@ -86,6 +87,7 @@ test('only header categories can be positioned', async () => {
 
 test.each([undefined, 'categoryPriority', 'standardPrice', 'createdAt'])('catalog sorts before pagination and preserves customer sorting: %s', async sortBy => {
   invalidateCategoryCache();
+  jest.spyOn(Brand, 'find').mockReturnValue({ lean: async () => [] });
   jest.spyOn(Category, 'find').mockReturnValue({ sort: () => ({ lean: async () => categories.map(row => ({ ...row, parentId: row.parentId?._id || row.parentId })) }) });
   const aggregate = jest.spyOn(Product, 'aggregate').mockResolvedValue([{ products: [], total: [{ count: 30 }] }]);
   const result = await getPublicProducts({ sortBy, includeFacets: false, page: 2, limit: 10 }, { role: 'customer' });

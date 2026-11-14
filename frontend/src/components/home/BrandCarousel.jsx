@@ -376,7 +376,7 @@ export const BrandCarousel = () => {
         {displayBrands.map((brand, index) => (
           <div key={`${brand._id || brand.slug || brand.name}-${index}`} className="brand-carousel-item relative group/brand shrink-0">
             <Link
-              to={buildBrandUrl(brand.name)}
+              to={buildBrandUrl(brand)}
               className="flex flex-col items-center justify-center w-full h-14 sm:h-16 px-3 transition-all duration-200 ease-out focus-visible:outline-2 focus-visible:outline-[var(--store-primary)] select-none relative"
             >
               {/* Brand Logo Display */}

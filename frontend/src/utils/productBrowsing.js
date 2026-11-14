@@ -22,10 +22,10 @@ export function findHeaderCategory(product, categories) {
 }
 export function orderedProductSpecifications(product, brandName) {
   if (!product) return [];
-  const specs = (product.specifications || []).filter(spec => spec.key?.trim() && spec.value?.trim() && !isInventorySpecification(spec.key));
+  const specs = (product.specifications || []).filter(spec => spec.key?.trim() && spec.value?.trim() && !isInventorySpecification(spec.key) && (brandName || !/^(brand|manufacturer)$/i.test(spec.key.trim())));
   const has = pattern => specs.some(spec => pattern.test(spec.key.trim()));
   const list = [];
-  if (!has(/^(brand|manufacturer)$/i)) list.push({ key: 'Brand', value: brandName });
+  if (brandName && !has(/^(brand|manufacturer)$/i)) list.push({ key: 'Brand', value: brandName });
   const hsn = getProductHsnCode(product);
   if (hsn && !has(/^hsn(?:\/sac|\s*code)?$/i)) list.push({ key: 'HSN Code', value: hsn });
   if (product.variant?.trim() && !has(/^variant$/i)) list.push({ key: 'Variant', value: product.variant.trim() });

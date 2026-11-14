@@ -57,10 +57,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
   }
 
   // Brand info
-  const brandName =
-    product.brandId?.name ||
-    product.specifications?.find((s) => s.key?.toLowerCase() === 'brand')?.value ||
-    (typeof product.categoryId === 'object' ? product.categoryId?.name : 'ViNexus');
+  const brandName = product.brandId?.name || '';
   const brandLogo = product.brandId?.logo?.url;
 
   // Model number - from dedicated field or specs
