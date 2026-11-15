@@ -10,7 +10,7 @@ test('customer completes remaining dealer details and documents, then becomes a 
   await mockApi(page); await seedBrowserSession(page, 'account');
   await page.route('**/api/content/theme', route => route.fulfill({ json: { success: true, data: { theme: { id: 'diwali', config: presetConfig('diwali') } } } }));
   let profile = null, approved = false; const writes = [];
-  await page.route('https://*.tile.openstreetmap.org/**', route => route.abort());
+  await page.route('https://{tile.openstreetmap.org,*.tile.openstreetmap.org}/**', route => route.abort());
   await page.route('**/api/auth/refresh-token', route => route.fulfill({ json: { success: true, data: { accessToken: 'customer-access', refreshToken: 'customer-refresh', user: applicant } } }));
   await page.route('**/api/auth/me', route => route.fulfill({ json: { success: true, data: { user: { ...applicant, role: approved ? 'dealer' : 'customer', dealerStatus: approved ? 'approved' : null } } } }));
   await page.route('**/api/dealers/application**', route => {
@@ -87,7 +87,7 @@ test('verification queue and dealer accounts are separate and show approval attr
 test('a rejected customer can correct their dealer application and resubmit', async ({ page }) => {
   await mockApi(page); await seedBrowserSession(page, 'account');
   const profile = { _id: id, ...details, aadhaarNumber: undefined, status: 'rejected', applicationState: 'submitted', rejectionReason: 'Correct the business address.', kycDocuments: ['gst', 'aadhaar'].map(type => ({ type, url: 'https://files.example/doc.pdf' })) };
-  await page.route('https://*.tile.openstreetmap.org/**', route => route.abort());
+  await page.route('https://{tile.openstreetmap.org,*.tile.openstreetmap.org}/**', route => route.abort());
   await page.route('**/api/dealers/application**', route => {
     if (route.request().method() === 'PUT') Object.assign(profile, route.request().postDataJSON(), { status: 'pending', applicationState: 'draft' });
     if (route.request().url().endsWith('/submit')) profile.applicationState = 'submitted';
@@ -102,4 +102,23 @@ test('a rejected customer can correct their dealer application and resubmit', as
   await page.getByRole('button', { name: 'Submit for dealer verification' }).click();
   await expect(page.getByRole('heading', { name: 'Application under review' })).toBeVisible();
   expect(profile.address).toBe('Corrected address');
+});
+
+
+test('office map uses canonical tiles with a referrer and keeps coordinates usable on tile failure', async ({ page }) => {
+  await mockApi(page); await seedBrowserSession(page, 'account');
+  await page.route('**/api/dealers/application**', route => route.fulfill({ json: { success: true, data: { profile: null } } }));
+  const tileRequests = [];
+  await page.route('https://tile.openstreetmap.org/**', route => {
+    tileRequests.push(route.request());
+    return route.fulfill({ status: 403, body: '' });
+  });
+  await page.goto('/account/become-dealer');
+  await expect(page.getByRole('status').filter({ hasText: 'Map tiles are unavailable.' })).toBeVisible();
+  expect(tileRequests.length).toBeGreaterThan(0);
+  expect(tileRequests[0].headers().referer).toBe(new URL(page.url()).origin + '/');
+  await expect(page.locator('.leaflet-tile').first()).toHaveAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+  await page.getByLabel('Latitude').fill('25.18');
+  await page.getByLabel('Longitude').fill('75.85');
+  await expect(page.getByRole('link', { name: /View office on maps/ })).toHaveAttribute('href', 'https://www.google.com/maps?q=25.18,75.85');
 });

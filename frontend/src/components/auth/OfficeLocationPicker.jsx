@@ -3,6 +3,9 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Crosshair, ExternalLink, MapPin, Search } from 'lucide-react';
 
+const TILE_URL = import.meta.env.VITE_MAP_TILE_URL || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const TILE_ATTRIBUTION = import.meta.env.VITE_MAP_TILE_ATTRIBUTION || '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
 const DEFAULT_CENTER = [26.9124, 75.7873];
 
 const markerIcon = L.divIcon({
@@ -24,6 +27,7 @@ const OfficeLocationPicker = ({ value, onChange, disabled = false }) => {
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [locationError, setLocationError] = useState('');
+  const [mapError, setMapError] = useState(false);
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -37,10 +41,17 @@ const OfficeLocationPicker = ({ value, onChange, disabled = false }) => {
       ? [Number(value.latitude), Number(value.longitude)]
       : DEFAULT_CENTER;
     const map = L.map(mapNodeRef.current, { scrollWheelZoom: false }).setView(initialPosition, hasInitialPosition ? 16 : 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    const tiles = L.tileLayer(TILE_URL, {
       maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors',
-    }).addTo(map);
+      attribution: TILE_ATTRIBUTION,
+      referrerPolicy: 'strict-origin-when-cross-origin',
+    });
+    tiles.on('tileerror', () => setMapError(true));
+    tiles.on('load', () => {
+      const visibleTiles = mapNodeRef.current?.querySelectorAll('.leaflet-tile');
+      if (visibleTiles?.length && [...visibleTiles].every(tile => tile.complete && tile.naturalWidth > 0)) setMapError(false);
+    });
+    tiles.addTo(map);
 
     const setLocation = (lat, lng) => {
       const latitude = Number(lat);
@@ -172,6 +183,8 @@ const OfficeLocationPicker = ({ value, onChange, disabled = false }) => {
         )}
         <div ref={mapNodeRef} className="h-72 w-full" aria-label="Office location map" />
       </div>
+
+      {mapError && <p role="status" className="text-xs font-medium text-amber-700">Map tiles are unavailable. You can still search for your office, use your current location, or enter latitude and longitude below.</p>}
 
       {locationError && <p className="text-xs font-medium text-rose-600">{locationError}</p>}
 

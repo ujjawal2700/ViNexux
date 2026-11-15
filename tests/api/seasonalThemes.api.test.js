@@ -41,6 +41,21 @@ describe('theme CMS lifecycle', () => {
     expect((await request.get('/content/theme')).body.data.theme.config.colors.background).toBe('#123456');
     expect((await request.get('/content/theme')).body.data.theme.config.styles.buttons).toBe('pill');
   });
+  test('default theme saves, publishes and activates without media, including minimized saved drafts', async () => {
+    const data = { ...payload(), name: 'Store default', preset: 'default', draft: presetConfig('default') };
+    delete data.draft.assets;
+    const created = await request.post('/themes').send(data);
+    expect(created.status).toBe(201);
+    expect(created.body.data.theme.draft.assets || {}).toEqual({});
+    // MongoDB/Mongoose can omit empty objects when persisting Mixed fields.
+    delete themes[0].draft.assets;
+    expect((await request.post(`/themes/${id}/publish`).send({ revision: 0 })).status).toBe(200);
+    expect((await request.post(`/themes/${id}/activate`).send({ revision: 1 })).status).toBe(200);
+    const live = (await request.get('/content/theme')).body.data.theme;
+    expect(live.id).toBe(id);
+    expect(live.config.assets || {}).toEqual({});
+    expect(live.config.decoration).toBe('none');
+  });
   test('stale save and publish receive 409 without overwriting newer edits', async () => {
     await request.post('/themes').send(payload()); await request.put(`/themes/${id}`).send(payload());
     expect((await request.put(`/themes/${id}`).send(payload())).status).toBe(409);

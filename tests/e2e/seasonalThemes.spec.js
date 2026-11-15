@@ -246,3 +246,26 @@ for (const width of [320, 390]) {
     await section.screenshot({ path: testInfo.outputPath(`mobile-footer-${width}.png`) });
   });
 }
+
+
+test('default theme applies without uploading media', async ({ page }) => {
+  await mockApi(page); await seedBrowserSession(page, 'admin');
+  const id = '507f1f77bcf86cd799439011'; let stored; const actions = [];
+  await page.route('**/api/admin/cms/themes**', route => {
+    const req = route.request(), path = new URL(req.url()).pathname; let data;
+    if (path.endsWith('/themes') && req.method() === 'GET') data = { themes: stored ? [stored] : [], active: { id: stored?.published ? id : null, name: stored?.name || 'Store default' } };
+    else if (path.endsWith('/themes')) { stored = { ...req.postDataJSON(), _id: id, history: [] }; data = { theme: stored }; }
+    else if (path.endsWith('/publish')) { actions.push('publish'); stored.published = structuredClone(stored.draft); stored.revision++; data = { theme: stored }; }
+    else if (path.endsWith('/activate')) { actions.push('activate'); data = { theme: stored }; }
+    else data = { theme: stored };
+    return route.fulfill({ json: { success: true, data } });
+  });
+  await page.goto('/admin/cms/themes/new');
+  await page.getByLabel('Festival', { exact: true }).selectOption('default');
+  await expect(page.getByText('The default theme needs no special media.', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'Apply to store', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apply theme', exact: true }).click();
+  await expect.poll(() => actions).toEqual(['publish', 'activate']);
+  expect(stored.published.assets).toEqual({});
+  expect(stored.published.decoration).toBe('none');
+});
