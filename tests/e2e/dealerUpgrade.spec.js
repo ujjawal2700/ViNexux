@@ -108,6 +108,11 @@ test('a rejected customer can correct their dealer application and resubmit', as
 test('office map uses canonical tiles with a referrer and keeps coordinates usable on tile failure', async ({ page }) => {
   await mockApi(page); await seedBrowserSession(page, 'account');
   await page.route('**/api/dealers/application**', route => route.fulfill({ json: { success: true, data: { profile: null } } }));
+  // Reproduce the restrictive header observed on the deployed registration page.
+  await page.route('**/account/become-dealer', async route => {
+    const response = await route.fetch();
+    await route.fulfill({ response, headers: { ...response.headers(), 'referrer-policy': 'no-referrer' } });
+  });
   const tileRequests = [];
   await page.route('https://tile.openstreetmap.org/**', route => {
     tileRequests.push(route.request());
@@ -121,4 +126,29 @@ test('office map uses canonical tiles with a referrer and keeps coordinates usab
   await page.getByLabel('Latitude').fill('25.18');
   await page.getByLabel('Longitude').fill('75.85');
   await expect(page.getByRole('link', { name: /View office on maps/ })).toHaveAttribute('href', 'https://www.google.com/maps?q=25.18,75.85');
+});
+
+
+test('office map renders successful tiles and selects a location despite a restrictive page referrer policy', async ({ page }) => {
+  await mockApi(page); await seedBrowserSession(page, 'account');
+  await page.route('**/api/dealers/application**', route => route.fulfill({ json: { success: true, data: { profile: null } } }));
+  await page.route('**/account/become-dealer', async route => {
+    const response = await route.fetch();
+    await route.fulfill({ response, headers: { ...response.headers(), 'referrer-policy': 'no-referrer' } });
+  });
+  const tileRequests = [];
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jY9kAAAAASUVORK5CYII=', 'base64');
+  await page.route('https://tile.openstreetmap.org/**', route => {
+    tileRequests.push(route.request());
+    return route.fulfill({ contentType: 'image/png', body: png });
+  });
+  await page.goto('/account/become-dealer');
+  await expect(page.locator('.leaflet-tile-loaded').first()).toBeVisible();
+  expect(tileRequests.every(request => request.headers().referer === new URL(page.url()).origin + '/')).toBe(true);
+  await expect(page.getByText('Map tiles are unavailable.', { exact: false })).toHaveCount(0);
+  await page.locator('[aria-label="Office location map"]').click({ position: { x: 150, y: 140 } });
+  await expect(page.locator('.leaflet-marker-icon')).toBeVisible();
+  await expect(page.getByRole('link', { name: /View office on maps/ })).toBeVisible();
+  await expect(page.getByLabel('Latitude')).not.toHaveValue('');
+  await expect(page.getByLabel('Longitude')).not.toHaveValue('');
 });

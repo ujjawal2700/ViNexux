@@ -120,7 +120,7 @@ const OfficeLocationPicker = ({ value, onChange, disabled = false }) => {
     setLocationError('');
     try {
       const params = new URLSearchParams({ format: 'jsonv2', limit: '5', countrycodes: 'in', q: query.trim() });
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, { headers: { 'Accept-Language': 'en' } });
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, { headers: { 'Accept-Language': 'en' }, referrerPolicy: 'strict-origin-when-cross-origin' });
       if (!response.ok) throw new Error('Location search is unavailable');
       const data = await response.json();
       setResults(data);

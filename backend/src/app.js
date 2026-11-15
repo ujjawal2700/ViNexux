@@ -19,6 +19,8 @@ app.set('trust proxy', config.trustProxy);
 
 // 1. Security HTTP headers
 app.use(helmet({
+  // Map providers require a Referer; send only our origin to other sites.
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   hsts: { maxAge: 31_536_000, includeSubDomains: false, preload: false },
 }));
 
