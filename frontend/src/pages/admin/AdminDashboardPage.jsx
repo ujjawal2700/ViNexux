@@ -19,6 +19,7 @@ import {
   ArrowRight,
   Sparkles,
   PackagePlus,
+  ShoppingBag,
 } from 'lucide-react';
 
 const AdminDashboardPage = () => {
@@ -28,14 +29,14 @@ const AdminDashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
+  const fetchDashboardData = async (silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const [summaryRes, enquiriesRes, dealersRes] = await Promise.all([
-        adminService.getDashboardSummary(),
-        adminService.getEnquiries({ limit: 5 }),
-        adminService.getDealers({ status: 'pending', limit: 5 }),
+        adminService.getDashboardSummary({ skipGlobalLoader: silent }),
+        adminService.getEnquiries({ limit: 5 }, { skipGlobalLoader: silent }),
+        adminService.getDealers({ status: 'pending', limit: 5 }, { skipGlobalLoader: silent }),
       ]);
 
       setSummary(summaryRes.data || summaryRes);
@@ -43,7 +44,7 @@ const AdminDashboardPage = () => {
       setPendingDealers(dealersRes.data?.dealers || []);
     } catch (err) {
       console.error('Error fetching admin dashboard data:', err);
-      setError(err.response?.data?.message || 'Failed to load admin dashboard overview');
+      if (!silent) setError(err.response?.data?.message || 'Failed to load admin dashboard overview');
     } finally {
       setLoading(false);
     }
@@ -51,14 +52,17 @@ const AdminDashboardPage = () => {
 
   useEffect(() => {
     fetchDashboardData();
+    const refresh = () => fetchDashboardData(true);
+    window.addEventListener('admin-arrival-received', refresh);
+    return () => window.removeEventListener('admin-arrival-received', refresh);
   }, []);
 
   if (loading) {
     return (
       <div className="space-y-6">
         <AdminPageHeader title="Admin Dashboard" subtitle="System Control Center Overview" />
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
-          {[1, 2, 3, 4, 5].map((n) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((n) => (
             <Skeleton key={n} className="h-28 rounded-xl" />
           ))}
         </div>
@@ -77,7 +81,7 @@ const AdminDashboardPage = () => {
         <ErrorState
           title="Failed to load dashboard data"
           message={error}
-          onRetry={fetchDashboardData}
+          onRetry={() => fetchDashboardData()}
         />
       </div>
     );
@@ -92,7 +96,10 @@ const AdminDashboardPage = () => {
       />
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <StatsCard title="Orders" value={summary?.orders?.total || 0}
+          subtext={<><span className="block">{summary?.orders?.new || 0} New WhatsApp order leads</span><Link className="font-semibold text-primary hover:underline" to="/admin/whatsapp-orders">WhatsApp ({summary?.orders?.whatsapp || 0})</Link>{' · '}<Link className="font-semibold text-primary hover:underline" to="/admin/pos?tab=sales">POS ({summary?.orders?.pos || 0})</Link></>}
+          icon={ShoppingBag} color="emerald" />
         <StatsCard
           title="B2B Enquiries"
           value={summary?.enquiries?.b2b?.total || 0}

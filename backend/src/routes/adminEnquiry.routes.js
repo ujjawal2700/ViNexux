@@ -24,22 +24,26 @@ const router = Router();
 
 // Protected Admin Enquiry Management Operations
 router.use(authenticate, asyncHandler(async (req, res, next) => {
+  if (!req.query.source) req.query.source = 'storefront';
   if (!req.user.isEmployee) return next();
+  let whatsapp = req.query.source === 'whatsapp';
   const action = ['GET', 'HEAD'].includes(req.method) ? 'read' : 'write';
   let type = req.query.userType;
   const recordId = req.path.split('/')[1];
   if (recordId) {
     if (!mongoose.isValidObjectId(recordId)) throw new AppError('Invalid enquiry ID.', 400, 'VALIDATION_ERROR');
-    const record = await Enquiry.findById(recordId).select('userType').lean();
+    const record = await Enquiry.findById(recordId).select('userType source').lean();
     if (!record) throw new AppError('Enquiry not found.', 404, 'NOT_FOUND');
     type = record.userType;
+    whatsapp = record.source === 'whatsapp';
   }
-  if (!type) {
+  if (!type && !whatsapp) {
     const allowed = ['customer', 'dealer'].filter(value => canAdmin({ role: 'admin', ...req.adminAccess }, `enquiries-${value}s`, action));
     if (allowed.length === 2) { req.adminPermissionSection = 'enquiries-customers'; }
     else if (allowed.length === 1) { type = allowed[0]; req.query.userType = type; }
   }
   if (type) req.adminPermissionSection = `enquiries-${type}s`;
+  if (whatsapp) req.adminPermissionSection = 'whatsapp-orders';
   if (auditContext.getStore()) auditContext.getStore().section = req.adminPermissionSection || 'enquiries';
   next();
 }), authorize('admin'));

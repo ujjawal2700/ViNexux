@@ -1,3 +1,4 @@
+import { adminArrivalService } from './adminArrival.service.js';
 import { resolveVariant, variantStockChange, productLineKey } from '../utils/productVariants.js';
 import { stockUpdate } from '../utils/productStockUpdate.js';
 import mongoose from 'mongoose';
@@ -6,13 +7,15 @@ import { ALLOWED_ENQUIRY_TRANSITIONS, canonicalEnquiryStatus } from '../../../sh
 import { Enquiry } from '../models/Enquiry.js';
 import { Cart } from '../models/Cart.js';
 import { User } from '../models/User.js';
-import { calculateApplicablePrices, validateProductsAndCategoriesActive, assertQuantityAvailable } from './cart.service.js';
+import { calculateApplicablePrices, validateProductsAndCategoriesActive, assertQuantityAvailable, getAvailableStock } from './cart.service.js';
 import { AppError } from '../utils/AppError.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../constants/errorCodes.js';
 import { googleSheetsService } from './googleSheets/googleSheets.service.js';
 import { whatsAppService } from './whatsapp/whatsapp.service.js';
 import { emailService } from './email/email.service.js';
+import { pushService } from './push/push.service.js';
+import { buildWhatsAppOrderLink } from '../../../shared/whatsappOrder.js';
 import { FooterContent } from '../models/FooterContent.js';
 
 const escapeRegex = (string) => {
@@ -50,7 +53,12 @@ export const generateUniqueEnquiryNumber = async () => {
 /**
  * Create a complete PRD-aligned Enquiry snapshot from user's cart
  */
-export const createEnquiryFromCart = async (userId, payload = {}) => {
+export const createEnquiryFromCart = async (userId, payload = {}, options = {}) => {
+  const whatsapp = options.source === 'whatsapp';
+  if (whatsapp) {
+    const existing = await Enquiry.findOne({ userId, requestId: payload.requestId });
+    if (existing) return existing;
+  }
   // 1. Load authenticated user profile
   const user = await User.findById(userId);
   if (!user) {
@@ -147,7 +155,10 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
   const enquiryNumber = await generateUniqueEnquiryNumber();
 
   // 9. Create Enquiry record with initial status 'new'
-  const enquiry = await Enquiry.create({
+  let enquiry;
+  try { enquiry = await Enquiry.create({
+    source: whatsapp ? 'whatsapp' : 'storefront',
+    ...(whatsapp ? { requestId: payload.requestId } : {}),
     enquiryNumber,
     userId,
     contactName,
@@ -163,6 +174,17 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
     notifiedViaEmail: false,
     syncedToGoogleSheet: false,
   });
+
+  } catch (error) {
+    if (whatsapp && error.code === 11000) {
+      const existing = await Enquiry.findOne({ userId, requestId: payload.requestId });
+      if (existing) return existing;
+    }
+    throw error;
+  }
+  await adminArrivalService.publish(enquiry);
+  // WhatsApp leads are persisted before the chat opens; the cart remains intact.
+  if (whatsapp) return enquiry;
 
   const footer = await FooterContent.findOne({ isActive: true }).lean();
   const addressText = [deliveryAddress.line1, deliveryAddress.line2, deliveryAddress.city, deliveryAddress.state, deliveryAddress.pincode].filter(Boolean).join(', ');
@@ -295,6 +317,7 @@ export const listAllEnquiries = async (query = {}) => {
   const { page = 1, limit = 20, status, userType, search, userId, sortBy = 'createdAt', sortOrder = 'desc' } = query;
 
   const filter = {};
+  if (query.source) filter.source = query.source === 'storefront' ? { $ne: 'whatsapp' } : 'whatsapp';
   if (status) {
     filter.status = status;
   }
@@ -435,7 +458,7 @@ export const updateEnquiryStatus = async (enquiryId, updateData = {}, adminUserI
 
       // Only a new transition into Completed fulfils the order. Historical
       // completed enquiries are never deducted retrospectively.
-      if (status === 'completed' && oldStatus !== 'completed' && !enquiry.stockDeductedAt) {
+      if (status === 'completed' && oldStatus !== 'completed' && !enquiry.stockDeductedAt && enquiry.enquiryType !== 'out-of-stock') {
         const quantities = new Map();
         for (const item of enquiry.items) {
           const productId = String(item.productId);
@@ -471,6 +494,13 @@ export const updateEnquiryStatus = async (enquiryId, updateData = {}, adminUserI
   }
   enquiry.$session(null);
 
+  if (customerReply?.trim()) {
+    try {
+      await pushService.sendToUser(enquiry.userId, { title: 'New response to your enquiry', body: `Our team replied to ${enquiry.enquiryNumber}. Tap to view the response.`,
+        data: { type: 'enquiry-reply', enquiryId: String(enquiry._id), replyCount: String(enquiry.customerReplies.length), link: `/account/enquiries/${enquiry._id}`, sound: 'default' } });
+    } catch (error) { console.error('[EnquiryService] Reply push failed:', error.message); }
+  }
+
   // 4. Attempt WhatsApp status update notification (Isolated operation; does not throw if fails)
   if (status && oldStatus !== status) {
     try {
@@ -492,4 +522,42 @@ export const updateEnquiryStatus = async (enquiryId, updateData = {}, adminUserI
       populate: { path: 'categoryId', select: 'name slug isActive' },
     },
   ]);
+};
+
+
+export const createAvailabilityEnquiry = async (userId, { productId, variantId, message }) => {
+  const user = await User.findById(userId);
+  if (!user) throw new AppError('User account not found', 404, ERROR_CODES.NOT_FOUND);
+  const products = await validateProductsAndCategoriesActive([productId]);
+  const product = resolveVariant(products.get(String(productId)), variantId);
+  if (product.stockStatus !== 'out-of-stock' && getAvailableStock(product) !== 0) throw new AppError('This product is available. Add it to your cart for an order enquiry.', 409, ERROR_CODES.CONFLICT);
+  const enquiry = await Enquiry.create({
+    enquiryType: 'out-of-stock', enquiryNumber: await generateUniqueEnquiryNumber(), userId,
+    contactName: user.fullName || user.name || 'Customer', contactEmail: user.email || '', contactPhone: user.phone || '', whatsappNumber: '',
+    userType: user.role === 'dealer' ? 'dealer' : 'customer', message: message.trim(), status: 'new',
+    items: [{ productId, variantId: variantId || null, variantName: product.variant || '', productName: product.name, sku: product.sku || '',
+      productImageUrl: product.images?.[0]?.url || '', modelNumber: product.modelNumber || '', quantity: 1, priceShown: 0 }],
+  });
+  await adminArrivalService.publish(enquiry);
+  return enquiry;
+};
+
+export const addCustomerEnquiryMessage = async (userId, enquiryId, message) => {
+  const enquiry = await Enquiry.findOneAndUpdate({ _id: enquiryId, userId }, { $push: { customerMessages: { message: message.trim(), createdAt: new Date() } } }, { new: true, runValidators: true }).select('-notes');
+  if (!enquiry) throw new AppError('Enquiry not found', 404, ERROR_CODES.NOT_FOUND);
+  return enquiry;
+};
+
+export const markEnquiryRepliesRead = async (userId, enquiryId, replyCount) => {
+  const enquiry = await Enquiry.findOne({ _id: enquiryId, userId }).select('customerReplies');
+  if (!enquiry) throw new AppError('Enquiry not found', 404, ERROR_CODES.NOT_FOUND);
+  const count = Math.min(replyCount, enquiry.customerReplies?.length || 0);
+  await Enquiry.updateOne({ _id: enquiryId, userId }, { $max: { lastReadReplyCount: count } });
+  return { readReplyCount: count };
+};
+
+export const createWhatsAppOrderLead = async (userId, payload) => {
+  const enquiry = await createEnquiryFromCart(userId, payload, { source: 'whatsapp' });
+  const footer = await FooterContent.findOne({ isActive: true }).lean();
+  return { enquiry, whatsappUrl: buildWhatsAppOrderLink(enquiry, footer?.whatsappNumbers?.[0]?.number || footer?.whatsappNumber || '8769959424') };
 };

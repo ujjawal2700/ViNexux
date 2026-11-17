@@ -61,7 +61,7 @@ describe('manual low-stock policy', () => {
   });
   test('zero stock still supports availability enquiries without permitting fulfillment', () => {
     const product = { stockQuantity: 0, isLowStock: true };
-    expect(getMaximumEnquiryQuantity(product)).toBe(5); expect(getMaximumOrderQuantity(product)).toBe(0);
-    expect(() => assertQuantityAvailable(product, 6)).toThrow(/5 units/);
+    expect(getMaximumEnquiryQuantity(product)).toBe(0); expect(getMaximumOrderQuantity(product)).toBe(0);
+    expect(() => assertQuantityAvailable(product, 6)).toThrow(/out of stock/);
   });
 });

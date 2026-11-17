@@ -44,7 +44,7 @@ export const firebaseMessage = ({ tokens, title, body, data = {}, campaign = fal
   ...(campaign ? {} : { notification: { title, body } }),
   data: Object.fromEntries(Object.entries(data).map(([key, value]) => [key, String(value)])),
   webpush: campaign ? { headers: { TTL: String(ttl) } } : {
-    notification: { title, body, icon: '/logo.png' },
+    notification: { title, body, icon: '/logo.png', ...(['enquiry-reply', 'admin-arrival'].includes(data.type) ? { silent: false, tag: data.type === 'admin-arrival' ? `arrival-${data.arrivalId}` : `enquiry-${data.enquiryId}-${data.replyCount}`, vibrate: [200, 100, 200] } : {}) },
     ...(data.link?.startsWith('https://') ? { fcmOptions: { link: data.link } } : {}),
   },
 });

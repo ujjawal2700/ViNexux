@@ -1,20 +1,17 @@
 import { productLineKey } from '../../../../shared/productVariants.js';
 import PriceGate, { LoginToViewPrices, usePriceVisibility } from '../../components/products/PriceGate';
-import { productModelVariant } from '../../../../shared/productPresentation.js';
 import { getRecentViews } from '../../utils/browsingHistory';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
-import addressService from '../../services/addressService';
 import cartService from '../../services/cartService';
 import guestCartService from '../../services/guestCartService';
 import productService from '../../services/productService';
-import contentService from '../../services/contentService';
 import categoryService from '../../services/categoryService';
 import useToast from '../../hooks/useToast';
 import ProductCard from '../../components/products/ProductCard';
 import { buildProductPath } from '../../utils/categoryUrls';
-import { getAvailableStock, getMaximumEnquiryQuantity } from '../../utils/inventory';
+import { getAvailableStock, getMaximumEnquiryQuantity, isOutOfStock } from '../../utils/inventory';
 import { allowsPreferences } from '../../utils/storageConsent';
 import { Skeleton } from '../../components/ui/Skeleton';
 import {
@@ -70,7 +67,7 @@ const CartQuantityInput = ({ quantity, maximum, disabled, productName, onSave, c
 };
 
 export const CartPage = () => {
-  const { isAuthenticated, user, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const pricesVisible = usePriceVisibility();
   const navigate = useNavigate();
   const toast = useToast();
@@ -80,15 +77,6 @@ export const CartPage = () => {
   useEffect(() => {
     if (cart) window.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart, source: 'cart-page' } }));
   }, [cart]);
-  const [savedAddresses, setSavedAddresses] = useState([]);
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    let active = true;
-    addressService.listAddresses().then(response => {
-      if (active) setSavedAddresses(response.data?.addresses || response.addresses || []);
-    }).catch(() => { /* Profile address remains available if the address book cannot load. */ });
-    return () => { active = false; };
-  }, [isAuthenticated, user?._id, user?.id]);
   const [selectedItemIds, setSelectedItemIds] = useState(new Set());
   const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [similarProducts, setSimilarProducts] = useState([]);
@@ -97,9 +85,6 @@ export const CartPage = () => {
   const [allCategories, setAllCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [updatingItemId, setUpdatingItemId] = useState(null);
-  const [supportPhone, setSupportPhone] = useState('918769959424');
-  const [whatsappNote, setWhatsappNote] = useState('Please confirm live stock availability, delivery timeline & share official GST commercial invoice.');
-
   // Filter valid items where product exists
   const items = useMemo(() => {
     return (cart?.items || []).filter((item) => item && (item.productId?._id || item.productId));
@@ -119,7 +104,7 @@ export const CartPage = () => {
     if (!isAuthenticated) {
       const guestCart = guestCartService.getCart();
       setCart(guestCart);
-      setSelectedItemIds(new Set(guestCart.items.map((item) => productLineKey(item.productId, item.variantId))));
+      setSelectedItemIds(new Set(guestCart.items.filter(item => !isOutOfStock(item.productId)).map((item) => productLineKey(item.productId, item.variantId))));
       setIsLoading(false);
       return;
     }
@@ -134,7 +119,7 @@ export const CartPage = () => {
       const ids = new Set();
       items.forEach((item) => {
         const id = productLineKey(item.productId || item._id, item.variantId);
-        if (id) ids.add(String(id));
+        if (id && !isOutOfStock(item.productId)) ids.add(String(id));
       });
       setSelectedItemIds(ids);
     } catch (err) {
@@ -215,7 +200,7 @@ export const CartPage = () => {
     const loadSimilarProducts = async () => {
       try {
         const cartProductIds = new Set(
-          items.map((i) => productLineKey(i.productId || i._id, i.variantId))
+          items.filter(i => !isOutOfStock(i.productId)).map((i) => productLineKey(i.productId || i._id, i.variantId))
         );
 
         const cartCatIds = new Set();
@@ -352,28 +337,6 @@ export const CartPage = () => {
     return () => { active = false; };
   }, [items, allCategories]);
 
-  // 5. Fetch CMS Footer WhatsApp settings
-  useEffect(() => {
-    const fetchFooterPhone = async () => {
-      try {
-        const footerRes = await contentService.getFooterContent();
-        const footer = footerRes?.data?.footer || footerRes?.footer || footerRes?.data;
-        const phoneRaw = footer?.whatsappNumbers?.[0]?.number || footer?.whatsappNumber || '8769959424';
-        const cleaned = phoneRaw.replace(/\D/g, '');
-        if (cleaned.length >= 10) {
-          setSupportPhone(cleaned.startsWith('91') ? cleaned : `91${cleaned.slice(-10)}`);
-        } else {
-          setSupportPhone('918769959424');
-        }
-        if (footer?.whatsappMessageNote) {
-          setWhatsappNote(footer.whatsappMessageNote);
-        }
-      } catch {
-        setSupportPhone('918769959424');
-      }
-    };
-    fetchFooterPhone();
-  }, []);
   // 4. Initial fetch & listen to live cart-updated events
   useEffect(() => {
     fetchCartData();
@@ -401,7 +364,7 @@ export const CartPage = () => {
       setSelectedItemIds(new Set());
     } else {
       const allIds = new Set(
-        items.map((i) => productLineKey(i.productId || i._id, i.variantId))
+        items.filter(i => !isOutOfStock(i.productId)).map((i) => productLineKey(i.productId || i._id, i.variantId))
       );
       setSelectedItemIds(allIds);
     }
@@ -519,7 +482,7 @@ export const CartPage = () => {
     items.forEach((item) => {
       const prod = item.productId || {};
       const id = productLineKey(prod._id || item.productId || item._id, item.variantId);
-      if (!selectedItemIds.has(id)) return;
+      if (!selectedItemIds.has(id) || isOutOfStock(prod)) return;
 
       const unitPrice =
         item.priceSnapshot !== undefined
@@ -544,8 +507,11 @@ export const CartPage = () => {
     return selectedItemIds.has(productLineKey(product._id || item.productId || item._id, item.variantId));
   }).length;
 
+  const hasUnavailableSelection = items.some(item => isOutOfStock(item.productId) && selectedItemIds.has(productLineKey(item.productId, item.variantId)));
+
   // Proceed to Checkout Handler
   const handleProceedCheckout = () => {
+    if (hasUnavailableSelection) { toast.warning('Remove unavailable products from your selection. Send an availability enquiry from the product page.'); return; }
     if (selectedItemIds.size === 0) {
       toast.warning('Please select at least one product to checkout.');
       return;
@@ -559,94 +525,11 @@ export const CartPage = () => {
     navigate('/account/checkout-enquiry');
   };
 
-  // Open a pre-filled WhatsApp chat with the CMS-configured admin number.
+  // Collect contact details and save the lead before opening WhatsApp.
   const handleChatOnWhatsApp = () => {
-    if (!isAuthenticated) {
-      toast.info('Please sign up or log in to chat on WhatsApp. Your cart will be kept.');
-      navigate('/login', { state: { from: { pathname: '/cart' } } });
-      return;
-    }
-
-    if (selectedItemIds.size === 0) {
-      toast.warning('Please select at least one product using the checkboxes.');
-      return;
-    }
-
-    const customerName = user?.fullName || user?.name || user?.contactPerson || 'Customer';
-    const customerPhone = user?.phone ? ` | Phone: ${user.phone}` : '';
-    const addresses = savedAddresses.length ? savedAddresses : user?.savedAddresses || [];
-    const address = addresses.find(item => item.isDefault) || addresses[0];
-    const customerAddress = address
-      ? [address.line1, address.line2, address.city, address.state, address.pincode].filter(Boolean).join(', ')
-      : user?.address || user?.dealerProfileId?.address || 'Not provided';
-    const nowStr = new Date().toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-
-    let text = `🛍️ *VI Nexus — Order Summary*\n`;
-    text += `━━━━━━━━━━━━━━━━━━━━━\n`;
-    text += `👤 *Customer:* ${customerName}${customerPhone}\n`;
-    text += `📍 *Address:* ${customerAddress}\n`;
-    text += `📅 *Date:* ${nowStr}\n\n`;
-    text += `📦 *Selected Items (${selectedCount} pcs):*\n`;
-
-    let itemIndex = 0;
-    items.forEach((item) => {
-      const prod = item.productId || {};
-      const id = productLineKey(prod._id || item.productId || item._id, item.variantId);
-      if (!selectedItemIds.has(id)) return;
-
-      itemIndex += 1;
-      const name = prod.name || 'Product';
-      const model = prod.modelNumber || prod.specifications?.find((s) => s.key?.toLowerCase().includes('model'))?.value || '';
-
-      const unitPrice =
-        item.priceSnapshot !== undefined
-          ? item.priceSnapshot
-          : (prod.standardPrice || prod.price || 0);
-      const qty = item.quantity || 1;
-      const itemTotal = unitPrice * qty;
-
-      text += `${itemIndex}. *${name}*\n`;
-      if (model) text += `   • Model Number: ${model}\n`;
-      if (productModelVariant(prod)) text += `   • Model Name / Variant: ${productModelVariant(prod)}\n`;
-      text += pricesVisible ? `   • Qty: *${qty}* | Unit: ${formatCurrency(unitPrice)} | Total: *${formatCurrency(itemTotal)}*\n\n` : `   • Qty: *${qty}*\n\n`;
-    });
-
-    text += `━━━━━━━━━━━━━━━━━━━━━\n`;
-    text += `💰 *Order Summary:*\n`;
-    text += `• Total Items: ${selectedCount}\n`;
-    if (pricesVisible) text += `• Subtotal: ${formatCurrency(subtotal)}\n`;
-
-    if (pricesVisible) text += `👉 *Estimated Total: ${formatCurrency(grandTotal)}*\n`;
-    text += `━━━━━━━━━━━━━━━━━━━━━\n\n`;
-    text += `💬 _${whatsappNote || 'Please confirm live stock availability, delivery timeline & share official GST commercial invoice.'}_\n`;
-
-    const cleanNumber = (supportPhone || '8769959424').replace(/\D/g, '');
-    const finalPhone =
-      cleanNumber.length === 10
-        ? `91${cleanNumber}`
-        : cleanNumber.startsWith('91')
-        ? cleanNumber
-        : `91${cleanNumber.slice(-10) || '8769959424'}`;
-    const encodedText = encodeURIComponent(text);
-    const waUrl = `https://api.whatsapp.com/send?phone=${finalPhone}&text=${encodedText}`;
-
-    try {
-      const link = document.createElement('a');
-      link.href = waUrl;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch {
-      window.open(waUrl, '_blank');
-    }
-
-    toast.success('Opening the pre-filled WhatsApp chat.');
+    if (hasUnavailableSelection || selectedItemIds.size === 0) return;
+    sessionStorage.setItem('vinexus_enquiry_selected_products', JSON.stringify([...selectedItemIds]));
+    navigate('/account/checkout-enquiry?channel=whatsapp');
   };
 
   if (!isAuthenticated && !authLoading) {
@@ -738,12 +621,13 @@ export const CartPage = () => {
                   return (
                     <div key={prodId} data-cart-item={prodId} className={`min-w-0 rounded-lg border border-gray-200 bg-white p-3 sm:p-4 ${selectedItemIds.has(prodId) ? '' : 'opacity-60'}`}>
                       <div className="flex items-start gap-2.5">
-                        <input type="checkbox" aria-label={`Select ${prod.name || 'product'}`} checked={selectedItemIds.has(prodId)} onChange={() => handleToggleSelectItem(prodId)} className="mt-3 h-4 w-4 shrink-0 accent-[var(--store-primary)]" />
+                        <input type="checkbox" disabled={isOutOfStock(prod)} aria-label={`Select ${prod.name || 'product'}`} checked={selectedItemIds.has(prodId)} onChange={() => handleToggleSelectItem(prodId)} className="mt-3 h-4 w-4 shrink-0 accent-[var(--store-primary)]" />
                         <Link to={buildProductPath(prod)} className="flex h-16 w-16 shrink-0 items-center justify-center rounded border border-gray-200 bg-white p-1">
                           {imgUrl ? <img loading="lazy" decoding="async" src={imgUrl} alt={prod.name || 'Product'} className="max-h-full max-w-full object-contain" /> : <span className="text-[10px] text-gray-400">No image</span>}
                         </Link>
                         <div className="min-w-0 flex-1">
                           <Link to={buildProductPath(prod)} className="block break-words [overflow-wrap:anywhere] text-sm font-semibold leading-snug text-gray-900">{prod.name || 'Vinexus Product'}</Link>
+                          {isOutOfStock(prod) && <Link to={buildProductPath(prod)} className="text-xs font-semibold text-orange-700 underline">Out of stock · Enquire about availability</Link>}
                           <p className="mt-1 break-words [overflow-wrap:anywhere] text-xs text-gray-600">Model Number: {prod.modelNumber || prod.model || '—'}</p>
                           <p className="mt-1 text-[11px] font-semibold text-gray-800"><PriceGate>{formatCurrency(unitPrice)}</PriceGate>{pricesVisible ? ' each' : ''}</p>
                         </div>
@@ -815,7 +699,7 @@ export const CartPage = () => {
                   Orders placed before 5:00 pm IST are dispatched the same day. Orders placed at or after 5:00 pm IST are dispatched the next day.
                 </p>
                 {/* 1. WhatsApp chat button */}
-                <button
+                {selectedCount > 0 && !hasUnavailableSelection && <button
                   type="button"
                   onClick={handleChatOnWhatsApp}
                   disabled={selectedCount === 0}
@@ -823,7 +707,7 @@ export const CartPage = () => {
                 >
                   <WhatsAppIcon className="w-4 h-4 text-white" />
                   <span>Order on WhatsApp</span>
-                </button>
+                </button>}
 
                 {/* 2. Send Enquiry Web Form Button */}
                 <button

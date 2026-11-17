@@ -3,6 +3,9 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Crosshair, ExternalLink, MapPin, Search } from 'lucide-react';
 
+const TILE_URL = import.meta.env.VITE_MAP_TILE_URL || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const TILE_ATTRIBUTION = import.meta.env.VITE_MAP_TILE_ATTRIBUTION || '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
 const DEFAULT_CENTER = [26.9124, 75.7873];
 
 const markerIcon = L.divIcon({
@@ -15,7 +18,7 @@ const markerIcon = L.divIcon({
 const formatCoordinate = (value) => Number.isFinite(Number(value)) ? Number(value).toFixed(6) : '';
 const hasCoordinates = (location) => location?.latitude !== '' && location?.longitude !== '' && location?.latitude != null && location?.longitude != null && Number.isFinite(Number(location.latitude)) && Number.isFinite(Number(location.longitude));
 
-const OfficeLocationPicker = ({ value, onChange, disabled = false }) => {
+const OfficeLocationPicker = ({ value, onChange, disabled = false, required = true }) => {
   const mapNodeRef = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
@@ -24,6 +27,7 @@ const OfficeLocationPicker = ({ value, onChange, disabled = false }) => {
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [locationError, setLocationError] = useState('');
+  const [mapError, setMapError] = useState(false);
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -37,10 +41,17 @@ const OfficeLocationPicker = ({ value, onChange, disabled = false }) => {
       ? [Number(value.latitude), Number(value.longitude)]
       : DEFAULT_CENTER;
     const map = L.map(mapNodeRef.current, { scrollWheelZoom: false }).setView(initialPosition, hasInitialPosition ? 16 : 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    const tiles = L.tileLayer(TILE_URL, {
       maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors',
-    }).addTo(map);
+      attribution: TILE_ATTRIBUTION,
+      referrerPolicy: 'strict-origin-when-cross-origin',
+    });
+    tiles.on('tileerror', () => setMapError(true));
+    tiles.on('load', () => {
+      const visibleTiles = mapNodeRef.current?.querySelectorAll('.leaflet-tile');
+      if (visibleTiles?.length && [...visibleTiles].every(tile => tile.complete && tile.naturalWidth > 0)) setMapError(false);
+    });
+    tiles.addTo(map);
 
     const setLocation = (lat, lng) => {
       const latitude = Number(lat);
@@ -71,8 +82,9 @@ const OfficeLocationPicker = ({ value, onChange, disabled = false }) => {
       });
     }
 
-    window.setTimeout(() => map.invalidateSize(), 0);
+    const resizeTimer = window.setTimeout(() => map.invalidateSize(), 0);
     return () => {
+      window.clearTimeout(resizeTimer);
       map.remove();
       mapRef.current = null;
       markerRef.current = null;
@@ -109,7 +121,7 @@ const OfficeLocationPicker = ({ value, onChange, disabled = false }) => {
     setLocationError('');
     try {
       const params = new URLSearchParams({ format: 'jsonv2', limit: '5', countrycodes: 'in', q: query.trim() });
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, { headers: { 'Accept-Language': 'en' } });
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, { headers: { 'Accept-Language': 'en' }, referrerPolicy: 'strict-origin-when-cross-origin' });
       if (!response.ok) throw new Error('Location search is unavailable');
       const data = await response.json();
       setResults(data);
@@ -148,7 +160,7 @@ const OfficeLocationPicker = ({ value, onChange, disabled = false }) => {
   return (
     <div className="space-y-3 text-left">
       <div>
-        <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wide text-gray-800">Location of your office *</h3>
+        <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wide text-gray-800">Location of your office {required ? '*' : '(optional)'}</h3>
         <p className="mt-1 text-xs text-gray-500">Search, use your current location, or click the map to drop a draggable pin.</p>
       </div>
 
@@ -173,14 +185,16 @@ const OfficeLocationPicker = ({ value, onChange, disabled = false }) => {
         <div ref={mapNodeRef} className="h-72 w-full" aria-label="Office location map" />
       </div>
 
+      {mapError && <p role="status" className="text-xs font-medium text-amber-700">Map tiles are unavailable. You can still search for your office, use your current location, or enter latitude and longitude below.</p>}
+
       {locationError && <p className="text-xs font-medium text-rose-600">{locationError}</p>}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <label className="space-y-1 text-[10px] font-bold uppercase tracking-wider text-gray-500">Latitude *
-          <input type="number" step="any" min="-90" max="90" required value={value?.latitude ?? ''} onChange={(event) => updateCoordinate('latitude', event.target.value)} disabled={disabled} className="w-full rounded border border-gray-300 px-3.5 py-2.5 text-xs font-medium text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="e.g. 26.916102" />
+        <label className="space-y-1 text-[10px] font-bold uppercase tracking-wider text-gray-500">Latitude {required ? '*' : '(optional)'}
+          <input type="number" step="any" min="-90" max="90" required={required} value={value?.latitude ?? ''} onChange={(event) => updateCoordinate('latitude', event.target.value)} disabled={disabled} className="w-full rounded border border-gray-300 px-3.5 py-2.5 text-xs font-medium text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="e.g. 26.916102" />
         </label>
-        <label className="space-y-1 text-[10px] font-bold uppercase tracking-wider text-gray-500">Longitude *
-          <input type="number" step="any" min="-180" max="180" required value={value?.longitude ?? ''} onChange={(event) => updateCoordinate('longitude', event.target.value)} disabled={disabled} className="w-full rounded border border-gray-300 px-3.5 py-2.5 text-xs font-medium text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="e.g. 75.781760" />
+        <label className="space-y-1 text-[10px] font-bold uppercase tracking-wider text-gray-500">Longitude {required ? '*' : '(optional)'}
+          <input type="number" step="any" min="-180" max="180" required={required} value={value?.longitude ?? ''} onChange={(event) => updateCoordinate('longitude', event.target.value)} disabled={disabled} className="w-full rounded border border-gray-300 px-3.5 py-2.5 text-xs font-medium text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="e.g. 75.781760" />
         </label>
       </div>
 

@@ -82,6 +82,11 @@ const deliveryAddressSchema = new mongoose.Schema(
 
 const enquirySchema = new mongoose.Schema(
   {
+    source: { type: String, enum: ['storefront', 'whatsapp'], default: 'storefront' },
+    requestId: { type: String, maxlength: 100 },
+    enquiryType: { type: String, enum: ['order', 'out-of-stock'], default: 'order' },
+    customerMessages: { type: [{ message: { type: String, required: true, trim: true, maxlength: 1000 }, createdAt: { type: Date, default: Date.now } }], default: [] },
+    lastReadReplyCount: { type: Number, default: 0, min: 0 },
     enquiryNumber: {
       type: String,
       required: [true, 'Enquiry number is required'],
@@ -100,13 +105,13 @@ const enquirySchema = new mongoose.Schema(
     },
     contactEmail: {
       type: String,
-      required: [true, 'Contact email snapshot is required'],
+      required: function () { return this.enquiryType !== 'out-of-stock'; },
       trim: true,
       lowercase: true,
     },
     contactPhone: {
       type: String,
-      required: [true, 'Contact phone snapshot is required'],
+      required: function () { return this.enquiryType !== 'out-of-stock'; },
       trim: true,
     },
     // WhatsApp number the submitter wants to be reached on - may differ
@@ -115,7 +120,7 @@ const enquirySchema = new mongoose.Schema(
     // integration to send messages automatically.
     whatsappNumber: {
       type: String,
-      required: [true, 'WhatsApp number is required'],
+      required: function () { return this.enquiryType !== 'out-of-stock'; },
       trim: true,
     },
     deliveryAddress: {
@@ -137,6 +142,7 @@ const enquirySchema = new mongoose.Schema(
     },
     message: {
       type: String,
+      required: function () { return this.enquiryType === 'out-of-stock'; },
       trim: true,
       maxlength: [1000, 'Message cannot exceed 1000 characters'],
     },
@@ -169,6 +175,9 @@ const enquirySchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+// Retries of the same WhatsApp checkout must not create duplicate leads.
+enquirySchema.index({ userId: 1, requestId: 1 }, { unique: true, partialFilterExpression: { requestId: { $type: 'string' } } });
 
 // Indexes
 enquirySchema.index({ userId: 1, createdAt: -1 });

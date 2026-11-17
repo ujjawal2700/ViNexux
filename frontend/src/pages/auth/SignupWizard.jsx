@@ -4,7 +4,7 @@ import useAuth from '../../hooks/useAuth';
 import Logo from '../../components/ui/Logo';
 import dealerService from '../../services/dealerService';
 import useToast from '../../hooks/useToast';
-import { INDIA_STATES, getCitiesForState } from '../../data/indiaStatesCities';
+import { INDIA_STATES, getCitiesForState, loadPlacesForState } from '../../data/indiaStatesCities';
 import { OTPInput } from '../../components/ui/OTPInput';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { cn } from '../../lib/utils';
@@ -108,6 +108,19 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
   const [dealerAddress, setDealerAddress] = useState('');
   const [selectedState, setSelectedState] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
+  const [cityPlaces, setCityPlaces] = useState({ state: '', names: [], aliases: {}, failed: false });
+  const citiesLoading = !!selectedState && cityPlaces.state !== selectedState;
+  const citiesUnavailable = cityPlaces.state === selectedState && cityPlaces.failed;
+  useEffect(() => {
+    let cancelled = false;
+    if (!selectedState) return undefined;
+    loadPlacesForState(selectedState).then(places => {
+      if (!cancelled) setCityPlaces({ state: selectedState, ...places, failed: false });
+    }).catch(() => {
+      if (!cancelled) setCityPlaces({ state: selectedState, names: getCitiesForState(selectedState), aliases: {}, failed: true });
+    });
+    return () => { cancelled = true; };
+  }, [selectedState]);
   const [pincode, setPincode] = useState('');
   const [officeLocation, setOfficeLocation] = useState({ latitude: '', longitude: '', formattedAddress: '' });
 
@@ -787,6 +800,7 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
                     setSelectedCity('');
                   }}
                   options={INDIA_STATES}
+                  label="State"
                   placeholder="Select State *"
                   searchPlaceholder="Search states..."
                   disabled={loading}
@@ -800,12 +814,16 @@ const SignupWizard = ({ onSwitchToLogin, initialRole = 'customer' }) => {
                 <SearchableSelect
                   value={selectedCity}
                   onChange={setSelectedCity}
-                  options={getCitiesForState(selectedState)}
+                  options={cityPlaces.state === selectedState ? cityPlaces.names : getCitiesForState(selectedState)}
+                  optionAliases={cityPlaces.state === selectedState ? cityPlaces.aliases : {}}
+                  label="City"
+                  loading={citiesLoading}
                   placeholder={selectedState ? 'Select City *' : 'Select state first'}
                   searchPlaceholder="Search cities..."
-                  emptyMessage="No matching cities."
+                  emptyMessage="No matching city in this state."
                   disabled={loading || !selectedState}
                 />
+                <p className="text-[10px] leading-4 text-gray-500">{citiesUnavailable ? 'Full city list is unavailable. Showing available cities for this state.' : 'Search cities in the selected state.'} <a href="https://censusindia.gov.in/census.website/data/population-finder" target="_blank" rel="noopener noreferrer" className="underline">Census of India</a></p>
               </div>
 
               <div className="space-y-1">

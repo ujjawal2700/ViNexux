@@ -1,3 +1,4 @@
+import DealerEnrollmentAction from './DealerEnrollmentAction';
 import { useState } from 'react';
 import apiClient from '../../api/axios';
 import { useAuth } from '../../hooks/useAuth';
@@ -19,6 +20,7 @@ export default function AccountManagementActions({ role, record, onSaved }) {
   const [form, setForm] = useState({});
   if (!isSuperAdmin(adminUser)) return null;
   const dealer = role === 'dealer';
+  if (dealer && !record) return <DealerEnrollmentAction onSaved={onSaved} />;
   const label = dealer ? 'Dealer' : 'Customer';
   const base = dealer ? '/admin/dealer-accounts' : '/admin/customers';
   const user = dealer ? record?.userId : record;
@@ -50,7 +52,7 @@ export default function AccountManagementActions({ role, record, onSaved }) {
       {record && <Button size="sm" variant="ghost" className="text-rose-700" onClick={() => { setError(''); setRemoving(true); }}>Delete</Button>}
     </span>
     {error && !open && <p role="alert" className="text-xs text-rose-700">{error}</p>}
-    <Modal isOpen={open} onClose={busy ? undefined : () => setOpen(false)} closeOnOutsideClick={!busy} size="lg" title={`${record ? 'Edit' : 'Create'} ${label} Account`} description={dealer && !record ? 'This dealer will be approved immediately, with you recorded as the verifying super admin. No document upload is required.' : 'Contact changes reset verification and sign out existing sessions.'}>
+    <Modal isOpen={open} onClose={busy ? undefined : () => setOpen(false)} closeOnOutsideClick={!busy} size="lg" title={`${record ? 'Edit' : 'Create'} ${label} Account`} description="Contact changes reset verification and sign out existing sessions.">
       <form onSubmit={save} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           {fields.map(([key, title, required]) => <label key={key} className="space-y-1 text-sm font-medium">{title}{required ? ' *' : ' (optional)'}

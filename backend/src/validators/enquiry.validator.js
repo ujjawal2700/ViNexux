@@ -103,8 +103,20 @@ export const getEnquiriesQuerySchema = {
       .refine((val) => !isNaN(val) && val >= 1 && val <= 100, { message: 'Limit must be between 1 and 100' }),
     status: z.enum(ENQUIRY_STATUSES).optional(),
     userType: z.enum(['customer', 'dealer']).optional(),
+    source: z.enum(['storefront', 'whatsapp']).optional(),
     search: z.string().trim().optional(),
     sortBy: z.enum(['createdAt', 'status', 'enquiryNumber']).optional().default('createdAt'),
     sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
   }),
 };
+
+
+export const availabilityEnquirySchema = { body: z.object({
+  productId: z.string().refine(isValidObjectId, 'Invalid product ID'),
+  variantId: z.string().refine(isValidObjectId, 'Invalid variant ID').optional(),
+  message: z.string().trim().min(1, 'Please enter a description').max(1000, 'Description cannot exceed 1000 characters'),
+}).strict() };
+export const customerEnquiryMessageSchema = { ...getEnquiryByIdSchema, body: z.object({ message: z.string().trim().min(1, 'Please enter a message').max(1000) }).strict() };
+export const readEnquiryRepliesSchema = { ...getEnquiryByIdSchema, body: z.object({ replyCount: z.number().int().min(0) }).strict() };
+
+export const whatsappOrderSchema = { body: createEnquirySchema.body.extend({ requestId: z.string().uuid() }).strict() };

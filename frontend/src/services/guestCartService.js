@@ -1,6 +1,6 @@
 import { productLineKey } from '../../../shared/productVariants.js';
 import { withoutStorefrontPrices } from '../../../shared/storefrontPricing';
-import { getMaximumEnquiryQuantity } from '../utils/inventory';
+import { getMaximumOrderQuantity, getAvailableStock } from '../utils/inventory';
 
 const STORAGE_KEY = 'vinexus_guest_cart';
 
@@ -32,16 +32,17 @@ export const guestCartService = {
   addItem(product, quantity = 1) {
     const productId = String(product?._id || product?.id || '');
     if (!productId) return this.getCart();
+    if (product?.stockStatus === 'out-of-stock' || getAvailableStock(product) === 0) throw new Error('Out-of-stock products cannot be added to the cart.');
     const items = read();
     const existing = items.find((item) => productLineKey(item.productId, item.variantId) === productLineKey(productId, product._variantId));
-    const maximum = getMaximumEnquiryQuantity(product);
+    const maximum = getMaximumOrderQuantity(product);
     if (existing) existing.quantity = Math.min(maximum, existing.quantity + quantity);
     else items.push({ variantId: product._variantId || null, productId: withoutStorefrontPrices(product), quantity: Math.min(maximum, quantity) });
     return write(items);
   },
   updateItem(productId, quantity) {
     return write(read().map((item) => productLineKey(item.productId, item.variantId) === String(productId)
-      ? { ...item, quantity: Math.min(getMaximumEnquiryQuantity(item.productId), Math.max(1, quantity)) } : item));
+      ? { ...item, quantity: Math.min(getMaximumOrderQuantity(item.productId), Math.max(1, quantity)) } : item));
   },
   removeItem(productId) {
     return write(read().filter((item) => productLineKey(item.productId, item.variantId) !== String(productId)));

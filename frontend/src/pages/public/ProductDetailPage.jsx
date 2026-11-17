@@ -15,6 +15,7 @@ import wishlistService from '../../services/wishlistService';
 import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
 import usePageSeo from '../../hooks/usePageSeo';
+import AvailabilityEnquiryModal from '../../components/products/AvailabilityEnquiryModal';
 import ProductCard from '../../components/products/ProductCard';
 import { extractProductId, buildProductPath, buildCategoryPath, buildCategoryTrail, buildBrandUrl, cleanBrandSlug } from '../../utils/categoryUrls';
 import { Image } from '../../components/ui/Image';
@@ -41,6 +42,7 @@ import {
 
 export const ProductDetailPage = () => {
   const pricesVisible = usePriceVisibility();
+  const [enquiryOpen, setEnquiryOpen] = useState(false);
   const navigate = useNavigate();
   const params = useParams();
   const { id, param2, param3, brandSlug } = params;
@@ -296,7 +298,8 @@ export const ProductDetailPage = () => {
   };
 
   // Add to Cart Action
-  const handleAddToCart = async () => {
+  const handleAddToCart = async (whatsapp = false) => {
+    if (isAdding) return;
 
     if (!isAuthenticated) {
       navigate('/login', { state: { from: { pathname: buildProductPath(product) } } });
@@ -308,10 +311,17 @@ export const ProductDetailPage = () => {
       return;
     }
 
+    if (isOutOfStock) { setEnquiryOpen(true); return; }
     try {
       setIsAdding(true);
       const res = await cartService.addItem(product._id, quantity, variantId || undefined);
       const updatedCart = res.data?.cart || res.data || res.cart || res;
+      if (whatsapp === true) {
+        sessionStorage.setItem('vinexus_enquiry_selected_products', JSON.stringify([`${product._id}${variantId ? `:${variantId}` : ''}`]));
+        window.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart: updatedCart } }));
+        navigate('/account/checkout-enquiry?channel=whatsapp');
+        return;
+      }
       window.dispatchEvent(
         new CustomEvent('cart-updated', {
           detail: { cart: updatedCart },
@@ -800,10 +810,10 @@ export const ProductDetailPage = () => {
 
 
             {isOutOfStock && <p className="text-sm text-[var(--store-muted)]">Send an enquiry to ask about availability and restocking.</p>}
-            {pricesVisible && whatsappPhone && (
-              <a href={`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(`Hello, I would like to order ${purchaseProduct?.name || product.name}${product.modelNumber ? ` (Model: ${product.modelNumber})` : ''}. Quantity: ${quantity}. Please confirm pricing and availability. ${window.location.href}`)}`} target="_blank" rel="noopener noreferrer" className="flex h-11 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700">
+            {pricesVisible && !isOutOfStock && whatsappPhone && (
+              <button type="button" disabled={isAdding} onClick={() => handleAddToCart(true)} className="flex h-11 w-full items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
                 Order on WhatsApp
-              </a>
+              </button>
             )}
             {/* Trust Footer */}
             <div className="text-[10px] text-[var(--store-muted)] text-center pt-2 flex items-center justify-center gap-1">
@@ -903,6 +913,7 @@ export const ProductDetailPage = () => {
         <div className="storefront-product-grid gap-4 sm:gap-5">{recentProducts.map(value => <ProductCard key={value._id} product={value} />)}</div>
       </section>}
 
+      <AvailabilityEnquiryModal product={product} variantId={variantId || undefined} isOpen={enquiryOpen} onClose={() => setEnquiryOpen(false)} />
     </div>
   );
 };

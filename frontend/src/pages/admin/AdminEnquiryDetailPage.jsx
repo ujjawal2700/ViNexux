@@ -1,4 +1,5 @@
 import { ALLOWED_ENQUIRY_TRANSITIONS as ALLOWED_STATUS_TRANSITIONS, ENQUIRY_STATUS_LABELS, canonicalEnquiryStatus } from '../../../../shared/enquiryStatuses.js';
+import EnquiryConversation from '../../components/ui/EnquiryConversation';
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import adminService from '../../services/adminService';
@@ -26,7 +27,6 @@ import {
   MessageCircle,
   FileSpreadsheet,
   CheckCircle2,
-  Clock,
   UserCheck
 } from 'lucide-react';
 
@@ -72,10 +72,25 @@ const AdminEnquiryDetailPage = () => {
     if (id) fetchEnquiryDetails();
   }, [id]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const response = await adminService.getEnquiryById(id, { skipGlobalLoader: true });
+        const value = response.data?.enquiry || response.enquiry;
+        if (value && !cancelled) setEnquiry({ ...value, status: canonicalEnquiryStatus(value.status) });
+      } catch { /* Retain the last loaded conversation during temporary failures. */ }
+    };
+    const timer = window.setInterval(refresh, 5000);
+    window.addEventListener('focus', refresh);
+    return () => { cancelled = true; window.clearInterval(timer); window.removeEventListener('focus', refresh); };
+  }, [id]);
+
   const handleUpdateStatus = async (targetStatus) => {
     try {
       await adminService.updateEnquiryStatus(id, { status: targetStatus });
-      setToast({ message: targetStatus === 'completed' ? 'Enquiry completed. Product stock updated.' : `Enquiry status updated to ${ENQUIRY_STATUS_LABELS[targetStatus]}.`, type: 'success' });
+      setToast({ message: targetStatus === 'completed' ? (enquiry.enquiryType === 'out-of-stock' ? 'Availability enquiry completed.' : 'Enquiry completed. Product stock updated.') : `Enquiry status updated to ${ENQUIRY_STATUS_LABELS[targetStatus]}.`, type: 'success' });
       setSelectedStatus(targetStatus);
       fetchEnquiryDetails();
     } catch (err) {
@@ -165,7 +180,7 @@ const AdminEnquiryDetailPage = () => {
   const customerReplies = enquiry.customerReplies || [];
   // Always return to the scoped B2C/B2B list matching this enquiry's own
   // userType - correct regardless of which list the admin navigated from.
-  const backToListPath = enquiry.userType === 'dealer' ? '/admin/enquiries/dealers' : '/admin/enquiries/customers';
+  const backToListPath = enquiry.source === 'whatsapp' ? '/admin/whatsapp-orders' : enquiry.userType === 'dealer' ? '/admin/enquiries/dealers' : '/admin/enquiries/customers';
   const waLink = buildEnquiryWhatsAppLink(enquiry);
 
   const allowedNext = ALLOWED_STATUS_TRANSITIONS[enquiry.status] || [enquiry.status];
@@ -178,6 +193,8 @@ const AdminEnquiryDetailPage = () => {
 
   return (
     <div className="space-y-6">
+      {enquiry.source === 'whatsapp' && <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm font-semibold text-green-800">WhatsApp order lead · Saved before opening WhatsApp. Message sending is unconfirmed; follow up with the customer.</div>}
+      {enquiry.enquiryType === 'out-of-stock' && <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 text-sm font-semibold text-orange-800">Out-of-stock product enquiry · Availability request, not an order</div>}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Header Bar */}
@@ -350,11 +367,12 @@ const AdminEnquiryDetailPage = () => {
               Lead Workflow Control
             </h3>
 
-            <p className="text-xs text-muted-foreground">Stock is deducted once when the enquiry is marked Completed. Closed and Spam do not deduct stock.</p>
+            <p className="text-xs text-muted-foreground">{enquiry.enquiryType === 'out-of-stock' ? 'Completing this availability enquiry does not deduct stock.' : 'Stock is deducted once when the enquiry is marked Completed. Closed and Spam do not deduct stock.'}</p>
             {enquiry.stockDeductedAt && <p className="text-xs text-emerald-700">Stock deducted on {new Date(enquiry.stockDeductedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}.</p>}
 
             <FormField label="Change Status">
               <Select
+                aria-label="Change Status"
                 value={selectedStatus}
                 onChange={(e) => handleUpdateStatus(e.target.value)}
                 options={statusOptions}
@@ -407,17 +425,9 @@ const AdminEnquiryDetailPage = () => {
 
           <Card className="space-y-4">
             <h3 className="text-xs font-extrabold text-foreground uppercase tracking-wider pb-2 border-b border-border">
-              Customer / Dealer Replies ({customerReplies.length})
+              Enquiry conversation ({customerReplies.length + (enquiry.customerMessages?.length || 0)})
             </h3>
-            {customerReplies.length > 0 && <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-              {customerReplies.map((reply, idx) => <div key={idx} className="p-3 rounded-lg bg-background border border-border space-y-1">
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                  <span className="font-bold">{reply.adminId?.fullName || 'Vinexus Support'}</span>
-                  <span>{new Date(reply.createdAt).toLocaleString('en-IN')}</span>
-                </div>
-                <p className="text-xs text-foreground whitespace-pre-wrap">{reply.message}</p>
-              </div>)}
-            </div>}
+            <EnquiryConversation enquiry={enquiry} admin />
             <form onSubmit={handleSendCustomerReply} className="space-y-3 pt-2 border-t border-border">
               <FormError message={formError} />
               <FormField label="Send a reply visible to the customer/dealer">

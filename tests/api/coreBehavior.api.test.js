@@ -24,6 +24,7 @@ describe('core API behavior', () => {
   test('root and health endpoints report the service as available', async () => {
     const [root, health] = await Promise.all([request.get('/'), request.get('/api/health')]);
     expect(root.status).toBe(200);
+    expect(root.headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
     expect(root.body.success).toBe(true);
     expect(health.status).toBe(200);
     expect(health.body.success).toBe(true);

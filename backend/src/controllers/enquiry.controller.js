@@ -1,5 +1,5 @@
 import {
-  createEnquiryFromCart,
+  createWhatsAppOrderLead, createEnquiryFromCart, createAvailabilityEnquiry, addCustomerEnquiryMessage, markEnquiryRepliesRead,
   getMyEnquiries,
   getMyEnquiryById,
   listAllEnquiries,
@@ -102,3 +102,9 @@ export const resendEnquiryWhatsAppNotification = asyncHandler(async (req, res) =
 });
 
 
+
+export const createAvailability = asyncHandler(async (req, res) => ApiResponse.success(res, 'Availability enquiry sent.', { enquiry: await createAvailabilityEnquiry(req.user._id, req.body) }, 201));
+export const sendCustomerMessage = asyncHandler(async (req, res) => ApiResponse.success(res, 'Message sent.', { enquiry: await addCustomerEnquiryMessage(req.user._id, req.params.id, req.body.message) }));
+export const readCustomerReplies = asyncHandler(async (req, res) => ApiResponse.success(res, 'Responses marked as read.', await markEnquiryRepliesRead(req.user._id, req.params.id, req.body.replyCount)));
+
+export const createWhatsAppOrder = asyncHandler(async (req, res) => ApiResponse.success(res, 'WhatsApp order lead saved.', await createWhatsAppOrderLead(req.user._id, req.body), 201));

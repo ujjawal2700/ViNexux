@@ -27,6 +27,7 @@ const AdminLoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     const normalizedIdentifier = identifier.trim();
     if (!normalizedIdentifier) {
       setError('Please enter your administrator email address or phone number');
@@ -86,7 +87,11 @@ const AdminLoginPage = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} onKeyDown={(event) => {
+          if (event.key !== 'Enter' || event.nativeEvent.isComposing || !['text', 'password'].includes(event.target.type)) return;
+          event.preventDefault();
+          if (!loading && !event.repeat) event.currentTarget.requestSubmit();
+        }} className="space-y-5">
           <div>
             <label className="block text-[11px] font-bold text-foreground uppercase tracking-wider mb-2">
               Administrator Email / Phone

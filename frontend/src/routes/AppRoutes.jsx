@@ -235,6 +235,8 @@ const AppRoutes = () => {
                 nav (userTypeFilter etc. are initialized once from the
                 forcedUserType prop, so a remount - not just a re-render -
                 is what resets them correctly). */}
+            <Route path="/admin/whatsapp-orders/:id" element={<AdminEnquiryDetailPage />} />
+            <Route path="/admin/whatsapp-orders" element={<AdminEnquiriesPage key="whatsapp" source="whatsapp" />} />
             <Route path="/admin/enquiries/customers" element={<AdminEnquiriesPage key="customer" forcedUserType="customer" />} />
             <Route path="/admin/enquiries/dealers" element={<AdminEnquiriesPage key="dealer" forcedUserType="dealer" />} />
             <Route path="/admin/enquiries" element={<Navigate to="/admin/enquiries/customers" replace />} />

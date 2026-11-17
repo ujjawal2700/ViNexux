@@ -46,7 +46,7 @@ export const hasPathTraversal = (filename) => {
  * @param {string} fieldName - Form field name (default 'file')
  * @param {string} category - Upload category ('kyc', 'product', 'cms', 'general')
  */
-export const uploadSingle = (fieldName = 'file', category = 'general') => {
+const createUpload = (fields, category, multiple = false) => {
   const allowedMimes = ALLOWED_MIME_TYPES[category] || ALLOWED_MIME_TYPES.general;
 
   const storage = multer.memoryStorage();
@@ -55,6 +55,7 @@ export const uploadSingle = (fieldName = 'file', category = 'general') => {
     storage,
     limits: {
       fileSize: category === 'banner' ? BANNER_VIDEO_MAX_BYTES : MAX_FILE_SIZE,
+      ...(multiple ? { files: fields.length, fields: 1, fieldSize: 32 * 1024 } : {}),
     },
     fileFilter: (req, file, cb) => {
       if (!file) {
@@ -105,10 +106,11 @@ export const uploadSingle = (fieldName = 'file', category = 'general') => {
       file.mimetype = mimetype;
       cb(null, true);
     },
-  }).single(fieldName);
+  });
+  const middleware = multiple ? upload.fields(fields) : upload.single(fields);
 
   return (req, res, next) => {
-    upload(req, res, (err) => {
+    middleware(req, res, (err) => {
       if (err) {
         if (err instanceof multer.MulterError) {
           if (err.code === 'LIMIT_FILE_SIZE') {
@@ -125,7 +127,7 @@ export const uploadSingle = (fieldName = 'file', category = 'general') => {
         return next(err);
       }
 
-      if (!req.file) {
+      if (!multiple && !req.file) {
         return next(new AppError('Upload payload missing file.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR));
       }
 
@@ -133,5 +135,8 @@ export const uploadSingle = (fieldName = 'file', category = 'general') => {
     });
   };
 };
+
+export const uploadSingle = (fieldName = 'file', category = 'general') => createUpload(fieldName, category);
+export const uploadFields = (fields, category = 'general') => createUpload(fields, category, true);
 
 export default uploadSingle;

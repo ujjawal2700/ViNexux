@@ -24,8 +24,6 @@ export const getMaximumOrderQuantity = (product) => {
   return stock === null ? limit : Math.min(stock, limit);
 };
 
-// Availability enquiries do not reserve stock or fulfill an order.
-export const getMaximumEnquiryQuantity = (product) =>
-  getAvailableStock(product) === 0 || product?.stockStatus === 'out-of-stock'
-    ? (isLowStock(product) ? LOW_STOCK_MAX_ORDER : 1000)
-    : getMaximumOrderQuantity(product);
+// Availability enquiries use a description-only form, never a cart quantity.
+export const getMaximumEnquiryQuantity = product => product?.stockStatus === 'out-of-stock' ? 0 : getMaximumOrderQuantity(product);
+export const isOutOfStock = product => product?.stockStatus === 'out-of-stock' || getAvailableStock(product) === 0;
