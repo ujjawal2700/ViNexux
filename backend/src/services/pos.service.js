@@ -1,3 +1,4 @@
+import { adminArrivalService } from './adminArrival.service.js';
 import { resolveVariant, variantStockChange, productLineKey } from '../utils/productVariants.js';
 import mongoose from 'mongoose';
 import { randomBytes } from 'node:crypto';
@@ -92,7 +93,7 @@ export const posService = {
     const seller = await this.getSettings();
     const { bill: expectedBill, interstate } = checkedBill(input, seller);
     try {
-      return await transact(async session => {
+      const sale = await transact(async session => {
         const repeated = await PosSale.findOne({ requestId: input.requestId }).select('+shareToken').session(session);
         if (repeated) return repeated;
         const customer = await posCustomerService.persist(input.customer, adminId, session);
@@ -116,6 +117,8 @@ export const posService = {
         await record.save({ session });
         return record;
       });
+      await adminArrivalService.publish(sale, 'sale');
+      return sale;
     } catch (error) {
       if (error.code === 11000) {
         const repeated = await PosSale.findOne({ requestId: input.requestId }).select('+shareToken');

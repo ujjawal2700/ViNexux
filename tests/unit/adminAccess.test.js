@@ -72,3 +72,14 @@ test('audit serialization preserves real MongoDB identifiers and timestamps', as
   const value = redactAudit({ _id: new mongoose.Types.ObjectId('507f1f77bcf86cd799439011'), createdAt: new Date('2026-11-07T12:00:00Z') });
   expect(value).toEqual({ _id: '507f1f77bcf86cd799439011', createdAt: '2026-11-07T12:00:00.000Z' });
 });
+
+test('WhatsApp order management has independent employee permissions', () => {
+  const employee = { role: 'admin', isEmployee: true, accessRoleActive: true, permissions: { 'enquiries-customers': { read: true, write: true } } };
+  expect(canAdmin(employee, 'whatsapp-orders')).toBe(false);
+  expect(sectionForAdminPath('/admin/whatsapp-orders/507f1f77bcf86cd799439011')).toBe('whatsapp-orders');
+  employee.permissions['whatsapp-orders'] = { read: true, write: false };
+  expect(canAdmin(employee, 'whatsapp-orders')).toBe(true);
+  const next = jest.fn();
+  authorize('admin')({ user: employee, adminAccess: employee, adminPermissionSection: 'whatsapp-orders', method: 'PUT', originalUrl: '/api/admin/enquiries/507f1f77bcf86cd799439011' }, {}, next);
+  expect(next.mock.calls[0][0].statusCode).toBe(403);
+});

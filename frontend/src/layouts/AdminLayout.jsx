@@ -1,3 +1,4 @@
+import AdminArrivalAlerts from '../components/admin/AdminArrivalAlerts';
 import AdminSidebarNav from '../components/admin/AdminSidebarNav';
 import Modal from '../components/ui/Modal';
 import { visibleAdminNavigation } from '../../../shared/adminNavigation.js';
@@ -58,7 +59,9 @@ const AdminLayout = () => {
         if (canAdmin(access, 'dashboard', 'read')) {
           const response = await apiClient.get('/admin/dashboard', { skipGlobalLoader: true });
           const summary = response.data.data || response.data;
+          const whatsappResponse = canAdmin(access, 'whatsapp-orders', 'read') ? await apiClient.get('/admin/enquiries', { params: { source: 'whatsapp', status: 'new', limit: 1 }, skipGlobalLoader: true }) : null;
           counts = {
+            '/admin/whatsapp-orders': whatsappResponse?.data?.data?.pagination?.total || 0,
             '/admin/dealers': summary.dealers?.pending || 0,
             '/admin/enquiries/customers': summary.enquiries?.b2c?.new || 0,
             '/admin/enquiries/dealers': summary.enquiries?.b2b?.new || 0,
@@ -66,6 +69,7 @@ const AdminLayout = () => {
         } else {
           // Employees without dashboard access can only count queues their role can read.
           const queues = [
+            ['whatsapp-orders', '/admin/whatsapp-orders', '/admin/enquiries', { source: 'whatsapp', status: 'new' }],
             ['dealers', '/admin/dealers', '/admin/dealers', { status: 'pending' }],
             ['enquiries-customers', '/admin/enquiries/customers', '/admin/enquiries', { userType: 'customer', status: 'new' }],
             ['enquiries-dealers', '/admin/enquiries/dealers', '/admin/enquiries', { userType: 'dealer', status: 'new' }],
@@ -161,6 +165,7 @@ const AdminLayout = () => {
             </div>
           </div>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <AdminArrivalAlerts account={access} />
             <button
               type="button"
               onClick={handleRefreshPanel}

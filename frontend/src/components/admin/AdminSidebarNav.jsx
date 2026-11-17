@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, BarChart3, FolderTree, Layers, GitBranch, Package, Tags, Receipt, Inbox, Building2,
-  Users, UserCheck, ShieldAlert, BookOpen, Sparkles, Settings2, Image, FileText, LayoutList, ChevronDown, ChevronRight, Search, X } from 'lucide-react';
+  Users, UserCheck, ShieldAlert, BookOpen, Sparkles, Settings2, Image, FileText, LayoutList, MessageCircle, ChevronDown, ChevronRight, Search, X } from 'lucide-react';
 import { visibleAdminNavigation } from '../../../../shared/adminNavigation.js';
 
 const icons = { LayoutDashboard, BarChart3, FolderTree, Layers, GitBranch, Package, Tags, Receipt, Inbox, Building2,
-  Users, UserCheck, ShieldAlert, BookOpen, Sparkles, Settings2, Image, FileText, LayoutList };
+  Users, UserCheck, ShieldAlert, BookOpen, Sparkles, Settings2, Image, FileText, LayoutList, MessageCircle };
 export default function AdminSidebarNav({ access, attentionCounts = {}, onNavigate }) {
   const { pathname } = useLocation();
   const [search, setSearch] = useState('');

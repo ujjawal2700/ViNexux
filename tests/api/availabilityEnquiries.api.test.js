@@ -1,3 +1,4 @@
+import { adminArrivalService } from '../../backend/src/services/adminArrival.service.js';
 import { beforeEach, afterEach, expect, jest, test } from '@jest/globals';
 import express from '../../backend/node_modules/express/index.js';
 import mongoose from '../../backend/node_modules/mongoose/index.js';
@@ -17,6 +18,7 @@ import { errorHandler } from '../../backend/src/middlewares/errorHandler.js';
 const id = '507f1f77bcf86cd799439011', productId = '507f1f77bcf86cd799439012', otherId = '507f1f77bcf86cd799439013';
 let request, stored, product;
 beforeEach(() => {
+  jest.spyOn(adminArrivalService, 'publish').mockResolvedValue();
   stored = null;
   product = { _id: productId, name: 'Unavailable Camera', categoryId: id, isActive: true, stockQuantity: 0, stockStatus: 'out-of-stock', images: [], variants: [] };
   jest.spyOn(User, 'findById').mockResolvedValue({ _id: id, fullName: 'Customer', role: 'customer', email: 'customer@example.test', phone: '9876543210' });
@@ -61,6 +63,7 @@ test('out-of-stock enquiry requires only description and snapshots the account w
   expect(result.body.data.enquiry.message).toBe('When will this camera return?');
   expect(result.body.data.enquiry.contactName).toBe('Customer');
   expect(Cart.findOne).not.toHaveBeenCalled();
+  expect(adminArrivalService.publish).toHaveBeenCalledWith(stored);
 });
 test('blank descriptions, forged fields, unavailable variants and in-stock availability requests are rejected', async () => {
   expect((await create({ message: '  ' })).status).toBe(400);

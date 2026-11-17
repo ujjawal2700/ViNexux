@@ -1,3 +1,4 @@
+import { adminArrivalService } from '../../backend/src/services/adminArrival.service.js';
 import { afterEach, describe, expect, jest, test } from '@jest/globals';
 import mongoose from '../../backend/node_modules/mongoose/index.js';
 import { Enquiry } from '../../backend/src/models/Enquiry.js';
@@ -171,6 +172,7 @@ describe('Enquiry completion and inventory', () => {
 });
 
 test('submitting a cart enquiry leaves stock unchanged', async () => {
+  jest.spyOn(adminArrivalService, 'publish').mockResolvedValue();
   const user = { fullName: 'Customer', role: 'customer', email: 'customer@example.com', phone: '9876543210', savedAddresses: { id: () => ({ line1: 'Address', city: 'City', state: 'State', pincode: '110001' }) } };
   const product = { _id: productId, name: 'Camera', sku: 'CAM-1', categoryId, isActive: true, stockQuantity: 10, standardPrice: 100, images: [] };
   const cart = { items: [{ productId, quantity: 3 }], save: jest.fn() };
@@ -186,6 +188,7 @@ test('submitting a cart enquiry leaves stock unchanged', async () => {
   jest.spyOn(googleSheetsService, 'syncEnquiryToSheet').mockResolvedValue({ success: true });
   jest.spyOn(Product, 'findOneAndUpdate').mockRejectedValue(new Error('Unexpected stock update during submission'));
   await createEnquiryFromCart(adminId, { addressId: enquiryId, selectedProductIds: [productId], whatsappNumber: '9876543210' });
+  expect(adminArrivalService.publish).toHaveBeenCalledWith(record);
   expect(product.stockQuantity).toBe(10);
   expect(Enquiry.create).toHaveBeenCalledWith(expect.objectContaining({ status: 'new' }));
   expect(Product.findOneAndUpdate).not.toHaveBeenCalled();

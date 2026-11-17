@@ -1,6 +1,7 @@
 import apiClient from '../api/axios';
 
 export const enquiryService = {
+  async createWhatsAppOrder(payload) { return (await apiClient.post('/enquiries/whatsapp', payload)).data; },
   async createAvailabilityEnquiry(payload) { return (await apiClient.post('/enquiries/availability', payload)).data; },
   async sendMessage(id, message) { return (await apiClient.post(`/enquiries/${id}/messages`, { message })).data; },
   async markRepliesRead(id, replyCount) { return (await apiClient.post(`/enquiries/${id}/read`, { replyCount }, { skipGlobalLoader: true })).data; },
