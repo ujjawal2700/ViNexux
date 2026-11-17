@@ -468,8 +468,7 @@ export const uploadKycDocument = async (userId, { type, file }) => {
   }
 
   const folder = `vinexus/kyc/${profile._id}`;
-  const uploaded = await storageService.replaceFile({
-    oldPublicId,
+  const uploaded = await storageService.uploadFile({
     buffer: file.buffer,
     originalname: file.originalname,
     mimetype: file.mimetype,
@@ -498,7 +497,14 @@ export const uploadKycDocument = async (userId, { type, file }) => {
     profile.rejectionReason = undefined;
   }
 
-  await profile.save();
+  try {
+    await profile.save();
+  } catch (error) {
+    if (uploaded.publicId) await storageService.deleteFile(uploaded.publicId).catch(() => {});
+    throw error;
+  }
+  // Retain the old file until its replacement is durably saved.
+  if (oldPublicId && oldPublicId !== uploaded.publicId) await storageService.deleteFile(oldPublicId).catch(() => {});
   return await profile.populate('userId', 'fullName email phone role accountStatus isPhoneVerified isEmailVerified');
 };
 
@@ -517,10 +523,6 @@ export const deleteKycDocument = async (userId, type) => {
   }
 
   const docToDelete = profile.kycDocuments[existingDocIndex];
-  if (docToDelete.publicId) {
-    await storageService.deleteFile(docToDelete.publicId);
-  }
-
   profile.kycDocuments.splice(existingDocIndex, 1);
 
   if (profile.status === 'approved' || profile.status === 'rejected') {
@@ -529,5 +531,6 @@ export const deleteKycDocument = async (userId, type) => {
   }
 
   await profile.save();
+  if (docToDelete.publicId) await storageService.deleteFile(docToDelete.publicId).catch(() => {});
   return await profile.populate('userId', 'fullName email phone role accountStatus isPhoneVerified isEmailVerified');
 };

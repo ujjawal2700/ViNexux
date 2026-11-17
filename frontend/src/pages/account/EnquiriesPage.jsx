@@ -1,3 +1,4 @@
+import { unreadEnquiryReplies } from '../../../../shared/enquiryConversation.js';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, FileText, Search } from 'lucide-react';
@@ -49,7 +50,7 @@ export const EnquiriesPage = ({ embedded = false }) => {
       const params = { page: currentPage, limit: 10, sortBy: 'createdAt', sortOrder: 'desc' };
       if (statusFilter) params.status = statusFilter;
       if (debouncedSearch) params.search = debouncedSearch;
-      const response = await enquiryService.getMyEnquiries(params);
+      const response = await enquiryService.getMyEnquiries(params, { skipGlobalLoader: silent });
       const list = response.data?.enquiries || response.enquiries || [];
       const pageInfo = response.data?.pagination || response.pagination || {};
       setEnquiries(list);
@@ -73,9 +74,11 @@ export const EnquiriesPage = ({ embedded = false }) => {
     };
     const timer = window.setInterval(refresh, 5000);
     window.addEventListener('focus', refresh);
+    window.addEventListener('vinexus-push', refresh);
     return () => {
       window.clearInterval(timer);
       window.removeEventListener('focus', refresh);
+      window.removeEventListener('vinexus-push', refresh);
     };
   }, [fetchEnquiries]);
 
@@ -136,12 +139,12 @@ export const EnquiriesPage = ({ embedded = false }) => {
                   const quantity = items.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
                   const total = items.reduce((sum, item) => sum + (Number(item.priceShown) || 0) * (Number(item.quantity) || 1), 0);
                   return <tr key={enquiry._id} className="hover:bg-slate-50">
-                    <td className={`${cellClass} font-mono font-bold`}><Link className="text-[var(--store-primary)] hover:underline" to={`/account/enquiries/${enquiry._id}`}>{enquiry.enquiryNumber}</Link></td>
+                    <td className={`${cellClass} font-mono font-bold`}><Link className="text-[var(--store-primary)] hover:underline" to={`/account/enquiries/${enquiry._id}`}>{enquiry.enquiryNumber}</Link>{enquiry.enquiryType === 'out-of-stock' && <p className="mt-1 text-xs font-semibold text-orange-700">Out-of-stock enquiry</p>}</td>
                     <td className={cellClass}>{new Date(enquiry.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                     <td className={cellClass}><StatusBadge status={enquiry.status} /></td>
                     <td className={cellClass}>{groupEnquiryItems(items).length} product(s) · Qty {quantity}</td>
-                    <td className={`${cellClass} text-right font-semibold`}>{formatCurrency(total)}</td>
-                    <td className={`${cellClass} text-center`}><Link to={`/account/enquiries/${enquiry._id}`} className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 font-semibold text-[var(--store-primary)] hover:bg-[var(--store-primary)]/5"><Eye className="h-4 w-4" /> View</Link></td>
+                    <td className={`${cellClass} text-right font-semibold`}>{enquiry.enquiryType === 'out-of-stock' ? 'Availability request' : formatCurrency(total)}</td>
+                    <td className={`${cellClass} text-center`}>{unreadEnquiryReplies(enquiry) > 0 ? <p className="mb-2 text-xs font-bold text-emerald-700">New response</p> : enquiry.customerReplies?.length > 0 ? <p className="mb-2 text-xs text-slate-600">Response received</p> : <p className="mb-2 text-xs text-slate-600">Awaiting response</p>}<Link to={`/account/enquiries/${enquiry._id}`} className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 font-semibold text-[var(--store-primary)] hover:bg-[var(--store-primary)]/5"><Eye className="h-4 w-4" /> View</Link></td>
                   </tr>;
                 })}
               </tbody>

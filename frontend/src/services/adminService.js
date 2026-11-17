@@ -293,8 +293,8 @@ export const adminService = {
   /**
    * Get single enquiry details by ID.
    */
-  async getEnquiryById(id) {
-    const response = await apiClient.get(`/admin/enquiries/${id}`);
+  async getEnquiryById(id, options = {}) {
+    const response = await apiClient.get(`/admin/enquiries/${id}`, options);
     return response.data;
   },
 

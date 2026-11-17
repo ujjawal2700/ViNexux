@@ -1,5 +1,6 @@
 import { productLineKey } from '../../../../shared/productVariants.js';
 import { normalizeEnquiryPhone, validateEnquiryContact } from '../../utils/enquiryValidation';
+import { isOutOfStock } from '../../utils/inventory';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
@@ -102,6 +103,10 @@ export const CheckoutEnquiryPage = () => {
         return;
       }
 
+      if (items.some(item => isOutOfStock(item.productId))) {
+        toast.info('An item is out of stock. Send an availability enquiry from its product page.');
+        navigate('/cart'); return;
+      }
       setCart({ ...cartData, items });
     } catch (err) {
       console.error('Checkout cart verification error:', err);

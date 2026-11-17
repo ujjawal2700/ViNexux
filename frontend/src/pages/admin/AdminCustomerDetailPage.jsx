@@ -1,5 +1,6 @@
+import DealerEnrollmentAction from '../../components/admin/DealerEnrollmentAction';
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import adminService from '../../services/adminService';
 import Badge, { StatusBadge } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
@@ -28,6 +29,7 @@ import {
  */
 const AdminCustomerDetailPage = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -146,6 +148,7 @@ const AdminCustomerDetailPage = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <DealerEnrollmentAction customer={customer} onSaved={user => navigate(`/admin/dealer-accounts/${user.dealerProfileId}`)} />
           <Link to={`/admin/pos?customer=${encodeURIComponent(customer.phone || nameStr)}`} className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs font-semibold hover:bg-muted">
             <FileText className="h-4 w-4" />View customer invoices
           </Link>

@@ -14,7 +14,7 @@ import categoryService from '../../services/categoryService';
 import useToast from '../../hooks/useToast';
 import ProductCard from '../../components/products/ProductCard';
 import { buildProductPath } from '../../utils/categoryUrls';
-import { getAvailableStock, getMaximumEnquiryQuantity } from '../../utils/inventory';
+import { getAvailableStock, getMaximumEnquiryQuantity, isOutOfStock } from '../../utils/inventory';
 import { allowsPreferences } from '../../utils/storageConsent';
 import { Skeleton } from '../../components/ui/Skeleton';
 import {
@@ -119,7 +119,7 @@ export const CartPage = () => {
     if (!isAuthenticated) {
       const guestCart = guestCartService.getCart();
       setCart(guestCart);
-      setSelectedItemIds(new Set(guestCart.items.map((item) => productLineKey(item.productId, item.variantId))));
+      setSelectedItemIds(new Set(guestCart.items.filter(item => !isOutOfStock(item.productId)).map((item) => productLineKey(item.productId, item.variantId))));
       setIsLoading(false);
       return;
     }
@@ -134,7 +134,7 @@ export const CartPage = () => {
       const ids = new Set();
       items.forEach((item) => {
         const id = productLineKey(item.productId || item._id, item.variantId);
-        if (id) ids.add(String(id));
+        if (id && !isOutOfStock(item.productId)) ids.add(String(id));
       });
       setSelectedItemIds(ids);
     } catch (err) {
@@ -215,7 +215,7 @@ export const CartPage = () => {
     const loadSimilarProducts = async () => {
       try {
         const cartProductIds = new Set(
-          items.map((i) => productLineKey(i.productId || i._id, i.variantId))
+          items.filter(i => !isOutOfStock(i.productId)).map((i) => productLineKey(i.productId || i._id, i.variantId))
         );
 
         const cartCatIds = new Set();
@@ -401,7 +401,7 @@ export const CartPage = () => {
       setSelectedItemIds(new Set());
     } else {
       const allIds = new Set(
-        items.map((i) => productLineKey(i.productId || i._id, i.variantId))
+        items.filter(i => !isOutOfStock(i.productId)).map((i) => productLineKey(i.productId || i._id, i.variantId))
       );
       setSelectedItemIds(allIds);
     }
@@ -519,7 +519,7 @@ export const CartPage = () => {
     items.forEach((item) => {
       const prod = item.productId || {};
       const id = productLineKey(prod._id || item.productId || item._id, item.variantId);
-      if (!selectedItemIds.has(id)) return;
+      if (!selectedItemIds.has(id) || isOutOfStock(prod)) return;
 
       const unitPrice =
         item.priceSnapshot !== undefined
@@ -544,8 +544,11 @@ export const CartPage = () => {
     return selectedItemIds.has(productLineKey(product._id || item.productId || item._id, item.variantId));
   }).length;
 
+  const hasUnavailableSelection = items.some(item => isOutOfStock(item.productId) && selectedItemIds.has(productLineKey(item.productId, item.variantId)));
+
   // Proceed to Checkout Handler
   const handleProceedCheckout = () => {
+    if (hasUnavailableSelection) { toast.warning('Remove unavailable products from your selection. Send an availability enquiry from the product page.'); return; }
     if (selectedItemIds.size === 0) {
       toast.warning('Please select at least one product to checkout.');
       return;
@@ -567,6 +570,7 @@ export const CartPage = () => {
       return;
     }
 
+    if (hasUnavailableSelection) { toast.warning('Remove unavailable products from your selection. Send an availability enquiry from the product page.'); return; }
     if (selectedItemIds.size === 0) {
       toast.warning('Please select at least one product using the checkboxes.');
       return;
@@ -596,7 +600,7 @@ export const CartPage = () => {
     items.forEach((item) => {
       const prod = item.productId || {};
       const id = productLineKey(prod._id || item.productId || item._id, item.variantId);
-      if (!selectedItemIds.has(id)) return;
+      if (!selectedItemIds.has(id) || isOutOfStock(prod)) return;
 
       itemIndex += 1;
       const name = prod.name || 'Product';
@@ -738,12 +742,13 @@ export const CartPage = () => {
                   return (
                     <div key={prodId} data-cart-item={prodId} className={`min-w-0 rounded-lg border border-gray-200 bg-white p-3 sm:p-4 ${selectedItemIds.has(prodId) ? '' : 'opacity-60'}`}>
                       <div className="flex items-start gap-2.5">
-                        <input type="checkbox" aria-label={`Select ${prod.name || 'product'}`} checked={selectedItemIds.has(prodId)} onChange={() => handleToggleSelectItem(prodId)} className="mt-3 h-4 w-4 shrink-0 accent-[var(--store-primary)]" />
+                        <input type="checkbox" disabled={isOutOfStock(prod)} aria-label={`Select ${prod.name || 'product'}`} checked={selectedItemIds.has(prodId)} onChange={() => handleToggleSelectItem(prodId)} className="mt-3 h-4 w-4 shrink-0 accent-[var(--store-primary)]" />
                         <Link to={buildProductPath(prod)} className="flex h-16 w-16 shrink-0 items-center justify-center rounded border border-gray-200 bg-white p-1">
                           {imgUrl ? <img loading="lazy" decoding="async" src={imgUrl} alt={prod.name || 'Product'} className="max-h-full max-w-full object-contain" /> : <span className="text-[10px] text-gray-400">No image</span>}
                         </Link>
                         <div className="min-w-0 flex-1">
                           <Link to={buildProductPath(prod)} className="block break-words [overflow-wrap:anywhere] text-sm font-semibold leading-snug text-gray-900">{prod.name || 'Vinexus Product'}</Link>
+                          {isOutOfStock(prod) && <Link to={buildProductPath(prod)} className="text-xs font-semibold text-orange-700 underline">Out of stock · Enquire about availability</Link>}
                           <p className="mt-1 break-words [overflow-wrap:anywhere] text-xs text-gray-600">Model Number: {prod.modelNumber || prod.model || '—'}</p>
                           <p className="mt-1 text-[11px] font-semibold text-gray-800"><PriceGate>{formatCurrency(unitPrice)}</PriceGate>{pricesVisible ? ' each' : ''}</p>
                         </div>
@@ -815,7 +820,7 @@ export const CartPage = () => {
                   Orders placed before 5:00 pm IST are dispatched the same day. Orders placed at or after 5:00 pm IST are dispatched the next day.
                 </p>
                 {/* 1. WhatsApp chat button */}
-                <button
+                {selectedCount > 0 && !hasUnavailableSelection && <button
                   type="button"
                   onClick={handleChatOnWhatsApp}
                   disabled={selectedCount === 0}
@@ -823,7 +828,7 @@ export const CartPage = () => {
                 >
                   <WhatsAppIcon className="w-4 h-4 text-white" />
                   <span>Order on WhatsApp</span>
-                </button>
+                </button>}
 
                 {/* 2. Send Enquiry Web Form Button */}
                 <button

@@ -1,3 +1,4 @@
+import AvailabilityEnquiryModal from './AvailabilityEnquiryModal';
 import { responsiveImage, logoImage } from '../../utils/responsiveImage';
 import PriceGate, { LoginToViewPrices, usePriceVisibility } from './PriceGate';
 import React, { useState, useEffect } from 'react';
@@ -18,6 +19,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
   const navigate = useNavigate();
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
+  const [enquiryOpen, setEnquiryOpen] = useState(false);
   const [isAdded, setIsAdded] = useState(false);
   const [imgError, setImgError] = useState(false);
   const productId = product?._id || product?.id;
@@ -115,6 +117,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
     }
 
     if (product.variants?.length || product.hasVariants) { navigate(buildProductPath(product)); return; }
+    if (isOutOfStock) { setEnquiryOpen(true); return; }
     try {
       setIsAdding(true);
       const res = await cartService.addItem(product._id, quantity);
@@ -138,6 +141,7 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
   };
 
   return (
+    <>
     <div
       onClick={handleCardClick}
       className={cn(
@@ -329,6 +333,8 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
         </>}
       </div>
     </div>
+    <AvailabilityEnquiryModal product={product} isOpen={enquiryOpen} onClose={() => setEnquiryOpen(false)} />
+    </>
   );
 };
 

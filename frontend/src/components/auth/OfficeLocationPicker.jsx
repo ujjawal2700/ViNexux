@@ -18,7 +18,7 @@ const markerIcon = L.divIcon({
 const formatCoordinate = (value) => Number.isFinite(Number(value)) ? Number(value).toFixed(6) : '';
 const hasCoordinates = (location) => location?.latitude !== '' && location?.longitude !== '' && location?.latitude != null && location?.longitude != null && Number.isFinite(Number(location.latitude)) && Number.isFinite(Number(location.longitude));
 
-const OfficeLocationPicker = ({ value, onChange, disabled = false }) => {
+const OfficeLocationPicker = ({ value, onChange, disabled = false, required = true }) => {
   const mapNodeRef = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
@@ -82,8 +82,9 @@ const OfficeLocationPicker = ({ value, onChange, disabled = false }) => {
       });
     }
 
-    window.setTimeout(() => map.invalidateSize(), 0);
+    const resizeTimer = window.setTimeout(() => map.invalidateSize(), 0);
     return () => {
+      window.clearTimeout(resizeTimer);
       map.remove();
       mapRef.current = null;
       markerRef.current = null;
@@ -159,7 +160,7 @@ const OfficeLocationPicker = ({ value, onChange, disabled = false }) => {
   return (
     <div className="space-y-3 text-left">
       <div>
-        <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wide text-gray-800">Location of your office *</h3>
+        <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wide text-gray-800">Location of your office {required ? '*' : '(optional)'}</h3>
         <p className="mt-1 text-xs text-gray-500">Search, use your current location, or click the map to drop a draggable pin.</p>
       </div>
 
@@ -189,11 +190,11 @@ const OfficeLocationPicker = ({ value, onChange, disabled = false }) => {
       {locationError && <p className="text-xs font-medium text-rose-600">{locationError}</p>}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <label className="space-y-1 text-[10px] font-bold uppercase tracking-wider text-gray-500">Latitude *
-          <input type="number" step="any" min="-90" max="90" required value={value?.latitude ?? ''} onChange={(event) => updateCoordinate('latitude', event.target.value)} disabled={disabled} className="w-full rounded border border-gray-300 px-3.5 py-2.5 text-xs font-medium text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="e.g. 26.916102" />
+        <label className="space-y-1 text-[10px] font-bold uppercase tracking-wider text-gray-500">Latitude {required ? '*' : '(optional)'}
+          <input type="number" step="any" min="-90" max="90" required={required} value={value?.latitude ?? ''} onChange={(event) => updateCoordinate('latitude', event.target.value)} disabled={disabled} className="w-full rounded border border-gray-300 px-3.5 py-2.5 text-xs font-medium text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="e.g. 26.916102" />
         </label>
-        <label className="space-y-1 text-[10px] font-bold uppercase tracking-wider text-gray-500">Longitude *
-          <input type="number" step="any" min="-180" max="180" required value={value?.longitude ?? ''} onChange={(event) => updateCoordinate('longitude', event.target.value)} disabled={disabled} className="w-full rounded border border-gray-300 px-3.5 py-2.5 text-xs font-medium text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="e.g. 75.781760" />
+        <label className="space-y-1 text-[10px] font-bold uppercase tracking-wider text-gray-500">Longitude {required ? '*' : '(optional)'}
+          <input type="number" step="any" min="-180" max="180" required={required} value={value?.longitude ?? ''} onChange={(event) => updateCoordinate('longitude', event.target.value)} disabled={disabled} className="w-full rounded border border-gray-300 px-3.5 py-2.5 text-xs font-medium text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="e.g. 75.781760" />
         </label>
       </div>
 

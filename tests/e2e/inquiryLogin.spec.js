@@ -15,10 +15,10 @@ for (const portal of ['customer', 'admin']) test(`${portal} OTP submits automati
   if (portal === 'admin') {
     await page.getByPlaceholder('Enter Email Address or Phone Number').fill('admin@example.test');
     await page.getByPlaceholder('Enter Administrator Password').fill('password123');
-    await page.getByRole('button', { name: 'Request Admin OTP' }).click();
+    await page.getByPlaceholder('Enter Administrator Password').press('Enter');
   } else {
     await page.getByPlaceholder('Email ID Or 9876543210').fill('9876543210');
-    await page.getByRole('button', { name: 'Get OTP' }).click();
+    await page.getByPlaceholder('Email ID Or 9876543210').press('Enter');
   }
   await expect(page).toHaveURL(/verify-otp/);
   for (let i = 0; i < 6; i++) await page.getByLabel(`OTP digit ${i + 1}`, { exact: true }).fill(String(i + 1));
@@ -44,7 +44,7 @@ test('checkout displays and focuses specific contact validation errors and submi
   await mockApi(page); await seedBrowserSession(page, 'account');
   const address = { _id: id, label: 'Home', line1: 'A', line2: 'B'.repeat(255), city: 'C', state: 'D', pincode: '302001', isDefault: true };
   await page.route('**/api/addresses', route => route.fulfill({ json: { success: true, data: { addresses: [address] } } }));
-  await page.route('**/api/cart', route => route.fulfill({ json: { success: true, data: { cart: { items: [{ productId: camera, quantity: 1, priceSnapshot: 100 }] } } } }));
+  await page.route('**/api/cart', route => route.fulfill({ json: { success: true, data: { cart: { items: [{ productId: { ...camera, stockQuantity: 10, stockStatus: 'in-stock' }, quantity: 1, priceSnapshot: 100 }] } } } }));
   let payload, attempts = 0;
   await page.route('**/api/enquiries', route => {
     payload = route.request().postDataJSON(); attempts++;
@@ -66,26 +66,26 @@ test('checkout displays and focuses specific contact validation errors and submi
   expect(payload.contactName).toBe('Customer Name'); expect(payload.deliveryAddress.line1).toBe('A'); expect(payload.selectedProductIds).toEqual([id]);
 });
 
-test('out-of-stock products expose an inquiry action and a product-specific WhatsApp order link', async ({ page }) => {
+test('out-of-stock products open a description enquiry without a WhatsApp order link', async ({ page }) => {
   await mockApi(page); await seedBrowserSession(page, 'account');
   await page.route(`**/api/products/${id}`, route => route.fulfill({ json: { success: true, data: camera } }));
   await page.route('**/api/content/footer-content', route => route.fulfill({ json: { success: true, data: { footer: { whatsappNumbers: [{ number: '9876543210' }] } } } }));
   let added;
   await page.route('**/api/cart/items', route => { added = route.request().postDataJSON(); return route.fulfill({ json: { success: true, data: { cart: { items: [{ productId: camera, quantity: 1 }] } } } }); });
   await page.goto(`/products/${id}`);
-  await expect(page.getByRole('link', { name: 'Order on WhatsApp', exact: true })).toHaveAttribute('href', /wa.me\/919876543210\?text=.*DS-2CD/);
+  await expect(page.getByRole('link', { name: 'Order on WhatsApp', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Enquire about availability', exact: true }).click();
-  await expect.poll(() => added).toEqual({ productId: id, quantity: 1 });
+  await expect(page.getByRole('dialog').getByLabel('Description *', { exact: true })).toBeVisible();
+  expect(added).toBeUndefined();
   await expect(page.locator('input[aria-label="Search products"]:visible').first()).toHaveAttribute('placeholder', 'Search for CCTVs and related products.');
 });
 
-// Guest cart persistence is also used when an inquiry continues after login.
-test('a guest can retain an out-of-stock product with a positive inquiry quantity', async ({ page }) => {
+test('guests log in before enquiring and unavailable products are not stored in their cart', async ({ page }) => {
   await mockApi(page); await seedBrowserSession(page, 'storefront');
   await page.route(`**/api/products/${id}`, route => route.fulfill({ json: { success: true, data: camera } }));
   await page.goto(`/products/${id}`);
-  await page.getByRole('button', { name: 'Enquire about availability', exact: true }).click();
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('vinexus_guest_cart') || '[]').map(item => ({ id: item.productId._id, quantity: item.quantity })))).toEqual([{ id, quantity: 1 }]);
-  await page.goto('/cart');
-  await expect(page.getByRole('button', { name: 'Order on WhatsApp', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Order on WhatsApp', exact: true })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Login to order', exact: true }).first().click();
+  await expect(page).toHaveURL('/login');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('vinexus_guest_cart') || '[]'))).toEqual([]);
 });

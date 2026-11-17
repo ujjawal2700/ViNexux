@@ -1,3 +1,4 @@
+import EnquiryConversation from '../../components/ui/EnquiryConversation';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import enquiryService from '../../services/enquiryService';
@@ -17,7 +18,6 @@ import {
   MapPin,
   MessageCircle,
   ArrowLeft,
-  Clock,
   MessageSquare,
 } from 'lucide-react';
 
@@ -56,18 +56,24 @@ export const EnquiryDetailPage = () => {
     const refreshUpdates = async () => {
       if (document.visibilityState !== 'visible') return;
       try {
-        const res = await enquiryService.getMyEnquiryById(id);
+        const res = await enquiryService.getMyEnquiryById(id, { skipGlobalLoader: true });
         const data = res.data?.enquiry || res.enquiry || res.data;
         if (data) setEnquiry(data);
       } catch { /* Keep the last successfully loaded enquiry visible. */ }
     };
     const interval = window.setInterval(refreshUpdates, 5000);
     window.addEventListener('focus', refreshUpdates);
+    window.addEventListener('vinexus-push', refreshUpdates);
     return () => {
       window.clearInterval(interval);
       window.removeEventListener('focus', refreshUpdates);
+      window.removeEventListener('vinexus-push', refreshUpdates);
     };
   }, [id]);
+
+  useEffect(() => {
+    if (String(enquiry?._id) === id && enquiry?.customerReplies?.length) enquiryService.markRepliesRead(id, enquiry.customerReplies.length).catch(() => {});
+  }, [id, enquiry?.customerReplies?.length]);
 
   // Format Currency (INR ₹)
   const formatCurrency = (amount) => {
@@ -133,6 +139,7 @@ export const EnquiryDetailPage = () => {
                 #{enquiry.enquiryNumber}
               </h1>
               <StatusBadge status={enquiry.status} />
+              {enquiry.enquiryType === 'out-of-stock' && <span className="rounded bg-orange-100 px-2 py-1 text-xs font-bold text-orange-800">Out-of-stock enquiry</span>}
             </div>
             <div className="flex items-center gap-2 text-sm text-slate-700">
               <Calendar className="w-3.5 h-3.5 text-primary" />
@@ -165,27 +172,27 @@ export const EnquiryDetailPage = () => {
                 const lineTotal = item.lineTotal;
 
                 return (
-                  <div key={idx} className="flex items-center justify-between text-sm py-3 border-b border-slate-300 gap-4">
-                    <div className="flex items-center gap-3 truncate">
+                  <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between text-sm py-3 border-b border-slate-300 gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
                       <Image src={item.imageUrl} alt={item.productName} aspectRatio="aspect-square" objectFit="object-contain" className="w-14 h-14 rounded-lg border border-slate-300 bg-white shrink-0" />
-                      <div className="truncate space-y-0.5">
-                        <span className="font-bold text-foreground block truncate">{item.productName || 'Equipment'}</span>
+                      <div className="min-w-0 space-y-0.5">
+                        <span className="font-bold text-foreground block break-words">{item.productName || 'Equipment'}</span>
                         {(item.sku || prod.sku) && <span className="font-mono text-xs text-slate-700 block">SKU: {item.sku || prod.sku}</span>}
-                        <span className="text-xs text-slate-700">Qty: {item.quantity} × {formatCurrency(price)}</span>
+                        {enquiry.enquiryType !== 'out-of-stock' && <span className="text-xs text-slate-700">Qty: {item.quantity} × {formatCurrency(price)}</span>}
                       </div>
                     </div>
 
-                    <div className="text-right font-mono font-bold text-foreground shrink-0">
-                      {formatCurrency(lineTotal)}
+                    <div className="sm:text-right font-mono font-bold text-foreground shrink-0">
+                      {enquiry.enquiryType === 'out-of-stock' ? 'Availability request' : formatCurrency(lineTotal)}
                     </div>
                   </div>
                 );
               })}
 
-              <div className="pt-3 flex justify-between text-sm font-bold border-t border-slate-300">
+              {enquiry.enquiryType !== 'out-of-stock' && <div className="pt-3 flex justify-between text-sm font-bold border-t border-slate-300">
                 <span className="text-slate-800">Estimated Total</span>
                 <span className="text-foreground text-base font-mono">{formatCurrency(grandTotal)}</span>
-              </div>
+              </div>}
             </CardContent>
           </Card>
 
@@ -204,29 +211,12 @@ export const EnquiryDetailPage = () => {
             </Card>
           )}
 
-          {/* CUSTOMER-VISIBLE SUPPORT REPLIES */}
-          {enquiry.customerReplies?.length > 0 && (
-            <Card className="bg-white p-6 rounded-2xl !border-slate-300 space-y-4 shadow-sm">
-              <CardHeader className="p-0 pb-3 !border-slate-300">
-                <CardTitle className="text-sm font-bold text-slate-900 uppercase flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-primary" />
-                  <span>Replies from Vinexus Support</span>
-                </CardTitle>
-              </CardHeader>
+          <EnquiryConversation enquiry={enquiry} onSend={async message => {
+            await enquiryService.sendMessage(id, message);
+            const response = await enquiryService.getMyEnquiryById(id);
+            setEnquiry(response.data.enquiry);
+          }} />
 
-              <CardContent className="p-0 space-y-3">
-                {enquiry.customerReplies.map((reply, idx) => (
-                  <div key={idx} className="bg-slate-50 p-3.5 rounded-xl border border-slate-300 text-sm space-y-1">
-                    <div className="flex items-center justify-between text-xs text-slate-700">
-                      <span className="font-semibold text-primary">{reply.adminId?.fullName || 'Vinexus Support'}</span>
-                      <span>{new Date(reply.createdAt).toLocaleString('en-IN')}</span>
-                    </div>
-                    <p className="text-foreground leading-relaxed pt-1 whitespace-pre-wrap">{reply.message}</p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
         </div>
 
         {/* Right Column: Contact & Address Snapshot */}
@@ -252,7 +242,7 @@ export const EnquiryDetailPage = () => {
                 </div>
               </div>
 
-              {enquiry.deliveryAddress && (
+              {enquiry.enquiryType !== 'out-of-stock' && enquiry.deliveryAddress && (
                 <div className="space-y-2 pt-3 border-t border-slate-300">
                   <span className="text-xs font-bold uppercase text-slate-700 tracking-wider flex items-center gap-1">
                     <MapPin className="w-3 h-3 text-primary" /> Delivery Address

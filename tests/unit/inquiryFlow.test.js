@@ -24,8 +24,8 @@ describe('inquiry validation', () => {
     expect(validateEnquiryContact({ fullName: 'C', email: 'bad', phone: '12349876543210' })).toHaveProperty('contactPhone');
   });
 });
-test('zero-stock availability inquiries are allowed while order fulfillment remains blocked', () => {
-  expect(getMaximumEnquiryQuantity({ stockQuantity: 0 })).toBe(1000);
+test('zero-stock products cannot have cart quantities; availability uses a separate description', () => {
+  expect(getMaximumEnquiryQuantity({ stockQuantity: 0 })).toBe(0);
   expect(getMaximumOrderQuantity({ stockQuantity: 0 })).toBe(0);
   expect(getMaximumEnquiryQuantity({ stockQuantity: 2 })).toBe(2);
   expect(getMaximumEnquiryQuantity({ stockQuantity: 8 })).toBe(8);

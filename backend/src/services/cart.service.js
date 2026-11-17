@@ -11,7 +11,7 @@ import { ERROR_CODES } from '../constants/errorCodes.js';
 
 const LOW_STOCK_MAX_ORDER = 5;
 
-const getAvailableStock = (product) => {
+export const getAvailableStock = (product) => {
   if (product?.stockQuantity !== undefined && product?.stockQuantity !== null) {
     const parsed = Number(product.stockQuantity);
     if (Number.isFinite(parsed)) return Math.max(0, Math.floor(parsed));
@@ -26,8 +26,10 @@ const getAvailableStock = (product) => {
 
 export const assertQuantityAvailable = (product, quantity) => {
   const availableStock = getAvailableStock(product);
-  // Zero stock can still be requested in an availability enquiry.
-  if (availableStock !== null && availableStock > 0) {
+  if (product?.stockStatus === 'out-of-stock' || availableStock === 0) {
+    throw new AppError('This product is out of stock. Send an availability enquiry instead.', HTTP_STATUS.CONFLICT, ERROR_CODES.BAD_REQUEST);
+  }
+  if (availableStock !== null) {
     if (quantity > availableStock) {
       throw new AppError(
         'The requested quantity cannot be added to this enquiry.',
@@ -253,6 +255,7 @@ const formatPopulatedCart = async (cart, userId) => {
  */
 export const addToCart = async (userId, productId, quantity = 1, variantId) => {
   const product = resolveVariant(await validateProductAndCategoryActive(productId), variantId);
+  assertQuantityAvailable(product, quantity);
   const priceSnapshot = await calculateApplicablePrice(userId, product);
 
   let cart = await Cart.findOne({ userId });

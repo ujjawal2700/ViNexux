@@ -1,6 +1,9 @@
 import apiClient from '../api/axios';
 
 export const enquiryService = {
+  async createAvailabilityEnquiry(payload) { return (await apiClient.post('/enquiries/availability', payload)).data; },
+  async sendMessage(id, message) { return (await apiClient.post(`/enquiries/${id}/messages`, { message })).data; },
+  async markRepliesRead(id, replyCount) { return (await apiClient.post(`/enquiries/${id}/read`, { replyCount }, { skipGlobalLoader: true })).data; },
   /**
    * Submit an enquiry from the user's current cart.
    * @param {Object} payload - Editable contact/address snapshot, selected product IDs, WhatsApp number, and optional message.

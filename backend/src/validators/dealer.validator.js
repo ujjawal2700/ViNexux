@@ -12,8 +12,8 @@ const msmeRegex = /^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/;
 const organisationTypes = ['Proprietorship', 'Partnership', 'Limited Liability Partnership (LLP)', 'Private Limited Company', 'Limited Company', 'Others'];
 
 const officeLocationSchema = z.object({
-  latitude: z.coerce.number().min(-90).max(90),
-  longitude: z.coerce.number().min(-180).max(180),
+  latitude: z.preprocess(value => value === null || (typeof value === 'string' && !value.trim()) ? undefined : value, z.coerce.number().min(-90).max(90)),
+  longitude: z.preprocess(value => value === null || (typeof value === 'string' && !value.trim()) ? undefined : value, z.coerce.number().min(-180).max(180)),
   formattedAddress: z.string().trim().max(500).optional(),
 });
 

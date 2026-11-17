@@ -2,10 +2,12 @@
 const safeUrl = value => { try { const url = new URL(value || '/', self.location.origin); return ['https:', 'http:'].includes(url.protocol) ? url.href : self.location.origin; } catch { return self.location.origin; } };
 // Register before importing Firebase so our action links handle notification clicks.
 self.addEventListener('notificationclick', event => {
-  if (event.notification.data?.FCM_MSG) return; // Firebase handles automatically displayed transactional notifications.
+  const firebaseData = event.notification.data?.FCM_MSG;
+  if (firebaseData && firebaseData.data?.type !== 'enquiry-reply') return;
+  if (firebaseData) event.stopImmediatePropagation();
   event.notification.close();
-  const data = event.notification.data || {};
-  const target = safeUrl(data.actions?.find(action => action.action === event.action)?.url || data.link);
+  const data = firebaseData?.data || event.notification.data || {};
+  const target = safeUrl((Array.isArray(data.actions) ? data.actions : []).find(action => action.action === event.action)?.url || data.link);
   event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async windows => {
     const existing = windows.find(client => client.url === target);
     if (existing) return existing.focus();

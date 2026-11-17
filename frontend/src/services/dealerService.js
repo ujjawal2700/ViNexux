@@ -5,7 +5,7 @@ export const dealerService = {
   async saveApplication(data) { return (await apiClient.put('/dealers/application', data)).data; },
   async uploadApplicationDocument(type, file) {
     const data = new FormData(); data.append('file', file);
-    return (await apiClient.post(`/dealers/application/documents/${type}`, data)).data;
+    return (await apiClient.post(`/dealers/application/documents/${type}`, data, { headers: { 'Content-Type': 'multipart/form-data' } })).data;
   },
   async submitApplication() { return (await apiClient.post('/dealers/application/submit')).data; },
   /**

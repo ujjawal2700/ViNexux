@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { getProductImageMimeType } from '../../../../shared/productImageTypes.js';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
 import dealerService from '../../services/dealerService';
+import SearchableSelect from '../../components/ui/SearchableSelect';
+import { INDIA_STATES, getCitiesForState, loadPlacesForState } from '../../data/indiaStatesCities';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -26,19 +29,22 @@ import {
   File,
 } from 'lucide-react';
 
+const KycUploadControl = ({ title, label, onUpload, disabled, loading }) => {
+  const inputRef = useRef(null);
+  return <>
+    <input ref={inputRef} aria-label={title} type="file" accept=".jpg,.jpeg,.png,.webp,.svg,.pdf" className="sr-only" disabled={disabled}
+      onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; onUpload(file); }} />
+    <Button variant={label === 'Replace' ? 'outline' : 'primary'} size="sm" fullWidth disabled={disabled} isLoading={loading} aria-label={`${label} ${title}`} onClick={() => inputRef.current?.click()} leftIcon={<Upload className="w-3.5 h-3.5" />}>{label === 'Replace' ? label : `Upload ${title}`}</Button>
+  </>;
+};
+
 const KYC_DOCUMENT_TYPES = [
   { type: 'gst', title: 'GST Certificate', required: true },
   { type: 'aadhaar', title: 'Aadhaar Card', required: true },
   { type: 'msme', title: 'MSME Certificate', required: false },
 ];
 
-/**
- * Dealer-only Business & KYC section - a direct port of the old standalone
- * DealerKycPage, unchanged in behavior. Same validators, same
- * dealerService calls, same auto-reset-to-pending notice, same document
- * upload/replace/delete controls. Relocated here per the "same
- * functionality, just a different location" instruction.
- */
+/** Dealer business details, state/city selection, and KYC document management. */
 const DealerKycSection = () => {
   const toast = useToast();
 
@@ -46,6 +52,7 @@ const DealerKycSection = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingType, setUploadingType] = useState(null);
+  const operationRef = useRef(false);
   const [deletingType, setDeletingType] = useState(null);
   const [error, setError] = useState(null);
 
@@ -59,6 +66,18 @@ const DealerKycSection = () => {
     pincode: '',
   });
   const [formErrors, setFormErrors] = useState({});
+  const [cityPlaces, setCityPlaces] = useState({ state: '', names: [], aliases: {}, failed: false });
+  const selectedState = formData.state;
+  useEffect(() => {
+    let cancelled = false;
+    if (!selectedState) return undefined;
+    loadPlacesForState(selectedState).then(places => {
+      if (!cancelled) setCityPlaces({ state: selectedState, ...places, failed: false });
+    }).catch(() => {
+      if (!cancelled) setCityPlaces({ state: selectedState, names: getCitiesForState(selectedState), aliases: {}, failed: true });
+    });
+    return () => { cancelled = true; };
+  }, [selectedState]);
 
   const fetchProfile = useCallback(async () => {
     setIsLoading(true);
@@ -165,7 +184,7 @@ const DealerKycSection = () => {
   };
 
   const handleFileUpload = async (type, file) => {
-    if (!file) return;
+    if (!file || operationRef.current) return;
 
     if (file.size > 5 * 1024 * 1024) {
       toast.error('File size exceeds maximum limit of 5 MB.');
@@ -173,7 +192,8 @@ const DealerKycSection = () => {
     }
 
     const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml', 'application/pdf'];
-    if (!allowedMimeTypes.includes(file.type)) {
+    const mime = file.type === 'application/pdf' || (!file.type && /\.pdf$/i.test(file.name)) ? 'application/pdf' : getProductImageMimeType(file.name, file.type);
+    if (!allowedMimeTypes.includes(mime)) {
       toast.error('Invalid file format. Please upload JPG, PNG, WebP, SVG, or PDF.');
       return;
     }
@@ -183,6 +203,7 @@ const DealerKycSection = () => {
       return;
     }
 
+    operationRef.current = true;
     try {
       setUploadingType(type);
       const res = await dealerService.uploadKycDocument(type, file);
@@ -192,11 +213,14 @@ const DealerKycSection = () => {
       console.error('File upload error:', err);
       toast.error(err.response?.data?.message || 'Failed to upload document.');
     } finally {
+      operationRef.current = false;
       setUploadingType(null);
     }
   };
 
   const handleDeleteDocument = async (type) => {
+    if (operationRef.current) return;
+    operationRef.current = true;
     try {
       setDeletingType(type);
       const res = await dealerService.deleteKycDocument(type);
@@ -206,6 +230,7 @@ const DealerKycSection = () => {
       console.error('File delete error:', err);
       toast.error(err.response?.data?.message || 'Failed to delete document.');
     } finally {
+      operationRef.current = false;
       setDeletingType(null);
     }
   };
@@ -294,8 +319,19 @@ const DealerKycSection = () => {
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Input label="City" name="city" placeholder="e.g. Mumbai" value={formData.city} onChange={handleInputChange} />
-              <Input label="State" name="state" placeholder="e.g. Maharashtra" value={formData.state} onChange={handleInputChange} />
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-bold text-foreground uppercase tracking-wider">State</p>
+                <SearchableSelect label="State" value={formData.state} options={INDIA_STATES} placeholder="Select State" searchPlaceholder="Search states..." disabled={isSaving}
+                  onChange={state => setFormData(current => current.state === state ? current : { ...current, state, city: '' })} />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-bold text-foreground uppercase tracking-wider">City</p>
+                <SearchableSelect label="City" value={formData.city} options={cityPlaces.state === selectedState ? cityPlaces.names : getCitiesForState(selectedState)}
+                  optionAliases={cityPlaces.state === selectedState ? cityPlaces.aliases : {}} loading={!!selectedState && cityPlaces.state !== selectedState}
+                  placeholder={selectedState ? 'Select City' : 'Select state first'} searchPlaceholder="Search cities..." emptyMessage="No matching city in this state." disabled={isSaving || !selectedState}
+                  onChange={city => setFormData(current => ({ ...current, city }))} />
+                <p className="text-[10px] leading-4 text-muted-foreground">{cityPlaces.state === selectedState && cityPlaces.failed ? 'Full city list is unavailable. Showing available cities for this state.' : 'Search cities in the selected state.'} <a href="https://censusindia.gov.in/census.website/data/population-finder" target="_blank" rel="noopener noreferrer" className="underline">Census of India</a></p>
+              </div>
               <Input
                 label="Pincode (6 digits)"
                 name="pincode"
@@ -373,7 +409,7 @@ const DealerKycSection = () => {
                     {typeTitle}
                     {required && <span className="text-rose-600"> *</span>}
                   </h4>
-                  <p className="text-[11px] text-muted-foreground">Accepted formats: JPG, PNG, WEBP, PDF (Max 5 MB)</p>
+                  <p className="text-[11px] text-muted-foreground">Accepted formats: JPG, PNG, WEBP, SVG, PDF (Max 5 MB)</p>
                 </div>
 
                 {doc ? (
@@ -385,37 +421,15 @@ const DealerKycSection = () => {
                       </a>
                     </div>
                     <div className="flex gap-2">
-                      <label className="flex-1">
-                        <input
-                          type="file"
-                          accept=".jpg,.jpeg,.png,.webp,.svg,.pdf"
-                          className="hidden"
-                          onChange={(e) => handleFileUpload(docType, e.target.files[0])}
-                          disabled={isUploading || isDeleting}
-                        />
-                        <Button variant="outline" size="sm" fullWidth isLoading={isUploading} leftIcon={<Upload className="w-3.5 h-3.5" />}>
-                          Replace
-                        </Button>
-                      </label>
-                      <Button variant="danger" size="sm" iconOnly isLoading={isDeleting} title="Delete Document" onClick={() => handleDeleteDocument(docType)}>
+                      <div className="flex-1"><KycUploadControl title={typeTitle} label="Replace" onUpload={file => handleFileUpload(docType, file)} disabled={!!uploadingType || !!deletingType} loading={isUploading} /></div>
+                      <Button variant="danger" size="sm" iconOnly disabled={!!uploadingType || !!deletingType} isLoading={isDeleting} title="Delete Document" onClick={() => handleDeleteDocument(docType)}>
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     </div>
                   </div>
                 ) : (
                   <div className="pt-3 border-t border-border">
-                    <label className="block w-full">
-                      <input
-                        type="file"
-                        accept=".jpg,.jpeg,.png,.webp,.svg,.pdf"
-                        className="hidden"
-                        onChange={(e) => handleFileUpload(docType, e.target.files[0])}
-                        disabled={isUploading}
-                      />
-                      <Button variant="primary" size="sm" fullWidth isLoading={isUploading} leftIcon={<Upload className="w-3.5 h-3.5" />}>
-                        Upload {docType.toUpperCase()} File
-                      </Button>
-                    </label>
+                    <KycUploadControl title={typeTitle} label="Upload" onUpload={file => handleFileUpload(docType, file)} disabled={!!uploadingType || !!deletingType} loading={isUploading} />
                   </div>
                 )}
               </Card>

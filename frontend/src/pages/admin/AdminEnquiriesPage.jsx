@@ -96,7 +96,7 @@ const AdminEnquiriesPage = ({ forcedUserType }) => {
 
     try {
       await adminService.updateEnquiryStatus(enquiryId, { status: newStatus });
-      setToast({ message: newStatus === 'completed' ? 'Enquiry completed. Product stock updated.' : `Enquiry status updated to ${ENQUIRY_STATUS_LABELS[newStatus]}.`, type: 'success' });
+      setToast({ message: newStatus === 'completed' ? (enquiries.find(value => value._id === enquiryId)?.enquiryType === 'out-of-stock' ? 'Availability enquiry completed.' : 'Enquiry completed. Product stock updated.') : `Enquiry status updated to ${ENQUIRY_STATUS_LABELS[newStatus]}.`, type: 'success' });
       fetchEnquiries();
     } catch (err) {
       console.error('Status update error:', err);
@@ -243,6 +243,9 @@ const AdminEnquiriesPage = ({ forcedUserType }) => {
                   <Table.Row key={enq._id}>
                     <Table.Cell>
                       <div className="font-mono text-xs font-bold text-foreground">{enq.enquiryNumber}</div>
+                      {enq.enquiryType === 'out-of-stock' && <span className="mt-1 inline-block rounded bg-orange-100 px-2 py-1 text-[10px] font-bold text-orange-800">Out of stock</span>}
+                      {enq.enquiryType === 'out-of-stock' && <p className="mt-1 max-w-56 line-clamp-2 break-words text-xs text-muted-foreground">{enq.message}</p>}
+                      {enq.customerMessages?.length > 0 && <p className="mt-1 text-xs font-semibold text-blue-700">Customer follow-ups: {enq.customerMessages.length}</p>}
                       <div className="text-[10px] text-muted-foreground">
                         {new Date(enq.createdAt).toLocaleDateString('en-IN', {
                           day: 'numeric',
@@ -267,7 +270,7 @@ const AdminEnquiriesPage = ({ forcedUserType }) => {
                     <Table.Cell>
                       <div className="text-xs font-semibold text-foreground">{uniqueProductCount} product(s) · Qty {totalItemsCount}</div>
                       <div className="text-[11px] font-extrabold text-emerald-700">
-                        ₹{Number(enquiryTotal).toLocaleString('en-IN')}
+                        {enq.enquiryType === 'out-of-stock' ? 'Availability enquiry' : `₹${Number(enquiryTotal).toLocaleString('en-IN')}`}
                       </div>
                     </Table.Cell>
                     <Table.Cell className="min-w-[155px]">

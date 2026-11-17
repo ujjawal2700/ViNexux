@@ -1,10 +1,12 @@
+import { enableEnquiryNotificationSound, playEnquiryReplySound } from '../../utils/enquiryNotificationSound';
 import React, { useEffect, useState } from 'react';
 import usePushNotifications from '../../hooks/usePushNotifications';
 const safe = value => { if (typeof value !== 'string' || !value.trim()) return null; try { const url = new URL(value, window.location.origin); return /^https?:$/.test(url.protocol) ? url.href : null; } catch { return null; } };
 export default function PushNotificationBridge() {
   usePushNotifications();
   const [message, setMessage] = useState(null);
-  useEffect(() => { const receive = event => setMessage(event.detail); window.addEventListener('vinexus-push', receive); return () => window.removeEventListener('vinexus-push', receive); }, []);
+  useEffect(() => enableEnquiryNotificationSound(), []);
+  useEffect(() => { const receive = event => { setMessage(event.detail); playEnquiryReplySound(event.detail?.data); }; window.addEventListener('vinexus-push', receive); return () => window.removeEventListener('vinexus-push', receive); }, []);
   useEffect(() => { if (!message) return; const timer = setTimeout(() => setMessage(null), 12000); return () => clearTimeout(timer); }, [message]);
   if (!message) return null;
   let actions = []; try { actions = JSON.parse(message.data?.actions || '[]').slice(0, 2); } catch { /* optional */ }
