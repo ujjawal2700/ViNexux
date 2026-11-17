@@ -5,8 +5,8 @@ export const adminService = {
   /**
    * Fetch aggregate admin dashboard counters.
    */
-  async getDashboardSummary() {
-    const response = await apiClient.get('/admin/dashboard');
+  async getDashboardSummary(options = {}) {
+    const response = await apiClient.get('/admin/dashboard', options);
     return response.data;
   },
 
@@ -244,8 +244,8 @@ export const adminService = {
   /**
    * Fetch paginated dealer accounts & KYC status list.
    */
-  async getDealers(params = {}) {
-    const response = await apiClient.get('/admin/dealers', { params });
+  async getDealers(params = {}, options = {}) {
+    const response = await apiClient.get('/admin/dealers', { ...options, params });
     return response.data;
   },
 
@@ -285,8 +285,8 @@ export const adminService = {
   /**
    * Fetch paginated enquiries/leads list with search and filters.
    */
-  async getEnquiries(params = {}) {
-    const response = await apiClient.get('/admin/enquiries', { params });
+  async getEnquiries(params = {}, options = {}) {
+    const response = await apiClient.get('/admin/enquiries', { ...options, params });
     return response.data;
   },
 

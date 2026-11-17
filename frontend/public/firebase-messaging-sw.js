@@ -3,7 +3,7 @@ const safeUrl = value => { try { const url = new URL(value || '/', self.location
 // Register before importing Firebase so our action links handle notification clicks.
 self.addEventListener('notificationclick', event => {
   const firebaseData = event.notification.data?.FCM_MSG;
-  if (firebaseData && firebaseData.data?.type !== 'enquiry-reply') return;
+  if (firebaseData && !['enquiry-reply', 'admin-arrival'].includes(firebaseData.data?.type)) return;
   if (firebaseData) event.stopImmediatePropagation();
   event.notification.close();
   const data = firebaseData?.data || event.notification.data || {};

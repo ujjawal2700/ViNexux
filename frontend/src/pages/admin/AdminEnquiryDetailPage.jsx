@@ -180,7 +180,7 @@ const AdminEnquiryDetailPage = () => {
   const customerReplies = enquiry.customerReplies || [];
   // Always return to the scoped B2C/B2B list matching this enquiry's own
   // userType - correct regardless of which list the admin navigated from.
-  const backToListPath = enquiry.userType === 'dealer' ? '/admin/enquiries/dealers' : '/admin/enquiries/customers';
+  const backToListPath = enquiry.source === 'whatsapp' ? '/admin/whatsapp-orders' : enquiry.userType === 'dealer' ? '/admin/enquiries/dealers' : '/admin/enquiries/customers';
   const waLink = buildEnquiryWhatsAppLink(enquiry);
 
   const allowedNext = ALLOWED_STATUS_TRANSITIONS[enquiry.status] || [enquiry.status];
@@ -193,6 +193,7 @@ const AdminEnquiryDetailPage = () => {
 
   return (
     <div className="space-y-6">
+      {enquiry.source === 'whatsapp' && <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm font-semibold text-green-800">WhatsApp order lead · Saved before opening WhatsApp. Message sending is unconfirmed; follow up with the customer.</div>}
       {enquiry.enquiryType === 'out-of-stock' && <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 text-sm font-semibold text-orange-800">Out-of-stock product enquiry · Availability request, not an order</div>}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
@@ -371,6 +372,7 @@ const AdminEnquiryDetailPage = () => {
 
             <FormField label="Change Status">
               <Select
+                aria-label="Change Status"
                 value={selectedStatus}
                 onChange={(e) => handleUpdateStatus(e.target.value)}
                 options={statusOptions}

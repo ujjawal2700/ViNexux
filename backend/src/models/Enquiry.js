@@ -82,6 +82,8 @@ const deliveryAddressSchema = new mongoose.Schema(
 
 const enquirySchema = new mongoose.Schema(
   {
+    source: { type: String, enum: ['storefront', 'whatsapp'], default: 'storefront' },
+    requestId: { type: String, maxlength: 100 },
     enquiryType: { type: String, enum: ['order', 'out-of-stock'], default: 'order' },
     customerMessages: { type: [{ message: { type: String, required: true, trim: true, maxlength: 1000 }, createdAt: { type: Date, default: Date.now } }], default: [] },
     lastReadReplyCount: { type: Number, default: 0, min: 0 },
@@ -173,6 +175,9 @@ const enquirySchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+// Retries of the same WhatsApp checkout must not create duplicate leads.
+enquirySchema.index({ userId: 1, requestId: 1 }, { unique: true, partialFilterExpression: { requestId: { $type: 'string' } } });
 
 // Indexes
 enquirySchema.index({ userId: 1, createdAt: -1 });

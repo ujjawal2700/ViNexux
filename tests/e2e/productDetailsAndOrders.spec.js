@@ -41,25 +41,12 @@ test('admin changes warranty format and saves a direct header-category assignmen
   expect(updates[1]).toMatchObject({ categoryId: secondHeader, categoryIds: [secondHeader] });
 });
 
-test('WhatsApp order summary includes VI Nexus, customer contact, default address and model/variant', async ({ page }) => {
+test('cart WhatsApp button collects contact and delivery details before opening chat', async ({ page }) => {
   await mockApi(page); await seedBrowserSession(page, 'account');
-  await page.route('**/api/addresses', route => route.fulfill({ json: { success: true, data: { addresses: [
-    { line1: 'Other Address', city: 'Jaipur', state: 'Rajasthan', pincode: '302001' },
-    { isDefault: true, line1: '123 Main Road', line2: 'Near Market', city: 'Kota', state: 'Rajasthan', pincode: '324002' },
-  ] } } }));
   await page.route('**/api/cart', route => route.fulfill({ json: { success: true, data: { cart: { items: [{ productId: product, quantity: 2, priceSnapshot: 100 }] } } } }));
   await page.goto('/cart');
-  await page.evaluate(() => document.addEventListener('click', event => {
-    const anchor = event.target.closest('a');
-    if (anchor?.href.includes('api.whatsapp.com/send')) { window.orderWhatsAppUrl = anchor.href; event.preventDefault(); }
-  }, true));
   await page.getByRole('button', { name: 'Order on WhatsApp', exact: true }).click();
-  const url = await page.evaluate(() => window.orderWhatsAppUrl);
-  const message = new URL(url).searchParams.get('text');
-  expect(message).toContain('VI Nexus — Order Summary');
-  expect(message).not.toMatch(/Compu World|Enquiry Summary|Product Enquiry/i);
-  expect(message).toContain('Customer:');
-  expect(message).toContain('Phone:');
-  expect(message).toContain('123 Main Road, Near Market, Kota, Rajasthan, 324002');
-  expect(message).toContain('Model Name / Variant: Mini PT / 4G 3MP');
+  await expect(page).toHaveURL('/account/checkout-enquiry?channel=whatsapp');
+  await expect(page.getByLabel('Full Name', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save & Open WhatsApp', exact: true })).toBeVisible();
 });

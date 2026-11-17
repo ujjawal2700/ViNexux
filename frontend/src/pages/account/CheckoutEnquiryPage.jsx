@@ -2,7 +2,7 @@ import { productLineKey } from '../../../../shared/productVariants.js';
 import { normalizeEnquiryPhone, validateEnquiryContact } from '../../utils/enquiryValidation';
 import { isOutOfStock } from '../../utils/inventory';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
 import cartService from '../../services/cartService';
@@ -28,6 +28,10 @@ import {
 
 export const CheckoutEnquiryPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const whatsapp = searchParams.get('channel') === 'whatsapp';
+  const requestId = useRef(crypto.randomUUID());
+  const [savedWhatsApp, setSavedWhatsApp] = useState(null);
   const { user } = useAuth();
   const toast = useToast();
 
@@ -142,6 +146,9 @@ export const CheckoutEnquiryPage = () => {
     if (Object.keys(errors).length) { reportErrors(errors); return; }
     setFieldErrors({});
     submitting.current = true;
+    // Reserve the tab during the user gesture so browsers can open it after saving.
+    const chatWindow = whatsapp ? window.open('about:blank', '_blank') : null;
+    if (chatWindow) chatWindow.opener = null;
 
     try {
       setIsSubmitting(true);
@@ -156,8 +163,19 @@ export const CheckoutEnquiryPage = () => {
         message: message.trim() || undefined,
       };
 
-      const res = await enquiryService.createEnquiry(payload);
+      const res = whatsapp
+        ? await enquiryService.createWhatsAppOrder({ ...payload, requestId: requestId.current })
+        : await enquiryService.createEnquiry(payload);
       const createdEnquiry = res.data?.enquiry || res.enquiry || res.data;
+
+      if (whatsapp) {
+        const whatsappUrl = res.data?.whatsappUrl;
+        setSavedWhatsApp({ enquiry: createdEnquiry, whatsappUrl });
+        sessionStorage.removeItem('vinexus_enquiry_selected_products');
+        if (whatsappUrl && chatWindow) chatWindow.location.replace(whatsappUrl);
+        else chatWindow?.close();
+        return;
+      }
 
       toast.success(`Enquiry #${createdEnquiry.enquiryNumber || 'VNX'} submitted successfully!`);
       sessionStorage.removeItem('vinexus_enquiry_selected_products');
@@ -169,6 +187,7 @@ export const CheckoutEnquiryPage = () => {
         navigate('/account/enquiries');
       }
     } catch (err) {
+      chatWindow?.close();
       console.error('Enquiry submission error:', err);
       const data = err.response?.data;
       const details = data?.details || data?.error?.details || [];
@@ -214,6 +233,13 @@ export const CheckoutEnquiryPage = () => {
     );
   }
 
+  if (savedWhatsApp) return <div className="mx-auto max-w-xl space-y-5 px-4 py-12">
+    <h1 className="text-2xl font-bold">WhatsApp order details saved</h1>
+    <p>Reference: {savedWhatsApp.enquiry.enquiryNumber}. Our team has your details and can follow up even if you do not send the WhatsApp message.</p>
+    {savedWhatsApp.whatsappUrl && <a className="inline-block rounded-lg bg-emerald-700 px-5 py-3 font-bold text-white" href={savedWhatsApp.whatsappUrl} target="_blank" rel="noopener noreferrer">Continue to WhatsApp</a>}
+    <Link className="block font-semibold text-primary" to={`/account/enquiries/${savedWhatsApp.enquiry._id}`}>View saved order details</Link>
+  </div>;
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8 bg-background text-foreground min-h-screen">
 
@@ -225,7 +251,7 @@ export const CheckoutEnquiryPage = () => {
           </Link>
           <h1 className="text-3xl font-extrabold text-foreground tracking-tight flex items-center gap-3">
             <FileCheck className="w-7 h-7 text-primary" />
-            <span>Send Enquiry</span>
+            <span>{whatsapp ? 'Order on WhatsApp' : 'Send Enquiry'}</span>
           </h1>
         </div>
       </div>
@@ -388,7 +414,7 @@ export const CheckoutEnquiryPage = () => {
                 isDisabled={isSubmitting}
                 rightIcon={<ArrowRight className="w-4 h-4" />}
               >
-                Send Enquiry
+                {whatsapp ? 'Save & Open WhatsApp' : 'Send Enquiry'}
               </Button>
             </CardFooter>
           </Card>
@@ -396,10 +422,10 @@ export const CheckoutEnquiryPage = () => {
           <div className="p-4 rounded-xl bg-card border border-border text-xs text-muted-foreground space-y-1 shadow-sm">
             <div className="font-bold text-foreground flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-700" />
-              <span>Database, Google Sheet & Email Confirmation</span>
+              <span>{whatsapp ? 'Order details saved before WhatsApp opens' : 'Database, Google Sheet & Email Confirmation'}</span>
             </div>
             <p className="text-[11px] leading-relaxed">
-              Upon submission, your enquiry is saved to our database, appended to the connected Google Sheet, and emailed to the configured admin address. A confirmation email is also sent to you when email delivery is available.
+              {whatsapp ? 'Your contact details, delivery address and selected products are shared with our team so they can follow up, even if you do not send the WhatsApp message.' : 'Upon submission, your enquiry is saved to our database, appended to the connected Google Sheet, and emailed to the configured admin address. A confirmation email is also sent to you when email delivery is available.'}
             </p>
           </div>
         </div>

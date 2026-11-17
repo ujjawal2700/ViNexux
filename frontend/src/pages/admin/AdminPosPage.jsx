@@ -56,8 +56,9 @@ export default function AdminPosPage() {
       typeof value.requestId === 'string' && /^[a-f\d]{8}-[a-f\d]{4}-[1-8][a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/i.test(value.requestId) ? value : null;
   });
   const location = useLocation();
+  const invoiceId = new URLSearchParams(location.search).get('invoice') || '';
   const customerSearch = new URLSearchParams(location.search).get('customer') || '';
-  const [tab, setTab] = useState(customerSearch ? 'sales' : 'checkout');
+  const [tab, setTab] = useState(customerSearch || invoiceId || new URLSearchParams(location.search).get('tab') === 'sales' ? 'sales' : 'checkout');
   const [seller, setSeller] = useState(POS_SELLER_DEFAULTS);
   const [draft, setDraft] = useState(() => recovered?.draft || blankDraft());
   const [requestId, setRequestId] = useState(() => recovered?.requestId || crypto.randomUUID());
@@ -117,6 +118,13 @@ export default function AdminPosPage() {
     try { await task(); } catch (error) { notifyError(error); }
     finally { busyRef.current = false; setBusy(false); }
   };
+  useEffect(() => {
+    if (!/^[a-f\d]{24}$/i.test(invoiceId)) return;
+    let active = true;
+    setTab('sales');
+    posService.sale(invoiceId).then(record => { if (active) setSale(record); }).catch(error => { if (active) notifyError(error); });
+    return () => { active = false; };
+  }, [invoiceId]);
   const refreshHeld = useCallback(async () => { setHeld(await posService.held()); }, []);
   useEffect(() => {
     let active = true;
