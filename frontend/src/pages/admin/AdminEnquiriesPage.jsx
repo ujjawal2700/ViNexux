@@ -25,7 +25,7 @@ import { groupEnquiryItems } from '../../lib/enquiryItems';
  * /admin/enquiries/dealers in AppRoutes.jsx. When set, the "User Type"
  * filter is hidden entirely (the route itself is the scope, not a dropdown).
  */
-const AdminEnquiriesPage = ({ forcedUserType }) => {
+const AdminEnquiriesPage = ({ forcedUserType, source = 'storefront' }) => {
   const [enquiries, setEnquiries] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, totalPages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
@@ -60,6 +60,7 @@ const AdminEnquiriesPage = ({ forcedUserType }) => {
     try {
       const params = {
         page,
+        source,
         limit: 20,
         sortBy,
         sortOrder,
@@ -123,13 +124,13 @@ const AdminEnquiriesPage = ({ forcedUserType }) => {
 
       <AdminPageHeader
         title={
-          forcedUserType === 'dealer'
+          source === 'whatsapp' ? 'Order on WhatsApp' : forcedUserType === 'dealer'
             ? 'B2B Enquiries — Wholesale Dealers'
             : forcedUserType === 'customer'
             ? 'B2C Enquiries — Retail Customers'
             : 'All Enquiries'
         }
-        subtitle="Track submitted product leads, update lead workflow statuses, sync Google Sheets & dispatch WhatsApp alerts"
+        subtitle={source === 'whatsapp' ? 'Saved before WhatsApp opens. Follow up with customers and manage their orders here. Sending a WhatsApp message is not confirmed by this lead.' : 'Track submitted product leads, update lead workflow statuses, sync Google Sheets & dispatch WhatsApp alerts'}
         badge={`${pagination.total} Leads`}
       />
 
@@ -243,6 +244,7 @@ const AdminEnquiriesPage = ({ forcedUserType }) => {
                   <Table.Row key={enq._id}>
                     <Table.Cell>
                       <div className="font-mono text-xs font-bold text-foreground">{enq.enquiryNumber}</div>
+                      {enq.source === 'whatsapp' && <span className="mt-1 inline-block rounded bg-green-100 px-2 py-1 text-[10px] font-bold text-green-800">WhatsApp lead · Message unconfirmed</span>}
                       {enq.enquiryType === 'out-of-stock' && <span className="mt-1 inline-block rounded bg-orange-100 px-2 py-1 text-[10px] font-bold text-orange-800">Out of stock</span>}
                       {enq.enquiryType === 'out-of-stock' && <p className="mt-1 max-w-56 line-clamp-2 break-words text-xs text-muted-foreground">{enq.message}</p>}
                       {enq.customerMessages?.length > 0 && <p className="mt-1 text-xs font-semibold text-blue-700">Customer follow-ups: {enq.customerMessages.length}</p>}
@@ -305,7 +307,7 @@ const AdminEnquiriesPage = ({ forcedUserType }) => {
                     </Table.Cell>
                     <Table.Cell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Link to={`/admin/enquiries/${enq._id}`}>
+                        <Link to={enq.source === 'whatsapp' ? `/admin/whatsapp-orders/${enq._id}` : `/admin/enquiries/${enq._id}`}>
                           <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" title="Inspect Full Enquiry">
                             <Eye className="w-3.5 h-3.5 mr-1" /> Inspect
                           </Button>

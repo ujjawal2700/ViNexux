@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, jest, test } from '@jest/globals';
+import { adminArrivalService } from '../../backend/src/services/adminArrival.service.js';
+import { beforeEach, afterEach, describe, expect, jest, test } from '@jest/globals';
 import mongoose from '../../backend/node_modules/mongoose/index.js';
 import ExcelJS from '../../backend/node_modules/exceljs/excel.js';
 import { PosSale, PosCounter, PosSettings } from '../../backend/src/models/PosSale.js';
@@ -12,6 +13,7 @@ import { calculatePosBill, financialYear, amountInWords, buildPosWhatsAppLink, P
 import { posInput, posInvoiceFixture, posAdminId, posProductId } from '../helpers/posFixture.js';
 import { randomUUID } from 'node:crypto';
 
+beforeEach(() => jest.spyOn(adminArrivalService, 'publish').mockResolvedValue());
 afterEach(() => jest.restoreAllMocks());
 
 describe('POS calculation and input validation', () => {
@@ -121,6 +123,8 @@ describe('POS transactional stock and payment lifecycle', () => {
     expect(String(repeat._id)).toBe(String(sale._id)); expect(state.stock()).toBe(8); expect(state.records().size).toBe(1);
     expect(sale).toMatchObject({ total: 7100, paidAmount: 7100, balanceDue: 0, paymentStatus: 'paid' });
     expect(sale.shareToken).toMatch(/^[a-f\d]{64}$/);
+    expect(adminArrivalService.publish).toHaveBeenCalledTimes(1);
+    expect(adminArrivalService.publish).toHaveBeenCalledWith(sale, 'sale');
   });
   test('insufficient stock rolls back the entire bill', async () => {
     const state = setup({ stock: 1 });

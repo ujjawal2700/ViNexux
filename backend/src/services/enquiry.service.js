@@ -1,3 +1,4 @@
+import { adminArrivalService } from './adminArrival.service.js';
 import { resolveVariant, variantStockChange, productLineKey } from '../utils/productVariants.js';
 import { stockUpdate } from '../utils/productStockUpdate.js';
 import mongoose from 'mongoose';
@@ -14,6 +15,7 @@ import { googleSheetsService } from './googleSheets/googleSheets.service.js';
 import { whatsAppService } from './whatsapp/whatsapp.service.js';
 import { emailService } from './email/email.service.js';
 import { pushService } from './push/push.service.js';
+import { buildWhatsAppOrderLink } from '../../../shared/whatsappOrder.js';
 import { FooterContent } from '../models/FooterContent.js';
 
 const escapeRegex = (string) => {
@@ -51,7 +53,12 @@ export const generateUniqueEnquiryNumber = async () => {
 /**
  * Create a complete PRD-aligned Enquiry snapshot from user's cart
  */
-export const createEnquiryFromCart = async (userId, payload = {}) => {
+export const createEnquiryFromCart = async (userId, payload = {}, options = {}) => {
+  const whatsapp = options.source === 'whatsapp';
+  if (whatsapp) {
+    const existing = await Enquiry.findOne({ userId, requestId: payload.requestId });
+    if (existing) return existing;
+  }
   // 1. Load authenticated user profile
   const user = await User.findById(userId);
   if (!user) {
@@ -148,7 +155,10 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
   const enquiryNumber = await generateUniqueEnquiryNumber();
 
   // 9. Create Enquiry record with initial status 'new'
-  const enquiry = await Enquiry.create({
+  let enquiry;
+  try { enquiry = await Enquiry.create({
+    source: whatsapp ? 'whatsapp' : 'storefront',
+    ...(whatsapp ? { requestId: payload.requestId } : {}),
     enquiryNumber,
     userId,
     contactName,
@@ -164,6 +174,17 @@ export const createEnquiryFromCart = async (userId, payload = {}) => {
     notifiedViaEmail: false,
     syncedToGoogleSheet: false,
   });
+
+  } catch (error) {
+    if (whatsapp && error.code === 11000) {
+      const existing = await Enquiry.findOne({ userId, requestId: payload.requestId });
+      if (existing) return existing;
+    }
+    throw error;
+  }
+  await adminArrivalService.publish(enquiry);
+  // WhatsApp leads are persisted before the chat opens; the cart remains intact.
+  if (whatsapp) return enquiry;
 
   const footer = await FooterContent.findOne({ isActive: true }).lean();
   const addressText = [deliveryAddress.line1, deliveryAddress.line2, deliveryAddress.city, deliveryAddress.state, deliveryAddress.pincode].filter(Boolean).join(', ');
@@ -296,6 +317,7 @@ export const listAllEnquiries = async (query = {}) => {
   const { page = 1, limit = 20, status, userType, search, userId, sortBy = 'createdAt', sortOrder = 'desc' } = query;
 
   const filter = {};
+  if (query.source) filter.source = query.source === 'storefront' ? { $ne: 'whatsapp' } : 'whatsapp';
   if (status) {
     filter.status = status;
   }
@@ -516,6 +538,7 @@ export const createAvailabilityEnquiry = async (userId, { productId, variantId, 
     items: [{ productId, variantId: variantId || null, variantName: product.variant || '', productName: product.name, sku: product.sku || '',
       productImageUrl: product.images?.[0]?.url || '', modelNumber: product.modelNumber || '', quantity: 1, priceShown: 0 }],
   });
+  await adminArrivalService.publish(enquiry);
   return enquiry;
 };
 
@@ -531,4 +554,10 @@ export const markEnquiryRepliesRead = async (userId, enquiryId, replyCount) => {
   const count = Math.min(replyCount, enquiry.customerReplies?.length || 0);
   await Enquiry.updateOne({ _id: enquiryId, userId }, { $max: { lastReadReplyCount: count } });
   return { readReplyCount: count };
+};
+
+export const createWhatsAppOrderLead = async (userId, payload) => {
+  const enquiry = await createEnquiryFromCart(userId, payload, { source: 'whatsapp' });
+  const footer = await FooterContent.findOne({ isActive: true }).lean();
+  return { enquiry, whatsappUrl: buildWhatsAppOrderLink(enquiry, footer?.whatsappNumbers?.[0]?.number || footer?.whatsappNumber || '8769959424') };
 };

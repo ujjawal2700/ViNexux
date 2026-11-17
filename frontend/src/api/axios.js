@@ -125,7 +125,8 @@ apiClient.interceptors.request.use(
     if (isMutation && isAdminEndpoint) {
       config.headers['X-Admin-Location'] = JSON.stringify(adminLocation.get());
       const access = getAdminAccessState();
-      const section = sectionForAdminPath(config.url);
+      const section = /^\/admin\/enquiries(?:\/|$)/.test(config.url) && window.location.pathname.startsWith('/admin/whatsapp-orders')
+        ? 'whatsapp-orders' : sectionForAdminPath(config.url);
       if (access?.isEmployee && section && !canAdmin(access, section, 'write')) {
         return Promise.reject(new axios.AxiosError("You don't have write access to this section.", 'ACCESS_DENIED', config, null,
           { status: 403, data: { message: "You don't have write access to this section.", error: { code: 'WRITE_ACCESS_DENIED' } } }));

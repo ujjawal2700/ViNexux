@@ -6,7 +6,7 @@ export default function PushNotificationBridge() {
   usePushNotifications();
   const [message, setMessage] = useState(null);
   useEffect(() => enableEnquiryNotificationSound(), []);
-  useEffect(() => { const receive = event => { setMessage(event.detail); playEnquiryReplySound(event.detail?.data); }; window.addEventListener('vinexus-push', receive); return () => window.removeEventListener('vinexus-push', receive); }, []);
+  useEffect(() => { const receive = event => { if (event.detail?.data?.type === 'admin-arrival') return; setMessage(event.detail); playEnquiryReplySound(event.detail?.data); }; window.addEventListener('vinexus-push', receive); return () => window.removeEventListener('vinexus-push', receive); }, []);
   useEffect(() => { if (!message) return; const timer = setTimeout(() => setMessage(null), 12000); return () => clearTimeout(timer); }, [message]);
   if (!message) return null;
   let actions = []; try { actions = JSON.parse(message.data?.actions || '[]').slice(0, 2); } catch { /* optional */ }
