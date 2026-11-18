@@ -1,3 +1,4 @@
+import AccountManagementActions from '../../components/admin/AccountManagementActions';
 import apiClient from '../../api/axios';
 import DealerReviewAttribution from '../../components/admin/DealerReviewAttribution';
 import React, { useState, useEffect } from 'react';
@@ -174,6 +175,7 @@ const AdminDealerDetailPage = ({ mode = 'verification' }) => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {profile.userId?.role === 'dealer' && <AccountManagementActions role="dealer" record={profile} onSaved={fetchProfile} showDelete={false} />}
           {accounts && <Button variant={profile.userId?.accountStatus === 'blocked' ? 'primary' : 'danger'} size="sm" isLoading={statusSaving} onClick={async () => {
             setStatusSaving(true);
             try { await apiClient.put(`${basePath}/${id}/status`, { accountStatus: profile.userId?.accountStatus === 'blocked' ? 'active' : 'blocked' }); await fetchProfile(); }
