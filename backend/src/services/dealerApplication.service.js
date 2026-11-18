@@ -40,6 +40,8 @@ export const uploadApplicationDocument = async (userId, type, file) => {
     const saved = await DealerProfile.findOneAndUpdate({ _id: profile._id, applicationState: 'draft', status: 'pending', __v: profile.__v },
       { $set: { kycDocuments: documents }, $inc: { __v: 1 } }, { new: true, runValidators: true }).lean();
     if (!saved) throw conflict();
+    const old = (profile.kycDocuments || []).find(doc => doc.type === type);
+    if (old?.publicId && old.publicId !== uploaded.publicId) await storageService.deleteFile(old.publicId);
     return saved;
   } catch (error) {
     if (uploaded.publicId) await storageService.deleteFile(uploaded.publicId).catch(() => {});

@@ -131,3 +131,20 @@ test('invalid video bytes never reach Cloudinary', async () => {
   const response = await request.post('/grid/0/images').field('revision', 0).attach('file', Buffer.from('not a movie'), { filename: 'bad.mp4', contentType: 'video/mp4' });
   expect(response.status).toBe(400); expect(storageService.uploadFile).not.toHaveBeenCalled();
 });
+
+test('replacing and removing banner artwork deletes its previous storage only after the grid save', async () => {
+  const removed = jest.spyOn(storageService, 'deleteFile').mockResolvedValue({ success: true });
+  storageService.uploadFile.mockResolvedValueOnce({ url: 'https://images.example/old.webp', publicId: 'bento/old' });
+  await upload(0, 0);
+  const id = String(grid.sections[0].images[0]._id);
+  storageService.uploadFile.mockResolvedValueOnce({ url: 'https://images.example/new.webp', publicId: 'bento/new' });
+  removed.mockImplementation(async publicId => {
+    expect(grid.sections[0].images.some(image => image.publicId === publicId)).toBe(false);
+    return { success: true };
+  });
+  const replacement = await request.post(`/grid/0/images/${id}`).field('revision', 1).attach('file', Buffer.from('fixture'), { filename: 'new.png', contentType: 'image/png' });
+  expect(replacement.status).toBe(200);
+  expect(removed).toHaveBeenCalledWith('bento/old');
+  expect((await request.delete(`/grid/0/images/${id}`).send({ revision: 2 })).status).toBe(200);
+  expect(removed).toHaveBeenCalledWith('bento/new');
+});

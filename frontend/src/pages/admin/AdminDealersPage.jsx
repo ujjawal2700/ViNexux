@@ -1,3 +1,5 @@
+import AdminDirectoryTable from '../../components/admin/AdminDirectoryTable';
+import InstallerPricingSettings from '../../components/admin/InstallerPricingSettings';
 import AccountManagementActions from '../../components/admin/AccountManagementActions';
 import apiClient from '../../api/axios';
 import DealerReviewAttribution from '../../components/admin/DealerReviewAttribution';
@@ -173,7 +175,7 @@ const AdminDealersPage = ({ mode = 'verification' }) => {
 
       <AdminPageHeader
         title={accounts ? "Dealer Accounts" : "Dealer Verification"}
-        action={accounts ? <AccountManagementActions role="dealer" onSaved={fetchDealers} /> : undefined}
+        action={accounts ? <><InstallerPricingSettings /><AccountManagementActions role="dealer" onSaved={fetchDealers} /></> : undefined}
         subtitle={accounts ? "Manage dealer accounts, account status and wholesale access" : "Review pending applications and rejected submissions before approving dealer access"}
         badge={`${pagination.total} Dealer Records`}
       />
@@ -242,50 +244,41 @@ const AdminDealersPage = ({ mode = 'verification' }) => {
         />
       ) : (
         <div className="space-y-4">
-          <Table>
-            <Table.Header>
-              <Table.Row>
-                <Table.Head>Company Name</Table.Head>
-                <Table.Head>GSTIN / PAN</Table.Head>
-                <Table.Head>Location</Table.Head>
-                <Table.Head>Applicant</Table.Head>
-                <Table.Head>KYC Status</Table.Head>
-                {accounts && <Table.Head>Account Status</Table.Head>}
-                <Table.Head>Verification Record</Table.Head>
-                <Table.Head className="text-right">Actions</Table.Head>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
-              {dealers.map((dlr) => {
-                const userObj = dlr.userId;
-                const locationStr = [dlr.city, dlr.state].filter(Boolean).join(', ') || 'N/A';
-
-                return (
-                  <Table.Row key={dlr._id}>
-                    <Table.Cell>
-                      <div className="text-xs font-bold text-foreground">{dlr.companyName}</div>
-                      <div className="text-[10px] text-muted-foreground font-mono">ID: {dlr._id}</div>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <div className="font-mono text-[11px] text-muted-foreground">GST: {dlr.gstin || 'N/A'}</div>
-                      <div className="font-mono text-[10px] text-muted-foreground">PAN: {dlr.pan || 'N/A'}</div>
-                    </Table.Cell>
-                    <Table.Cell className="text-xs text-muted-foreground">
-                      {locationStr}
-                    </Table.Cell>
-                    <Table.Cell>
-                      <div className="text-xs font-semibold text-foreground">{userObj?.name || userObj?.fullName || 'N/A'}</div>
-                      <div className="text-[10px] text-muted-foreground">{userObj?.email || userObj?.phone}</div>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <StatusBadge status={dlr.status} />
-                    </Table.Cell>
-                    {accounts && <Table.Cell><StatusBadge status={userObj?.accountStatus || 'pending'} /></Table.Cell>}
-                    <Table.Cell><DealerReviewAttribution profile={dlr} /></Table.Cell>
-                    <Table.Cell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
+          <AdminDirectoryTable className="dealer-directory">
+            <Table.Header><Table.Row>
+              <Table.Head className="w-[22%]">Company / Tax details</Table.Head>
+              <Table.Head className="w-[23%]">Applicant / Location</Table.Head>
+              <Table.Head className="w-[15%]">Status</Table.Head>
+              <Table.Head className="w-[20%]">Verification</Table.Head>
+              <Table.Head className="w-[20%]">Actions</Table.Head>
+            </Table.Row></Table.Header>
+            <Table.Body>{dealers.map(dlr => {
+              const userObj = dlr.userId;
+              return <Table.Row key={dlr._id}>
+                <Table.Cell>
+                  <p className="mb-1 text-xs font-bold uppercase text-slate-500 xl:hidden">Company / Tax details</p>
+                  <p className="text-sm font-bold leading-6 text-foreground">{dlr.companyName}</p>
+                  {dlr.organisationType && <p className="mt-1 text-sm text-slate-600">{dlr.organisationType}</p>}
+                  <p className="mt-2 break-all text-xs text-slate-600">GST: {dlr.gstin || 'N/A'}</p>
+                  <p className="break-all text-xs text-slate-600">PAN: {dlr.pan || 'N/A'}</p>
+                  <p className="mt-1 break-all font-mono text-xs text-slate-500">ID: {dlr._id}</p>
+                </Table.Cell>
+                <Table.Cell>
+                  <p className="mb-1 text-xs font-bold uppercase text-slate-500 xl:hidden">Applicant / Location</p>
+                  <p className="text-sm font-semibold text-foreground">{userObj?.name || userObj?.fullName || 'N/A'}</p>
+                  <p className="mt-1 break-all text-sm text-slate-600">{userObj?.email || userObj?.phone}</p>
+                  <p className="mt-2 text-sm text-slate-600">{[dlr.city, dlr.state].filter(Boolean).join(', ') || 'Location not provided'}</p>
+                </Table.Cell>
+                <Table.Cell>
+                  <p className="mb-1 text-xs font-bold uppercase text-slate-500 xl:hidden">Status</p>
+                  <div className="space-y-3"><div><p className="mb-1 text-xs text-slate-600">KYC</p><StatusBadge status={dlr.status} /></div>
+                  {accounts && <div><p className="mb-1 text-xs text-slate-600">Account</p><StatusBadge status={userObj?.accountStatus || 'pending'} /></div>}</div>
+                </Table.Cell>
+                <Table.Cell><p className="mb-1 text-xs font-bold uppercase text-slate-500 xl:hidden">Verification</p><DealerReviewAttribution profile={dlr} /></Table.Cell>
+                <Table.Cell className="md:col-span-2 xl:col-auto"><p className="mb-2 text-xs font-bold uppercase text-slate-500 xl:hidden">Actions</p>
+                      <div className="grid grid-cols-2 gap-2 xl:grid-cols-1 2xl:grid-cols-2">
                         <Link to={`${basePath}/${dlr._id}`}>
-                          <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" title="Inspect Profile & Documents">
+                          <Button variant="outline" size="sm" className="min-h-9 w-full min-w-0 px-2 text-sm" title="Inspect Profile & Documents">
                             <Eye className="w-3.5 h-3.5 mr-1" /> Inspect
                           </Button>
                         </Link>
@@ -296,7 +289,7 @@ const AdminDealersPage = ({ mode = 'verification' }) => {
                               variant="ghost"
                               size="sm"
                               onClick={() => setApproveTarget(dlr)}
-                              className="h-8 px-2 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/30"
+                              className="min-h-9 min-w-0 border border-emerald-200 px-2 text-sm text-emerald-800 hover:bg-emerald-50"
                               title="Approve KYC"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Approve
@@ -305,7 +298,7 @@ const AdminDealersPage = ({ mode = 'verification' }) => {
                               variant="ghost"
                               size="sm"
                               onClick={() => { setRejectTarget(dlr); setRejectionReason(''); setRejectError(''); }}
-                              className="h-8 px-2 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-950/30"
+                              className="min-h-9 min-w-0 border border-rose-200 px-2 text-sm text-rose-700 hover:bg-rose-50"
                               title="Reject KYC"
                             >
                               <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
@@ -313,25 +306,23 @@ const AdminDealersPage = ({ mode = 'verification' }) => {
                           </>
                         )}
 
-                        <>{accounts && <AccountManagementActions role="dealer" record={dlr} onSaved={fetchDealers} />}</>
+                        <>{accounts && <AccountManagementActions role="dealer" record={dlr} onSaved={fetchDealers} layout="grid" />}</>
                         {accounts && dlr.status === 'approved' && (
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => { setRevokeTarget(dlr); setRevokeReason(''); }}
-                            className="h-8 px-2 text-xs text-amber-400 hover:text-amber-300 hover:bg-amber-950/30"
+                            className="min-h-9 min-w-0 border border-amber-200 px-2 text-sm text-amber-800 hover:bg-amber-50"
                             title="Revoke Wholesale Access"
                           >
                             <RotateCcw className="w-3.5 h-3.5 mr-1" /> Revoke
                           </Button>
                         )}
                       </div>
-                    </Table.Cell>
-                  </Table.Row>
-                );
-              })}
-            </Table.Body>
-          </Table>
+                </Table.Cell>
+              </Table.Row>;
+            })}</Table.Body>
+          </AdminDirectoryTable>
 
           {pagination.total > 0 && (
             <Pagination
@@ -365,7 +356,7 @@ const AdminDealersPage = ({ mode = 'verification' }) => {
       >
         <form onSubmit={handleRejectSubmit} className="space-y-4">
           <FormError message={rejectError} />
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-slate-600">
             Please provide a clear reason for rejecting this dealer's verification. The dealer will see this message in their KYC center.
           </p>
 
@@ -397,7 +388,7 @@ const AdminDealersPage = ({ mode = 'verification' }) => {
         title={`Revoke Approved Dealer: ${revokeTarget?.companyName || ''}`}
       >
         <div className="space-y-4">
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-slate-600">
             Revoking this dealer will reset their account status to rejected and revert them back to standard retail pricing.
           </p>
 

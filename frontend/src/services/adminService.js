@@ -150,9 +150,10 @@ export const adminService = {
   /**
    * Upload image to product gallery.
    */
-  async uploadProductImage(id, file, altText = '') {
+  async uploadProductImage(id, file, altText = '', forVariant = false) {
     const formData = new FormData();
     formData.append('file', file);
+    if (forVariant) formData.append('forVariant', 'true');
     if (altText) {
       formData.append('altText', altText);
     }

@@ -49,6 +49,9 @@ test('side thumbnails scroll without stretching the compact responsive gallery',
     await page.setViewportSize({ width, height: 1000 });
     const mainBox = await opener.boundingBox();
     const railBox = await rail.boundingBox();
+    expect(await rail.evaluate(el => getComputedStyle(el).overflowX)).toBe('hidden');
+    expect(await rail.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+    expect(await rail.evaluate(el => getComputedStyle(el).scrollbarWidth)).toBe('thin');
     expect(railBox.x + railBox.width).toBeLessThan(mainBox.x);
     expect(Math.abs(railBox.y - mainBox.y)).toBeLessThan(2);
     expect(Math.abs(railBox.height - mainBox.height)).toBeLessThanOrEqual(2);

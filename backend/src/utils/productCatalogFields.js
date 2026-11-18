@@ -118,7 +118,7 @@ export const computeCatalogFields = (product) => {
     brandKey: brandValue === undefined || brandValue === null ? '' : toBrandKey(brandValue),
     stockLevel,
     stockStatus: stockStatusFor(stockLevel, product.isLowStock === true),
-    searchTokens: searchTokensFor([product.name, product.sku, product.modelNumber, ...(product.variants || []).flatMap(option => [option.name, option.sku]), ...brandTexts]),
+    searchTokens: searchTokensFor([product.name, product.sku, product.modelNumber, ...(product.variants || []).flatMap(option => [option.name, option.sku, option.modelNumber, option.model]), ...brandTexts]),
     catalogFieldsVersion: CATALOG_FIELDS_VERSION,
   };
 };

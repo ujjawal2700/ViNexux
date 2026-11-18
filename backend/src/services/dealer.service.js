@@ -114,6 +114,10 @@ export const updateDealerProfileByUserId = async (userId, updateData) => {
     );
   }
 
+  if (profile.status === 'approved' && updateData.organisationType !== undefined && updateData.organisationType !== profile.organisationType && [profile.organisationType, updateData.organisationType].includes('Installer')) {
+    throw new AppError('Ask an admin to change your Installer organisation type.', 403, ERROR_CODES.FORBIDDEN);
+  }
+
   // Check GSTIN uniqueness if provided, non-empty, and changed
   if (
     updateData.gstin !== undefined &&

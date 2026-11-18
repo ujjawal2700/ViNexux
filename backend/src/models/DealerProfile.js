@@ -1,3 +1,4 @@
+import { ORGANISATION_TYPES } from '../../../shared/dealerOrganisation.js';
 import '../audit/audit.js';
 import mongoose from 'mongoose';
 
@@ -41,14 +42,7 @@ const dealerProfileSchema = new mongoose.Schema(
     },
     organisationType: {
       type: String,
-      enum: [
-        'Proprietorship',
-        'Partnership',
-        'Limited Liability Partnership (LLP)',
-        'Private Limited Company',
-        'Limited Company',
-        'Others',
-      ],
+      enum: ORGANISATION_TYPES,
       trim: true,
     },
     gstin: {
