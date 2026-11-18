@@ -1,3 +1,5 @@
+import { preparePdfBuffer } from './preparePdf.js';
+import { trackStorageAsset, forgetStorageAsset } from './assetCleanup.js';
 import { getStorageProvider } from '../../integrations/storage/index.js';
 import { AppError } from '../../utils/AppError.js';
 import { HTTP_STATUS } from '../../constants/httpStatusCodes.js';
@@ -68,9 +70,10 @@ export const storageService = {
       throw new AppError('File content buffer is missing or empty.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
     }
 
-    // Compress + convert to WebP before handing off to the provider (image
-    // uploads only - PDFs and other non-image files pass through untouched).
-    const prepared = await prepareImageBuffer(buffer, mimetype, { lossless: category === 'qr' });
+    // Optimize the actual uploaded bytes, rather than only delivery URLs.
+    const prepared = mimetype === 'application/pdf'
+      ? await preparePdfBuffer(buffer)
+      : await prepareImageBuffer(buffer, mimetype, { lossless: category === 'qr' });
     const preparedName = prepared.extension
       ? `${(originalname || 'file').replace(/\.[^./]+$/, '')}.${prepared.extension}`
       : originalname;
@@ -85,6 +88,10 @@ export const storageService = {
         category,
       });
 
+      try { await trackStorageAsset(result); } catch (error) {
+        await provider.deleteFile(result.publicId).catch(() => {});
+        throw error;
+      }
       return {
         url: result.url,
         publicId: result.publicId,
@@ -116,7 +123,12 @@ export const storageService = {
 
     const provider = getStorageProvider();
     try {
-      return await provider.deleteFile(publicId);
+      // Persist the intent before contacting storage, so failures and process
+      // restarts cannot silently abandon cleanup.
+      await trackStorageAsset({ publicId }, { deleteRequested: true });
+      const result = await provider.deleteFile(publicId);
+      if (result.success) await forgetStorageAsset(publicId);
+      return result;
     } catch (err) {
       console.warn(`[StorageService] Delete warning for ${publicId}: ${err.message}`);
       return { success: false, publicId };
@@ -137,7 +149,7 @@ export const storageService = {
    * @param {string} [params.category]
    * @returns {Promise<{ url: string, publicId: string, resourceType: string, format: string, bytes: number }>}
    */
-  async replaceFile({ oldPublicId, buffer, originalname, mimetype, folder, category }) {
+  async replaceFile({ oldPublicId, oldUrl, buffer, originalname, mimetype, folder, category, commit }) {
     // 1. Upload new file first
     const newFile = await this.uploadFile({
       buffer,
@@ -147,11 +159,15 @@ export const storageService = {
       category,
     });
 
-    // 2. Delete old file if provided (non-blocking failure safe)
-    if (oldPublicId) {
-      this.deleteFile(oldPublicId).catch((err) => {
-        console.warn(`[StorageService] Failed cleanup of replaced object ${oldPublicId}: ${err.message}`);
-      });
+    // A replacement is not complete until the caller commits its DB reference.
+    // Without a commit callback, leave the old file intact.
+    if (commit) {
+      try { await commit(newFile); }
+      catch (error) { await this.deleteFile(newFile.publicId); throw error; }
+      if (oldPublicId && oldPublicId !== newFile.publicId) {
+        const { retireRemovedMedia } = await import('./retireMedia.js');
+        await retireRemovedMedia({ publicId: oldPublicId, url: oldUrl }, newFile);
+      }
     }
 
     return newFile;

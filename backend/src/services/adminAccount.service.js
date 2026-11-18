@@ -1,3 +1,4 @@
+import { ORGANISATION_TYPES } from '../../../shared/dealerOrganisation.js';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
@@ -27,7 +28,7 @@ const contact = {
 };
 const business = {
   companyName: z.string().trim().min(2).max(150),
-  organisationType: z.enum(['Proprietorship', 'Partnership', 'Limited Liability Partnership (LLP)', 'Private Limited Company', 'Limited Company', 'Others']).default('Proprietorship'),
+  organisationType: z.enum(ORGANISATION_TYPES).default('Proprietorship'),
   gstin: z.string().trim().toUpperCase().regex(/^$|^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/).default(''),
   pan: z.string().trim().toUpperCase().regex(/^$|^[A-Z]{5}\d{4}[A-Z]$/).default(''),
   whatsappNumber: z.string().regex(/^$|^[6-9]\d{9}$/).default(''),
@@ -54,6 +55,7 @@ async function resolveUser(id, role, session) {
 export async function saveAccount({ id, role, data, actorId, converting = false, documents }) {
   const session = await mongoose.startSession();
   let result;
+  let replacedDocumentIds = [];
   try {
     await session.withTransaction(async () => {
       const creating = !id;
@@ -81,7 +83,10 @@ export async function saveAccount({ id, role, data, actorId, converting = false,
           }
         }
         Object.assign(profile, Object.fromEntries(keys.filter(key => data[key] !== undefined).map(key => [key, data[key]])), data.address !== undefined ? { address: data.address } : {});
-        if (documents?.length) profile.kycDocuments = [...(profile.kycDocuments || []).filter(doc => !documents.some(next => next.type === doc.type)), ...documents];
+        if (documents?.length) {
+          replacedDocumentIds = (profile.kycDocuments || []).filter(doc => documents.some(next => next.type === doc.type && next.publicId !== doc.publicId)).map(doc => doc.publicId).filter(Boolean);
+          profile.kycDocuments = [...(profile.kycDocuments || []).filter(doc => !documents.some(next => next.type === doc.type)), ...documents];
+        }
         if (creating || converting) Object.assign(profile, {
           status: 'approved', applicationSource: 'admin', applicationState: 'submitted',
           kycVerifiedBy: actorId, kycVerifiedAt: new Date(), kycReviewedBy: actorId,
@@ -98,6 +103,7 @@ export async function saveAccount({ id, role, data, actorId, converting = false,
       }
       result = { _id: user._id, fullName: user.fullName, email: user.email, phone: user.phone, role, accountStatus: user.accountStatus, ...(role === 'dealer' ? { dealerProfileId: user.dealerProfileId } : {}) };
     });
+    await Promise.all(replacedDocumentIds.map(publicId => storageService.deleteFile(publicId)));
     return result;
   } catch (error) {
     if (error.code === 11000) throw new AppError('An account with this email or phone already exists.', 409, 'CONFLICT');
@@ -106,11 +112,13 @@ export async function saveAccount({ id, role, data, actorId, converting = false,
 }
 export async function deleteAccount({ id, role }) {
   const session = await mongoose.startSession();
+  let documentIds = [];
   try {
     await session.withTransaction(async () => {
       const user = await resolveUser(id, role, session);
       const profile = await DealerProfile.findOne({ userId: user._id }).session(session);
       if (profile) {
+        documentIds = (profile.kycDocuments || []).map(doc => doc.publicId).filter(Boolean);
         await DealerPricing.deleteMany({ dealerId: profile._id }, { session });
         await DealerProfile.deleteOne({ _id: profile._id }, { session });
       }
@@ -121,6 +129,7 @@ export async function deleteAccount({ id, role }) {
       // Enquiries and POS sales retain their original billing snapshots.
       await User.deleteOne({ _id: user._id, role }, { session });
     });
+    await Promise.all(documentIds.map(publicId => storageService.deleteFile(publicId)));
   } finally { await session.endSession(); }
 }
 const documentTypes = ['gst', 'aadhaar', 'msme', 'pan'];

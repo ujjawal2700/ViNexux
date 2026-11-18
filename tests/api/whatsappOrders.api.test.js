@@ -1,3 +1,6 @@
+import { DealerProfile } from '../../backend/src/models/DealerProfile.js';
+import { DealerPricing } from '../../backend/src/models/DealerPricing.js';
+import { DealerPricingSettings } from '../../backend/src/models/DealerPricingSettings.js';
 import { adminArrivalService } from '../../backend/src/services/adminArrival.service.js';
 import { afterEach, beforeEach, expect, jest, test } from '@jest/globals';
 import express from '../../backend/node_modules/express/index.js';
@@ -76,4 +79,17 @@ test('WhatsApp admin queue only returns WhatsApp leads and regular queue include
   expect(Enquiry.countDocuments).toHaveBeenLastCalledWith({ source: 'whatsapp' });
   await listAllEnquiries({ source: 'storefront', userType: 'customer' });
   expect(Enquiry.countDocuments).toHaveBeenLastCalledWith({ source: { $ne: 'whatsapp' }, userType: 'customer' });
+});
+
+test('Installer WhatsApp orders snapshot the increased dealer price before building the message', async () => {
+  const user = { role: 'dealer', fullName: 'Installer', savedAddresses: { id: () => address } };
+  User.findById.mockImplementation(() => ({ then: resolve => Promise.resolve(user).then(resolve), select: () => ({ lean: async () => user }) }));
+  jest.spyOn(DealerProfile, 'findOne').mockReturnValue({ select: () => ({ lean: async () => ({ _id: id, status: 'approved', organisationType: 'Installer' }) }) });
+  jest.spyOn(DealerPricing, 'find').mockReturnValue({ select: () => ({ lean: async () => [] }) });
+  jest.spyOn(DealerPricingSettings, 'findById').mockReturnValue({ select: () => ({ lean: async () => ({ installerPriceIncreasePercent: 10 }) }) });
+  product.dealerPrice = 100; product.standardPrice = 150;
+  const res = await submit();
+  expect(res.status).toBe(201);
+  expect(stored.items[0].priceShown).toBe(110);
+  expect(new URL(res.body.data.whatsappUrl).searchParams.get('text')).toContain('Estimated Total: ₹220');
 });

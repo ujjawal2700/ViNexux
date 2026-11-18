@@ -1,3 +1,5 @@
+import { applyInstallerPriceIncrease, installerPriceExpression } from '../../../shared/installerPricing.js';
+import { getInstallerPriceIncreasePercent } from './installerPricing.service.js';
 import { activeVariants, hasVariants, variantSummary } from '../../../shared/productVariants.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 import { ERROR_CODES } from '../constants/errorCodes.js';
@@ -194,7 +196,7 @@ const buildSearchOr = (categories, term) => {
   const regex = new RegExp(escapeRegex(term), 'i');
   const matchingCategories = categories.filter((category) => regex.test(category.name) || regex.test(category.slug));
   const textMatch = { $or: [
-    { name: regex }, { sku: regex }, { modelNumber: regex }, { 'variants.name': regex }, { 'variants.sku': regex },
+    { name: regex }, { sku: regex }, { modelNumber: regex }, { model: regex }, { 'variants.modelNumber': regex }, { 'variants.model': regex }, { 'variants.name': regex }, { 'variants.sku': regex },
     { specifications: { $elemMatch: { key: /^(brand|manufacturer)$/i, value: regex } } },
   ] };
   const tokens = requiredSearchTokens(term);
@@ -306,6 +308,7 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
       : { _id: { $in: [] } } });
   }
 
+  const installerPercent = approvedDealer?.organisationType === 'Installer' ? await getInstallerPriceIncreasePercent() : 0;
   const pricingStages = [];
   if (approvedDealer) {
     pricingStages.push({ $lookup: {
@@ -317,11 +320,11 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   const ordinaryPrice = approvedDealer
     ? { $ifNull: [{ $arrayElemAt: ['$_pricing.price', 0] }, { $cond: [{ $gt: ['$dealerPrice', 0] }, '$dealerPrice', '$standardPrice'] }] }
     : '$standardPrice';
-  pricingStages.push({ $set: { applicablePrice: { $cond: [
+  pricingStages.push({ $set: { applicablePrice: installerPriceExpression({ $cond: [
     { $gt: [{ $size: { $ifNull: ['$variants', []] } }, 0] },
     { $ifNull: [{ $min: { $map: { input: { $filter: { input: '$variants', as: 'option', cond: { $ne: ['$$option.isActive', false] } } }, as: 'option',
       in: approvedDealer ? { $cond: [{ $gt: ['$$option.dealerPrice', 0] }, '$$option.dealerPrice', '$$option.standardPrice'] } : '$$option.standardPrice' } } }, 0] }, ordinaryPrice,
-  ] } } });
+  ] }, installerPercent) } });
 
   if (query.inStock === 'true' || query.inStock === true) selections.push({ dimension: 'availability', condition: { stockLevel: { $gt: 0 } } });
   if (query.inStock === 'false' || query.inStock === false) selections.push({ dimension: 'availability', condition: { stockLevel: { $lte: 0 } } });
@@ -376,7 +379,7 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
       { $limit: limit },
       ...(priceNeededBeforePaging ? [] : pricingStages),
       { $set: { stockQuantity: '$stockLevel' } },
-      { $unset: ['filterOptionIds', '_pricing', '_categoryPriority', '__v', 'priceHistory', ...INTERNAL_CATALOG_FIELDS] },
+      { $unset: ['filterOptionIds', '_pricing', '_categoryPriority', '__v', 'priceHistory', 'variantImageAssets', ...INTERNAL_CATALOG_FIELDS] },
     ],
     total: [...facetFilters, { $count: 'count' }],
   };
@@ -451,8 +454,9 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   const products = result.products.map((product) => {
     if (hasVariants(product)) {
       product.variants = activeVariants(product).map(option => {
-        const row = { ...option, applicablePrice: approvedDealer && option.dealerPrice > 0 ? option.dealerPrice : option.standardPrice };
-        if (!approvedDealer) delete row.dealerPrice;
+        const row = { ...option, applicablePrice: applyInstallerPriceIncrease(approvedDealer && option.dealerPrice > 0 ? option.dealerPrice : option.standardPrice, installerPercent) };
+        if (approvedDealer) row.dealerPrice = row.applicablePrice;
+        else delete row.dealerPrice;
         return row;
       });
       product.hasVariants = true;

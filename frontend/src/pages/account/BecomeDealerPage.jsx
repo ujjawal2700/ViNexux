@@ -1,10 +1,11 @@
+import { ORGANISATION_TYPES } from '../../../../shared/dealerOrganisation.js';
 import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FileUp, CheckCircle2 } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import dealerService from '../../services/dealerService';
 const OfficeLocationPicker = lazy(() => import('../../components/auth/OfficeLocationPicker'));
-const organisations = ['Proprietorship', 'Partnership', 'Limited Liability Partnership (LLP)', 'Private Limited Company', 'Limited Company', 'Others'];
+const organisations = ORGANISATION_TYPES;
 const fields = [
   ['companyName', 'Company / firm name', '.{2,150}', 150], ['gstin', 'GSTIN', '[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]', 15],
   ['pan', 'PAN number', '[A-Z]{5}[0-9]{4}[A-Z]', 10], ['msmeNumber', 'Udyam number (optional)', 'UDYAM-[A-Z]{2}-[0-9]{2}-[0-9]{7}', 23],

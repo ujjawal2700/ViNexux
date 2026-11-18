@@ -19,9 +19,9 @@ const FilterBar = ({
 }) => {
   return (
     <div className="bg-card border border-border rounded-xl p-4 space-y-4 shadow-xs">
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
+      <div className="flex flex-col lg:flex-row lg:flex-wrap items-stretch lg:items-center gap-3">
         {onSearchChange && (
-          <div className="flex-1 min-w-[240px]">
+          <div className="min-w-0 flex-1 lg:min-w-[240px]">
             <SearchInput
               value={search || ''}
               onChange={onSearchChange}
@@ -38,7 +38,7 @@ const FilterBar = ({
 
         {/* Custom Filter Dropdowns */}
         {filters.map((filter, idx) => (
-          <div key={idx} className="w-full lg:w-48">
+          <div key={idx} className="min-w-0 w-full lg:w-48">
             <Select
               value={filter.value || ''}
               onChange={(e) => filter.onChange(e.target.value)}
@@ -49,7 +49,7 @@ const FilterBar = ({
 
         {/* Sort Select */}
         {sortOptions.length > 0 && onSortChange && (
-          <div className="w-full lg:w-48">
+          <div className="min-w-0 w-full lg:w-48">
             <Select
               value={sortBy || ''}
               onChange={(e) => onSortChange(e.target.value, sortOrder)}

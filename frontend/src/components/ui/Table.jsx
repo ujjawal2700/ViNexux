@@ -1,16 +1,16 @@
 import React from 'react';
 import { SkeletonTable } from './Skeleton';
 
-const wrapperClass = (className = '') =>
-  `w-full overflow-x-auto rounded-2xl border border-border bg-card relative shadow-xs ${className}`;
+const wrapperClass = (className = '', scrollable = true) =>
+  `w-full ${scrollable ? 'overflow-x-auto' : 'overflow-visible'} rounded-2xl border border-border bg-card relative shadow-xs ${className}`;
 
-const theadClass = 'bg-muted text-[11px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border';
+const theadClass = 'bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border';
 const tbodyClass = 'divide-y divide-border font-medium';
 const rowClass = 'hover:bg-muted/40 transition-colors';
-const headCellClass = (className = '') => `px-6 py-3.5 text-left ${className}`;
-const bodyCellClass = (className = '') => `px-6 py-4 text-xs text-left ${className}`;
+const headCellClass = (className = '') => `px-5 py-3.5 text-left ${className}`;
+const bodyCellClass = (className = '') => `px-5 py-4 text-sm text-left ${className}`;
 
-export const Table = ({ columns, data, isLoading = false, emptyMessage = 'No data available', className = '', children }) => {
+export const Table = ({ columns, data, isLoading = false, emptyMessage = 'No data available', className = '', children, scrollable = true }) => {
   if (isLoading) {
     return <SkeletonTable rows={Math.min(Math.max(data?.length || 5, 5), 8)} columns={columns?.length || 4} className={className} />;
   }
@@ -18,15 +18,15 @@ export const Table = ({ columns, data, isLoading = false, emptyMessage = 'No dat
   if (columns) {
     const rows = data || [];
     return (
-      <div className={wrapperClass(className)}>
+      <div className={wrapperClass(className, scrollable)}>
         <table className="w-full text-left text-sm text-foreground border-collapse">
           <thead className={theadClass}><tr>{columns.map((col, idx) => (
-            <th key={col.key || idx} className={`px-6 py-3.5 ${col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'} ${col.className || ''}`}>{col.header}</th>
+            <th key={col.key || idx} className={`px-5 py-3.5 ${col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'} ${col.className || ''}`}>{col.header}</th>
           ))}</tr></thead>
           <tbody className={tbodyClass}>
             {rows.length ? rows.map((row, rowIdx) => (
               <tr key={row._id || row.id || rowIdx} className={rowClass}>
-                {columns.map((col, colIdx) => <td key={col.key || colIdx} className={`px-6 py-4 text-xs ${col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'} ${col.className || ''}`}>{col.render ? col.render(row[col.key], row, rowIdx) : row[col.key]}</td>)}
+                {columns.map((col, colIdx) => <td key={col.key || colIdx} className={`px-5 py-4 text-sm ${col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'} ${col.className || ''}`}>{col.render ? col.render(row[col.key], row, rowIdx) : row[col.key]}</td>)}
               </tr>
             )) : <tr><td colSpan={columns.length} className="px-6 py-12 text-center text-xs text-muted-foreground">{emptyMessage}</td></tr>}
           </tbody>
@@ -35,7 +35,7 @@ export const Table = ({ columns, data, isLoading = false, emptyMessage = 'No dat
     );
   }
 
-  return <div className={wrapperClass(className)}><table className="w-full text-left text-sm text-foreground border-collapse">{children}</table></div>;
+  return <div className={wrapperClass(className, scrollable)}><table className="w-full text-left text-sm text-foreground border-collapse">{children}</table></div>;
 };
 
 const TableHeader = ({ children, className = '' }) => <thead className={`${theadClass} ${className}`}>{children}</thead>;

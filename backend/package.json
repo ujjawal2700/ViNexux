@@ -5,8 +5,8 @@
   "type": "module",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
+    "start": "node init && node src/server.js",
+    "dev": "node init && nodemon src/server.js",
     "test": "node tests/health.test.js",
     "test:catalog-sorting": "node tests/catalogSorting.test.js",
     "test:catalog-integration": "node tests/catalogIntegration.test.js",
@@ -50,6 +50,7 @@
     "morgan": "^1.10.0",
     "multer": "^2.3.0",
     "nodemailer": "^10.0.0",
+    "pdf-lib": "^1.17.1",
     "pdfkit": "^0.20.2",
     "sanitize-html": "^2.18.0",
     "sharp": "^0.35.4",

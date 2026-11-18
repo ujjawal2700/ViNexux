@@ -1,5 +1,6 @@
+import { isAssetReferenced, storageDatabaseReady, trackStorageAsset } from './storage/assetCleanup.js';
 import { normalizeVariants, variantStockChange, hasVariants } from '../utils/productVariants.js';
-import { variantSummary } from '../../../shared/productVariants.js';
+import { variantSummary, variantDefinitionSnapshot } from '../../../shared/productVariants.js';
 import { isDraftIdentifier } from '../../../shared/productDrafts.js';
 import { isWarrantyLink } from '../../../shared/productPresentation.js';
 import { stockUpdate } from '../utils/productStockUpdate.js';
@@ -38,10 +39,18 @@ export const getProductImagePublicId = (image) => {
   }
 };
 
+const deleteProductAsset = async (publicId, excludeProductId) => {
+  if (storageDatabaseReady() && await isAssetReferenced({ publicId }, { excludeProductId })) {
+    await trackStorageAsset({ publicId }, { deleteRequested: true });
+    return { success: true, retainedForSharedReference: true };
+  }
+  return storageService.deleteFile(publicId);
+};
+
 const cleanupProductImages = async (product) => {
   const pending = [...(product.pendingImageDeletions || [])];
   for (const publicId of pending) {
-    const result = await storageService.deleteFile(publicId);
+    const result = await deleteProductAsset(publicId);
     if (!result.success) {
       throw new AppError(
         'Product saved, but image storage cleanup failed. Save again to retry deletion.',
@@ -145,11 +154,11 @@ export const productService = {
       }, { arrayFilters: [{ 'item.productId': product._id, [`item.${field}`]: { $in: [null, ''] } }] });
     }
     const publicIds = new Set([
-      ...(product.images || []).map(getProductImagePublicId).filter(Boolean),
+      ...[...(product.images || []), ...(product.variantImageAssets || []), ...(product.variants || []).flatMap(row => row.images || [])].map(getProductImagePublicId).filter(Boolean),
       ...(product.pendingImageDeletions || []),
     ]);
     for (const publicId of publicIds) {
-      const result = await storageService.deleteFile(publicId);
+      const result = await deleteProductAsset(publicId, product._id);
       if (!result.success) throw new AppError('Image cleanup failed. The product is deactivated; retry Delete Product to finish removing it.', HTTP_STATUS.BAD_GATEWAY, ERROR_CODES.INTERNAL_ERROR);
     }
     await Cart.updateMany({ 'items.productId': product._id }, { $pull: { items: { productId: product._id } } });
@@ -317,28 +326,21 @@ isActive,
       });
     }
 
-    // Filter by search query (sanitized regex search on product name, SKU, or matching category names)
+    // Search product identifiers and model details, including variants, with literal matching.
     if (search && search.trim()) {
       const escapedSearch = escapeRegex(search.trim());
       const searchRegex = new RegExp(escapedSearch, 'i');
+      const productMatches = ['name', 'sku', 'modelNumber', 'model', 'variants.sku', 'variants.modelNumber', 'variants.model', 'variants.name'].map(field => ({ [field]: searchRegex }));
 
       const matchedCategories = await Category.find({
         $or: [{ name: searchRegex }, { slug: searchRegex }],
       }).select('_id').lean();
 
       if (matchedCategories.length > 0) {
-        const allCatIds = await findCategoryAndDescendantIds(matchedCategories.map((c) => c._id));
-        andClauses.push({
-          $or: [
-            { name: searchRegex },
-            { sku: searchRegex },
-            { categoryId: { $in: allCatIds } },
-          ],
-        });
+        const allCatIds = await findCategoryAndDescendantIds(matchedCategories.map(c => c._id));
+        andClauses.push({ $or: [...productMatches, { categoryId: { $in: allCatIds } }] });
       } else {
-        andClauses.push({
-          $or: [{ name: searchRegex }, { sku: searchRegex }],
-        });
+        andClauses.push({ $or: productMatches });
       }
     }
 
@@ -491,7 +493,12 @@ isActive,
     }
 
     if (updateData.variants !== undefined) {
-      const snapshot = rows => (rows || []).map(row => ({ _id: String(row._id), name: row.name, sku: row.sku || '', standardPrice: row.standardPrice, dealerPrice: row.dealerPrice || 0, stockQuantity: row.stockQuantity, isActive: row.isActive !== false }));
+      const snapshot = rows => variantDefinitionSnapshot(rows).map((row, index) => {
+        // Older price/stock editors do not send media or detail fields. Preserve
+        // them and compare only the values that editor actually loaded.
+        for (const key of ['modelNumber', 'model', 'images', 'specifications']) if (updateData.expectedVariants?.[index]?.[key] === undefined) delete row[key];
+        return row;
+      });
       if (updateData.expectedVariants && JSON.stringify(snapshot(product.variants)) !== JSON.stringify(snapshot(updateData.expectedVariants))) {
         throw new AppError('Variant prices or stock changed in another session. Refresh before saving.', 409, ERROR_CODES.CONFLICT);
       }
@@ -603,7 +610,12 @@ isActive,
         product.stockUpdatedAt = new Date();
       }
     }
-    if (updateData.variants !== undefined) product.variants = updateData.variants;
+    const previousGalleryImages = [...(product.images || []), ...(product.variants || []).flatMap(row => row.images || [])];
+    if (updateData.variants !== undefined) {
+      product.variants = updateData.variants;
+      const assigned = new Set(product.variants.flatMap(row => (row.images || []).map(image => image.publicId || image.url)));
+      product.variantImageAssets = (product.variantImageAssets || []).filter(image => !assigned.has(image.publicId || image.url));
+    }
     if (updateData.variant !== undefined) product.variant = updateData.variant.trim();
     if (updateData.hsnCode !== undefined) product.hsnCode = updateData.hsnCode.trim();
     if (updateData.warrantyType !== undefined || updateData.warranty !== undefined) {
@@ -618,14 +630,12 @@ isActive,
     if (updateData.informationPhone !== undefined) product.informationPhone = updateData.informationPhone?.trim() || '';
     if (updateData.productUrl !== undefined) product.productUrl = updateData.productUrl?.trim() || '';
     if (updateData.description !== undefined) product.description = updateData.description ? updateData.description.trim() : null;
-    if (updateData.images !== undefined) {
-      const retained = new Set(updateData.images.map(getProductImagePublicId).filter(Boolean));
-      const removed = (product.images || []).map(getProductImagePublicId)
-        .filter((publicId) => publicId && !retained.has(publicId));
-      product.pendingImageDeletions = [...new Set([
-        ...(product.pendingImageDeletions || []), ...removed,
-      ])].filter((publicId) => !retained.has(publicId));
-      product.images = updateData.images;
+    if (updateData.images !== undefined || updateData.variants !== undefined) {
+      const nextGallery = updateData.images !== undefined ? updateData.images : product.images || [];
+      const retained = new Set([...nextGallery, ...(product.variants || []).flatMap(row => row.images || []), ...(product.variantImageAssets || [])].map(getProductImagePublicId).filter(Boolean));
+      const removed = previousGalleryImages.map(getProductImagePublicId).filter(publicId => publicId && !retained.has(publicId));
+      product.pendingImageDeletions = [...new Set([...(product.pendingImageDeletions || []), ...removed])].filter(publicId => !retained.has(publicId));
+      if (updateData.images !== undefined) product.images = updateData.images;
     }
     if (updateData.specifications !== undefined) product.specifications = updateData.specifications;
     if (updateData.additionalDetails !== undefined) product.additionalDetails = updateData.additionalDetails;
@@ -716,7 +726,7 @@ isActive,
   /**
    * Upload an image for a product.
    */
-  async uploadProductImage(id, file, altText = '') {
+  async uploadProductImage(id, file, altText = '', forVariant = false) {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       throw new AppError('Invalid product ID format.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
     }
@@ -745,7 +755,7 @@ isActive,
     try {
       const updatedProduct = await Product.findByIdAndUpdate(
         id,
-        { $push: { images: imageData }, $inc: { __v: 1 } },
+        { $push: { [forVariant ? 'variantImageAssets' : 'images']: imageData }, $inc: { __v: 1 } },
         { new: true, runValidators: true }
       );
       if (!updatedProduct) throw new AppError('Product no longer exists. Refresh the catalog.', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);

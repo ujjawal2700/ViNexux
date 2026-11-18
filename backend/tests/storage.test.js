@@ -1,3 +1,4 @@
+import { PDFDocument } from 'pdf-lib';
 import sharp from 'sharp';
 import { loginFixture } from './helpers/accounts.js';
 import test, { before, after, describe } from 'node:test';
@@ -312,7 +313,7 @@ describe('Phase 8.4 — Cloudinary / S3 File Upload Integration Test Suite', () 
   describe('Section 2: Storage Service & Replacement Logic', () => {
     test('5. storageService.uploadFile uploads successfully via active provider', async () => {
       const res = await storageService.uploadFile({
-        buffer: Buffer.from('sample pdf'),
+        buffer: Buffer.from(await (await PDFDocument.create()).save()),
         originalname: 'gst_certificate.pdf',
         mimetype: 'application/pdf',
         folder: 'vinexus/kyc/unit_test',
@@ -334,6 +335,7 @@ describe('Phase 8.4 — Cloudinary / S3 File Upload Integration Test Suite', () 
 
       const replaced = await storageService.replaceFile({
         oldPublicId: firstUpload.publicId,
+        commit: async () => {},
         buffer: await sharp({ create: { width: 8, height: 8, channels: 3, background: '#008020' } }).jpeg().toBuffer(),
         originalname: 'new_pan.jpg',
         mimetype: 'image/jpeg',
@@ -397,7 +399,7 @@ describe('Phase 8.4 — Cloudinary / S3 File Upload Integration Test Suite', () 
         fieldname: 'file',
         filename: 'dealer1_gst.pdf',
         mimetype: 'application/pdf',
-        buffer: Buffer.from('PDF GST Document content'),
+        buffer: Buffer.from(await (await PDFDocument.create()).save()),
       };
 
       const res = await sendMultipartRequest('/api/dealers/kyc/documents', dealer1Token, { type: 'gst' }, file);
