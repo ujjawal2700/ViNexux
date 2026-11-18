@@ -4,10 +4,29 @@ import mongoose from 'mongoose';
 
 const isValidObjectId = (val) => mongoose.Types.ObjectId.isValid(val);
 
+const productImageSchema = z.object({
+  url: z.string({ required_error: 'Image URL is required' }).trim().min(1, { message: 'Image URL cannot be empty' }),
+  publicId: z.string().trim().optional(),
+  altText: z.string().trim().max(150, { message: 'Alt text cannot exceed 150 characters' }).optional(),
+  sortOrder: z.number().min(0, { message: 'Sort order cannot be negative' }).default(0).optional(),
+});
+
+const productSpecificationSchema = z.object({
+  key: z.string({ required_error: 'Specification key is required' }).trim().min(1).max(100),
+  value: z.string({ required_error: 'Specification value is required' }).trim().min(1).max(2000),
+});
+
+
 export const productVariantsSchema = z.array(z.object({
   _id: z.string().refine(isValidObjectId, 'Invalid variant ID').optional(),
   name: z.string().trim().min(1).max(100),
   sku: z.string().trim().max(50).optional().default(''),
+  modelNumber: z.string().trim().max(100).optional(),
+  model: z.string().trim().max(100).optional(),
+  images: z.array(productImageSchema).max(30).optional(),
+  specifications: z.array(productSpecificationSchema).max(100).superRefine((rows, ctx) => {
+    if (new Set(rows.map(row => row.key.trim().toLowerCase())).size !== rows.length) ctx.addIssue({ code: 'custom', message: 'Use each specification name once per variant.' });
+  }).optional(),
   standardPrice: z.number().finite().min(0).max(100000000).refine(value => Math.abs(value * 100 - Math.round(value * 100)) < 0.00001, 'Use at most two decimal places.'),
   dealerPrice: z.number().finite().min(0).max(100000000).refine(value => Math.abs(value * 100 - Math.round(value * 100)) < 0.00001, 'Use at most two decimal places.').default(0),
   stockQuantity: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
@@ -33,17 +52,6 @@ export const stockSearchSchema = {
   }),
 };
 
-const productImageSchema = z.object({
-  url: z.string({ required_error: 'Image URL is required' }).trim().min(1, { message: 'Image URL cannot be empty' }),
-  publicId: z.string().trim().optional(),
-  altText: z.string().trim().max(150, { message: 'Alt text cannot exceed 150 characters' }).optional(),
-  sortOrder: z.number().min(0, { message: 'Sort order cannot be negative' }).default(0).optional(),
-});
-
-const productSpecificationSchema = z.object({
-  key: z.string({ required_error: 'Specification key is required' }).trim().min(1).max(100),
-  value: z.string({ required_error: 'Specification value is required' }).trim().min(1).max(2000),
-});
 
 const productUrlSchema = z.string().trim().max(500, 'Product URL cannot exceed 500 characters')
   .refine((value) => !value || /^https?:\/\//i.test(value), 'Product URL must start with http:// or https://')

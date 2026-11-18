@@ -1,3 +1,4 @@
+import { retireRemovedMedia } from '../services/storage/retireMedia.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import mongoose from 'mongoose';
@@ -31,6 +32,7 @@ router.put('/:id', asyncHandler(async (req, res) => {
   // Atomic compare-and-swap protects against simultaneous editors.
   const saved = await SeasonalTheme.findOneAndUpdate({ _id: theme._id, revision: data.revision }, { $set: { name: data.name, preset: data.preset, draft: data.draft, schedule: data.schedule, updatedBy: req.user._id }, $inc: { revision: 1 } }, { new: true });
   if (!saved) throw new AppError('Theme changed in another session. Reload before saving.', 409);
+  await retireRemovedMedia(theme, saved);
   ApiResponse.success(res, 'Draft saved', { theme: saved });
 }));
 router.post('/:id/:action', asyncHandler(async (req, res) => {
@@ -45,6 +47,7 @@ router.post('/:id/:action', asyncHandler(async (req, res) => {
     const changes = action === 'publish' ? { published: parse(config, theme.draft), publishedSchedule: { enabled: theme.schedule.enabled, startAt: theme.schedule.startAt, endAt: theme.schedule.endAt, priority: theme.schedule.priority }, publishedAt: new Date(), archived: false, history: [...theme.history, { config: theme.published || null, publishedAt: theme.publishedAt || null }].slice(-10) } : { archived: true };
     const saved = await SeasonalTheme.findOneAndUpdate({ _id: theme._id, revision: theme.revision }, { $set: { ...changes, updatedBy: req.user._id }, $inc: { revision: 1 } }, { new: true });
     if (!saved) throw new AppError('Theme changed in another session. Reload before publishing.', 409);
+    await retireRemovedMedia(theme, saved);
     if (action === 'archive') await WebsiteSettings.updateOne({ singletonKey: 'primary', activeThemeId: theme._id }, { $set: { activeThemeId: null } });
   }
   ApiResponse.success(res, 'Theme updated', { theme: await find(theme._id), active: await getActiveTheme() });

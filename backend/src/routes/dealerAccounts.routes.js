@@ -1,3 +1,4 @@
+import { mountInstallerPricingRoutes } from './installerPricing.routes.js';
 import { mountAccountCrud } from '../services/adminAccount.service.js';
 import { Router } from 'express';
 import { z } from 'zod';
@@ -13,6 +14,7 @@ import { revokeDealerStatus } from '../services/dealer.service.js';
 import { getDealerByIdSchema, getDealersQuerySchema, adminRevokeDealerSchema } from '../validators/dealer.validator.js';
 const router = Router();
 router.use(authenticate, authorize('admin'));
+mountInstallerPricingRoutes(router);
 mountAccountCrud(router, 'dealer');
 const userFields = 'fullName email phone role accountStatus isPhoneVerified isEmailVerified createdAt';
 const populate = query => query.populate('userId', userFields).populate('kycVerifiedBy', 'fullName email role isEmployee').populate('kycReviewedBy', 'fullName email role isEmployee');

@@ -59,6 +59,12 @@ export class DevStorageProvider extends StorageProvider {
     console.log(`[DevStorageProvider] Deleting Public ID: ${publicId}`);
     console.log(`[DevStorageProvider] ----------------------------------------`);
 
+    if (/^local-themes\/[a-f\d-]+\.(webp|mp4)$/.test(publicId)) {
+      const { unlink } = await import('node:fs/promises');
+      const { join } = await import('node:path');
+      const { THEME_ASSET_DIRECTORY } = await import('../../services/themeAssets.service.js');
+      await unlink(join(THEME_ASSET_DIRECTORY, publicId.split('/').at(-1))).catch(error => { if (error.code !== 'ENOENT') throw error; });
+    }
     const existed = this.uploadedFiles.delete(publicId);
 
     return {

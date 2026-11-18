@@ -111,3 +111,28 @@ test('cart add, quantity edits and removal keep two lengths separate and refresh
   const one = await removeCartItem(id, id, first);
   expect(one.items).toHaveLength(1); expect(one.items[0].variantId).toBe(second);
 });
+
+
+test('variant models, galleries and partial specifications inherit without mutating the parent', () => {
+  const base = { ...cable(), model: 'Main model', images: [{ url: 'main.png' }], specifications: [{ key: 'Resolution', value: '2MP' }, { key: 'Warranty', value: '1 year' }] };
+  base.variants[1] = { ...base.variants[1], modelNumber: 'CAM-4', model: '4MP camera', images: [{ url: 'variant.png' }], specifications: [{ key: ' resolution ', value: '4MP' }, { key: 'Lens', value: '4mm' }] };
+  const chosen = selectedVariantProduct(base, second);
+  expect(chosen).toMatchObject({ modelNumber: 'CAM-4', model: '4MP camera', images: [{ url: 'variant.png' }], specifications: [{ key: 'Resolution', value: '4MP' }, { key: 'Warranty', value: '1 year' }, { key: 'Lens', value: '4mm' }] });
+  expect(base.specifications[0].value).toBe('2MP');
+  expect(selectedVariantProduct(base, first)).toMatchObject({ modelNumber: 'CAT6', model: 'Main model', images: base.images, specifications: base.specifications });
+});
+
+test('legacy price-only updates preserve variant media and details, and explicit clearing restores inheritance', () => {
+  const old = [{ ...variants()[0], modelNumber: 'MODEL-5', model: 'Special', images: [{ url: 'variant.png' }], specifications: [{ key: 'Color', value: 'Red' }] }];
+  const input = productVariantsSchema.parse([{ ...variants()[0], standardPrice: 175 }]);
+  expect(normalizeVariants(input, old)[0]).toMatchObject({ ...old[0], standardPrice: 175 });
+  expect(normalizeVariants([{ ...input[0], modelNumber: '', images: [], specifications: [] }], old)[0]).toMatchObject({ modelNumber: '', images: [], specifications: [] });
+  expect(productVariantsSchema.safeParse([{ ...variants()[0], specifications: [{ key: 'Color', value: 'Red' }, { key: ' color ', value: 'Blue' }] }]).success).toBe(false);
+});
+
+test('Sheets retains variant image and specification metadata through export and import', () => {
+  const source = { ...cable(), isActive: false };
+  source.variants[0] = { ...source.variants[0], modelNumber: 'MODEL-5', model: 'Special', images: [{ url: 'https://example.com/variant.png', publicId: 'variant' }], specifications: [{ key: 'Color', value: 'Red' }] };
+  const refs = createReferences([], []);
+  expect(parseProductRow(exportProductRow(source, refs), refs).payload.variants[0]).toMatchObject(source.variants[0]);
+});

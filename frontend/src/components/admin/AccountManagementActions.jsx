@@ -1,3 +1,4 @@
+import { ORGANISATION_TYPES } from '../../../../shared/dealerOrganisation.js';
 import DealerEnrollmentAction from './DealerEnrollmentAction';
 import { useState } from 'react';
 import apiClient from '../../api/axios';
@@ -11,7 +12,7 @@ const commonFields = [['fullName', 'Full name', true], ['email', 'Email address'
 const dealerFields = [['companyName', 'Company name', true], ['gstin', 'GSTIN'], ['pan', 'PAN'], ['whatsappNumber', 'WhatsApp number'], ['city', 'City'], ['state', 'State'], ['pincode', 'Pincode']];
 const limits = { fullName: 100, email: 254, phone: 10, address: 255, companyName: 150, gstin: 15, pan: 10, whatsappNumber: 10, city: 100, state: 100, pincode: 6 };
 
-export default function AccountManagementActions({ role, record, onSaved }) {
+export default function AccountManagementActions({ role, record, onSaved, layout = 'inline' }) {
   const { adminUser } = useAuth();
   const [open, setOpen] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -47,9 +48,9 @@ export default function AccountManagementActions({ role, record, onSaved }) {
     finally { setBusy(false); }
   };
   return <>
-    <span className="inline-flex flex-wrap items-center gap-1">
-      <Button size="sm" variant={record ? 'ghost' : 'primary'} onClick={start}>{record ? 'Edit' : `Create ${label}`}</Button>
-      {record && <Button size="sm" variant="ghost" className="text-rose-700" onClick={() => { setError(''); setRemoving(true); }}>Delete</Button>}
+    <span className={layout === 'grid' ? 'contents' : 'inline-flex flex-wrap items-center gap-2'}>
+      <Button size="sm" variant={record ? 'outline' : 'primary'} className="min-h-9 text-sm" onClick={start}>{record ? 'Edit' : `Create ${label}`}</Button>
+      {record && <Button size="sm" variant="outline" className="min-h-9 border-rose-200 text-sm text-rose-700 hover:bg-rose-50" onClick={() => { setError(''); setRemoving(true); }}>Delete</Button>}
     </span>
     {error && !open && <p role="alert" className="text-xs text-rose-700">{error}</p>}
     <Modal isOpen={open} onClose={busy ? undefined : () => setOpen(false)} closeOnOutsideClick={!busy} size="lg" title={`${record ? 'Edit' : 'Create'} ${label} Account`} description="Contact changes reset verification and sign out existing sessions.">
@@ -58,7 +59,7 @@ export default function AccountManagementActions({ role, record, onSaved }) {
           {fields.map(([key, title, required]) => <label key={key} className="space-y-1 text-sm font-medium">{title}{required ? ' *' : ' (optional)'}
             <input className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900" type={key === 'email' ? 'email' : ['phone', 'whatsappNumber'].includes(key) ? 'tel' : 'text'} value={form[key] || ''} required={required} maxLength={limits[key]} minLength={['fullName', 'companyName'].includes(key) ? 2 : undefined} pattern={['phone', 'whatsappNumber'].includes(key) ? '[6-9][0-9]{9}' : key === 'pincode' ? '[0-9]{6}' : undefined} onChange={e => setForm(prev => ({ ...prev, [key]: e.target.value }))} />
           </label>)}
-          {dealer && <label className="space-y-1 text-sm font-medium">Organisation type<select className="block w-full rounded-lg border p-2" value={form.organisationType} onChange={e => setForm(prev => ({ ...prev, organisationType: e.target.value }))}>{['Proprietorship', 'Partnership', 'Limited Liability Partnership (LLP)', 'Private Limited Company', 'Limited Company', 'Others'].map(value => <option key={value}>{value}</option>)}</select></label>}
+          {dealer && <label className="space-y-1 text-sm font-medium">Organisation type<select aria-label="Organisation type" className="block w-full rounded-lg border p-2" value={form.organisationType} onChange={e => setForm(prev => ({ ...prev, organisationType: e.target.value }))}>{ORGANISATION_TYPES.map(value => <option key={value}>{value}</option>)}</select></label>}
           <label className="space-y-1 text-sm font-medium">Account status<select className="block w-full rounded-lg border p-2" value={form.accountStatus} onChange={e => setForm(prev => ({ ...prev, accountStatus: e.target.value }))}>{['active', 'pending', 'blocked'].map(value => <option key={value}>{value}</option>)}</select></label>
         </div>
         {!record && <p className="text-xs text-gray-500">The account holder signs in using the existing OTP login with their email or mobile number.</p>}

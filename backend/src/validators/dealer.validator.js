@@ -1,3 +1,4 @@
+import { ORGANISATION_TYPES } from '../../../shared/dealerOrganisation.js';
 import { z } from 'zod';
 import mongoose from 'mongoose';
 
@@ -9,7 +10,7 @@ const pincodeRegex = /^\d{6}$/;
 const aadhaarRegex = /^\d{12}$/;
 const phoneRegex = /^[6-9]\d{9}$/;
 const msmeRegex = /^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/;
-const organisationTypes = ['Proprietorship', 'Partnership', 'Limited Liability Partnership (LLP)', 'Private Limited Company', 'Limited Company', 'Others'];
+const organisationTypes = ORGANISATION_TYPES;
 
 const officeLocationSchema = z.object({
   latitude: z.preprocess(value => value === null || (typeof value === 'string' && !value.trim()) ? undefined : value, z.coerce.number().min(-90).max(90)),

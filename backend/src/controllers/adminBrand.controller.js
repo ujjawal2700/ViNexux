@@ -1,6 +1,6 @@
+import { retireRemovedMedia } from '../services/storage/retireMedia.js';
 import { Brand } from '../models/Brand.js';
 import { Product } from '../models/Product.js';
-import { storageService } from '../services/storage/storage.service.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { AppError } from '../utils/AppError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -48,9 +48,7 @@ export const updateBrand = asyncHandler(async (req, res) => {
   const previous = await Brand.findById(req.params.id).lean();
   const brand = await Brand.findByIdAndUpdate(req.params.id, payload, { new: true, runValidators: true });
   if (!brand) throw new AppError('Brand not found', 404, 'NOT_FOUND');
-  if (previous?.logo?.publicId && Object.hasOwn(payload, 'logo') && previous.logo.publicId !== brand.logo?.publicId) {
-    await storageService.deleteFile(previous.logo.publicId);
-  }
+  if (Object.hasOwn(payload, 'logo')) await retireRemovedMedia(previous?.logo, brand.logo);
   ApiResponse.success(res, 'Brand updated', { brand });
 });
 
@@ -63,8 +61,8 @@ export const removeBrand = asyncHandler(async (req, res) => {
     await brand.save();
     return ApiResponse.success(res, 'Brand has linked products and was deactivated', { brand });
   }
-  if (brand.logo?.publicId) await storageService.deleteFile(brand.logo.publicId);
   await brand.deleteOne();
+  await retireRemovedMedia(brand.logo, null);
   return ApiResponse.success(res, 'Brand deleted', {});
 });
 

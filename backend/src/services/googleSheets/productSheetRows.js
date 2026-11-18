@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { variantDefinitionSnapshot } from '../../../../shared/productVariants.js';
 import { editableProductIdentifier } from '../../../../shared/productDrafts.js';
 import { createProductSchema, updateProductSchema } from '../../validators/product.validator.js';
 
@@ -55,7 +56,7 @@ export function productValues(product) {
     isLowStock: Boolean(product.isLowStock), variant: product.variant || '', hsnCode: product.hsnCode || '',
     warrantyType: product.warrantyType || 'text', warranty: product.warranty || '', productUrl: product.productUrl || '',
     informationPhone: product.informationPhone || '', images: (product.images || []).map(image => image.url),
-    variants: (product.variants || []).map(option => ({ _id: String(option._id), name: option.name, sku: option.sku || '', standardPrice: option.standardPrice, dealerPrice: option.dealerPrice || 0, stockQuantity: option.stockQuantity, isActive: option.isActive !== false })),
+    variants: variantDefinitionSnapshot(product.variants),
     specifications: plainDetails(product.specifications), additionalDetails: plainDetails(product.additionalDetails),
   };
 }

@@ -1,3 +1,4 @@
+import { retireRemovedMedia } from '../services/storage/retireMedia.js';
 import { storeBannerVideo, discardBannerMedia } from '../services/bannerMedia.service.js';
 import { Router } from 'express';
 import { BENTO_TRANSITIONS, BENTO_IMAGE_LIMIT, BENTO_SECTION_COUNT, visibleBannerSections, BANNER_ROTATION_MIN_SECONDS, BANNER_ROTATION_MAX_SECONDS } from '../../../shared/bannerGrid.js';
@@ -81,6 +82,7 @@ const uploadImage = asyncHandler(async (req, res) => {
   const replacing = Boolean(req.params.id);
   const filter = { singletonKey: 'primary', revision: data.revision, ...(replacing ? { [`sections.${section}.images._id`]: req.params.id } : { [`sections.${section}.images.${BENTO_IMAGE_LIMIT - 1}`]: { $exists: false } }) };
   if (!await BannerGrid.exists(filter)) checked(null);
+  const previous = replacing ? await BannerGrid.findOne(filter).lean() : null;
   let asset;
   if (video) asset = await storeBannerVideo(req.file, `${req.protocol}://${req.get('host')}`);
   else if (config.storageProvider === 'development') {
@@ -89,10 +91,12 @@ const uploadImage = asyncHandler(async (req, res) => {
   } else asset = await storageService.uploadFile({ buffer: req.file.buffer, originalname: req.file.originalname, mimetype: req.file.mimetype, folder: 'vinexus/bento-banners', category: 'cms' });
   const image = { mediaType: asset.mediaType || 'image', posterUrl: asset.posterUrl || '', posterPublicId: asset.posterPublicId || '', duration: asset.duration || null, bytes: asset.bytes || null, url: asset.url, publicId: asset.publicId, title: data.title, link: data.link, fit: data.fit, positionX: data.positionX, positionY: data.positionY, zoom: data.zoom };
   const update = replacing ? { $set: Object.fromEntries(Object.entries(image).map(([key, value]) => [`sections.${section}.images.$[image].${key}`, value])), $inc: { revision: 1 } } : { $push: { [`sections.${section}.images`]: image }, $set: { configured: true }, $inc: { revision: 1 } };
+  let grid;
   try {
-    const grid = checked(await BannerGrid.findOneAndUpdate(filter, update, { ...(replacing ? { arrayFilters: [{ 'image._id': req.params.id }] } : {}), new: true, runValidators: true }));
-    return ApiResponse.success(res, 'Banner added to section', { grid });
+    grid = checked(await BannerGrid.findOneAndUpdate(filter, update, { ...(replacing ? { arrayFilters: [{ 'image._id': req.params.id }] } : {}), new: true, runValidators: true }));
   } catch (error) { await discardBannerMedia(asset); throw error; }
+  if (previous) await retireRemovedMedia(previous, grid);
+  return ApiResponse.success(res, 'Banner added to section', { grid });
 });
 router.post('/:section/images', uploadSingle('file', 'banner'), uploadImage);
 router.post('/:section/images/:id', uploadSingle('file', 'banner'), uploadImage);
@@ -105,8 +109,9 @@ router.delete('/:section/images/:id', asyncHandler(async (req, res) => {
   const section = sectionIndex(req);
   const revision = z.coerce.number().int().min(0).safeParse(req.body?.revision);
   if (!revision.success) throw new AppError('A valid revision is required', 400, ERROR_CODES.VALIDATION_ERROR);
+  const previous = await BannerGrid.findOne({ singletonKey: 'primary', revision: revision.data }).lean();
   const grid = checked(await BannerGrid.findOneAndUpdate({ singletonKey: 'primary', revision: revision.data, [`sections.${section}.images._id`]: req.params.id }, { $pull: { [`sections.${section}.images`]: { _id: req.params.id } }, $inc: { revision: 1 } }, { new: true, runValidators: true }));
-  // Keep stored files: removing a placement does not destroy the original upload.
+  await retireRemovedMedia(previous, grid);
   return ApiResponse.success(res, 'Banner removed from section', { grid });
 }));
 export default router;

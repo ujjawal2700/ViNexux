@@ -1,3 +1,4 @@
+import { retireRemovedMedia } from './storage/retireMedia.js';
 import { SITE_TITLE, SITE_DESCRIPTION } from '../../../shared/seo.js';
 import { Banner } from '../models/Banner.js';
 import { getActiveTheme } from './theme.service.js';
@@ -55,10 +56,12 @@ export const getBannerById = async (id) => {
 };
 
 export const updateBanner = async (id, payload) => {
+  const previous = await Banner.findById(id);
   const banner = await Banner.findByIdAndUpdate(id, payload, { new: true, runValidators: true });
   if (!banner) {
     throw new AppError('Banner not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
   }
+  await retireRemovedMedia(previous?.image, banner.image);
   return banner;
 };
 
@@ -67,7 +70,7 @@ export const deleteBanner = async (id) => {
   if (!banner) {
     throw new AppError('Banner not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
   }
-  if (banner.image?.publicId) await storageService.deleteFile(banner.image.publicId);
+  await retireRemovedMedia(banner.image, null);
   return { message: 'Banner deleted successfully' };
 };
 
@@ -125,6 +128,7 @@ export const getPromoBannerById = async (id) => {
 };
 
 export const updatePromoBanner = async (id, payload) => {
+  const previous = await PromotionalBanner.findById(id);
   const promoBanner = await PromotionalBanner.findByIdAndUpdate(id, payload, {
     new: true,
     runValidators: true,
@@ -132,6 +136,7 @@ export const updatePromoBanner = async (id, payload) => {
   if (!promoBanner) {
     throw new AppError('Promotional banner not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
   }
+  await retireRemovedMedia(previous?.image, promoBanner.image);
   return promoBanner;
 };
 
@@ -140,7 +145,7 @@ export const deletePromoBanner = async (id) => {
   if (!promoBanner) {
     throw new AppError('Promotional banner not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
   }
-  if (promoBanner.image?.publicId) await storageService.deleteFile(promoBanner.image.publicId);
+  await retireRemovedMedia(promoBanner.image, null);
   return { message: 'Promotional banner deleted successfully' };
 };
 
@@ -296,10 +301,12 @@ export const getTrustBadgeById = async (id) => {
 };
 
 export const updateTrustBadge = async (id, payload) => {
+  const previous = await TrustBadge.findById(id);
   const badge = await TrustBadge.findByIdAndUpdate(id, payload, { new: true, runValidators: true });
   if (!badge) {
     throw new AppError('Trust badge not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
   }
+  await retireRemovedMedia(previous?.icon, badge.icon);
   return badge;
 };
 
@@ -308,6 +315,7 @@ export const deleteTrustBadge = async (id) => {
   if (!badge) {
     throw new AppError('Trust badge not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
   }
+  await retireRemovedMedia(badge.icon, null);
   return { message: 'Trust badge deleted successfully' };
 };
 
@@ -400,6 +408,7 @@ export const updateFooterContent = async (payload) => {
   }
 
   let footer = await FooterContent.findOne({}).sort({ updatedAt: -1 });
+  const previous = footer?.toObject ? footer.toObject() : footer;
   if (!footer) {
     footer = await FooterContent.create({ ...updateData, isActive: updateData.isActive !== false });
   } else {
@@ -408,6 +417,7 @@ export const updateFooterContent = async (payload) => {
       runValidators: true,
     });
   }
+  await retireRemovedMedia(previous, footer);
   return normalizeFooter(footer);
 };
 
@@ -469,18 +479,16 @@ export const uploadWebsiteAsset = async (field, file, adminUserId) => {
   }
 
   const settings = await getWebsiteSettings();
-  const uploaded = await storageService.replaceFile({
+  await storageService.replaceFile({
     oldPublicId: settings[field]?.publicId,
+    oldUrl: settings[field]?.url,
     buffer: file.buffer,
     originalname: file.originalname,
     mimetype: file.mimetype,
     folder: `vinexus/website/${allowedFields[field]}`,
     category: 'cms',
+    commit: async asset => { settings[field] = { url: asset.url, publicId: asset.publicId }; settings.updatedBy = adminUserId; await settings.save(); },
   });
-
-  settings[field] = { url: uploaded.url, publicId: uploaded.publicId };
-  settings.updatedBy = adminUserId;
-  await settings.save();
   return settings;
 };
 
@@ -492,21 +500,16 @@ export const uploadBannerImage = async (id, file) => {
 
   const oldPublicId = banner.image?.publicId;
   const folder = 'vinexus/banners';
-  const uploaded = await storageService.replaceFile({
+  await storageService.replaceFile({
     oldPublicId,
+    oldUrl: banner.image?.url,
     buffer: file.buffer,
     originalname: file.originalname,
     mimetype: file.mimetype,
     folder,
     category: 'cms',
+    commit: async asset => { banner.image = { url: asset.url, publicId: asset.publicId }; await banner.save(); },
   });
-
-  banner.image = {
-    url: uploaded.url,
-    publicId: uploaded.publicId,
-  };
-
-  await banner.save();
   return banner;
 };
 
@@ -518,21 +521,16 @@ export const uploadPromoBannerImage = async (id, file) => {
 
   const oldPublicId = promo.image?.publicId;
   const folder = 'vinexus/promotional-banners';
-  const uploaded = await storageService.replaceFile({
+  await storageService.replaceFile({
     oldPublicId,
+    oldUrl: promo.image?.url,
     buffer: file.buffer,
     originalname: file.originalname,
     mimetype: file.mimetype,
     folder,
     category: 'cms',
+    commit: async asset => { promo.image = { url: asset.url, publicId: asset.publicId }; await promo.save(); },
   });
-
-  promo.image = {
-    url: uploaded.url,
-    publicId: uploaded.publicId,
-  };
-
-  await promo.save();
   return promo;
 };
 
@@ -544,20 +542,15 @@ export const uploadTrustBadgeIcon = async (id, file) => {
 
   const oldPublicId = badge.icon?.publicId;
   const folder = 'vinexus/trust-badges';
-  const uploaded = await storageService.replaceFile({
+  await storageService.replaceFile({
     oldPublicId,
+    oldUrl: badge.icon?.url,
     buffer: file.buffer,
     originalname: file.originalname,
     mimetype: file.mimetype,
     folder,
     category: 'cms',
+    commit: async asset => { badge.icon = { url: asset.url, publicId: asset.publicId }; await badge.save(); },
   });
-
-  badge.icon = {
-    url: uploaded.url,
-    publicId: uploaded.publicId,
-  };
-
-  await badge.save();
   return badge;
 };

@@ -61,6 +61,10 @@ const productSpecificationSchema = new mongoose.Schema(
 const variantSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, maxlength: 100 },
   sku: { type: String, trim: true, uppercase: true, maxlength: 50, default: '' },
+  modelNumber: { type: String, trim: true, maxlength: 100, default: '' },
+  model: { type: String, trim: true, maxlength: 100, default: '' },
+  images: { type: [productImageSchema], default: [] },
+  specifications: { type: [productSpecificationSchema], default: [] },
   standardPrice: { type: Number, required: true, min: 0 },
   dealerPrice: { type: Number, min: 0, default: 0 },
   stockQuantity: { type: Number, min: 0, default: 0, validate: Number.isSafeInteger },
@@ -156,6 +160,8 @@ const productSchema = new mongoose.Schema(
       maxlength: [2000, 'Description cannot exceed 2000 characters'],
     },
     images: [productImageSchema],
+    // Product-owned staging assets for variant uploads, excluded from public responses.
+    variantImageAssets: { type: [productImageSchema], default: [] },
     // Retain cleanup work across storage failures so a later save can retry.
     pendingImageDeletions: { type: [String], default: [] },
     specifications: [productSpecificationSchema],

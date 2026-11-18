@@ -196,3 +196,55 @@ test('dealer cart totals each variant price without exposing a discount breakdow
   await expect(summary).toContainText('₹660'); // payable: (120 + 210) × 2
   await expect(page.getByText('CD DISCOUNT', { exact: true })).toHaveCount(0);
 });
+
+
+test('variant switching updates model, photos and partial specifications below the product details', async ({ page }, testInfo) => {
+  await mockApi(page); await seedBrowserSession(page, 'account');
+  const item = { ...product, model: 'Base model', specifications: [{ key: 'Resolution', value: '2MP' }, { key: 'Connectivity', value: '4G' }], variants: variants.map((option, i) => i === 1 ? { ...option, modelNumber: 'CAM-4MP', model: 'Pro camera', images: [{ url: '/variant-front.png' }, { url: '/variant-back.png' }], specifications: [{ key: 'Resolution', value: '4MP' }] } : option) };
+  await page.route('**/*variant-*.png', route => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="maroon"/></svg>' }));
+  await page.route(`**/api/products/${id}`, route => route.fulfill({ json: { success: true, data: item } }));
+  await page.goto(`/products/${id}`);
+  const options = page.getByRole('group', { name: 'Choose Configuration', exact: true });
+  await options.getByRole('radio', { name: '10m', exact: true }).check();
+  await expect(page.getByText('CAM-4MP', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('4MP', { exact: true })).toBeVisible();
+  await expect(page.getByText('4G', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open full size product image' }).locator('img')).toHaveAttribute('src', /variant-front/);
+  await page.getByRole('button', { name: 'Select photo 2', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Open full size product image' }).locator('img')).toHaveAttribute('src', /variant-back/);
+  const selectorBox = await options.boundingBox(), priceBox = await page.getByTestId('purchase-price').boundingBox();
+  expect(selectorBox.y).toBeGreaterThan(priceBox.y + priceBox.height);
+  await page.screenshot({ path: testInfo.outputPath('variant-details.png'), fullPage: true });
+  await options.getByRole('radio', { name: '5m', exact: true }).check();
+  await expect(page.getByText('2MP', { exact: true })).toBeVisible();
+  await expect(page.getByText('CAM-4MP', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Open full size product image' }).locator('img')).toHaveAttribute('src', /cable.webp/);
+});
+
+test('admin saves variant photos, models and one specification override with the product', async ({ page }) => {
+  await mockApi(page); await seedBrowserSession(page, 'admin');
+  const current = structuredClone(product), updates = [], uploads = [];
+  await page.route(`**/api/admin/products/${id}`, route => {
+    if (route.request().method() === 'PUT') { const body = route.request().postDataJSON(); updates.push(body); Object.assign(current, body); }
+    return route.fulfill({ json: { success: true, data: current } });
+  });
+  await page.route(`**/api/admin/products/${id}/images`, route => {
+    uploads.push(route.request().postData());
+    return route.fulfill({ json: { success: true, data: { uploadedImage: { url: 'https://example.com/new-variant.png', publicId: 'new-variant' } } } });
+  });
+  await page.goto(`/admin/products/${id}`);
+  await page.getByRole('button', { name: /^Pricing & Media/ }).click();
+  await page.getByLabel('Model number override (optional) 1', { exact: true }).fill('CAM-5');
+  await page.getByLabel('Model name override (optional) 1', { exact: true }).fill('Camera model');
+  await page.getByRole('button', { name: 'Add override 1', exact: true }).click();
+  await page.getByLabel('Variant 1 specification 1 name', { exact: true }).fill('Resolution');
+  await page.getByLabel('Variant 1 specification 1 value', { exact: true }).fill('5MP');
+  await page.getByLabel('Variant images 1', { exact: true }).setInputFiles({ name: 'camera.png', mimeType: 'image/png', buffer: Buffer.from('image-test') });
+  await expect(page.getByAltText('Variant 1 photo 1', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Save & Publish', exact: true }).click();
+  await expect.poll(() => updates.length).toBe(1);
+  expect(uploads).toHaveLength(1);
+  expect(uploads[0]).toContain('name="forVariant"');
+  expect(updates[0].variants[0]).toMatchObject({ modelNumber: 'CAM-5', model: 'Camera model', images: [{ url: 'https://example.com/new-variant.png', publicId: 'new-variant' }], specifications: [{ key: 'Resolution', value: '5MP' }] });
+  expect(JSON.stringify(updates[0])).not.toContain('blob:');
+});

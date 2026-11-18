@@ -120,7 +120,7 @@ export const deleteProduct = asyncHandler(async (req, res) => {
 export const uploadImage = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { altText } = req.body;
-  const product = await productService.uploadProductImage(id, req.file, altText);
+  const product = await productService.uploadProductImage(id, req.file, altText, req.body.forVariant === 'true');
 
   return ApiResponse.success(
     res,

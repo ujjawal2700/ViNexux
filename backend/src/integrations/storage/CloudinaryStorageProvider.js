@@ -101,10 +101,12 @@ export class CloudinaryStorageProvider extends StorageProvider {
 
     try {
       const cloudinary = await this.getClient();
-      // Try image resource_type first, fallback to raw if not found
-      let result = await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
-      if (result.result !== 'ok') {
-        result = await cloudinary.uploader.destroy(publicId, { resource_type: 'raw' });
+      // Cloudinary stores images, raw documents and videos in separate namespaces.
+      let result;
+      for (const resourceType of ['image', 'raw', 'video']) {
+        result = await cloudinary.uploader.destroy(publicId, { resource_type: resourceType, invalidate: true });
+        if (result.result === 'ok') break;
+        if (result.result !== 'not found') throw new Error(`Unexpected deletion result: ${result.result}`);
       }
 
       return {

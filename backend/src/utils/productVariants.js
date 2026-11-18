@@ -13,7 +13,7 @@ export function normalizeVariants(incoming, previous = []) {
   const ids = new Set(), names = new Set(), skus = new Set();
   const rows = incoming.map(option => {
     const old = previous.find(row => (option._id && String(row._id) === String(option._id)) || (!option._id && row.name.toLowerCase() === option.name.trim().toLowerCase()));
-    const row = { ...option, _id: option._id || old?._id || new mongoose.Types.ObjectId(), name: option.name.trim(), sku: (option.sku || '').trim().toUpperCase(), isActive: option.isActive !== false };
+    const row = { ...(old?.toObject ? old.toObject() : old || {}), ...option, _id: option._id || old?._id || new mongoose.Types.ObjectId(), name: option.name.trim(), sku: (option.sku || '').trim().toUpperCase(), isActive: option.isActive !== false };
     if (ids.has(String(row._id)) || names.has(row.name.toLowerCase()) || (row.sku && skus.has(row.sku))) {
       throw new AppError('Variant names, IDs and non-empty SKUs must be unique within a product.', 400, 'VALIDATION_ERROR');
     }

@@ -123,3 +123,46 @@ describe('Product image storage cleanup', () => {
     expect(product.images).toEqual([{ ...image('keep'), altText: undefined }]);
   });
 });
+
+
+test('shared variant photos are retained and only unreferenced photos are deleted after save', async () => {
+  const product = setup([image('shared')]);
+  const option = { _id: '507f1f77bcf86cd799439012', name: '4MP', standardPrice: 100, dealerPrice: 80, stockQuantity: 2, isActive: true };
+  Object.assign(product, { standardPrice: 100, dealerPrice: 80, stockQuantity: 2 });
+  product.variants = [{ ...option, images: [image('shared'), image('old-variant')] }];
+  product.variantImageAssets = [image('new-variant')];
+  await productService.updateProduct(id, { variants: [{ ...option, images: [image('new-variant')] }] });
+  expect(product.variantImageAssets).toEqual([]);
+  expect(product.images).toEqual([image('shared')]);
+  expect(storageService.deleteFile).toHaveBeenCalledTimes(1);
+  expect(storageService.deleteFile).toHaveBeenCalledWith('old-variant');
+});
+
+test('variant image upload is staged separately from the main gallery', async () => {
+  const product = setup([image('main')]); product._id = id;
+  jest.spyOn(storageService, 'uploadFile').mockResolvedValue(image('variant'));
+  const write = jest.spyOn(Product, 'findByIdAndUpdate').mockResolvedValue(product);
+  await productService.uploadProductImage(id, { buffer: Buffer.from('test'), originalname: 'x.png', mimetype: 'image/png' }, 'Variant', true);
+  expect(write.mock.calls[0][1].$push.variantImageAssets).toMatchObject({ publicId: 'variant' });
+  expect(write.mock.calls[0][1].$push.images).toBeUndefined();
+});
+
+
+test('stale variant metadata is rejected before it can overwrite another admin’s edits', async () => {
+  const product = setup([]);
+  const option = { _id: '507f1f77bcf86cd799439012', name: '4MP', standardPrice: 100, dealerPrice: 80, stockQuantity: 2, modelNumber: 'new-model' };
+  product.variants = [option];
+  await expect(productService.updateProduct(id, { variants: [{ ...option, modelNumber: 'mine' }], expectedVariants: [{ ...option, modelNumber: 'old-model' }] })).rejects.toMatchObject({ statusCode: 409 });
+  expect(product.save).not.toHaveBeenCalled();
+  expect(storageService.deleteFile).not.toHaveBeenCalled();
+});
+
+test('failed variant save leaves old storage intact', async () => {
+  const product = setup([]);
+  Object.assign(product, { standardPrice: 100, dealerPrice: 80, stockQuantity: 2 });
+  const option = { _id: '507f1f77bcf86cd799439012', name: '4MP', standardPrice: 100, dealerPrice: 80, stockQuantity: 2 };
+  product.variants = [{ ...option, images: [image('old-variant')] }];
+  product.save.mockRejectedValue(new Error('Database unavailable'));
+  await expect(productService.updateProduct(id, { variants: [{ ...option, images: [image('new-variant')] }] })).rejects.toThrow('Database unavailable');
+  expect(storageService.deleteFile).not.toHaveBeenCalled();
+});

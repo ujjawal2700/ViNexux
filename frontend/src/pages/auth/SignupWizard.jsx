@@ -1,3 +1,4 @@
+import { ORGANISATION_TYPES } from '../../../../shared/dealerOrganisation.js';
 import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
@@ -30,7 +31,6 @@ const PHONE_REGEX = /^[6-9]\d{9}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml', 'application/pdf'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ORGANISATION_TYPES = ['Proprietorship', 'Partnership', 'Limited Liability Partnership (LLP)', 'Private Limited Company', 'Limited Company', 'Others'];
 const OfficeLocationPicker = lazy(() => import('../../components/auth/OfficeLocationPicker'));
 
 const inputClass =
