@@ -1,3 +1,4 @@
+import AdminDirectoryTable from '../../components/admin/AdminDirectoryTable';
 import AccountManagementActions from '../../components/admin/AccountManagementActions';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -175,85 +176,61 @@ const AdminCustomersPage = () => {
         />
       ) : (
         <div className="space-y-4">
-          <Table>
-            <Table.Header>
-              <Table.Row>
-                <Table.Head>Customer Name</Table.Head>
-                <Table.Head>Email Address</Table.Head>
-                <Table.Head>Phone Number</Table.Head>
-                <Table.Head>Registered Date</Table.Head>
-                <Table.Head>Status</Table.Head>
-                <Table.Head className="text-right">Actions</Table.Head>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
-              {customers.map((cust) => {
-                const nameStr = cust.fullName || cust.name || 'Unnamed Customer';
-                const statusVal = cust.accountStatus || cust.status || 'active';
-
-                return (
-                  <Table.Row key={cust._id}>
-                    <Table.Cell>
-                      <div className="text-xs font-bold text-foreground">{nameStr}</div>
-                      <div className="text-[10px] text-muted-foreground font-mono">ID: {cust._id}</div>
-                    </Table.Cell>
-                    <Table.Cell className="font-mono text-xs text-foreground">
-                      {cust.email || 'N/A'}
-                    </Table.Cell>
-                    <Table.Cell className="font-mono text-xs text-foreground">
-                      {cust.phone || 'N/A'}
-                    </Table.Cell>
-                    <Table.Cell className="text-xs text-muted-foreground">
-                      {new Date(cust.createdAt).toLocaleDateString('en-IN', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                      })}
-                    </Table.Cell>
-                    <Table.Cell>
-                      <StatusBadge status={statusVal} />
-                    </Table.Cell>
-                    <Table.Cell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
+          <AdminDirectoryTable className="customer-directory">
+            <Table.Header><Table.Row>
+              <Table.Head className="w-[22%]">Customer</Table.Head>
+              <Table.Head className="w-[25%]">Contact</Table.Head>
+              <Table.Head className="w-[18%]">Registered</Table.Head>
+              <Table.Head className="w-[15%]">Status</Table.Head>
+              <Table.Head className="w-[20%]">Actions</Table.Head>
+            </Table.Row></Table.Header>
+            <Table.Body>{customers.map(cust => {
+              const nameStr = cust.fullName || cust.name || 'Unnamed Customer';
+              const statusVal = cust.accountStatus || cust.status || 'active';
+              return <Table.Row key={cust._id}>
+                <Table.Cell><p className="mb-1 text-xs font-bold uppercase text-slate-500 xl:hidden">Customer</p><p className="text-sm font-bold leading-6 text-foreground">{nameStr}</p><p className="mt-1 break-all font-mono text-xs text-slate-500">ID: {cust._id}</p></Table.Cell>
+                <Table.Cell><p className="mb-1 text-xs font-bold uppercase text-slate-500 xl:hidden">Contact</p><p className="break-all text-sm text-slate-700">{cust.email || 'Email not provided'}</p><p className="mt-1 text-sm text-slate-600">{cust.phone || 'Phone not provided'}</p></Table.Cell>
+                <Table.Cell><p className="mb-1 text-xs font-bold uppercase text-slate-500 xl:hidden">Registered</p><p className="text-sm text-slate-600">{cust.createdAt ? new Date(cust.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Not recorded'}</p></Table.Cell>
+                <Table.Cell><p className="mb-1 text-xs font-bold uppercase text-slate-500 xl:hidden">Status</p><StatusBadge status={statusVal} /></Table.Cell>
+                <Table.Cell className="md:col-span-2 xl:col-auto"><p className="mb-2 text-xs font-bold uppercase text-slate-500 xl:hidden">Actions</p>
+                      <div className="grid grid-cols-2 gap-2 xl:grid-cols-1 2xl:grid-cols-2">
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           onClick={() => navigate(`/admin/customers/${cust._id}`)}
-                          className="h-8 px-2 text-xs"
+                          className="min-h-9 min-w-0 px-2 text-sm"
                           title="View Customer Profile & Enquiries"
                         >
                           <Eye className="w-3.5 h-3.5 mr-1" /> View
                         </Button>
 
-                        <AccountManagementActions role="customer" record={cust} onSaved={fetchCustomers} />
+                        <AccountManagementActions role="customer" record={cust} onSaved={fetchCustomers} layout="grid" />
                         {statusVal === 'blocked' ? (
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => { setStatusTarget(cust); setTargetNewStatus('active'); }}
-                            className="h-8 px-2 text-xs text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50"
+                            className="min-h-9 min-w-0 border-emerald-200 px-2 text-sm text-emerald-800 hover:bg-emerald-50"
                             title="Unblock Customer"
                           >
                             <ShieldCheck className="w-3.5 h-3.5 mr-1" /> Unblock
                           </Button>
                         ) : (
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => { setStatusTarget(cust); setTargetNewStatus('blocked'); }}
-                            className="h-8 px-2 text-xs text-rose-700 hover:text-rose-800 hover:bg-rose-50"
+                            className="min-h-9 min-w-0 border-rose-200 px-2 text-sm text-rose-700 hover:bg-rose-50"
                             title="Block Customer"
                           >
                             <ShieldAlert className="w-3.5 h-3.5 mr-1" /> Block
                           </Button>
                         )}
                       </div>
-                    </Table.Cell>
-                  </Table.Row>
-                );
-              })}
-            </Table.Body>
-          </Table>
+                </Table.Cell>
+              </Table.Row>;
+            })}</Table.Body>
+          </AdminDirectoryTable>
 
           {pagination.total > 0 && (
             <Pagination

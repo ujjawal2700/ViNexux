@@ -49,6 +49,11 @@ import {
   ChevronLeft,
 } from "lucide-react";
 
+const persistedVariants = rows => rows.map(({ _key, ...row }) => ({ ...row,
+  images: (row.images || []).filter(image => !image.file).map((image, sortOrder) => ({ url: image.url, ...(image.publicId ? { publicId: image.publicId } : {}), altText: image.altText || '', sortOrder })),
+  specifications: (row.specifications || []).map(spec => ({ key: spec.key.trim(), value: spec.value.trim() })),
+}));
+
 const TABS = [
   {
     id: "general",
@@ -713,6 +718,10 @@ const AdminProductDetailPage = () => {
       return;
     }
 
+    if (variants.some(row => (row.specifications || []).some(spec => !spec.key.trim() || !spec.value.trim()) || new Set((row.specifications || []).map(spec => spec.key.trim().toLowerCase())).size !== (row.specifications || []).length)) {
+      setVariantError('Enter a unique specification name and value for each override, or remove the empty override.'); setActiveTab('variants'); return;
+    }
+
     // 1. Validate General Info
     if (needs("name") && !name.trim()) {
       scrollToAndHighlightField("name", "general", "Product Title is required.");
@@ -871,7 +880,7 @@ const AdminProductDetailPage = () => {
         isLowStock,
         stockQuantity: Number(stockQuantity) >= 0 ? Number(stockQuantity) : 0,
         variant: variant.trim(),
-        variants: variants.map(({ _key, ...row }) => row),
+        variants: persistedVariants(variants),
         warranty: warranty.trim(),
         warrantyType,
         hsnCode: hsnCode.trim(),
@@ -926,6 +935,24 @@ const AdminProductDetailPage = () => {
           sortOrder: savedImages.length,
         });
       }
+      const savedVariants = [];
+      for (const option of variants) {
+        const savedVariantImages = [];
+        for (const image of option.images || []) {
+          let savedImage = image;
+          if (image.file) {
+            const res = await adminService.uploadProductImage(productId, image.file, image.altText || `${name} — ${option.name}`, true);
+            savedImage = res.data?.uploadedImage;
+            if (!savedImage?.url) throw new Error('Variant image upload returned no image.');
+            const identity = option._id || option._key;
+            setVariants(previous => previous.map(row => (row._id || row._key) === identity ? { ...row, images: row.images.map(item => item === image ? savedImage : item) } : row));
+            URL.revokeObjectURL(image.previewUrl);
+          }
+          savedVariantImages.push(savedImage);
+        }
+        savedVariants.push({ ...option, images: savedVariantImages });
+      }
+      payload.variants = persistedVariants(savedVariants);
       // Existing products receive only intentional edits. Saving an image must
       // not reset stock, visibility, categories or legacy required fields.
       const update = isCreateMode ? { ...payload, isActive: !savingDraft }
@@ -1538,7 +1565,7 @@ const AdminProductDetailPage = () => {
                 </p>
               </div>
 
-              <ProductVariantsEditor value={variants} disabled={formSubmitting} onChange={next => {
+              <ProductVariantsEditor value={variants} specifications={specifications} disabled={formSubmitting} onChange={next => {
                 setVariants(next); setVariantError('');
                 if (next.length) { const totals = variantSummary(next); setStandardPrice(String(totals.standardPrice)); setDealerPrice(String(totals.dealerPrice)); setStockQuantity(String(totals.stockQuantity)); }
               }} />

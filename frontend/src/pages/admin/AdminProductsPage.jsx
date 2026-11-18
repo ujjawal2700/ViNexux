@@ -317,7 +317,7 @@ const AdminProductsPage = () => {
           prevSearchRef.current = search;
           handlePageChange(1);
         }}
-        searchPlaceholder="Search by SKU or Product Name..."
+        searchPlaceholder="Search by product name, SKU, model number or model name..."
         filters={[
           {
             value: isActiveFilter,

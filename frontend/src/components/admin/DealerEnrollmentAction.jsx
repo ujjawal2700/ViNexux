@@ -1,3 +1,4 @@
+import { ORGANISATION_TYPES } from '../../../../shared/dealerOrganisation.js';
 import { lazy, Suspense, useRef, useState } from 'react';
 import apiClient from '../../api/axios';
 import { useAuth } from '../../hooks/useAuth';
@@ -6,7 +7,7 @@ import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 
 const OfficeLocationPicker = lazy(() => import('../auth/OfficeLocationPicker'));
-const organisations = ['Proprietorship', 'Partnership', 'Limited Liability Partnership (LLP)', 'Private Limited Company', 'Limited Company', 'Others'];
+const organisations = ORGANISATION_TYPES;
 const fields = [
   ['companyName', 'Company name', 150, '.{2,150}'], ['gstin', 'GSTIN', 15, '[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]'],
   ['pan', 'PAN number', 10, '[A-Z]{5}[0-9]{4}[A-Z]'], ['aadhaarNumber', 'Aadhaar number', 12, '[0-9]{12}'],

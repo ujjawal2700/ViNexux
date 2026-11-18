@@ -1,3 +1,4 @@
+import { retireRemovedMedia } from '../services/storage/retireMedia.js';
 import { campaignValidationError } from '../utils/campaignValidationError.js';
 import { Router } from 'express';
 import { z } from 'zod';
@@ -65,11 +66,13 @@ router.put('/:id', asyncHandler(async (req, res) => {
   if (data.channel !== previous.channel) fail('Create a new campaign to change its channel.');
   const campaign = await Campaign.findOneAndUpdate({ _id: previous._id, status: 'draft', revision }, { $set: data, $inc: { revision: 1 } }, { new: true });
   if (!campaign) fail('This draft changed or has already been queued. Reload it before editing.', 409);
+  await retireRemovedMedia(previous, campaign);
   reply(res, { campaign });
 }));
 router.delete('/:id', asyncHandler(async (req, res) => {
   const campaign = await find(req.params.id);
   if (!(await Campaign.deleteOne({ _id: campaign._id, status: 'draft' })).deletedCount) fail('Only drafts can be deleted.', 409);
+  await retireRemovedMedia(campaign, null);
   reply(res, { deleted: true });
 }));
 router.post('/:id/duplicate', asyncHandler(async (req, res) => {

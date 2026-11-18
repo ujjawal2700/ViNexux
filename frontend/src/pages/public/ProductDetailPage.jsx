@@ -1,3 +1,5 @@
+import '../../styles/product-gallery.css';
+import { copyText } from '../../utils/clipboard';
 import { activeVariants, hasVariants, selectedVariantProduct } from '../../../../shared/productVariants.js';
 import { productPath, productStructuredData, SITE_ORIGIN } from '../../../../shared/seo.js';
 import PriceGate, { LoginToViewPrices, usePriceVisibility } from '../../components/products/PriceGate';
@@ -32,6 +34,7 @@ import {
   Heart,
   Copy,
   Link2,
+  Share2,
   Check,
   ListFilter,
   Minus,
@@ -80,6 +83,8 @@ export const ProductDetailPage = () => {
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState(null);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const shareGuard = useRef(false);
   const [hasCopied, setHasCopied] = useState(false);
   const [hasNameCopied, setHasNameCopied] = useState(false);
   const [quantity, setQuantity] = useState(1);
@@ -236,7 +241,7 @@ export const ProductDetailPage = () => {
 
   const options = activeVariants(product);
   const variantId = options.some(option => String(option._id) === selectedVariantId) ? selectedVariantId : String(options.find(option => option.stockQuantity > 0)?._id || options[0]?._id || '');
-  const purchaseProduct = hasVariants(product) ? selectedVariantProduct(product, variantId) : product;
+  const purchaseProduct = useMemo(() => hasVariants(product) ? selectedVariantProduct(product, variantId) : product, [product, variantId]);
   const standardPrice = purchaseProduct?.standardPrice || 0;
   const dealerPrice = purchaseProduct?.dealerPrice || 0;
 
@@ -359,36 +364,52 @@ export const ProductDetailPage = () => {
     }
   };
 
-  // Copy link
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.href);
-    setHasCopied(true);
-    toast.success('Product link copied to clipboard!');
-    setTimeout(() => setHasCopied(false), 2000);
+  const productLink = () => new URL(productPath(product), window.location.origin).href;
+  const markLinkCopied = () => { setHasCopied(true); setTimeout(() => setHasCopied(false), 2000); };
+  const handleCopyLink = async () => {
+    if (await copyText(productLink())) { markLinkCopied(); toast.success('Product link copied to clipboard!'); }
+    else toast.error('Could not copy the link. Please copy the product address from your browser.');
+  };
+  const handleCopyName = async () => {
+    if (await copyText(purchaseProduct?.name || product?.name || '')) {
+      setHasNameCopied(true); toast.success('Product name copied to clipboard!');
+      setTimeout(() => setHasNameCopied(false), 2000);
+    } else toast.error('Could not copy the product name. Please select and copy it.');
+  };
+  const handleShareProduct = async () => {
+    if (shareGuard.current) return;
+    shareGuard.current = true; setIsSharing(true);
+    const url = productLink();
+    // Start both browser actions during the click gesture. Sharing only contains the public link and name.
+    const copying = copyText(url);
+    try {
+      if (typeof navigator.share === 'function') {
+        await navigator.share({ title: purchaseProduct?.name || product.name, url });
+        if (await copying) { markLinkCopied(); toast.success('Product shared and link copied!'); }
+        else toast.success('Product shared!');
+      } else if (await copying) { markLinkCopied(); toast.success('Product link copied. Paste it into any app to share.'); }
+      else toast.error('Could not share or copy the link. Please copy the product address from your browser.');
+    } catch (error) {
+      if (await copying) { markLinkCopied(); toast.success('Product link copied. Paste it into any app to share.'); }
+      else if (error.name !== 'AbortError') toast.error('Could not share this product. Please use Copy Link.');
+    } finally { shareGuard.current = false; setIsSharing(false); }
   };
 
-  const handleCopyName = () => {
-    navigator.clipboard.writeText(product?.name || '');
-    setHasNameCopied(true);
-    toast.success('Product name copied to clipboard!');
-    setTimeout(() => setHasNameCopied(false), 2000);
-  };
 
-
-  const modelNumber = product?.modelNumber || `VNX-${String(product?._id || '').slice(-8).toUpperCase()}`;
-  const modelName = productModelVariant(product) || 'Not specified';
+  const modelNumber = purchaseProduct?.modelNumber || `VNX-${String(product?._id || '').slice(-8).toUpperCase()}`;
+  const modelName = productModelVariant(purchaseProduct) || 'Not specified';
 
   const warrantyText = useMemo(() => {
-    return product?.warranty || product?.specifications?.find((s) => s.key.toLowerCase().includes('warranty'))?.value || 'Not specified';
-  }, [product]);
+    return purchaseProduct?.warranty || purchaseProduct?.specifications?.find((s) => s.key.toLowerCase().includes('warranty'))?.value || 'Not specified';
+  }, [purchaseProduct]);
 
-  const fullSpecifications = useMemo(() => orderedProductSpecifications(product, brandName), [product, brandName]);
+  const fullSpecifications = useMemo(() => orderedProductSpecifications(purchaseProduct, brandName), [purchaseProduct, brandName]);
 
   // Product Images Gallery (Safe for hooks order)
   const images = useMemo(() => {
-    if (!product) return [{ url: '' }];
-    return product.images?.length ? product.images : [{ url: '' }];
-  }, [product]);
+    if (!purchaseProduct) return [{ url: '' }];
+    return purchaseProduct.images?.length ? purchaseProduct.images : [{ url: '' }];
+  }, [purchaseProduct]);
 
   const currentImage = images[selectedImageIndex]?.url || images[0]?.url || '';
 
@@ -467,13 +488,13 @@ export const ProductDetailPage = () => {
             {/* Keep all thumbnails in a scrollable rail beside the main image. */}
             {images.length > 1 && (
               <div className="relative w-12 shrink-0 self-stretch sm:w-16">
-                <div role="group" aria-label="Product image thumbnails" className="absolute inset-0 flex flex-col gap-2 overflow-y-auto overscroll-contain">
+                <div role="group" aria-label="Product image thumbnails" className="product-thumbnail-rail absolute inset-0 flex flex-col gap-2 overflow-y-auto overscroll-contain">
                 {images.map((img, index) => (
                   <button
                     type="button"
                     key={index}
                     onClick={() => setSelectedImageIndex(index)}
-                    className={`w-12 h-12 sm:w-16 sm:h-16 rounded-lg overflow-hidden border-2 transition-all shrink-0 bg-[var(--store-surface)] p-1 cursor-pointer flex items-center justify-center ${
+                    className={`aspect-square w-full rounded-lg overflow-hidden border-2 transition-all shrink-0 bg-[var(--store-surface)] p-1 cursor-pointer flex items-center justify-center ${
                       selectedImageIndex === index
                         ? 'border-[var(--store-primary)] shadow-xs ring-1 ring-[var(--store-primary)]/20'
                         : 'border-[var(--store-border)] opacity-70 hover:opacity-100 hover:border-[var(--store-border)]'
@@ -507,7 +528,7 @@ export const ProductDetailPage = () => {
                   src={currentImage}
                   sizes="(max-width: 768px) 100vw, 50vw"
                   responsiveWidths={[320, 640, 960, 1280, 1600, 2048]}
-                  alt={product.name}
+                  alt={purchaseProduct?.name || product.name}
                   objectFit="object-contain"
                   className="h-full w-full rounded-lg"
                   imgClassName="transition-transform duration-100 motion-safe:group-hover/product-image:scale-200"
@@ -560,7 +581,7 @@ export const ProductDetailPage = () => {
                 <X className="h-6 w-6" />
               </button>
               {images.length > 1 && <button type="button" aria-label="Previous image" onClick={(event) => { event.stopPropagation(); setSelectedImageIndex((index) => (index - 1 + images.length) % images.length); }} className="absolute left-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/15 p-3 text-white hover:bg-white/25"><ChevronLeft className="h-7 w-7" /></button>}
-              <img src={currentImage} alt={product.name} onClick={(event) => event.stopPropagation()} className="max-h-[86vh] max-w-[92vw] select-none object-contain" />
+              <img src={currentImage} alt={purchaseProduct?.name || product.name} onClick={(event) => event.stopPropagation()} className="max-h-[86vh] max-w-[92vw] select-none object-contain" />
               {images.length > 1 && <button type="button" aria-label="Next image" onClick={(event) => { event.stopPropagation(); setSelectedImageIndex((index) => (index + 1) % images.length); }} className="absolute right-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/15 p-3 text-white hover:bg-white/25"><ChevronRight className="h-7 w-7" /></button>}
               {images.length > 1 && <div className="absolute bottom-4 left-1/2 flex max-w-[90vw] -translate-x-1/2 gap-2 overflow-x-auto rounded-lg bg-black/40 p-2" onClick={(event) => event.stopPropagation()}>{images.map((img, index) => <button key={img.publicId || img.url || index} type="button" aria-label={`Show image ${index + 1}`} onClick={() => setSelectedImageIndex(index)} className={`h-14 w-14 shrink-0 overflow-hidden rounded border-2 bg-white ${selectedImageIndex === index ? 'border-white' : 'border-white/30 opacity-70'}`}><img src={img.url} alt="" className="h-full w-full object-contain" /></button>)}</div>}
             </div>
@@ -574,46 +595,12 @@ export const ProductDetailPage = () => {
         <div className="min-w-0 space-y-4">
           {/* Title Row + Action Icons + Brand Box */}
           <div className="flex items-start justify-between gap-4">
-            <div className="space-y-2 flex-1">
+            <div className="min-w-0 flex-1 space-y-2">
               <h1 className="text-xl sm:text-2xl font-bold text-[var(--store-text)] tracking-tight leading-snug">
                 {purchaseProduct?.name || product.name}
               </h1>
 
-              {/* Product actions */}
-              <div className="flex items-center gap-3 pt-0.5">
-                <button
-                  type="button"
-                  onClick={handleToggleWishlist}
-                  className={`p-1.5 rounded-full border transition-all cursor-pointer ${
-                    isWishlisted
-                      ? 'border-rose-300 bg-rose-50 text-rose-600'
-                      : 'border-[var(--store-border)] text-[var(--store-muted)] hover:text-[var(--store-primary)] hover:border-[var(--store-border)]'
-                  }`}
-                  title={isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
-                >
-                  <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-rose-600' : ''}`} />
-                </button>
 
-                <button
-                  type="button"
-                  onClick={handleCopyName}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--store-border)] text-[var(--store-muted)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)]/40 hover:bg-[var(--store-primary)]/5 transition-colors cursor-pointer"
-                  title={hasNameCopied ? "Product Name Copied!" : "Copy Product Name"}
-                  aria-label="Copy Product Name"
-                >
-                  {hasNameCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--store-border)] text-[var(--store-muted)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)]/40 hover:bg-[var(--store-primary)]/5 transition-colors cursor-pointer"
-                  title={hasCopied ? "Product Link Copied!" : "Copy Product Link"}
-                  aria-label="Copy Product Link"
-                >
-                  {hasCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Link2 className="w-4 h-4" />}
-                </button>
-              </div>
             </div>
 
             {/* Brand Logo / Box (Clickable link to specific brand page) */}
@@ -636,6 +623,50 @@ export const ProductDetailPage = () => {
             )}
 
           </div>
+
+              {/* Product actions */}
+              <div role="group" aria-label="Product actions" className="product-actions pt-0.5">
+                <button
+                  type="button"
+                  onClick={handleToggleWishlist}
+                  className={`product-action inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors cursor-pointer ${
+                    isWishlisted
+                      ? 'border-rose-300 bg-rose-50 text-rose-600'
+                      : 'border-[var(--store-border)] text-[var(--store-muted)] hover:text-[var(--store-primary)] hover:border-[var(--store-border)]'
+                  }`}
+                  title={isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                  aria-label={isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                  aria-pressed={isWishlisted}
+                >
+                  <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-rose-600' : ''}`} />
+                  <span>{isWishlisted ? 'Saved' : 'Wishlist'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCopyName}
+                  className="product-action inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold border-[var(--store-border)] text-[var(--store-muted)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)]/40 hover:bg-[var(--store-primary)]/5 transition-colors cursor-pointer"
+                  title={hasNameCopied ? "Product Name Copied!" : "Copy Product Name"}
+                  aria-label="Copy Product Name"
+                >
+                  {hasNameCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                  <span>{hasNameCopied ? 'Copied' : 'Copy Name'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="product-action inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold border-[var(--store-border)] text-[var(--store-muted)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)]/40 hover:bg-[var(--store-primary)]/5 transition-colors cursor-pointer"
+                  title={hasCopied ? "Product Link Copied!" : "Copy Product Link"}
+                  aria-label="Copy Product Link"
+                >
+                  {hasCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Link2 className="w-4 h-4" />}
+                  <span>{hasCopied ? 'Copied' : 'Copy Link'}</span>
+                </button>
+                <button type="button" onClick={handleShareProduct} disabled={isSharing} aria-label="Share Product" title="Copy and share this product link" className="product-action inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[var(--store-primary)] bg-[var(--store-primary)] px-3 py-2 text-xs font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-60">
+                  <Share2 className="h-4 w-4" /><span>{isSharing ? 'Sharing…' : <><span className="share-full-label">Share Product</span><span className="share-short-label">Share</span></>}</span>
+                </button>
+              </div>
 
           {/* Product Overview Specs Table (Matching Given Image) */}
           <div className="border border-[var(--store-border)] rounded-xl overflow-hidden shadow-2xs bg-[var(--store-surface)] text-xs">
@@ -709,23 +740,7 @@ export const ProductDetailPage = () => {
         <div className="min-w-0">
           <div className="bg-[var(--store-surface)] rounded-2xl border border-[var(--store-border)] p-5 shadow-xs space-y-4">
             
-            {options.length > 0 && <fieldset className="min-w-0 space-y-3" aria-label="Choose Configuration">
-              <legend className="flex items-center gap-2 text-base font-bold text-[var(--store-primary)]"><ListFilter className="h-5 w-5" aria-hidden="true" />Choose Configuration</legend>
-              <p className="text-sm font-semibold text-[var(--store-muted)]">Variant</p>
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,120px),1fr))] gap-2">
-                {options.map(option => {
-                  const selected = String(option._id) === variantId;
-                  const price = option.applicablePrice ?? (isApprovedDealer && option.dealerPrice > 0 ? option.dealerPrice : option.standardPrice);
-                  const inStock = getMaximumOrderQuantity(selectedVariantProduct(product, option._id)) > 0;
-                  return <label key={option._id} className={`relative min-w-0 cursor-pointer rounded-lg border p-3 transition-colors focus-within:ring-2 focus-within:ring-[var(--store-primary)] ${selected ? 'border-[var(--store-primary)] bg-[var(--store-primary)]/5 ring-1 ring-[var(--store-primary)]' : 'border-[var(--store-border)] hover:border-[var(--store-primary)]'}`}>
-                    <input type="radio" name="product-variant" aria-label={option.name} value={String(option._id)} checked={selected} onChange={() => { setSelectedVariantId(String(option._id)); setQuantity(1); }} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
-                    <span className="block break-words text-base font-semibold text-[var(--store-primary)]">{option.name}</span>
-                    <span className="mt-1 block text-xs leading-5">{pricesVisible && <><span className="text-[var(--store-muted)]">{formatCurrency(price)}</span><span aria-hidden="true"> · </span></>}<span className={inStock ? 'text-emerald-700' : 'text-rose-600'}>{inStock ? 'In Stock' : 'Out of Stock'}</span></span>
-                  </label>;
-                })}
-              </div>
-              {purchaseProduct?.sku && <p className="text-xs text-[var(--store-muted)]">SKU: {purchaseProduct.sku}</p>}
-            </fieldset>}
+
             {/* Price & Discount Row */}
             {pricesVisible && <PriceGate>
             <div className="flex items-center justify-between gap-2 border-b border-[var(--store-border)] pb-3">
@@ -822,6 +837,23 @@ export const ProductDetailPage = () => {
             </div>
           </div>
         </div>
+            {options.length > 0 && <fieldset className="min-w-0 space-y-3 rounded-xl border border-[var(--store-border)] p-4 xl:col-span-2" aria-label="Choose Configuration">
+              <legend className="flex items-center gap-2 text-base font-bold text-[var(--store-primary)]"><ListFilter className="h-5 w-5" aria-hidden="true" />Choose Configuration</legend>
+              <p className="text-sm font-semibold text-[var(--store-muted)]">Variant</p>
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,120px),1fr))] gap-2">
+                {options.map(option => {
+                  const selected = String(option._id) === variantId;
+                  const price = option.applicablePrice ?? (isApprovedDealer && option.dealerPrice > 0 ? option.dealerPrice : option.standardPrice);
+                  const inStock = getMaximumOrderQuantity(selectedVariantProduct(product, option._id)) > 0;
+                  return <label key={option._id} className={`relative min-w-0 cursor-pointer rounded-lg border p-3 transition-colors focus-within:ring-2 focus-within:ring-[var(--store-primary)] ${selected ? 'border-[var(--store-primary)] bg-[var(--store-primary)]/5 ring-1 ring-[var(--store-primary)]' : 'border-[var(--store-border)] hover:border-[var(--store-primary)]'}`}>
+                    <input type="radio" name="product-variant" aria-label={option.name} value={String(option._id)} checked={selected} onChange={() => { setSelectedVariantId(String(option._id)); setSelectedImageIndex(0); setQuantity(1); }} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
+                    <span className="block break-words text-base font-semibold text-[var(--store-primary)]">{option.name}</span>
+                    <span className="mt-1 block text-xs leading-5">{pricesVisible && <><span className="text-[var(--store-muted)]">{formatCurrency(price)}</span><span aria-hidden="true"> · </span></>}<span className={inStock ? 'text-emerald-700' : 'text-rose-600'}>{inStock ? 'In Stock' : 'Out of Stock'}</span></span>
+                  </label>;
+                })}
+              </div>
+              {purchaseProduct?.sku && <p className="text-xs text-[var(--store-muted)]">SKU: {purchaseProduct.sku}</p>}
+            </fieldset>}
         </div>
       </div>
 
@@ -913,7 +945,7 @@ export const ProductDetailPage = () => {
         <div className="storefront-product-grid gap-4 sm:gap-5">{recentProducts.map(value => <ProductCard key={value._id} product={value} />)}</div>
       </section>}
 
-      <AvailabilityEnquiryModal product={product} variantId={variantId || undefined} isOpen={enquiryOpen} onClose={() => setEnquiryOpen(false)} />
+      <AvailabilityEnquiryModal product={purchaseProduct || product} variantId={variantId || undefined} isOpen={enquiryOpen} onClose={() => setEnquiryOpen(false)} />
     </div>
   );
 };

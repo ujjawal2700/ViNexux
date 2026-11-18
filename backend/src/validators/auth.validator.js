@@ -1,10 +1,10 @@
+import { ORGANISATION_TYPES } from '../../../shared/dealerOrganisation.js';
 import { z } from 'zod';
 
 const INDIAN_PHONE_REGEX = /^[6-9]\d{9}$/;
 const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
 const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 const MSME_REGEX = /^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/;
-const ORGANISATION_TYPES = ['Proprietorship', 'Partnership', 'Limited Liability Partnership (LLP)', 'Private Limited Company', 'Limited Company', 'Others'];
 const contactIdentifier = z.string().trim().min(3).max(254).refine(
   (value) => z.string().email().safeParse(value).success || INDIAN_PHONE_REGEX.test(value),
   { message: 'Enter a valid email address or 10-digit Indian mobile number' }

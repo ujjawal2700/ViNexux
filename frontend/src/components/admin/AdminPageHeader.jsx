@@ -14,7 +14,7 @@ const AdminPageHeader = ({ title, subtitle, action, badge }) => {
         </div>
         {subtitle && <p className="text-xs text-muted-foreground mt-1 font-medium">{subtitle}</p>}
       </div>
-      {action && <div className="flex items-center gap-3">{action}</div>}
+      {action && <div className="flex shrink-0 flex-wrap items-center gap-2">{action}</div>}
     </div>
   );
 };
