@@ -160,6 +160,38 @@ const enrollDealer = converting => asyncHandler(async (req, res) => {
   }
   ApiResponse.success(res, converting ? 'Customer converted to an approved dealer.' : 'Dealer created and approved.', { user }, converting ? 200 : 201);
 });
+// Keep JSON account edits compatible while allowing optional dealer documents
+// in the same atomic account/profile update.
+const dealerEditUpload = (req, res, next) => {
+  if (!req.is('multipart/form-data')) return next();
+  enrollmentUpload(req, res, error => {
+    if (error) return next(error);
+    try {
+      if (Object.keys(req.body || {}).some(key => key !== 'details')) throw new AppError('Submit dealer details and document files.', 400, 'VALIDATION_ERROR');
+      let details;
+      try { details = JSON.parse(req.body.details || '{}'); } catch { throw new AppError('Invalid dealer details.', 400, 'VALIDATION_ERROR'); }
+      req.body = accountBody('dealer').parse(details);
+      next();
+    } catch (failure) { next(failure); }
+  });
+};
+const editAccount = role => asyncHandler(async (req, res) => {
+  const documents = [];
+  let user;
+  try {
+    for (const type of documentTypes) {
+      const file = req.files?.[type]?.[0];
+      if (!file) continue;
+      const uploaded = await storageService.uploadFile({ ...file, category: 'kyc', folder: 'vinexus/kyc/admin' });
+      documents.push({ type, url: uploaded.url, publicId: uploaded.publicId, uploadedAt: new Date() });
+    }
+    user = await saveAccount({ id: req.params.id, role, data: req.body, actorId: req.user._id, documents });
+  } catch (error) {
+    await Promise.allSettled(documents.map(document => storageService.deleteFile(document.publicId)));
+    throw error;
+  }
+  ApiResponse.success(res, 'Account updated.', { user });
+});
 export function mountAccountCrud(router, role) {
   if (role === 'dealer') {
     router.post('/', superAdminAccountsOnly, enrollmentUpload, parseEnrollment(false), enrollDealer(false));
@@ -170,10 +202,7 @@ export function mountAccountCrud(router, role) {
     }));
     router.post('/:id/convert-to-dealer', superAdminAccountsOnly, validate({ params: idParams }), enrollmentUpload, parseEnrollment(true), enrollDealer(true));
   }
-  router.put('/:id', superAdminAccountsOnly, validate({ params: idParams, body: accountBody(role) }), asyncHandler(async (req, res) => {
-    const user = await saveAccount({ id: req.params.id, role, data: req.body, actorId: req.user._id });
-    ApiResponse.success(res, 'Account updated.', { user });
-  }));
+  router.put('/:id', superAdminAccountsOnly, validate({ params: idParams }), ...(role === 'dealer' ? [dealerEditUpload] : []), validate({ body: accountBody(role) }), editAccount(role));
   router.delete('/:id', superAdminAccountsOnly, validate({ params: idParams }), asyncHandler(async (req, res) => {
     await deleteAccount({ id: req.params.id, role });
     ApiResponse.success(res, 'Account deleted. Historical enquiries and invoices retained.');
