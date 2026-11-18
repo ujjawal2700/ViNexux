@@ -143,3 +143,51 @@ test('admin creates a dealer with basic details and no supplementary fields or d
   expect(submitted.companyName).toBe('Basic Company');
   expect(submitted.officeLocation).toBeUndefined();
 });
+
+test('dealer Edit supports optional document upload/replacement and opening the dealer profile', async ({ page }, testInfo) => {
+  await mockApi(page); await seedBrowserSession(page, 'admin');
+  let profile = { _id: id, companyName: 'Cable Company', organisationType: 'Installer', status: 'approved', userId: { _id: '507f1f77bcf86cd799439012', role: 'dealer', fullName: 'Dealer Owner', email: 'owner@example.com', phone: '9876543210', accountStatus: 'active' }, kycDocuments: [{ type: 'gst', url: 'https://example.com/current.pdf', publicId: 'old-gst' }] };
+  const writes = []; let fail = true;
+  await page.route('**/api/admin/dealer-accounts**', route => {
+    const request = route.request(), path = new URL(request.url()).pathname;
+    if (request.method() === 'PUT') {
+      writes.push({ details: decodeBody(request), raw: request.postData() });
+      if (fail) { fail = false; return route.fulfill({ status: 500, json: { success: false, message: 'Save failed. Try again.' } }); }
+      profile = { ...profile, kycDocuments: [{ type: 'gst', url: 'https://example.com/replaced.pdf', publicId: 'new-gst' }, { type: 'pan', url: 'https://example.com/pan.pdf', publicId: 'new-pan' }] };
+      return route.fulfill({ json: { success: true, data: { user: profile.userId } } });
+    }
+    return route.fulfill({ json: { success: true, data: path.endsWith(`/${id}`) ? { profile } : { dealers: [profile], pagination: { total: 1, totalPages: 1, page: 1 } } } });
+  });
+  await page.goto('/admin/dealer-accounts');
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Edit Dealer Account', exact: true });
+  await expect(dialog.getByRole('link', { name: 'View current GST certificate', exact: true })).toHaveAttribute('href', 'https://example.com/current.pdf');
+  for (const input of await dialog.locator('input[type="file"]').all()) expect(await input.evaluate(element => element.required)).toBe(false);
+  await dialog.getByLabel('Replace GST certificate (optional)', { exact: true }).setInputFiles({ name: 'gst-new.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 fixture') });
+  await dialog.getByLabel('Upload PAN card (optional)', { exact: true }).setInputFiles({ name: 'pan-new.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 fixture') });
+  await dialog.getByRole('button', { name: 'Clear PAN card selection', exact: true }).click();
+  await expect(dialog).not.toContainText('Selected: pan-new.pdf');
+  expect(await dialog.getByLabel('Upload PAN card (optional)', { exact: true }).evaluate(element => element.files.length)).toBe(0);
+  await dialog.getByLabel('Upload PAN card (optional)', { exact: true }).setInputFiles({ name: 'pan-new.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 fixture') });
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+  }
+  await dialog.getByRole('button', { name: 'Save Account', exact: true }).click();
+  await expect(dialog).toContainText('Save failed. Try again.');
+  await expect(dialog).toContainText('Selected: gst-new.pdf');
+  await expect(dialog).toContainText('Selected: pan-new.pdf');
+  await dialog.screenshot({ path: testInfo.outputPath('dealer-edit-documents.png') });
+  await dialog.getByRole('button', { name: 'Save Account', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(writes).toHaveLength(2);
+  expect(writes[1].details.companyName).toBe('Cable Company');
+  expect(writes[1].raw).toContain('name="gst"; filename="gst-new.pdf"');
+  expect(writes[1].raw).toContain('name="pan"; filename="pan-new.pdf"');
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await dialog.getByRole('link', { name: 'Open Dealer Profile', exact: true }).click();
+  await expect(page).toHaveURL(`/admin/dealer-accounts/${id}`);
+  await expect(page.getByRole('heading', { name: 'Cable Company', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(dialog.getByRole('link', { name: 'View current PAN card', exact: true })).toHaveAttribute('href', 'https://example.com/pan.pdf');
+});

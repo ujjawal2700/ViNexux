@@ -213,3 +213,50 @@ test('conversion accepts only company name, keeps existing documents and leaves 
   expect(existing.gstin).toBe(details.gstin);
   expect(storageService.uploadFile).not.toHaveBeenCalled();
 });
+
+const existingDealer = () => {
+  const user = new User({ _id: userId, fullName: input.fullName, email: input.email, phone: input.phone, role: 'dealer', accountStatus: 'active' });
+  const profile = new DealerProfile({ _id: profileId, userId, companyName: input.companyName, status: 'approved', kycVerifiedBy: actorId, kycDocuments: [{ type: 'gst', url: 'https://storage.example/old.pdf', publicId: 'kyc/old' }, { type: 'aadhaar', url: 'https://storage.example/aadhaar.pdf', publicId: 'kyc/aadhaar' }] });
+  lookup.mockImplementation(filter => ({ session: async () => String(filter._id) === userId ? user : null }));
+  DealerProfile.findById.mockReturnValue({ session: async () => profile });
+  DealerProfile.findOne.mockReturnValue({ session: async () => profile });
+  return { user, profile };
+};
+const editWithFile = (body = input, type = 'gst') => request.put(`/dealer/${profileId}`).set('x-role', 'admin').field('details', JSON.stringify(body)).attach(type, Buffer.from('%PDF-1.4 fixture'), { filename: `${type}-replacement.pdf`, contentType: 'application/pdf' });
+
+test('admin edit uploads missing documents and replaces selected documents after committing the profile', async () => {
+  const { profile } = existingDealer();
+  storageService.deleteFile.mockImplementation(async publicId => {
+    expect(profiles).toHaveLength(1);
+    expect(profile.kycDocuments.find(document => document.type === 'gst').publicId).toBe('kyc/gst-replacement.pdf');
+    return { success: true };
+  });
+  const response = await editWithFile().attach('pan', Buffer.from('png fixture'), { filename: 'pan.png', contentType: 'image/png' });
+  expect(response.status).toBe(200);
+  expect(profile.status).toBe('approved');
+  expect(String(profile.kycVerifiedBy)).toBe(actorId);
+  expect(profile.kycDocuments.map(document => document.type).sort()).toEqual(['aadhaar', 'gst', 'pan']);
+  expect(profile.kycDocuments.find(document => document.type === 'aadhaar').publicId).toBe('kyc/aadhaar');
+  expect(storageService.deleteFile.mock.calls).toEqual([['kyc/old']]);
+});
+test('failed admin edit removes only newly uploaded files and keeps previous storage', async () => {
+  existingDealer();
+  session.withTransaction.mockRejectedValue(new Error('Transaction failed'));
+  expect((await editWithFile()).status).toBe(500);
+  expect(storageService.deleteFile.mock.calls).toEqual([['kyc/gst-replacement.pdf']]);
+});
+test('dealer account edits keep document uploads optional and retain existing files', async () => {
+  const { profile } = existingDealer();
+  const response = await request.put(`/dealer/${profileId}`).set('x-role', 'admin').field('details', JSON.stringify(input));
+  expect(response.status).toBe(200);
+  expect(profile.kycDocuments).toHaveLength(2);
+  expect(storageService.uploadFile).not.toHaveBeenCalled();
+  expect(storageService.deleteFile).not.toHaveBeenCalled();
+});
+test('admin edit rejects unexpected document fields, forged metadata and invalid IDs before storage upload', async () => {
+  existingDealer();
+  expect((await editWithFile(input, 'unknown')).status).toBe(400);
+  expect((await editWithFile({ ...input, kycVerifiedBy: userId })).status).toBe(400);
+  expect((await request.put('/dealer/bad').set('x-role', 'admin').field('details', JSON.stringify(input)).attach('gst', Buffer.from('fixture'), { filename: 'gst.pdf', contentType: 'application/pdf' })).status).toBe(400);
+  expect(storageService.uploadFile).not.toHaveBeenCalled();
+});
