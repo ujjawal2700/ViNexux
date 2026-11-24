@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
+import { DealerProfile } from '../models/DealerProfile.js';
+import { INDIA_GST_STATE_CODES } from '../../../shared/indiaGstStates.js';
 import { User } from '../models/User.js';
 import { PosSale } from '../models/PosSale.js';
 import { PosCustomerOtp } from '../models/PosCustomerOtp.js';
@@ -16,8 +18,8 @@ const phoneNumber = raw => {
 const aliases = phone => [phone, `91${phone}`, `+91${phone}`];
 const key = (phone, adminId) => `${adminId}:${phone}`;
 const hash = (id, otp) => createHmac('sha256', config.jwtSecret).update(`${id}:${otp}`).digest('hex');
-const checkUser = user => {
-  if (user && user.role !== 'customer') fail('This phone belongs to a dealer or admin account. Use a customer phone number.', 409);
+const checkUser = (user, billType) => {
+  if (user && user.role !== 'customer' && !(billType === 'b2b' && user.role === 'dealer')) fail(user.role === 'dealer' ? 'This phone belongs to a dealer. Select B2B billing to use this number.' : 'This phone belongs to an admin account. Use a customer or dealer phone number.', 409);
   if (user && (user.accountStatus === 'blocked' || user.status === 'blocked')) fail('This customer account is blocked.', 403);
 };
 export const customerBillingDetails = user => {
@@ -30,18 +32,30 @@ export const customerBillingDetails = user => {
 };
 
 export const posCustomerService = {
-  async findKnown(phone, session = null) {
+  async findKnown(phone, session = null, billType = 'b2c') {
     const user = await User.findOne({ phone: { $in: aliases(phone) } }).session(session);
-    checkUser(user);
+    checkUser(user, billType);
+    if (user?.role === 'dealer') {
+      const dealer = await DealerProfile.findOne({ userId: user._id }).session(session).lean();
+      const billing = user.posBillingProfile?.toObject?.() || user.posBillingProfile || {};
+      const customer = customerBillingDetails(user);
+      const state = billing.state || dealer?.state || customer.state;
+      return { user, customer: { ...customer,
+        name: billing.name || dealer?.companyName || customer.name, email: billing.email ?? customer.email,
+        whatsappNumber: billing.whatsappNumber || dealer?.whatsappNumber || customer.whatsappNumber,
+        address: billing.address || dealer?.address || customer.address, city: billing.city || dealer?.city || customer.city,
+        state, stateCode: INDIA_GST_STATE_CODES[state] || billing.stateCode || '',
+        pincode: billing.pincode ?? dealer?.pincode ?? customer.pincode, gstin: billing.gstin ?? dealer?.gstin ?? '' } };
+    }
     if (user) return { user, customer: customerBillingDetails(user) };
     // Preserve returning-customer behavior for POS invoices issued before the
     // shared customer directory was introduced. This never claims OTP proof.
     const previous = await PosSale.findOne({ 'customer.phone': { $in: aliases(phone) } }).sort({ createdAt: -1 }).session(session).lean();
     return previous ? { user: null, customer: { ...previous.customer, phone }, legacy: true } : null;
   },
-  async lookup(raw, adminId) {
+  async lookup(raw, adminId, billType = 'b2c') {
     const phone = phoneNumber(raw);
-    const known = await this.findKnown(phone);
+    const known = await this.findKnown(phone, null, billType);
     if (known) return { found: true, customerId: known.user?._id || null, customer: known.customer, needsVerification: false };
     const proof = await PosCustomerOtp.findById(key(phone, adminId)).lean();
     const verified = !!proof?.verifiedAt && proof.expiresAt > new Date();
@@ -49,9 +63,9 @@ export const posCustomerService = {
       otpPending: !!proof && !verified && proof.expiresAt > new Date() && proof.attempts < config.otpMaxAttempts,
       resendAvailableInSeconds: proof?.sentAt ? Math.max(0, Math.ceil((proof.sentAt.getTime() + config.otpResendCooldownSeconds * 1000 - Date.now()) / 1000)) : 0 };
   },
-  async sendOtp(raw, adminId) {
+  async sendOtp(raw, adminId, billType = 'b2c') {
     const phone = phoneNumber(raw);
-    const known = await this.findKnown(phone);
+    const known = await this.findKnown(phone, null, billType);
     if (known) return { existing: true, customer: known.customer, needsVerification: false };
     const id = key(phone, adminId), now = new Date();
     const cutoff = new Date(now.getTime() - config.otpResendCooldownSeconds * 1000);
@@ -88,12 +102,18 @@ export const posCustomerService = {
     if (!verified) fail('OTP expired or exhausted. Request a new code.');
     return { phone, verified: true };
   },
-  async persist(input, adminId, session) {
+  async persist(input, adminId, session, billType = 'b2c') {
     const phone = phoneNumber(input.phone);
-    const known = await this.findKnown(phone, session);
+    const known = await this.findKnown(phone, session, billType);
     const proof = !known ? await PosCustomerOtp.findById(key(phone, adminId)).session(session) : null;
     if (!known && (!proof?.verifiedAt || proof.expiresAt <= new Date())) fail('Verify the new customer phone number by OTP before saving.', 403);
     const user = known?.user || new User({ phone, role: 'customer', createdVia: 'pos', isPhoneVerified: !!proof?.verifiedAt, accountStatus: 'active', status: 'active' });
+    if (user.role === 'dealer') {
+      const { phone: _phone, ...billing } = input;
+      user.posBillingProfile = billing;
+      await user.save({ session });
+      return { user, customer: { ...input, phone } };
+    }
     const email = input.email?.trim().toLowerCase();
     if (email && email !== user.email) { user.email = email; user.isEmailVerified = false; }
     user.fullName = input.name; user.name = input.name; user.address = input.address;
@@ -107,10 +127,10 @@ export const posCustomerService = {
     if (proof) await PosCustomerOtp.deleteOne({ _id: proof._id }).session(session);
     return { user, customer: customerBillingDetails(user) };
   },
-  async save(input, adminId) {
+  async save(input, adminId, billType = 'b2c') {
     const session = await mongoose.startSession();
     let result;
-    try { await session.withTransaction(async () => { result = await this.persist(input, adminId, session); }); }
+    try { await session.withTransaction(async () => { result = await this.persist(input, adminId, session, billType); }); }
     finally { await session.endSession(); }
     return { customerId: result.user._id, customer: result.customer, needsVerification: false, found: true };
   },

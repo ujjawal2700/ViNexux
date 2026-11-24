@@ -176,7 +176,7 @@ export default function AdminPosPage() {
       if (!/^[6-9]\d{9}$/.test(phone)) { setCustomerCheck({ status: 'idle', phone }); return; }
       setCustomerCheck({ status: 'checking', phone });
       try {
-        const result = await posService.lookupCustomer(phone);
+        const result = await posService.lookupCustomer(phone, draft.billType || 'b2c');
         if (!active) return;
         if (result.found) setDraft(prev => ({ ...prev, customer: result.customer }));
         setOtpSent(!!result.otpPending); setOtpCooldown(result.resendAvailableInSeconds || 0);
@@ -185,7 +185,7 @@ export default function AdminPosPage() {
       } catch (error) { if (active) { setCustomerCheck({ status: 'error', phone }); notifyError(error); } }
     }, 300);
     return () => { active = false; clearTimeout(timer); };
-  }, [customerPhone, customerOpen, tenderOpen, paymentCorrection]);
+  }, [customerPhone, customerOpen, tenderOpen, paymentCorrection, draft.billType]);
   useEffect(() => {
     if (otpCooldown <= 0) return;
     const timer = setTimeout(() => setOtpCooldown(value => Math.max(0, value - 1)), 1000);
@@ -214,7 +214,7 @@ export default function AdminPosPage() {
       throw new Error('Verify the new customer phone number before saving.');
     }
     let result;
-    try { result = await posService.saveCustomer({ ...draft.customer, phone: customerPhone }); }
+    try { result = await posService.saveCustomer({ ...draft.customer, phone: customerPhone }, draft.billType || 'b2c'); }
     catch (error) {
       if (error.response?.status === 403 && error.response?.data?.message?.startsWith('Verify the new customer')) {
         setCustomerCheck({ status: 'new', phone: customerPhone }); setOtpSent(false);
@@ -228,7 +228,7 @@ export default function AdminPosPage() {
   };
   const sendCustomerOtp = () => run(async () => {
     setNotice(null);
-    const result = await posService.sendCustomerOtp(customerPhone);
+    const result = await posService.sendCustomerOtp(customerPhone, draft.billType || 'b2c');
     if (result.existing) {
       patch({ customer: result.customer }); setCustomerCheck({ status: 'existing', phone: customerPhone }); return;
     }
@@ -266,6 +266,8 @@ export default function AdminPosPage() {
       const dealerPrice = pricing.dealerPrice ?? standardPrice;
       return { ...item, standardPrice, dealerPrice, unitPrice: nextType === 'b2b' ? dealerPrice : standardPrice };
     }));
+    setCustomerCheck({ status: 'idle', phone: '' });
+    resolvedCustomerPhone.current = '';
     patch({ billType: nextType, items });
     setFieldErrors({});
   });

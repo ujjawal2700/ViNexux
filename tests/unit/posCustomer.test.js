@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals';
 import mongoose from '../../backend/node_modules/mongoose/index.js';
+import { DealerProfile } from '../../backend/src/models/DealerProfile.js';
 import { User } from '../../backend/src/models/User.js';
 import { PosSale } from '../../backend/src/models/PosSale.js';
 import { PosCustomerOtp } from '../../backend/src/models/PosCustomerOtp.js';
@@ -129,4 +130,30 @@ test('POS saves and reuses a customer without PIN without creating an invalid sa
   await posCustomerService.save({ ...input, pincode: '324005' }, posAdminId);
   await posCustomerService.save(input, posAdminId);
   expect((await posCustomerService.lookup(input.phone, posAdminId)).customer.pincode).toBe('');
+});
+
+
+test('B2B loads dealer business details and saves billing corrections without changing account identity', async () => {
+  const dealer = new User({ fullName: 'Dealer Owner', email: 'owner@example.test', phone: '9876543210', role: 'dealer', accountStatus: 'active' });
+  users.set(String(dealer._id), JSON.parse(JSON.stringify(dealer)));
+  const profile = { companyName: 'Dealer Company', address: 'Dealer Street', city: 'Kota', state: 'Rajasthan', pincode: '324005', gstin: '08ABCDE1234F1Z5', whatsappNumber: '8769959424' };
+  jest.spyOn(DealerProfile, 'findOne').mockImplementation(() => query(() => profile));
+  const found = await posCustomerService.lookup('+919876543210', posAdminId, 'b2b');
+  expect(found).toMatchObject({ found: true, needsVerification: false, customerId: dealer._id, customer: { name: profile.companyName, address: profile.address, city: 'Kota', stateCode: '08', gstin: profile.gstin, whatsappNumber: profile.whatsappNumber } });
+  expect((await posCustomerService.sendOtp(dealer.phone, posAdminId, 'b2b')).existing).toBe(true);
+  const customer = { ...found.customer, name: 'Invoice Company', email: 'billing@example.test', pincode: '', address: 'New billing street' };
+  await posCustomerService.save(customer, posAdminId, 'b2b');
+  expect((await posCustomerService.lookup(dealer.phone, posAdminId, 'b2b')).customer).toEqual(customer);
+  expect(users.get(String(dealer._id))).toMatchObject({ role: 'dealer', fullName: 'Dealer Owner', email: 'owner@example.test' });
+  expect(profile.companyName).toBe('Dealer Company'); expect(proofs.size).toBe(0); expect(users.size).toBe(1);
+  await expect(posCustomerService.lookup(dealer.phone, posAdminId, 'b2c')).rejects.toMatchObject({ statusCode: 409 });
+  await expect(posCustomerService.save(customer, posAdminId, 'b2c')).rejects.toMatchObject({ statusCode: 409 });
+});
+
+test('B2B still rejects admin and blocked dealer numbers', async () => {
+  for (const [role, status] of [['admin', 'active'], ['dealer', 'blocked']]) {
+    users.clear(); const user = new User({ fullName: 'Blocked account', email: 'blocked@example.test', phone: '9876543210', role, accountStatus: status });
+    users.set(String(user._id), JSON.parse(JSON.stringify(user)));
+    await expect(posCustomerService.lookup(user.phone, posAdminId, 'b2b')).rejects.toMatchObject({ statusCode: role === 'admin' ? 409 : 403 });
+  }
 });
