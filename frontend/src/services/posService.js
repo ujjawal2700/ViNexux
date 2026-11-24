@@ -6,10 +6,10 @@ const post = async (path, data) => (await api.post(`/admin/pos${path}`, data)).d
 export const posService = {
   products: search => read('/products', { params: { search }, skipGlobalLoader: true }),
   customers: search => read('/customers', { params: { search }, skipGlobalLoader: true }),
-  lookupCustomer: phone => read('/customer', { params: { phone }, skipGlobalLoader: true }),
-  sendCustomerOtp: phone => post('/customer/otp', { phone }),
+  lookupCustomer: (phone, billType = 'b2c') => read('/customer', { params: { phone, billType }, skipGlobalLoader: true }),
+  sendCustomerOtp: (phone, billType = 'b2c') => post('/customer/otp', { phone, billType }),
   verifyCustomerOtp: (phone, otp) => post('/customer/verify', { phone, otp }),
-  saveCustomer: async customer => (await api.put('/admin/pos/customer', customer)).data.data,
+  saveCustomer: async (customer, billType = 'b2c') => (await api.put('/admin/pos/customer', customer, { params: { billType } })).data.data,
   settings: () => read('/settings'),
   saveSettings: async seller => (await api.put('/admin/pos/settings', seller)).data.data,
   sales: params => read('/sales', { params, skipGlobalLoader: true }),

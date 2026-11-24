@@ -80,6 +80,7 @@ const userSchema = new mongoose.Schema(
     createdVia: { type: String, enum: ['signup', 'pos'], default: 'signup' },
     posBillingProfile: {
       type: new mongoose.Schema({
+        name: { type: String, trim: true, maxlength: 100 }, email: { type: String, trim: true, maxlength: 150 },
         whatsappNumber: { type: String, trim: true }, address: { type: String, trim: true, maxlength: 500 },
         city: { type: String, trim: true, maxlength: 100 }, state: { type: String, trim: true, maxlength: 100 },
         stateCode: { type: String, trim: true }, pincode: { type: String, trim: true }, gstin: { type: String, trim: true },

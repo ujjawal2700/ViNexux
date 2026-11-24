@@ -75,7 +75,7 @@ export const posService = {
     const seller = await this.getSettings();
     const { bill } = checkedBill(input, seller, false);
     let customer;
-    try { customer = await posCustomerService.lookup(input.customer.phone, adminId); }
+    try { customer = await posCustomerService.lookup(input.customer.phone, adminId, input.billType); }
     catch (error) { fail(error.message, error.statusCode || 400, [{ path: 'customer.phone', message: error.message }]); }
     if (customer.needsVerification) fail('Verify and save the new customer phone number first.', 403, [{ path: 'customer.phone', message: 'Verify this phone by OTP before payment.' }]);
     const products = await Product.find({ _id: { $in: input.items.map(item => item.productId) }, isActive: true }).select('name sku stockQuantity variants').lean();
@@ -98,7 +98,7 @@ export const posService = {
       const sale = await transact(async session => {
         const repeated = await PosSale.findOne({ requestId: input.requestId }).select('+shareToken').session(session);
         if (repeated) return repeated;
-        const customer = await posCustomerService.persist(input.customer, adminId, session);
+        const customer = await posCustomerService.persist(input.customer, adminId, session, input.billType);
         const lines = [];
         for (const item of input.items) {
           const change = item.variantId ? variantStockChange(item.productId, item.variantId, -item.quantity) : {
