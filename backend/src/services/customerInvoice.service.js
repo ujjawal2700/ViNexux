@@ -13,16 +13,18 @@ export function invoiceOwnerFilter(user) {
   return { $or: clauses };
 }
 
+const invoiceFields = 'invoiceNumber createdAt updatedAt revisionNumber status total paidAmount balanceDue refundDue items.productId items.variantId items.variantName items.productName items.sku items.modelNumber items.quantity items.returnedQuantity returnedAmount returns.creditNoteNumber returns.items returns.amount returns.reason returns.createdAt refunds.kind refunds.method refunds.amount refunds.reference refunds.creditNoteNumber refunds.createdAt';
+
 export const customerInvoiceService = {
   async list(user, { page = 1, reference } = {}) {
     const owner = invoiceOwnerFilter(user);
     const limit = 20;
     const [invoices, total, selected] = await Promise.all([
-      PosSale.find(owner).select('invoiceNumber createdAt status total items.productName items.quantity returnedAmount')
+      PosSale.find(owner).select(invoiceFields)
         .sort({ createdAt: -1, _id: -1 }).skip((page - 1) * limit).limit(limit).lean(),
       PosSale.countDocuments(owner),
       reference ? PosSale.findOne({ $and: [owner, { shareToken: reference }] })
-        .select('invoiceNumber createdAt status total items.productName items.quantity returnedAmount').lean() : null,
+        .select(invoiceFields).lean() : null,
     ]);
     return { invoices, total, page, pages: Math.ceil(total / limit), selected };
   },

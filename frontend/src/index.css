@@ -547,3 +547,71 @@ body:has(.admin-panel) :is(
   transition: all 0.2s ease-in-out;
 }
 
+
+/* A soft sweep on hover for the floating quotation pill. */
+.quick-quote-tab::before {
+  content: '';
+  position: absolute;
+  inset: -60% -100%;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 43%, rgb(255 255 255 / 20%) 50%, transparent 57%);
+  transform: translateY(-100%);
+}
+.quick-quote-tab:hover::before {
+  animation: quick-quote-shimmer 900ms ease-in-out;
+}
+@keyframes quick-quote-shimmer {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quick-quote-tab::before, .quick-quote-tab:hover::before { animation: none; background: none; }
+}
+
+
+/* Desktop icon rail; hover and keyboard focus reveal the complete navigation. */
+.admin-sidebar {
+  transition: width 280ms cubic-bezier(.22, 1, .36, 1), padding 280ms ease, transform 280ms ease;
+}
+.admin-sidebar-label, .admin-sidebar-brand, .admin-sidebar-count {
+  transition: opacity 180ms ease;
+}
+@media (min-width: 768px) {
+  .admin-sidebar[data-collapsed="true"]:not(:hover):not(:focus-within) {
+    width: 4.5rem;
+    padding-inline: .75rem;
+  }
+  .admin-sidebar[data-collapsed="true"]:not(:hover):not(:focus-within) .admin-sidebar-label,
+  .admin-sidebar[data-collapsed="true"]:not(:hover):not(:focus-within) .admin-sidebar-count {
+    width: 0;
+    min-width: 0;
+    flex: 0;
+    padding: 0;
+    overflow: hidden;
+    opacity: 0;
+  }
+  .admin-sidebar[data-collapsed="true"]:not(:hover):not(:focus-within) .admin-sidebar-brand {
+    overflow: hidden;
+  }
+  .admin-sidebar[data-collapsed="true"]:not(:hover):not(:focus-within) .admin-sidebar-brand img {
+    display: none;
+  }
+  .admin-sidebar[data-collapsed="true"]:not(:hover):not(:focus-within) .admin-sidebar-mark {
+    display: block;
+    height: 2.75rem;
+  }
+  .admin-sidebar[data-collapsed="true"]:not(:hover):not(:focus-within) .admin-sidebar-submenu,
+  .admin-sidebar[data-collapsed="true"]:not(:hover):not(:focus-within) .admin-sidebar-search,
+  .admin-sidebar[data-collapsed="true"]:not(:hover):not(:focus-within) .admin-sidebar-group,
+  .admin-sidebar[data-collapsed="true"]:not(:hover):not(:focus-within) .admin-sidebar-submenu-toggle {
+    display: none;
+  }
+  .admin-sidebar[data-collapsed="true"]:not(:hover):not(:focus-within) nav a {
+    gap: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-sidebar, .admin-sidebar-label, .admin-sidebar-brand, .admin-sidebar-count {
+    transition: none;
+  }
+}

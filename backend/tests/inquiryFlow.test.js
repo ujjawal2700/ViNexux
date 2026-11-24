@@ -44,6 +44,8 @@ test('real API inquiry checkout, address compatibility, zero stock, and model se
     const saved = await call('/addresses', 'POST', deliveryAddress);
     assert.equal(saved.status, 201, JSON.stringify(saved.body));
     const addressId = String(saved.body.data.addresses[0]._id);
+    assert.equal((await call('/cart/items', 'POST', { productId: String(product._id), quantity: 1 })).status, 409);
+    await Product.updateOne({ _id: product._id }, { $set: { stockQuantity: 2 } });
     const cart = await call('/cart/items', 'POST', { productId: String(product._id), quantity: 1 });
     assert.equal(cart.status, 200, JSON.stringify(cart.body));
     assert.equal((await call(`/cart/items/${product._id}`, 'PUT', { quantity: 2 })).status, 200);
@@ -54,7 +56,7 @@ test('real API inquiry checkout, address compatibility, zero stock, and model se
     assert.equal(created.status, 201, JSON.stringify(created.body));
     const enquiry = await Enquiry.findById(created.body.data.enquiry._id).lean();
     assert.equal(enquiry.contactName, 'Checkout Customer'); assert.equal(enquiry.items[0].quantity, 2); assert.equal(enquiry.deliveryAddress.line1.length, 255);
-    assert.equal((await Product.findById(product._id)).stockQuantity, 0);
+    assert.equal((await Product.findById(product._id)).stockQuantity, 2);
     const cleared = (await call('/cart')).body.data;
     assert.equal((cleared.cart || cleared).items.length, 0);
     // Positive stock quantity limits still apply to the inquiry cart.

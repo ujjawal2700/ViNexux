@@ -14,7 +14,7 @@ import useLogoutConfirmation from '../hooks/useLogoutConfirmation';
 import Logo from '../components/ui/Logo';
 import ErrorBoundary from '../components/ui/ErrorBoundary';
 import { AdminNumberInputContext } from '../context/AdminNumberInputContext';
-import { LogOut, Menu, X, RefreshCw } from 'lucide-react';
+import { LogOut, Menu, X, RefreshCw, PanelLeftClose, PanelLeftOpen, LayoutDashboard } from 'lucide-react';
 
 const AdminLayout = () => {
   const { user, adminUser } = useAuth();
@@ -35,6 +35,14 @@ const AdminLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem('vinexus_admin_sidebar_collapsed') === 'true'; } catch { return false; }
+  });
+  const toggleSidebar = () => setSidebarCollapsed(value => {
+    const next = !value;
+    try { localStorage.setItem('vinexus_admin_sidebar_collapsed', String(next)); } catch { /* Session preference still works. */ }
+    return next;
+  });
   const [attentionCounts, setAttentionCounts] = useState({});
   const [writeDenied, setWriteDenied] = useState(false);
   useEffect(() => {
@@ -115,12 +123,15 @@ const AdminLayout = () => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed md:static inset-y-0 left-0 z-50 w-64 bg-card border-r border-border flex flex-col p-4 shadow-sm transition-transform duration-300 ${
+        aria-label="Admin sidebar"
+        data-collapsed={sidebarCollapsed}
+        className={`admin-sidebar fixed md:static inset-y-0 left-0 z-50 w-64 shrink-0 bg-card border-r border-border flex flex-col p-4 shadow-sm ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
         <div className="flex items-center justify-between mb-4 pb-4 border-b border-border/60">
-          <Link to="/admin/dashboard" className="flex-1 flex items-center justify-center py-1 group" aria-label="Admin Dashboard">
+          <Link to="/admin/dashboard" className="admin-sidebar-brand flex-1 flex items-center justify-center py-1 group" aria-label="Admin Dashboard">
+            <LayoutDashboard className="admin-sidebar-mark hidden h-6 w-6 shrink-0 text-primary" aria-hidden="true" />
             <Logo className="h-10 sm:h-11 w-auto max-w-[200px] object-contain mx-auto transition-transform group-hover:scale-105" />
           </Link>
           <button
@@ -137,10 +148,11 @@ const AdminLayout = () => {
         <div className="pt-4 border-t border-border flex flex-col gap-2">
           <button
             onClick={() => confirmLogout('admin')}
+            aria-label="Admin Sign Out" title="Admin Sign Out"
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors w-full text-left cursor-pointer"
           >
-            <LogOut className="w-3.5 h-3.5" />
-            Admin Sign Out
+            <LogOut className="w-3.5 h-3.5 shrink-0" />
+            <span className="admin-sidebar-label whitespace-nowrap">Admin Sign Out</span>
           </button>
         </div>
       </aside>
@@ -159,6 +171,12 @@ const AdminLayout = () => {
             <div className="md:hidden flex items-center">
               <Logo className="h-8 w-auto max-w-[140px] object-contain" />
             </div>
+            <button type="button" onClick={toggleSidebar}
+              aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!sidebarCollapsed}
+              title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              className="hidden md:inline-flex rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-primary cursor-pointer">
+              {sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+            </button>
             <div className="hidden sm:flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
               <span className="text-xs font-semibold text-muted-foreground">System Status: Operational</span>

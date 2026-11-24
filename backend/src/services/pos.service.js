@@ -1,7 +1,9 @@
+import { normalizePhoneNumber } from '../utils/phone.util.js';
+import { calculatePosReturn } from '../../../shared/posReturns.js';
 import { adminArrivalService } from './adminArrival.service.js';
 import { resolveVariant, variantStockChange, productLineKey } from '../utils/productVariants.js';
 import mongoose from 'mongoose';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { PosSale, PosCounter, PosSettings, PosHeldBill } from '../models/PosSale.js';
 import { Product } from '../models/Product.js';
 import { posCustomerService } from './posCustomer.service.js';
@@ -49,7 +51,7 @@ const nextNumber = async (prefix, session, kind = '') => {
 };
 const findSale = async (id, session) => {
   if (!mongoose.isValidObjectId(id)) fail('Invalid sale ID.');
-  const sale = await PosSale.findById(id).select('+shareToken').session(session);
+  const sale = await PosSale.findById(id).select('+shareToken +revisions').session(session);
   if (!sale) fail('Sale not found.', 404);
   return sale;
 };
@@ -105,7 +107,7 @@ export const posService = {
           const saved = await Product.findOneAndUpdate(change.filter, change.update, { new: true, runValidators: true, session });
           const product = saved ? resolveVariant(saved, item.variantId) : null;
           if (!product) fail('Stock changed while the bill was open. Review the product quantity.', 409, [{ path: `items.${lines.length}.quantity`, message: 'The requested quantity is no longer available. Refresh stock and reduce this quantity.' }]);
-          lines.push({ ...item, productName: product.name, sku: product.sku, modelNumber: product.modelNumber, variantId: item.variantId || null, variantName: product.variant || '', returnedQuantity: 0 });
+          lines.push({ ...item, productName: product.name, sku: product.sku, model: product.model || '', modelName: product.model || '', modelNumber: product.modelNumber, variantId: item.variantId || null, variantName: product.variant || '', returnedQuantity: 0 });
         }
         const bill = calculatePosBill(lines, { ...input, interstate });
         if (bill.total !== expectedBill.total) fail('The invoice total changed. Review the bill before retrying.');
@@ -128,6 +130,70 @@ export const posService = {
     }
   },
   async getSale(id) { return findSale(id, null); },
+  async editSale(id, input, adminId) {
+    return transact(async session => {
+      const sale = await findSale(id, session);
+      if (input.editRequestId && sale.revisions?.some(revision => revision.requestId === input.editRequestId)) return sale;
+      if (sale.status !== 'completed') fail('Voided invoices cannot be edited.', 409);
+      if (new Date(sale.updatedAt || sale.createdAt).getTime() !== new Date(input.expectedUpdatedAt).getTime()) fail('This invoice changed while you were editing. Reopen it and try again.', 409);
+      if (normalizePhoneNumber(input.customer.phone) !== normalizePhoneNumber(sale.customer.phone)) fail('The invoice owner phone cannot be changed.');
+      const financialLocked = sale.returns.length > 0 || sale.items.some(item => item.returnedQuantity > 0) || sale.refunds.some(refund => refund.kind !== 'invoice-adjustment');
+      if (financialLocked && input.items) fail('Invoices with returns or refunds can only have contact details and notes corrected.', 409);
+      if (!input.items && (input.customer.state !== sale.customer.state || input.customer.stateCode !== sale.customer.stateCode)) fail('Include the complete bill to change its tax state.');
+      const issues = [...validatePosCustomer(input.customer), ...(input.shipping ? validatePosCustomer(input.shipping, 'shipping') : [])];
+      if (issues.length) fail('Correct the invoice contact details.', 400, issues);
+      const before = JSON.parse(JSON.stringify(Object.fromEntries(['customer', 'shipping', 'items', 'total', 'subtotal', 'taxTotal', 'taxGroups', 'taxMode', 'interstate', 'roundOff', 'billType', 'delivery', 'notes'].map(key => [key, sale[key]]))));
+      if (input.items) {
+        const oldByKey = new Map(sale.items.map(item => [productLineKey(item.productId, item.variantId), item]));
+        const newByKey = new Map(input.items.map(item => [productLineKey(item.productId, item.variantId), item]));
+        // Restore removals and reductions; deduct only additional quantities.
+        for (const [key, old] of oldByKey) {
+          const delta = old.quantity - (newByKey.get(key)?.quantity || 0);
+          if (delta > 0) await restock(old.productId, delta, session, old.variantId);
+        }
+        const lines = [];
+        for (const item of input.items) {
+          const old = oldByKey.get(productLineKey(item.productId, item.variantId));
+          const extra = item.quantity - (old?.quantity || 0);
+          let product;
+          if (extra > 0) {
+            const change = item.variantId ? variantStockChange(item.productId, item.variantId, -extra) : { filter: { _id: item.productId, isActive: true, 'variants.0': { $exists: false }, stockQuantity: { $gte: extra } }, update: stockUpdate(-extra) };
+            const saved = await Product.findOneAndUpdate(change.filter, change.update, { new: true, runValidators: true, session });
+            if (!saved) fail('Insufficient stock for an edited product. Refresh quantities and retry.', 409);
+            product = resolveVariant(saved, item.variantId);
+          }
+          const snapshot = old || product;
+          lines.push({ ...item, productName: old?.productName || product?.name || 'Product', sku: snapshot.sku,
+            model: snapshot.model || '', modelName: snapshot.modelName || snapshot.model || '', modelNumber: snapshot.modelNumber,
+            variantId: item.variantId || null, variantName: old?.variantName || product?.variant || '', returnedQuantity: 0 });
+        }
+        const interstate = input.customer.stateCode !== sale.seller.stateCode;
+        const taxMode = input.taxMode ?? sale.taxMode, roundOff = input.roundOff ?? sale.roundOff;
+        const bill = calculatePosBill(lines, { taxMode, roundOff, interstate });
+        if (bill.total > 100000000 || !Number.isSafeInteger(toPaise(bill.total))) fail('Invoice total exceeds the supported billing limit.');
+        Object.assign(sale, bill, { taxMode, roundOff, interstate, billType: input.billType || sale.billType });
+        syncPayment(sale);
+        if (input.settlement) {
+          const refund = sale.refundDue > 0, amount = refund ? sale.refundDue : sale.balanceDue;
+          if (amount > 0) {
+            const entries = refund ? sale.refunds : sale.payments;
+            entries.push({ ...input.settlement, amount, requestId: input.editRequestId || randomUUID(), kind: 'invoice-adjustment', createdAt: new Date(), createdBy: adminId });
+            sale.markModified(refund ? 'refunds' : 'payments'); syncPayment(sale);
+          }
+        }
+      }
+      sale.customer = { ...input.customer, phone: sale.customer.phone };
+      sale.shipping = input.shipping || { ...sale.customer };
+      sale.notes = input.notes;
+      if (input.delivery !== undefined) sale.delivery = input.delivery;
+      sale.revisions ||= [];
+      sale.revisions.push({ requestId: input.editRequestId, before, afterTotal: sale.total, createdAt: new Date(), createdBy: adminId });
+      sale.revisionNumber = (sale.revisionNumber || 0) + 1;
+      sale.markModified('revisions');
+      await sale.save({ session });
+      return sale;
+    });
+  },
   async getSharedSale(token) {
     if (!/^[a-f\d]{64}$/.test(token)) fail('Invoice not found.', 404);
     const sale = await PosSale.findOne({ shareToken: token });
@@ -169,21 +235,28 @@ export const posService = {
       if (sale.returns.some(r => r.requestId === input.requestId)) return sale;
       if (sale.status !== 'completed') fail('Cannot return items from a voided sale.');
       if (new Set(input.items.map(i => productLineKey(i.productId, i.variantId))).size !== input.items.length) fail('Duplicate return items.');
-      const previousAmount = sale.returnedAmount;
+      const calculation = calculatePosReturn(sale, input.items);
       for (const requested of input.items) {
         const item = sale.items.find(line => productLineKey(line.productId, line.variantId) === productLineKey(requested.productId, requested.variantId));
-        if (!item || requested.quantity > item.quantity - item.returnedQuantity) fail('Return quantity exceeds the remaining sold quantity.');
-        item.returnedQuantity += requested.quantity;
+        if (!item || !Number.isInteger(requested.quantity) || requested.quantity < 1 || requested.quantity > item.quantity - (item.returnedQuantity || 0)) fail('Return quantity exceeds the remaining sold quantity.');
+        item.returnedQuantity = (item.returnedQuantity || 0) + requested.quantity;
         await restock(item.productId, requested.quantity, session, item.variantId);
       }
-      const allReturned = sale.items.every(i => i.returnedQuantity === i.quantity);
-      const unroundedTotal = sale.items.reduce((sum, item) => sum + item.lineTotal, 0);
-      sale.returnedAmount = allReturned ? sale.total : Math.min(sale.total, money(sale.items.reduce((sum, i) => sum + money(
-        unroundedTotal ? sale.total * i.lineTotal / unroundedTotal * i.returnedQuantity / i.quantity : 0,
-      ), 0)));
-      sale.returns.push({ ...input, creditNoteNumber: await nextNumber(sale.seller.invoicePrefix, session, 'CN'),
-        amount: money(sale.returnedAmount - previousAmount), createdAt: new Date(), createdBy: adminId });
+      sale.returnedAmount = calculation.returnedAmount;
+      const creditNoteNumber = await nextNumber(sale.seller.invoicePrefix, session, 'CN');
+      sale.returns.push({ requestId: input.requestId, reason: input.reason, items: input.items, creditNoteNumber,
+        amount: calculation.creditAmount, createdAt: new Date(), createdBy: adminId });
       sale.markModified('returns'); syncPayment(sale);
+      // Recording a completed refund is atomic with the return and stock change.
+      // Pending refunds stay explicitly due until a separate refund is recorded.
+      if (input.refund) {
+        const amount = Math.min(calculation.creditAmount, sale.refundDue);
+        if (amount > 0) {
+          sale.refunds.push({ ...input.refund, amount, requestId: input.requestId, creditNoteNumber,
+            createdAt: new Date(), createdBy: adminId });
+          sale.markModified('refunds'); syncPayment(sale);
+        }
+      }
       await sale.save({ session });
       return sale;
     });
@@ -200,12 +273,22 @@ export const posService = {
     }
     if (query.search) {
       const regex = new RegExp(query.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-      filter.$or = ['invoiceNumber', 'customer.name', 'customer.phone', 'customer.whatsappNumber'].map(key => ({ [key]: regex }));
+      filter.$or = ['invoiceNumber', 'customer.name', 'customer.phone', 'customer.whatsappNumber', 'items.productName', 'items.sku', 'items.model', 'items.modelName', 'items.modelNumber', 'items.variantName'].map(key => ({ [key]: regex }));
+    }
+    return filter;
+  },
+  async salesFilter(query) {
+    const filter = this.buildFilter(query);
+    if (query.search) {
+      // Older invoices did not snapshot model names. Search their linked products too.
+      const regex = filter.$or[0].invoiceNumber;
+      const products = await Product.find({ $or: ['name', 'sku', 'model', 'modelNumber', 'variants.name', 'variants.sku'].map(key => ({ [key]: regex })) }).select('_id').lean();
+      if (products.length) filter.$or.push({ 'items.productId': { $in: products.map(product => product._id) } });
     }
     return filter;
   },
   async listSales(query) {
-    const filter = this.buildFilter(query);
+    const filter = await this.salesFilter(query);
     const [sales, total, summary] = await Promise.all([
       PosSale.find(filter).sort({ createdAt: -1 }).skip((query.page - 1) * query.limit).limit(query.limit).lean(),
       PosSale.countDocuments(filter),
@@ -216,9 +299,10 @@ export const posService = {
     return { sales, total, page: query.page, pages: Math.ceil(total / query.limit), summary: summary[0] || { invoices: 0, netSales: 0, collected: 0, balance: 0, refundsDue: 0 } };
   },
   async exportSales(query) {
-    const count = await PosSale.countDocuments(this.buildFilter(query));
+    const filter = await this.salesFilter(query);
+    const count = await PosSale.countDocuments(filter);
     if (count > 10000) fail('Choose a narrower date range to export up to 10,000 sales.');
-    return PosSale.find(this.buildFilter(query)).sort({ createdAt: -1 }).lean();
+    return PosSale.find(filter).sort({ createdAt: -1 }).lean();
   },
   async listHeld(adminId) { return PosHeldBill.find({ createdBy: adminId }).sort({ updatedAt: -1 }).lean(); },
   async holdBill(draft, label, adminId) {

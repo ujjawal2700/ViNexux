@@ -19,7 +19,7 @@ export const emailService = {
    * @param {string} [params.from] - Sender address override
    * @returns {Promise<{ success: boolean, messageId?: string }>}
    */
-  async sendEmail({ to, subject, html, text, from }) {
+  async sendEmail({ to, subject, html, text, from, attachments }) {
     if (!to || !subject) {
       throw new AppError(
         'Recipient email address and subject are required.',
@@ -29,7 +29,7 @@ export const emailService = {
     }
 
     const provider = getEmailProvider();
-    return await provider.sendEmail({ to, subject, html, text, from });
+    return await provider.sendEmail({ to, subject, html, text, from, ...(attachments ? { attachments } : {}) });
   },
 
   /**

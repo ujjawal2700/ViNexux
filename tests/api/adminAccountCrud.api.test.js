@@ -260,3 +260,22 @@ test('admin edit rejects unexpected document fields, forged metadata and invalid
   expect((await request.put('/dealer/bad').set('x-role', 'admin').field('details', JSON.stringify(input)).attach('gst', Buffer.from('fixture'), { filename: 'gst.pdf', contentType: 'application/pdf' })).status).toBe(400);
   expect(storageService.uploadFile).not.toHaveBeenCalled();
 });
+
+
+test('only super admins can edit the private dealer discount and old edit clients preserve it', async () => {
+  const user = new User({ _id: userId, fullName: input.fullName, email: input.email, phone: input.phone, role: 'dealer' });
+  const profile = new DealerProfile({ _id: profileId, userId, companyName: input.companyName, status: 'approved', dealerDiscountPercent: 3 });
+  lookup.mockReturnValue({ session: async () => user });
+  DealerProfile.findOne.mockReturnValue({ session: async () => profile });
+  for (const dealerDiscountPercent of [-1, 101, 3.123, '3']) {
+    expect((await request.put(`/dealer/${userId}`).set('x-role', 'admin').send({ ...input, dealerDiscountPercent })).status).toBe(400);
+  }
+  expect((await request.put(`/dealer/${userId}`).set('x-role', 'employee').send({ ...input, dealerDiscountPercent: 99 })).status).toBe(403);
+  expect(profile.dealerDiscountPercent).toBe(3);
+  expect((await request.put(`/dealer/${userId}`).set('x-role', 'admin').send(input)).status).toBe(200);
+  expect(profile.dealerDiscountPercent).toBe(3);
+  for (const dealerDiscountPercent of [5, 0]) {
+    expect((await request.put(`/dealer/${userId}`).set('x-role', 'admin').send({ ...input, dealerDiscountPercent })).status).toBe(200);
+    expect(profile.dealerDiscountPercent).toBe(dealerDiscountPercent);
+  }
+});

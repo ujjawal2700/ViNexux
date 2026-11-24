@@ -86,7 +86,7 @@ try {
   check((await get('/products?category=laptop&availability=out-of-stock')).data.pagination.total === 1, 'Out-of-stock availability filter uses stored quantity');
   check(branch.data.facets.availability.find((item) => item.status === 'low-stock').count === 1, 'Availability facet returns category-scoped counts');
   const guestPrices = await get('/products?category=laptop&minPrice=150&maxPrice=250');
-  check(guestPrices.data.pagination.total === 2, 'Guests cannot probe hidden prices with price range filters');
+  check(guestPrices.data.pagination.total === branch.data.pagination.total, 'Guests cannot probe hidden prices with price range filters');
   check(guestPrices.data.products.every(product => product.standardPrice === undefined && product.applicablePrice === undefined), 'Guest catalog omits pricing');
   check((await get('/products?brandSlug=unlisted-brand')).data.pagination.total === 0, 'Specification-only brand routes return no products');
   check((await get('/products/brands')).data.brands.every((brand) => brand.name !== 'UNLISTED BRAND'), 'Specification-only brands are excluded from the brand directory');

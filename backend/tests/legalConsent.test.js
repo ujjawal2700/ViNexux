@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import assert from 'node:assert/strict';
 import { signupSchema } from '../src/validators/auth.validator.js';
 import { User } from '../src/models/User.js';
@@ -34,6 +35,7 @@ assert.equal(user.validateSync(), undefined);
 assert.equal(user.legalConsent.privacyPolicyVersion, LEGAL_DOCUMENT_VERSION);
 assert.equal(user.legalConsent.acceptedAt.getTime(), acceptedAt.getTime());
 
+await mongoose.connect(config.mongodbUri);
 const server = app.listen(0, '127.0.0.1');
 try {
   await new Promise((resolve) => server.once('listening', resolve));
@@ -45,5 +47,6 @@ try {
   assert.equal(response.status, 400);
 } finally {
   await new Promise((resolve) => server.close(resolve));
+  await mongoose.disconnect();
 }
 console.log('Legal consent validation, API rejection and persistence schema passed');

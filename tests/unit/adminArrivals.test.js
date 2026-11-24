@@ -41,19 +41,23 @@ test('arrival feed is reserved for super admins', () => {
   }
   const next = jest.fn(); requireArrivalSuperAdmin({ user: { role: 'admin' } }, {}, next); expect(next).toHaveBeenCalledWith();
 });
-test('admin ring lasts one second, supports a hidden panel, and deduplicates the same arrival', async () => {
+test('louder two-tone admin ring supports a hidden panel and deduplicates arrivals', async () => {
   const previousWindow = globalThis.window, previousDocument = globalThis.document;
-  const handlers = {}, stop = jest.fn(), start = jest.fn();
+  const handlers = {}, stop = jest.fn(), start = jest.fn(), ramp = jest.fn(), frequency = jest.fn();
+  let oscillator;
   globalThis.window = { addEventListener: (name, fn) => { handlers[name] = fn; }, removeEventListener() {}, AudioContext: class {
     state = 'running'; currentTime = 5; destination = {};
     resume() { return Promise.resolve(); }
-    createOscillator() { return { frequency: {}, connect() {}, start, stop }; }
-    createGain() { return { gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {} }; }
+    createOscillator() { oscillator = { frequency: { setValueAtTime: frequency }, connect() {}, start, stop }; return oscillator; }
+    createGain() { return { gain: { setValueAtTime() {}, exponentialRampToValueAtTime: ramp }, connect() {} }; }
   } };
   globalThis.document = { visibilityState: 'hidden' };
   try {
     enableEnquiryNotificationSound(); await handlers.pointerdown();
     playAdminArrivalSound(id); playAdminArrivalSound(id);
     expect(start).toHaveBeenCalledTimes(1); expect(stop).toHaveBeenCalledWith(6);
+    expect(oscillator.type).toBe('triangle');
+    expect(ramp).toHaveBeenCalledWith(0.55, 5.025);
+    expect(frequency).toHaveBeenCalledWith(1318, 5.33);
   } finally { globalThis.window = previousWindow; globalThis.document = previousDocument; }
 });

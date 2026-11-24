@@ -1,3 +1,4 @@
+import { applyDealerDiscount } from '../../../shared/dealerDiscount.js';
 import { applyInstallerPriceIncrease } from '../../../shared/installerPricing.js';
 import { getInstallerPriceIncreasePercent } from './installerPricing.service.js';
 import { hasVariants, resolveVariant, productLineKey } from '../utils/productVariants.js';
@@ -128,7 +129,7 @@ export const calculateApplicablePrices = async (userId, products) => {
   const user = await User.findById(userId).select('role').lean();
   let dealerProfile = null;
   if (user?.role === 'dealer') {
-    dealerProfile = await DealerProfile.findOne({ userId }).select('_id status organisationType').lean();
+    dealerProfile = await DealerProfile.findOne({ userId }).select('_id status organisationType +dealerDiscountPercent').lean();
   }
 
   prices.approvedDealer = dealerProfile?.status === 'approved';
@@ -139,6 +140,7 @@ export const calculateApplicablePrices = async (userId, products) => {
 
   const installerPercent = dealerProfile.organisationType === 'Installer' ? await getInstallerPriceIncreasePercent() : 0;
   prices.installerPriceIncreasePercent = installerPercent;
+  prices.dealerDiscountPercent = dealerProfile.dealerDiscountPercent || 0;
   const customPricing = await DealerPricing.find({
     dealerId: dealerProfile._id,
     productId: { $in: products.map((product) => product._id) },
@@ -152,7 +154,7 @@ export const calculateApplicablePrices = async (userId, products) => {
     else if (product.dealerPrice !== undefined && product.dealerPrice > 0) prices.set(productLineKey(product._id, product._variantId), product.dealerPrice);
     else prices.set(productLineKey(product._id, product._variantId), fallbackPrice(product));
   }
-  for (const [key, price] of prices) prices.set(key, applyInstallerPriceIncrease(price, installerPercent));
+  for (const [key, price] of prices) prices.set(key, applyDealerDiscount(applyInstallerPriceIncrease(price, installerPercent), prices.dealerDiscountPercent));
   return prices;
 };
 
@@ -230,13 +232,13 @@ const formatPopulatedCart = async (cart, userId) => {
     try { return { ...row, variantName: resolveVariant(row.productId, row.variantId, { includeInactive: true }).variant, productId: resolveVariant(row.productId, row.variantId, { includeInactive: true }) }; }
     catch { return { ...row, unavailable: true }; }
   });
-  if (currentPrices.installerPriceIncreasePercent > 0) for (const item of items) {
+  if (currentPrices.approvedDealer) for (const item of items) {
     const percent = currentPrices.installerPriceIncreasePercent;
     const price = currentPrices.get(productLineKey(item.productId, item.variantId));
     item.productId.dealerPrice = price;
     item.productId.applicablePrice = price;
     if (Array.isArray(item.productId.variants)) item.productId.variants = item.productId.variants.map(option => {
-      const markedUp = applyInstallerPriceIncrease(option.dealerPrice > 0 ? option.dealerPrice : option.standardPrice, percent);
+      const markedUp = applyDealerDiscount(applyInstallerPriceIncrease(option.dealerPrice > 0 ? option.dealerPrice : option.standardPrice, percent), currentPrices.dealerDiscountPercent);
       return { ...option, dealerPrice: markedUp, applicablePrice: markedUp };
     });
   }

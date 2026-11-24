@@ -1,3 +1,4 @@
+import { isSuperAdmin } from '../../../shared/adminAccess.js';
 import { mountInstallerPricingRoutes } from './installerPricing.routes.js';
 import { mountAccountCrud } from '../services/adminAccount.service.js';
 import { Router } from 'express';
@@ -19,12 +20,12 @@ mountAccountCrud(router, 'dealer');
 const userFields = 'fullName email phone role accountStatus isPhoneVerified isEmailVerified createdAt';
 const populate = query => query.populate('userId', userFields).populate('kycVerifiedBy', 'fullName email role isEmployee').populate('kycReviewedBy', 'fullName email role isEmployee');
 const withoutProfile = user => ({ _id: user._id, userId: user, companyName: user.fullName, status: 'pending', kycDocuments: [], hasDealerProfile: false, createdAt: user.createdAt });
-const account = async id => {
-  const profile = await populate(DealerProfile.findById(id));
+const account = async (id, privatePricing = false) => {
+  const profile = await populate(DealerProfile.findById(id).select(privatePricing ? '+dealerDiscountPercent' : ''));
   if (profile?.userId?.role === 'dealer') return profile;
   const user = await User.findOne({ _id: id, role: 'dealer' }).select(userFields).lean();
   if (!user) throw new AppError('Dealer account not found.', 404, 'NOT_FOUND');
-  return await populate(DealerProfile.findOne({ userId: user._id })) || withoutProfile(user);
+  return await populate(DealerProfile.findOne({ userId: user._id }).select(privatePricing ? '+dealerDiscountPercent' : '')) || withoutProfile(user);
 };
 router.get('/', validate(getDealersQuerySchema), asyncHandler(async (req, res) => {
   const { page, limit, status, city, state, search, sortBy, sortOrder } = req.query;
@@ -49,19 +50,19 @@ router.get('/', validate(getDealersQuerySchema), asyncHandler(async (req, res) =
   const total = result.count[0]?.total || 0;
   let rows = result.users.map(({ business, ...user }) => business ? { ...business, userId: user } : withoutProfile(user));
   // Lookup bypasses schema select:false; keep the Aadhaar number private.
-  rows = rows.map(({ aadhaarNumber, ...profile }) => profile);
+  rows = rows.map(({ aadhaarNumber, ...profile }) => { if (!isSuperAdmin(req.user)) delete profile.dealerDiscountPercent; return profile; });
   rows = await DealerProfile.populate(rows, [{ path: 'kycVerifiedBy', select: 'fullName email role isEmployee' }, { path: 'kycReviewedBy', select: 'fullName email role isEmployee' }]);
   ApiResponse.success(res, 'Dealer accounts', { dealers: rows, pagination: { total, totalItems: total, totalPages: Math.ceil(total / limit) || 1, currentPage: page, page, limit } });
 }));
 router.get('/:id', validate(getDealerByIdSchema), asyncHandler(async (req, res) => {
-  ApiResponse.success(res, 'Dealer account', { profile: await account(req.params.id) });
+  ApiResponse.success(res, 'Dealer account', { profile: await account(req.params.id, isSuperAdmin(req.user)) });
 }));
 router.put('/:id/status', validate({ ...getDealerByIdSchema, body: z.object({ accountStatus: z.enum(['active', 'blocked']) }).strict() }), asyncHandler(async (req, res) => {
   const profile = await account(req.params.id);
   const user = await User.findOneAndUpdate({ _id: profile.userId._id, role: 'dealer' }, { $set: { accountStatus: req.body.accountStatus, status: req.body.accountStatus } }, { new: true });
   if (!user) throw new AppError('Dealer account not found.', 404, 'NOT_FOUND');
   if (req.body.accountStatus === 'blocked') await Session.updateMany({ userId: user._id, isActive: true }, { $set: { isActive: false, revokedAt: new Date() } });
-  ApiResponse.success(res, 'Dealer account status saved.', { profile: await account(req.params.id) });
+  ApiResponse.success(res, 'Dealer account status saved.', { profile: await account(req.params.id, isSuperAdmin(req.user)) });
 }));
 router.put('/:id/revoke', validate(adminRevokeDealerSchema), asyncHandler(async (req, res) => {
   const profile = await account(req.params.id);

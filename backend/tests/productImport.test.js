@@ -232,7 +232,7 @@ try {
     'Model Number', 'Product Name / Model', 'Brand', 'Header Category (Optional)',
     'Main Category (Optional)', 'Sub Category (Optional)', 'Standard Price',
     'Dealer Price', 'Stock Quantity', 'Product URL (Optional)', 'Warranty (Optional)',
-    'Variant (Optional)', 'Specifications (Optional)', 'Image Files (Optional)', 'HSN Code (Optional)',
+    'Variant (Optional)', 'Specifications (Optional)', 'Image Files (Optional)', 'HSN Code (Optional)', 'Variants JSON (Optional)',
   ]);
   assert.equal(currentSheet.rowCount, 1, 'Products sheet starts empty');
   assert.equal(currentTemplate.getWorksheet('Examples').rowCount, 4, 'Three examples are separate from imported products');

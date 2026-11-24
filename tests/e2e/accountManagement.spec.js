@@ -6,9 +6,11 @@ const decodeBody = req => {
   return JSON.parse(req.postData().match(/name="details"\r\n\r\n([^]*?)\r\n--/)[1]);
 };
 const fillDealer = async dialog => {
-  for (const [label, value] of [['Company name *', 'Cable Company'], ['GSTIN (optional)' , '08ABCDE1234F1Z5'], ['PAN number (optional)' , 'ABCDE1234F'], ['Aadhaar number (optional)' , '123456789012'], ['WhatsApp number (optional)' , '9876543210'], ['Business address (optional)' , 'Business road'], ['City (optional)' , 'Kota'], ['State (optional)' , 'Rajasthan'], ['Pincode (optional)' , '324001']]) {
+  for (const [label, value] of [['Company name *', 'Cable Company'], ['GSTIN (optional)' , '08ABCDE1234F1Z5'], ['PAN number (optional)' , 'ABCDE1234F'], ['Aadhaar number (optional)' , '123456789012'], ['WhatsApp number (optional)' , '9876543210'], ['Business address (optional)' , 'Business road'], ['Pincode (optional)' , '324001']]) {
     await dialog.getByLabel(label, { exact: true }).fill(value);
   }
+  await dialog.getByRole('combobox', { name: 'State', exact: true }).selectOption('Rajasthan');
+  await dialog.getByRole('combobox', { name: 'City', exact: true }).selectOption('Kota');
   await dialog.getByRole('combobox', { name: 'Organisation type', exact: false }).selectOption('Private Limited Company');
   await dialog.getByLabel('Latitude', { exact: false }).fill('25.18');
   await dialog.getByLabel('Longitude', { exact: false }).fill('75.85');

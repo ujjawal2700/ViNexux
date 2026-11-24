@@ -27,6 +27,7 @@ const contact = {
   accountStatus: z.enum(['active', 'pending', 'blocked']).default('active'),
 };
 const business = {
+  dealerDiscountPercent: z.number().finite().min(0).max(100).refine(value => Math.abs(value * 100 - Math.round(value * 100)) < 1e-7, 'Use at most two decimal places').optional(),
   companyName: z.string().trim().min(2).max(150),
   organisationType: z.enum(ORGANISATION_TYPES).default('Proprietorship'),
   gstin: z.string().trim().toUpperCase().regex(/^$|^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/).default(''),

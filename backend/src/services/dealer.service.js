@@ -187,7 +187,7 @@ export const updateDealerProfileByUserId = async (userId, updateData) => {
   }
 
   // Apply update fields
-  Object.keys(updateData).forEach((key) => {
+  Object.keys(updateData).filter(key => key !== 'dealerDiscountPercent').forEach((key) => {
     if (updateData[key] !== undefined) {
       profile[key] = updateData[key];
     }
@@ -261,6 +261,7 @@ export const listDealers = async (query = {}) => {
 
   const totalItems = await DealerProfile.countDocuments(filter);
   const dealers = await DealerProfile.find(filter)
+    .select(query.includePrivatePricing ? '+dealerDiscountPercent' : '')
     .populate('userId', 'fullName email phone role accountStatus isPhoneVerified isEmailVerified')
     .populate('kycReviewedBy', 'fullName email role isEmployee')
     .populate('kycVerifiedBy', 'fullName email role isEmployee')
@@ -285,8 +286,9 @@ export const listDealers = async (query = {}) => {
 /**
  * Get single dealer profile by ID (Admin only)
  */
-export const getDealerById = async (dealerId) => {
+export const getDealerById = async (dealerId, includePrivatePricing = false) => {
   const profile = await DealerProfile.findById(dealerId)
+    .select(includePrivatePricing ? '+dealerDiscountPercent' : '')
     .populate('userId', 'fullName email phone role accountStatus isPhoneVerified isEmailVerified')
     .populate('kycReviewedBy', 'fullName email role isEmployee')
     .populate('kycVerifiedBy', 'fullName email role isEmployee');
@@ -301,7 +303,7 @@ export const getDealerById = async (dealerId) => {
 /**
  * Approve dealer KYC (Admin only)
  */
-export const approveDealerKyc = async (dealerId, adminId = null) => {
+export const approveDealerKyc = async (dealerId, adminId = null, dealerDiscountPercent) => {
   let profile;
   await mongoose.connection.transaction(async session => {
     profile = await DealerProfile.findById(dealerId).select('+aadhaarNumber').session(session);
@@ -318,6 +320,7 @@ export const approveDealerKyc = async (dealerId, adminId = null) => {
       if (!['gst', 'aadhaar'].every(type => profile.kycDocuments.some(doc => doc.type === type && doc.url))) throw new AppError('GST and Aadhaar documents are required before approval.', 400, ERROR_CODES.VALIDATION_ERROR);
     }
     profile.status = 'approved'; profile.rejectionReason = undefined;
+    if (dealerDiscountPercent !== undefined) profile.dealerDiscountPercent = dealerDiscountPercent;
     if (adminId) {
       profile.kycReviewedBy = adminId; profile.kycReviewedAt = new Date(); profile.kycReviewAction = 'approved';
       profile.kycVerifiedBy = adminId; profile.kycVerifiedAt = profile.kycReviewedAt;

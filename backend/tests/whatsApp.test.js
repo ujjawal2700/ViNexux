@@ -152,6 +152,7 @@ describe('Phase 8.5 — WhatsApp Integration Test Suite', () => {
       slug: `wa-test-product-${ts}`,
       categoryId: category._id,
       standardPrice: 1500,
+      stockQuantity: 10,
       isActive: true,
     });
   });

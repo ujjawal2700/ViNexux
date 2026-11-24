@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useOutletContext } from 'react-router-dom';
+import { canVisitAdmin } from '../../../../shared/adminAccess.js';
 import adminService from '../../services/adminService';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import StatsCard from '../../components/admin/StatsCard';
@@ -20,9 +21,11 @@ import {
   Sparkles,
   PackagePlus,
   ShoppingBag,
+  Receipt,
 } from 'lucide-react';
 
 const AdminDashboardPage = () => {
+  const { adminAccess } = useOutletContext() || {};
   const [summary, setSummary] = useState(null);
   const [recentEnquiries, setRecentEnquiries] = useState([]);
   const [pendingDealers, setPendingDealers] = useState([]);
@@ -146,6 +149,15 @@ const AdminDashboardPage = () => {
           to="/admin/products"
         />
       </div>
+
+      {canVisitAdmin(adminAccess, '/admin/pos') && <StatsCard
+        title="POS Billing"
+        value="New sale"
+        subtext="Create a bill, collect payment and print an invoice"
+        icon={Receipt}
+        color="blue"
+        to="/admin/pos"
+      />}
 
       {/* Quick Action Bar */}
       <div className="bg-card border border-border rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-xs">

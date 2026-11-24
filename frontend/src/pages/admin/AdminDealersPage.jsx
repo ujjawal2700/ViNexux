@@ -1,3 +1,5 @@
+import useAuth from '../../hooks/useAuth';
+import { isSuperAdmin } from '../../../../shared/adminAccess.js';
 import AdminDirectoryTable from '../../components/admin/AdminDirectoryTable';
 import InstallerPricingSettings from '../../components/admin/InstallerPricingSettings';
 import AccountManagementActions from '../../components/admin/AccountManagementActions';
@@ -11,7 +13,6 @@ import FilterBar from '../../components/admin/FilterBar';
 import Table from '../../components/ui/Table';
 import Pagination from '../../components/ui/Pagination';
 import Modal from '../../components/ui/Modal';
-import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Button from '../../components/ui/Button';
 import Textarea from '../../components/ui/Textarea';
 import FormField from '../../components/ui/FormField';
@@ -24,6 +25,9 @@ import Toast from '../../components/ui/Toast';
 import { Users, Eye, CheckCircle2, XCircle, RotateCcw } from 'lucide-react';
 
 const AdminDealersPage = ({ mode = 'verification' }) => {
+  const { adminUser } = useAuth();
+  const canSetDiscount = isSuperAdmin(adminUser);
+  const [discountPercent, setDiscountPercent] = useState('0');
   const accounts = mode === 'accounts';
   const basePath = accounts ? '/admin/dealer-accounts' : '/admin/dealers';
   const [dealers, setDealers] = useState([]);
@@ -113,7 +117,7 @@ const AdminDealersPage = ({ mode = 'verification' }) => {
     if (!approveTarget) return;
     setApproveLoading(true);
     try {
-      await adminService.approveDealerKyc(approveTarget._id);
+      await adminService.approveDealerKyc(approveTarget._id, canSetDiscount ? { dealerDiscountPercent: Number(discountPercent) } : {});
       setToast({ message: `Dealer "${approveTarget.companyName}" KYC approved! Wholesale price unlocked.`, type: 'success' });
       setApproveTarget(null);
       fetchDealers();
@@ -288,7 +292,7 @@ const AdminDealersPage = ({ mode = 'verification' }) => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setApproveTarget(dlr)}
+                              onClick={() => { setDiscountPercent(String(dlr.dealerDiscountPercent || 0)); setApproveTarget(dlr); }}
                               className="min-h-9 min-w-0 border border-emerald-200 px-2 text-sm text-emerald-800 hover:bg-emerald-50"
                               title="Approve KYC"
                             >
@@ -337,16 +341,16 @@ const AdminDealersPage = ({ mode = 'verification' }) => {
       )}
 
       {/* Quick Approve Confirmation Modal */}
-      <ConfirmDialog
-        isOpen={!!approveTarget}
-        onClose={() => setApproveTarget(null)}
-        onConfirm={handleApproveConfirm}
-        title="Approve Dealer KYC"
-        message={`Are you sure you want to approve KYC for "${approveTarget?.companyName}"? This will activate their B2B dealer account and unlock wholesale pricing across the catalog.`}
-        confirmText="Approve KYC"
-        isLoading={approveLoading}
-        variant="primary"
-      />
+      <Modal isOpen={!!approveTarget} onClose={approveLoading ? undefined : () => setApproveTarget(null)} title="Approve Dealer KYC" size="sm">
+        <form className="space-y-4" onSubmit={event => { event.preventDefault(); handleApproveConfirm(); }}>
+          <p className="text-sm text-muted-foreground">Approve KYC for {approveTarget?.companyName} and unlock dealer pricing?</p>
+          {canSetDiscount && <label className="block space-y-2 text-sm font-semibold">Extra global dealer discount (%)
+            <input aria-label="Extra global dealer discount (%)" type="number" min="0" max="100" step="0.01" required value={discountPercent} disabled={approveLoading} onChange={event => setDiscountPercent(event.target.value)} className="block w-full rounded-lg border bg-background p-2" />
+            <span className="block text-xs font-normal text-muted-foreground">Super admin only. Dealers see final prices without a special-discount label. Edit the discount later from their profile.</span>
+          </label>}
+          <div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={approveLoading} onClick={() => setApproveTarget(null)}>Cancel</Button><Button type="submit" isLoading={approveLoading}>Approve KYC</Button></div>
+        </form>
+      </Modal>
 
       {/* Reject Modal */}
       <Modal

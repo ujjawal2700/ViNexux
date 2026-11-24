@@ -1,3 +1,4 @@
+import StateCityFields from '../address/StateCityFields';
 import { ORGANISATION_TYPES } from '../../../../shared/dealerOrganisation.js';
 import DealerEnrollmentAction from './DealerEnrollmentAction';
 import { useRef, useState } from 'react';
@@ -35,7 +36,7 @@ export default function AccountManagementActions({ role, record, onSaved, layout
   const start = () => {
     const values = Object.fromEntries(fields.map(([key]) => [key, (commonFields.some(([name]) => name === key) ? user?.[key] : record?.[key]) || '']));
     if (dealer) values.address = record?.address || user?.address || '';
-    setForm({ ...values, accountStatus: user?.accountStatus || 'active', ...(dealer ? { organisationType: record?.organisationType || 'Proprietorship' } : {}) });
+    setForm({ ...values, accountStatus: user?.accountStatus || 'active', ...(dealer ? { organisationType: record?.organisationType || 'Proprietorship', dealerDiscountPercent: record?.dealerDiscountPercent || 0 } : {}) });
     setFiles({}); setError(''); setOpen(true);
   };
   const save = async event => {
@@ -70,9 +71,13 @@ export default function AccountManagementActions({ role, record, onSaved, layout
         {dealer && record && <Link to={`/admin/dealer-accounts/${record._id}`} className="inline-flex text-sm font-semibold text-primary underline" onClick={event => { if (busy) event.preventDefault(); else setOpen(false); }}>Open Dealer Profile</Link>}
         <fieldset disabled={busy} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          {fields.map(([key, title, required]) => <label key={key} className="space-y-1 text-sm font-medium">{title}{required ? ' *' : ' (optional)'}
+          {fields.filter(([key]) => !['city', 'state'].includes(key)).map(([key, title, required]) => <label key={key} className="space-y-1 text-sm font-medium">{title}{required ? ' *' : ' (optional)'}
             <input className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900" type={key === 'email' ? 'email' : ['phone', 'whatsappNumber'].includes(key) ? 'tel' : 'text'} value={form[key] || ''} required={required} maxLength={limits[key]} minLength={['fullName', 'companyName'].includes(key) ? 2 : undefined} pattern={['phone', 'whatsappNumber'].includes(key) ? '[6-9][0-9]{9}' : key === 'pincode' ? '[0-9]{6}' : undefined} onChange={e => setForm(prev => ({ ...prev, [key]: e.target.value }))} />
           </label>)}
+          {dealer && <><StateCityFields value={form} onChange={setForm} disabled={busy} /><label className="space-y-1 text-sm font-medium">Extra global dealer discount (%)
+            <input aria-label="Extra global dealer discount (%)" type="number" min="0" max="100" step="0.01" required className="block w-full rounded-lg border p-2" value={form.dealerDiscountPercent ?? 0} onChange={event => setForm(previous => ({ ...previous, dealerDiscountPercent: event.target.value === '' ? '' : Number(event.target.value) }))} />
+            <span className="block text-xs font-normal text-gray-500">Super admin only. Dealers see final prices without a special-discount label. Use 0 to remove the extra discount.</span>
+          </label></>}
           {dealer && <label className="space-y-1 text-sm font-medium">Organisation type<select aria-label="Organisation type" className="block w-full rounded-lg border p-2" value={form.organisationType} onChange={e => setForm(prev => ({ ...prev, organisationType: e.target.value }))}>{ORGANISATION_TYPES.map(value => <option key={value}>{value}</option>)}</select></label>}
           <label className="space-y-1 text-sm font-medium">Account status<select className="block w-full rounded-lg border p-2" value={form.accountStatus} onChange={e => setForm(prev => ({ ...prev, accountStatus: e.target.value }))}>{['active', 'pending', 'blocked'].map(value => <option key={value}>{value}</option>)}</select></label>
         </div>

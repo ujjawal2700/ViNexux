@@ -1,3 +1,5 @@
+import { isSuperAdmin } from '../../../shared/adminAccess.js';
+import { AppError } from '../utils/AppError.js';
 import {
   listDealers,
   getDealerById,
@@ -10,7 +12,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 
 export const getDealers = asyncHandler(async (req, res) => {
-  const result = await listDealers({ ...req.query, scope: 'verification' });
+  const result = await listDealers({ ...req.query, scope: 'verification', includePrivatePricing: isSuperAdmin(req.user) });
 
   return ApiResponse.success(
     res,
@@ -21,7 +23,7 @@ export const getDealers = asyncHandler(async (req, res) => {
 });
 
 export const getDealer = asyncHandler(async (req, res) => {
-  const profile = await getDealerById(req.params.id);
+  const profile = await getDealerById(req.params.id, isSuperAdmin(req.user));
 
   return ApiResponse.success(
     res,
@@ -33,7 +35,8 @@ export const getDealer = asyncHandler(async (req, res) => {
 
 export const approveKyc = asyncHandler(async (req, res) => {
   const adminId = req.user ? req.user._id : null;
-  const profile = await approveDealerKyc(req.params.id, adminId);
+  if (req.body?.dealerDiscountPercent !== undefined && !isSuperAdmin(req.user)) throw new AppError('Only super admins can set dealer discounts.', 403, 'FORBIDDEN');
+  const profile = await approveDealerKyc(req.params.id, adminId, req.body?.dealerDiscountPercent);
 
   return ApiResponse.success(
     res,

@@ -1,3 +1,5 @@
+import useAuth from '../../hooks/useAuth';
+import { isSuperAdmin } from '../../../../shared/adminAccess.js';
 import AccountManagementActions from '../../components/admin/AccountManagementActions';
 import apiClient from '../../api/axios';
 import DealerReviewAttribution from '../../components/admin/DealerReviewAttribution';
@@ -9,7 +11,6 @@ import Card from '../../components/ui/Card';
 import { StatusBadge } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
-import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Textarea from '../../components/ui/Textarea';
 import FormField from '../../components/ui/FormField';
 import FormError from '../../components/ui/FormError';
@@ -30,6 +31,9 @@ import {
 } from 'lucide-react';
 
 const AdminDealerDetailPage = ({ mode = 'verification' }) => {
+  const { adminUser } = useAuth();
+  const canSetDiscount = isSuperAdmin(adminUser);
+  const [discountPercent, setDiscountPercent] = useState('0');
   const accounts = mode === 'accounts';
   const basePath = accounts ? '/admin/dealer-accounts' : '/admin/dealers';
   const [statusSaving, setStatusSaving] = useState(false);
@@ -62,7 +66,9 @@ const AdminDealerDetailPage = ({ mode = 'verification' }) => {
     setError(null);
     try {
       const res = accounts ? (await apiClient.get(`${basePath}/${id}`)).data : await adminService.getDealerById(id);
-      setProfile(res.data?.profile || res.profile);
+      const next = res.data?.profile || res.profile;
+      setProfile(next);
+      setDiscountPercent(String(next?.dealerDiscountPercent || 0));
     } catch (err) {
       console.error('Error fetching dealer details:', err);
       setError(err.response?.data?.message || 'Failed to load dealer profile');
@@ -78,7 +84,7 @@ const AdminDealerDetailPage = ({ mode = 'verification' }) => {
   const handleApproveConfirm = async () => {
     setApproveLoading(true);
     try {
-      await adminService.approveDealerKyc(id);
+      await adminService.approveDealerKyc(id, canSetDiscount ? { dealerDiscountPercent: Number(discountPercent) } : {});
       setToast({ message: 'Dealer KYC approved successfully!', type: 'success' });
       setIsApproveOpen(false);
       fetchProfile();
@@ -161,6 +167,8 @@ const AdminDealerDetailPage = ({ mode = 'verification' }) => {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
 <div className="rounded-xl border border-border bg-card p-4"><DealerReviewAttribution profile={profile} /></div>
+
+      {canSetDiscount && <div className="rounded-xl border border-border bg-card p-4 text-sm"><strong>Extra global dealer discount: {profile.dealerDiscountPercent || 0}%</strong><p className="mt-1 text-xs text-muted-foreground">Visible only to super admins. Use Edit on this profile to change it. Dealers see only their final prices.</p></div>}
 
       {/* Header & Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border">
@@ -350,16 +358,16 @@ const AdminDealerDetailPage = ({ mode = 'verification' }) => {
       />
 
       {/* Approve Confirmation Modal */}
-      <ConfirmDialog
-        isOpen={isApproveOpen}
-        onClose={() => setIsApproveOpen(false)}
-        onConfirm={handleApproveConfirm}
-        title="Approve Dealer KYC"
-        message={`Are you sure you want to approve KYC for "${profile.companyName}"? This will set status to Approved and unlock discounted wholesale prices across the product catalog.`}
-        confirmText="Approve KYC"
-        isLoading={approveLoading}
-        variant="primary"
-      />
+      <Modal isOpen={isApproveOpen} onClose={approveLoading ? undefined : () => setIsApproveOpen(false)} title="Approve Dealer KYC" size="sm">
+        <form className="space-y-4" onSubmit={event => { event.preventDefault(); handleApproveConfirm(); }}>
+          <p className="text-sm text-muted-foreground">Approve KYC for {profile.companyName} and unlock dealer pricing?</p>
+          {canSetDiscount && <label className="block space-y-2 text-sm font-semibold">Extra global dealer discount (%)
+            <input aria-label="Extra global dealer discount (%)" type="number" min="0" max="100" step="0.01" required value={discountPercent} disabled={approveLoading} onChange={event => setDiscountPercent(event.target.value)} className="block w-full rounded-lg border bg-background p-2" />
+            <span className="block text-xs font-normal text-muted-foreground">Private to super admins. Applied to this dealer’s prices across all products. Use 0 for ordinary dealer pricing; edit it later from the dealer profile.</span>
+          </label>}
+          <div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={approveLoading} onClick={() => setIsApproveOpen(false)}>Cancel</Button><Button type="submit" isLoading={approveLoading}>Approve KYC</Button></div>
+        </form>
+      </Modal>
 
       {/* Reject Modal */}
       <Modal

@@ -26,6 +26,10 @@ test('invoice lists and shared selections are both scoped and paginated without 
   expect(result).toMatchObject({ invoices: [{ _id: 'mine' }], total: 41, pages: 3, selected: null });
   expect(find).toHaveBeenCalledWith(invoiceOwnerFilter(user));
   expect(query.skip).toHaveBeenCalledWith(20); expect(query.limit).toHaveBeenCalledWith(20);
-  expect(query.select.mock.calls[0][0]).not.toContain('shareToken');
+  const fields = query.select.mock.calls[0][0];
+  expect(fields).not.toContain('shareToken');
+  expect(fields).not.toContain('createdBy');
+  expect(fields).not.toContain('requestId');
+  for (const field of ['items.returnedQuantity', 'returns.items', 'returns.creditNoteNumber', 'refunds.method', 'refunds.amount', 'refunds.reference', 'refundDue']) expect(fields).toContain(field);
   expect(selected).toHaveBeenCalledWith({ $and: [invoiceOwnerFilter(user), { shareToken: reference }] });
 });

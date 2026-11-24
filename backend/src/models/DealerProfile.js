@@ -109,6 +109,7 @@ const dealerProfileSchema = new mongoose.Schema(
       default: 'pending',
       required: [true, 'KYC status is required'],
     },
+    dealerDiscountPercent: { type: Number, min: 0, max: 100, select: false },
     rejectionReason: {
       type: String,
       trim: true,

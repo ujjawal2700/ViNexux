@@ -1,3 +1,5 @@
+import { isSuperAdmin } from '../../../shared/adminAccess.js';
+import { AppError } from '../utils/AppError.js';
 import { activeVariants, hasVariants, selectedVariantProduct, productLineKey } from '../../../shared/productVariants.js';
 import { Router } from 'express';
 import { z } from 'zod';
@@ -11,8 +13,9 @@ import { generatePosInvoice } from '../services/posInvoice.service.js';
 import { generatePosExport } from '../services/posExport.service.js';
 import { Product } from '../models/Product.js';
 import { PosSale } from '../models/PosSale.js';
-import { posSaleSchema, posSellerSchema, posListSchema, paymentSchema, returnSchema, customerSchema } from '../validators/pos.validator.js';
+import { posSaleSchema, posSellerSchema, posListSchema, paymentSchema, returnSchema, customerSchema, invoiceEditSchema } from '../validators/pos.validator.js';
 
+export const requireReturnSuperAdmin = (req, res, next) => isSuperAdmin(req.user) ? next() : next(new AppError('Only super admins can edit invoices or record sale returns and refunds.', 403, 'FORBIDDEN'));
 const router = Router();
 router.use(authenticate, authorize('admin'));
 const reply = (res, data, message = 'Success') => ApiResponse.success(res, message, data);
@@ -53,14 +56,15 @@ router.get('/sales', validate({ query: posListSchema }), asyncHandler(async (req
 router.post('/sales/validate', validate({ body: posSaleSchema }), asyncHandler(async (req, res) => reply(res, await posService.validateSale(req.body, req.user._id))));
 router.post('/sales', validate({ body: posSaleSchema }), asyncHandler(async (req, res) => reply(res, await posService.createSale(req.body, req.user._id), 'Sale completed and stock updated.')));
 router.get('/sales/:id', validate(idSchema), asyncHandler(async (req, res) => reply(res, await posService.getSale(req.params.id))));
+router.put('/sales/:id', requireReturnSuperAdmin, validate({ ...idSchema, body: invoiceEditSchema }), asyncHandler(async (req, res) => reply(res, await posService.editSale(req.params.id, req.body, req.user._id), 'Invoice details updated.')));
 router.get('/sales/:id/invoice', validate(idSchema), asyncHandler(async (req, res) => {
   const sale = await posService.getSale(req.params.id);
   res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="${sale.invoiceNumber.replaceAll('/', '-')}.pdf"`, 'Cache-Control': 'private, no-store' });
   res.send(await generatePosInvoice(sale));
 }));
 router.post('/sales/:id/payments', validate({ ...idSchema, body: paymentSchema }), asyncHandler(async (req, res) => reply(res, await posService.addPayment(req.params.id, req.body, req.user._id))));
-router.post('/sales/:id/refunds', validate({ ...idSchema, body: paymentSchema }), asyncHandler(async (req, res) => reply(res, await posService.addPayment(req.params.id, req.body, req.user._id, true))));
-router.post('/sales/:id/returns', validate({ ...idSchema, body: returnSchema }), asyncHandler(async (req, res) => reply(res, await posService.returnItems(req.params.id, req.body, req.user._id))));
+router.post('/sales/:id/refunds', requireReturnSuperAdmin, validate({ ...idSchema, body: paymentSchema }), asyncHandler(async (req, res) => reply(res, await posService.addPayment(req.params.id, req.body, req.user._id, true))));
+router.post('/sales/:id/returns', requireReturnSuperAdmin, validate({ ...idSchema, body: returnSchema }), asyncHandler(async (req, res) => reply(res, await posService.returnItems(req.params.id, req.body, req.user._id))));
 router.post('/sales/:id/void', validate({ ...idSchema, body: z.object({ reason: z.string().trim().min(3).max(500) }) }), asyncHandler(async (req, res) => reply(res, await posService.voidSale(req.params.id, req.body.reason, req.user._id))));
 
 export default router;

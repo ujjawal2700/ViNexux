@@ -261,8 +261,8 @@ export const adminService = {
   /**
    * Approve dealer KYC submission & unlock wholesale pricing.
    */
-  async approveDealerKyc(id) {
-    const response = await apiClient.put(`/admin/dealers/${id}/kyc/approve`);
+  async approveDealerKyc(id, pricing = {}) {
+    const response = await apiClient.put(`/admin/dealers/${id}/kyc/approve`, pricing);
     return response.data;
   },
 

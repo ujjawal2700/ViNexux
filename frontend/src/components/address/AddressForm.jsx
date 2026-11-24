@@ -1,3 +1,4 @@
+import StateCityFields from './StateCityFields';
 import React, { useState } from 'react';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
@@ -60,7 +61,7 @@ export const AddressForm = ({ initialValues, onSubmit, onCancel, isSaving = fals
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.defaultPrevented && !e.target.closest('[role=combobox]')) {
       e.preventDefault();
       e.stopPropagation();
       handleSubmit(e);
@@ -98,24 +99,7 @@ export const AddressForm = ({ initialValues, onSubmit, onCancel, isSaving = fals
         isDisabled={isSaving}
       />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Input
-          label="City *"
-          name="city"
-          placeholder="e.g. Mumbai"
-          value={values.city}
-          onChange={handleChange}
-          error={errors.city}
-          isDisabled={isSaving}
-        />
-        <Input
-          label="State *"
-          name="state"
-          placeholder="e.g. Maharashtra"
-          value={values.state}
-          onChange={handleChange}
-          error={errors.state}
-          isDisabled={isSaving}
-        />
+        <StateCityFields value={values} onChange={setValues} disabled={isSaving} required errors={errors} />
         <Input
           label="Pincode *"
           name="pincode"

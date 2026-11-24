@@ -27,9 +27,11 @@ test('customer completes remaining dealer details and documents, then becomes a 
   await page.getByRole('navigation', { name: 'Account sidebar' }).getByRole('link', { name: 'Become a Dealer' }).click();
   await expect(page.getByRole('heading', { name: 'Become a Dealer', exact: true })).toBeVisible();
   await page.getByRole('region', { name: 'Dealer document uploads' }).screenshot({ path: '/tmp/vinexus-upload-controls-desktop.png' });
-  for (const [label, value] of [['Company / firm name', details.companyName], ['GSTIN', details.gstin], ['PAN number', details.pan], ['WhatsApp number', details.whatsappNumber], ['Aadhaar number', details.aadhaarNumber], ['Business address', details.address], ['City', details.city], ['State', details.state], ['Pincode', details.pincode]]) {
+  for (const [label, value] of [['Company / firm name', details.companyName], ['GSTIN', details.gstin], ['PAN number', details.pan], ['WhatsApp number', details.whatsappNumber], ['Aadhaar number', details.aadhaarNumber], ['Business address', details.address], ['Pincode', details.pincode]]) {
     await page.getByLabel(label, { exact: false }).fill(value);
   }
+  await page.getByRole('combobox', { name: 'State *', exact: true }).selectOption('Rajasthan');
+  await page.getByRole('combobox', { name: 'City *', exact: true }).selectOption('Kota');
   await page.getByLabel('Organisation type').selectOption('Proprietorship');
   await page.getByLabel('Latitude').fill('25.18'); await page.getByLabel('Longitude').fill('75.85');
   await page.getByRole('button', { name: 'Save business details', exact: true }).click();

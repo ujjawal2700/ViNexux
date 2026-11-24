@@ -116,3 +116,17 @@ describe('POS customer verification and directory persistence', () => {
     for (const role of ['admin', 'dealer']) expect(new User({ fullName: 'Other account', role, createdVia: 'pos' }).validateSync().errors.email).toBeDefined();
   });
 });
+
+
+test('POS saves and reuses a customer without PIN without creating an invalid saved address', async () => {
+  const input = { ...posInput().customer, pincode: '' };
+  await posCustomerService.sendOtp(input.phone, posAdminId);
+  await posCustomerService.verifyOtp(input.phone, '123456', posAdminId);
+  const saved = await posCustomerService.save(input, posAdminId);
+  expect(saved.customer.pincode).toBe('');
+  expect([...users.values()][0].savedAddresses).toHaveLength(0);
+  expect((await posCustomerService.lookup(input.phone, posAdminId)).customer).toMatchObject(input);
+  await posCustomerService.save({ ...input, pincode: '324005' }, posAdminId);
+  await posCustomerService.save(input, posAdminId);
+  expect((await posCustomerService.lookup(input.phone, posAdminId)).customer.pincode).toBe('');
+});

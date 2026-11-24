@@ -40,6 +40,10 @@ const ImageContent = ({
       ) : (
         <img
           {...responsiveImage(src || fallbackSrc, { ...(responsiveWidths ? { widths: responsiveWidths } : {}), sizes: props.sizes })} width={640} height={640}
+          ref={node => {
+            // Cached images can finish before React attaches the load handler.
+            if (node?.complete && node.naturalWidth > 0) setIsLoading(false);
+          }}
           alt={alt}
           loading="lazy"
           decoding="async"

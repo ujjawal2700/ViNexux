@@ -1,3 +1,6 @@
+import { calculatePosReturn } from '../../shared/posReturns.js';
+import { returnSchema } from '../../backend/src/validators/pos.validator.js';
+import { requireReturnSuperAdmin } from '../../backend/src/routes/pos.routes.js';
 import { adminArrivalService } from '../../backend/src/services/adminArrival.service.js';
 import { beforeEach, afterEach, describe, expect, jest, test } from '@jest/globals';
 import mongoose from '../../backend/node_modules/mongoose/index.js';
@@ -72,8 +75,8 @@ describe('POS calculation and input validation', () => {
 
 // Transaction test double snapshots committed data. Every stock and sale write
 // must use the same session; failures restore all data, including the counter.
-const setup = ({ stock = 10, retry = false, variants = [] } = {}) => {
-  let records = new Map(), stocks = new Map([[posProductId, stock]]), sequence = 0;
+const setup = ({ stock = 10, retry = false, variants = [], extraProducts = [] } = {}) => {
+  let records = new Map(), stocks = new Map([[posProductId, stock], ...extraProducts]), sequence = 0;
   let optionStock = new Map(variants.map(option => [option._id, option.stockQuantity]));
   const session = { endSession: jest.fn().mockResolvedValue(undefined) };
   session.withTransaction = jest.fn(async operation => {
@@ -86,7 +89,7 @@ const setup = ({ stock = 10, retry = false, variants = [] } = {}) => {
   jest.spyOn(posCustomerService, 'persist').mockImplementation(async (customer, _adminId, used) => {
     expect(used).toBe(session); return { user: { _id: '507f1f77bcf86cd799439025' }, customer };
   });
-  const query = lookup => ({ select() { return this; }, session(used) { expect(used).toBe(session); return Promise.resolve(lookup()); },
+  const query = lookup => ({ select() { return this; }, session(used) { if (used !== null) expect(used).toBe(session); return Promise.resolve(lookup()); },
     then(resolve, reject) { return Promise.resolve(lookup()).then(resolve, reject); } });
   const doc = record => record ? new PosSale(record) : null;
   jest.spyOn(PosSale, 'findOne').mockImplementation(filter => query(() => doc([...records.values()].find(r => r.requestId === filter.requestId))));
@@ -112,7 +115,7 @@ const setup = ({ stock = 10, retry = false, variants = [] } = {}) => {
     stocks.set(id, current + update.$inc.stockQuantity);
     return { _id: id, name: 'Camera', sku: 'CAM-1', modelNumber: 'CAM-MODEL', variants: variants.map(option => ({ ...option, stockQuantity: optionStock.get(option._id) })) };
   });
-  return { stock: () => stocks.get(posProductId), optionStock: variantId => optionStock.get(variantId), records: () => records, session };
+  return { stock: () => stocks.get(posProductId), productStock: id => stocks.get(id), optionStock: variantId => optionStock.get(variantId), records: () => records, session };
 };
 
 describe('POS transactional stock and payment lifecycle', () => {
@@ -230,5 +233,146 @@ describe('POS option stock lifecycle', () => {
     const state = setup({ stock: 11, variants: variants() });
     await expect(posService.createSale(posInput(), posAdminId)).rejects.toMatchObject({ statusCode: 409 });
     expect(state.stock()).toBe(11);
+  });
+});
+
+
+describe('sale returns and refund tracking', () => {
+  test.each(['cash', 'upi', 'bank'])('return and immediate %s refund commit once with stock and credit-note linkage', async method => {
+    const state = setup({ retry: true });
+    const sale = await posService.createSale(posInput(), posAdminId);
+    const input = { requestId: randomUUID(), reason: 'Customer returned one camera', items: [{ productId: posProductId, quantity: 1 }], refund: { method, reference: 'TXN-123' } };
+    const updated = await posService.returnItems(sale._id, input, posAdminId);
+    expect(updated.items[0].returnedQuantity).toBe(1);
+    expect(updated.refunds).toHaveLength(1);
+    expect(updated.refunds[0]).toMatchObject({ amount: 3550, method, reference: 'TXN-123', creditNoteNumber: updated.returns[0].creditNoteNumber });
+    expect(updated).toMatchObject({ returnedAmount: 3550, paidAmount: 3550, refundDue: 0 });
+    await posService.returnItems(sale._id, input, posAdminId);
+    expect(state.stock()).toBe(9);
+    expect((await posService.getSale(sale._id)).refunds).toHaveLength(1);
+  });
+  test('a pending partial return and a refunded remaining return preserve the older refund due', async () => {
+    const state = setup(); const sale = await posService.createSale(posInput(), posAdminId);
+    const input = { requestId: randomUUID(), reason: 'Customer return', items: [{ productId: posProductId, quantity: 1 }] };
+    const first = await posService.returnItems(sale._id, input, posAdminId);
+    expect(first.refundDue).toBe(3550); expect(first.refunds).toHaveLength(0);
+    const second = await posService.returnItems(sale._id, { ...input, requestId: randomUUID(), refund: { method: 'upi', reference: 'UPI-SECOND' } }, posAdminId);
+    expect(second.returnedAmount).toBe(7100); expect(second.refundDue).toBe(3550);
+    expect(second.refunds[0].amount).toBe(3550); expect(state.stock()).toBe(10);
+    await posService.addPayment(sale._id, { requestId: randomUUID(), method: 'bank', amount: 3550, reference: 'BANK-SETTLED' }, posAdminId, true);
+    expect((await posService.getSale(sale._id)).refundDue).toBe(0);
+  });
+  test('rejects invalid quantities without restoring stock or altering the invoice', async () => {
+    const state = setup(); const sale = await posService.createSale(posInput(), posAdminId);
+    for (const quantity of [-1, 0, 0.5, 3]) await expect(posService.returnItems(sale._id, { requestId: randomUUID(), reason: 'Return', items: [{ productId: posProductId, quantity }] }, posAdminId)).rejects.toThrow('quantity');
+    expect(state.stock()).toBe(8);
+    expect((await posService.getSale(sale._id)).returns).toHaveLength(0);
+  });
+  test('preview uses the same invoice round-off allocation as saved returns', () => {
+    const sale = posInvoiceFixture();
+    expect(calculatePosReturn(sale, [{ productId: posProductId, quantity: 1 }])).toMatchObject({ creditAmount: 3550, allReturned: false });
+    expect(calculatePosReturn(sale, [{ productId: posProductId, quantity: 2 }])).toMatchObject({ creditAmount: 7100, allReturned: true });
+  });
+  test('refund status accepts only supported methods and never accepts a client refund total', () => {
+    const input = { requestId: randomUUID(), reason: 'Customer return', items: [{ productId: posProductId, quantity: 1 }] };
+    expect(returnSchema.safeParse(input).success).toBe(true);
+    for (const refund of [{ method: 'card' }, { method: 'cash', amount: 99999 }, { reference: 'missing method' }]) expect(returnSchema.safeParse({ ...input, refund }).success).toBe(false);
+  });
+  test('only super admins can record returns and refunds', () => {
+    for (const user of [undefined, { role: 'dealer' }, { role: 'customer' }, { role: 'admin', isEmployee: true }]) {
+      const next = jest.fn(); requireReturnSuperAdmin({ user }, {}, next);
+      expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 403 }));
+    }
+    const next = jest.fn(); requireReturnSuperAdmin({ user: { role: 'admin' } }, {}, next); expect(next).toHaveBeenCalledWith();
+  });
+  test('invoice search includes all product and model snapshots and legacy catalogue models', async () => {
+    const product = new mongoose.Types.ObjectId();
+    jest.spyOn(Product, 'find').mockReturnValue({ select: () => ({ lean: async () => [{ _id: product }] }) });
+    const filter = await posService.salesFilter({ search: 'Model.*name' });
+    for (const key of ['invoiceNumber', 'customer.name', 'customer.phone', 'items.productName', 'items.model', 'items.modelName', 'items.modelNumber', 'items.variantName', 'items.sku']) {
+      expect(filter.$or.some(clause => clause[key]?.test?.('model.*NAME'))).toBe(true);
+    }
+    expect(filter.$or).toContainEqual({ 'items.productId': { $in: [product] } });
+    expect(filter.$or[0].invoiceNumber.test('Model x name')).toBe(false);
+  });
+});
+
+
+describe('invoice contact corrections', () => {
+  test('updates invoice contact/delivery notes while retaining stock, amounts, ownership and return history', async () => {
+    const state = setup(); const created = await posService.createSale(posInput(), posAdminId);
+    const saved = state.records().get(String(created._id));
+    saved.createdAt = saved.updatedAt = '2026-11-24T10:00:00.000Z';
+    const original = structuredClone(saved);
+    const updated = await posService.editSale(created._id, { expectedUpdatedAt: saved.updatedAt, customer: { ...saved.customer, name: 'Corrected invoice name', address: 'Updated street address', pincode: '' }, notes: 'Delivery after 5pm' });
+    const result = JSON.parse(JSON.stringify(updated));
+    expect(result.customer.name).toBe('Corrected invoice name');
+    expect(result.shipping.address).toBe('Updated street address');
+    expect(result.notes).toBe('Delivery after 5pm');
+    for (const field of ['total', 'subtotal', 'taxTotal', 'customerId', 'invoiceNumber', 'items', 'payments', 'refunds', 'returns', 'returnedAmount', 'paidAmount']) expect(result[field]).toEqual(original[field]);
+    expect(state.stock()).toBe(8);
+  });
+  test('rejects ownership changes, changed tax states, stale forms and voided invoices', async () => {
+    const state = setup(); const created = await posService.createSale(posInput(), posAdminId);
+    const saved = state.records().get(String(created._id)); saved.createdAt = saved.updatedAt = '2026-11-24T10:00:00.000Z';
+    const request = { expectedUpdatedAt: saved.updatedAt, customer: { ...saved.customer }, notes: '' };
+    await expect(posService.editSale(created._id, { ...request, customer: { ...request.customer, phone: '9888888888' } })).rejects.toThrow('owner phone');
+    await expect(posService.editSale(created._id, { ...request, customer: { ...request.customer, state: 'Maharashtra', stateCode: '27' } })).rejects.toThrow('tax state');
+    await expect(posService.editSale(created._id, { ...request, expectedUpdatedAt: '2026-11-23T10:00:00.000Z' })).rejects.toMatchObject({ statusCode: 409 });
+    state.records().get(String(created._id)).status = 'voided';
+    await expect(posService.editSale(created._id, request)).rejects.toThrow('Voided');
+    expect(state.stock()).toBe(8);
+  });
+});
+
+
+describe('full invoice corrections', () => {
+  const prepare = async options => {
+    const state = setup(options); const created = await posService.createSale(posInput(), posAdminId);
+    const saved = state.records().get(String(created._id)); saved.createdAt = saved.updatedAt = '2026-11-24T10:00:00.000Z';
+    const request = { expectedUpdatedAt: saved.updatedAt, editRequestId: randomUUID(), customer: { ...saved.customer }, notes: 'Corrected bill', taxMode: 'inclusive', roundOff: true, items: [{ ...posInput().items[0], unitPrice: 3550 }] };
+    return { state, created, request };
+  };
+  test('increases quantity, collects only the difference, and retries once without duplicating stock or payment', async () => {
+    const { state, created, request } = await prepare({ retry: true }); request.items[0].quantity = 3; request.settlement = { method: 'upi', reference: 'UPI-EXTRA' };
+    const updated = await posService.editSale(created._id, request, posAdminId);
+    expect(updated.total).toBe(10650); expect(updated.paidAmount).toBe(10650); expect(updated.balanceDue).toBe(0); expect(state.stock()).toBe(7);
+    expect(updated.payments).toHaveLength(2); expect(updated.payments[1]).toMatchObject({ method: 'upi', amount: 3550, kind: 'invoice-adjustment' });
+    expect(updated.revisions[0].before.total).toBe(7100); expect(updated.revisions[0].before.items[0].quantity).toBe(2);
+    const retry = await posService.editSale(created._id, request, posAdminId);
+    expect(retry.payments).toHaveLength(2); expect(retry.revisions).toHaveLength(1); expect(state.stock()).toBe(7);
+  });
+  test('price reductions refund the difference while preserving prior payments and allow later corrections', async () => {
+    const { state, created, request } = await prepare(); request.items[0].unitPrice = 3000; request.settlement = { method: 'bank', reference: 'BANK-REFUND' };
+    const updated = await posService.editSale(created._id, request, posAdminId);
+    expect(updated.total).toBe(6000); expect(updated.refundDue).toBe(0); expect(updated.paidAmount).toBe(6000); expect(state.stock()).toBe(8);
+    expect(updated.refunds[0]).toMatchObject({ amount: 1100, method: 'bank', kind: 'invoice-adjustment' }); expect(updated.payments).toHaveLength(1);
+    request.editRequestId = randomUUID(); request.items[0].unitPrice = 3550;
+    const restored = await posService.editSale(created._id, request, posAdminId);
+    expect(restored.total).toBe(7100); expect(restored.paidAmount).toBe(7100); expect(restored.payments).toHaveLength(2); expect(restored.refunds).toHaveLength(1);
+  });
+  test('keeps additional payment pending if it was not collected', async () => {
+    const { state, created, request } = await prepare(); request.items[0].quantity = 3;
+    const updated = await posService.editSale(created._id, request, posAdminId);
+    expect(updated).toMatchObject({ total: 10650, paidAmount: 7100, balanceDue: 3550, paymentStatus: 'partial' }); expect(updated.payments).toHaveLength(1); expect(state.stock()).toBe(7);
+  });
+  test('product replacement restores the old stock and deducts the new stock atomically', async () => {
+    const replacement = '507f1f77bcf86cd799439088'; const { state, created, request } = await prepare({ extraProducts: [[replacement, 5]] });
+    request.items = [{ ...request.items[0], productId: replacement, quantity: 1, serialNumbers: [], unitPrice: 5000 }];
+    const updated = await posService.editSale(created._id, request, posAdminId);
+    expect(state.stock()).toBe(10); expect(state.productStock(replacement)).toBe(4); expect(String(updated.items[0].productId)).toBe(replacement); expect(updated.refundDue).toBe(2100);
+  });
+  test('insufficient stock rolls back reductions, restores the original invoice, and retains payment history', async () => {
+    const { state, created, request } = await prepare(); request.items = [{ ...request.items[0], productId: '507f1f77bcf86cd799439088' }];
+    await expect(posService.editSale(created._id, request, posAdminId)).rejects.toMatchObject({ statusCode: 409 });
+    expect(state.stock()).toBe(8); const saved = state.records().get(String(created._id)); expect(saved.total).toBe(7100); expect(saved.payments).toHaveLength(1); expect(saved.revisions).toHaveLength(0);
+  });
+  test('financial edits after a return are rejected while contact corrections remain available', async () => {
+    const { state, created, request } = await prepare();
+    await posService.returnItems(created._id, { requestId: randomUUID(), reason: 'Customer return', items: [{ productId: posProductId, quantity: 1 }] }, posAdminId);
+    await expect(posService.editSale(created._id, request, posAdminId)).rejects.toMatchObject({ statusCode: 409 });
+    const { items, taxMode, roundOff, ...contact } = request; contact.customer.name = 'Corrected name';
+    const updated = await posService.editSale(created._id, contact, posAdminId);
+    expect(updated.customer.name).toBe('Corrected name'); expect(updated.returnedAmount).toBe(3550); expect(state.stock()).toBe(9);
   });
 });

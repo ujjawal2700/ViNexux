@@ -6,6 +6,7 @@ export const SITE_DESCRIPTION = 'Explore networking equipment, CCTV cameras, com
 export const INDEX_ROBOTS = 'index, follow, max-image-preview:large';
 export const STATIC_PAGES = {
   '/': ['ViNexus — Networking, CCTV & IT Hardware', SITE_DESCRIPTION],
+  '/cctv-quote': ['Quick CCTV Quotation', 'Configure HD, IP, WiFi or 4G CCTV cameras and storage with ViNexus. Sign in for applicable prices, an itemized estimate and your quotation PDF.'],
   '/products': ['All Products', 'Browse networking, CCTV, computers and IT hardware at ViNexus. Compare product specifications and find equipment for your business.'],
   '/brands': ['Shop by Brand', 'Explore the brands available at ViNexus and browse their networking, surveillance and IT hardware products.'],
   '/trending': ['Trending Products', 'Discover trending networking, CCTV and IT hardware products selected for the ViNexus catalog.'],

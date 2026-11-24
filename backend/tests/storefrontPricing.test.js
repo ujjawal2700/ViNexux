@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { getPublicProducts, getPublicProductById } from '../src/services/catalog.service.js';
+import { Brand } from '../src/models/Brand.js';
 import { Category } from '../src/models/Category.js';
 import { Product } from '../src/models/Product.js';
 import { DealerProfile } from '../src/models/DealerProfile.js';
@@ -19,7 +20,8 @@ function setup(t, approved = false) {
   invalidateCategoryCache();
   t.after(invalidateCategoryCache);
   t.mock.method(Category, 'find', () => ({ sort: () => ({ lean: async () => [] }) }));
-  t.mock.method(DealerProfile, 'findOne', () => ({ lean: async () => approved ? { _id: id } : null }));
+  t.mock.method(Brand, 'find', () => ({ lean: async () => [] }));
+  t.mock.method(DealerProfile, 'findOne', () => ({ select: () => ({ lean: async () => approved ? { _id: id } : null }) }));
   return t.mock.method(Product, 'aggregate', async () => [{
     products: [structuredClone({ ...product, applicablePrice: approved ? 4567 : 7891 })], total: [{ count: 1 }],
   }]);

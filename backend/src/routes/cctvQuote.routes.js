@@ -1,0 +1,56 @@
+import { Router } from 'express';
+import { z } from 'zod';
+import rateLimit from 'express-rate-limit';
+import { authenticate, authorize, optionalAuthenticate } from '../middlewares/auth.middleware.js';
+import { validate } from '../middlewares/validate.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { ApiResponse } from '../utils/ApiResponse.js';
+import { AppError } from '../utils/AppError.js';
+import { isSuperAdmin } from '../../../shared/adminAccess.js';
+import { MongoRateLimitStore } from '../utils/mongoRateLimitStore.js';
+import { CctvQuote } from '../models/CctvQuote.js';
+import { createCctvQuoteSchema, quoteIdSchema, quoteEmailSendSchema, quoteEmailVerifySchema, quoteSettingsSchema, adminQuoteUpdateSchema } from '../validators/cctvQuote.validator.js';
+import * as service from '../services/cctvQuote.service.js';
+import { generateCctvQuotePdf } from '../services/cctvQuotePdf.service.js';
+const reply = (res, data, message = 'CCTV quotation') => ApiResponse.success(res, message, data);
+const emailLimit = rateLimit({ store: new MongoRateLimitStore({ prefix: 'quote-email' }), windowMs: 3600000, limit: 10, skip: () => process.env.NODE_ENV === 'test', keyGenerator: req => String(req.user._id), standardHeaders: true, legacyHeaders: false });
+const submissionLimit = rateLimit({ store: new MongoRateLimitStore({ prefix: 'cctv-quote' }), windowMs: 3600000, limit: 20, skip: () => process.env.NODE_ENV === 'test', keyGenerator: req => String(req.user._id), standardHeaders: true, legacyHeaders: false });
+const listQuery = { query: z.object({ page: z.coerce.number().int().min(1).max(10000).default(1), status: z.enum(['new', 'processing', 'responded', 'closed']).optional(), search: z.string().trim().max(100).default('') }) };
+const list = admin => asyncHandler(async (req, res) => {
+  const filter = { ...(admin ? {} : { userId: req.user._id }), ...(req.query.status ? { status: req.query.status } : {}) };
+  if (req.query.search) { const regex = new RegExp(req.query.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'); filter.$or = [{ quoteNumber: regex }, { 'customer.name': regex }]; }
+  const [quotes, total] = await Promise.all([CctvQuote.find(filter).sort({ createdAt: -1 }).skip((req.query.page - 1) * 20).limit(20).select('quoteNumber customer.name customer.email selection.systemType pricing.total pricing.count pricing.priced status createdAt expiresAt emailStatus').lean(), CctvQuote.countDocuments(filter)]);
+  reply(res, { quotes, pagination: { total, page: req.query.page, totalPages: Math.max(1, Math.ceil(total / 20)) } });
+});
+const pdf = admin => asyncHandler(async (req, res) => {
+  const quote = await service.findCctvQuote(req.params.id, req.user, admin);
+  const buffer = await generateCctvQuotePdf(quote);
+  res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${quote.quoteNumber}.pdf"`, 'Cache-Control': 'private, no-store' }).send(buffer);
+});
+const noStore = (req, res, next) => { res.set('Cache-Control', 'private, no-store'); next(); };
+export const cctvQuoteRoutes = Router();
+cctvQuoteRoutes.use(noStore);
+cctvQuoteRoutes.get('/catalog', optionalAuthenticate, asyncHandler(async (req, res) => { res.set('Cache-Control', 'private, no-store'); reply(res, await service.quoteCatalogResponse(req.user)); }));
+cctvQuoteRoutes.use(authenticate, authorize('customer', 'dealer', 'admin'));
+cctvQuoteRoutes.post('/email-code', emailLimit, validate(quoteEmailSendSchema), asyncHandler(async (req, res) => reply(res, await service.sendQuoteEmailCode(req.user, req.body.email))));
+cctvQuoteRoutes.post('/verify-email', emailLimit, validate(quoteEmailVerifySchema), asyncHandler(async (req, res) => reply(res, await service.verifyQuoteEmailCode(req.user, req.body.email, req.body.code))));
+cctvQuoteRoutes.post('/', submissionLimit, validate(createCctvQuoteSchema), asyncHandler(async (req, res) => reply(res, { quote: await service.createCctvQuote(req.user, req.body) })));
+cctvQuoteRoutes.get('/', validate(listQuery), list(false));
+cctvQuoteRoutes.get('/:id/pdf', validate(quoteIdSchema), pdf(false));
+cctvQuoteRoutes.post('/:id/email', emailLimit, validate(quoteIdSchema), asyncHandler(async (req, res) => reply(res, { emailStatus: await service.emailCctvQuote(await service.findCctvQuote(req.params.id, req.user)) })));
+cctvQuoteRoutes.get('/:id', validate(quoteIdSchema), asyncHandler(async (req, res) => reply(res, { quote: await service.findCctvQuote(req.params.id, req.user) })));
+cctvQuoteRoutes.post('/:id/messages', validate({ ...quoteIdSchema, body: z.object({ message: z.string().trim().min(1).max(3000) }).strict() }), asyncHandler(async (req, res) => {
+  const quote = await service.findCctvQuote(req.params.id, req.user); if (quote.messages.length >= 200) throw new AppError('Conversation limit reached.', 400, 'VALIDATION_ERROR');
+  quote.messages.push({ from: 'customer', text: req.body.message, at: new Date() }); quote.status = 'processing'; await quote.save(); reply(res, { quote });
+}));
+export const adminCctvQuoteRoutes = Router();
+adminCctvQuoteRoutes.use(noStore);
+adminCctvQuoteRoutes.use(authenticate, authorize('admin'));
+const superAdmin = (req, res, next) => isSuperAdmin(req.user) ? next() : next(new AppError('Only super admins can configure quotation settings.', 403, 'FORBIDDEN'));
+adminCctvQuoteRoutes.get('/settings', superAdmin, asyncHandler(async (req, res) => reply(res, await service.quoteCatalogResponse(req.user, true))));
+adminCctvQuoteRoutes.put('/settings', superAdmin, validate({ body: quoteSettingsSchema }), asyncHandler(async (req, res) => reply(res, { settings: await service.saveCctvQuoteSettings(req.body) })));
+adminCctvQuoteRoutes.get('/', validate(listQuery), list(true));
+adminCctvQuoteRoutes.get('/:id/pdf', validate(quoteIdSchema), pdf(true));
+adminCctvQuoteRoutes.post('/:id/email', emailLimit, validate(quoteIdSchema), asyncHandler(async (req, res) => reply(res, { emailStatus: await service.emailCctvQuote(await service.findCctvQuote(req.params.id, req.user, true)) })));
+adminCctvQuoteRoutes.get('/:id', validate(quoteIdSchema), asyncHandler(async (req, res) => reply(res, { quote: await service.findCctvQuote(req.params.id, req.user, true) })));
+adminCctvQuoteRoutes.put('/:id', validate({ ...quoteIdSchema, ...adminQuoteUpdateSchema }), asyncHandler(async (req, res) => reply(res, { quote: await service.updateCctvQuote(await service.findCctvQuote(req.params.id, req.user, true), req.body, req.user) })));

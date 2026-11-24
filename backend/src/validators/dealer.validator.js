@@ -179,6 +179,7 @@ export const getDealerByIdSchema = {
 };
 
 export const adminApproveKycSchema = {
+  body: z.object({ dealerDiscountPercent: z.number().finite().min(0).max(100).refine(value => Math.abs(value * 100 - Math.round(value * 100)) < 1e-7, 'Use at most two decimal places').optional() }).strict().default({}),
   params: z.object({
     id: z
       .string()

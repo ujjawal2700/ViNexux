@@ -149,6 +149,7 @@ export const ProfilePage = () => {
                 <span>My Profile</span>
               </Link>
 
+              <Link to="/account/quotations" className="flex w-full items-center gap-3 rounded-lg border-l-4 border-transparent px-3.5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"><FileText className="h-5 w-5 shrink-0" /> My Quotations</Link>
               {/* 2. My Enquiries */}
               <Link
                 to="/account/enquiries"

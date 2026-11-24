@@ -83,7 +83,8 @@ export default function AdminProductPositioningPage() {
             <div className="space-y-1">
               <label htmlFor={`position-${category._id}`} className="block text-xs font-semibold text-foreground">Position for {category.name}</label>
               <NumberInput id={`position-${category._id}`} type="number" min="0" max="1000000" step="1" placeholder="Unpositioned" value={drafts[category._id] ?? ''}
-                onChange={event => setDrafts(current => ({ ...current, [category._id]: event.target.value }))} disabled={!canWrite || Boolean(saving)}
+                onChange={event => setDrafts(current => ({ ...current, [category._id]: event.target.value }))}
+                onBlur={event => { const value = event.currentTarget.value; setDrafts(current => ({ ...current, [category._id]: value })); }} disabled={!canWrite || Boolean(saving)}
                 className="w-36 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus-ring disabled:opacity-50" />
             </div>
             <Button type="submit" size="sm" isDisabled={!canWrite || Boolean(saving)} isLoading={saving === category._id} aria-label={`Save position for ${category.name}`}>Save position</Button>

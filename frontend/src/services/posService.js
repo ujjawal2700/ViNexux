@@ -14,6 +14,7 @@ export const posService = {
   saveSettings: async seller => (await api.put('/admin/pos/settings', seller)).data.data,
   sales: params => read('/sales', { params, skipGlobalLoader: true }),
   sale: id => read(`/sales/${id}`),
+  editSale: async (id, data) => (await api.put(`/admin/pos/sales/${id}`, data)).data.data,
   createSale: data => post('/sales', data),
   validateSale: data => post('/sales/validate', data),
   payment: (id, data) => post(`/sales/${id}/payments`, data),

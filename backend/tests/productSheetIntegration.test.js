@@ -40,17 +40,17 @@ test('drafts and Google product sheets round-trip through real HTTP/database wri
       return {};
     }) } }),
     values: {
-      get: async ({ range }) => { const title = range.match(/^'([^']+)'!/)[1]; return { data: { values: structuredClone(tabs.get(title).rows) } }; },
+      get: async ({ range }) => { const title = range.match(/^'([^']+)'/)[1]; return { data: { values: structuredClone(tabs.get(title).rows) } }; },
       batchUpdate: async ({ requestBody }) => {
         if (failWrite) { failWrite = false; throw new Error('Simulated Google outage'); }
         assert.equal(requestBody.valueInputOption, 'RAW');
         for (const { range, values } of requestBody.data) {
-          const [, title, column, start] = range.match(/^'([^']+)'!([A-Z]+)(\d+)/);
+          const [, title, column = 'A', start = '1'] = range.match(/^'([^']+)'(?:!([A-Z]+)(\d+))?/);
           const rows = tabs.get(title).rows;
           values.forEach((cells, index) => {
             const rowIndex = Number(start) - 1 + index;
             rows[rowIndex] ||= [];
-            const offset = column === 'AA' ? 26 : 0;
+            const offset = [...column].reduce((total, character) => total * 26 + character.charCodeAt(0) - 64, 0) - 1;
             cells.forEach((value, cellIndex) => { rows[rowIndex][offset + cellIndex] = value; });
           });
         }

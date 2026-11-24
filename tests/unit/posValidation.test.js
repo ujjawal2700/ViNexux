@@ -61,3 +61,17 @@ describe('POS section validation before payment', () => {
     await expect(posService.validateSale(posInput(), posAdminId)).rejects.toMatchObject({ statusCode: 409, details: [{ path: 'items.0.quantity', message: expect.stringContaining('only 1') }] });
   });
 });
+
+
+test('POS accepts blank or omitted PIN while still rejecting malformed PIN and state codes', () => {
+  for (const pincode of ['', undefined]) {
+    const input = posInput(); input.customer.pincode = pincode;
+    expect(posSaleSchema.safeParse(input).success).toBe(true);
+    expect(validatePosDraft(input)).toEqual([]);
+  }
+  const input = posInput(); input.customer.pincode = '123';
+  expect(posSaleSchema.safeParse(input).success).toBe(false);
+  input.customer.pincode = ''; input.customer.stateCode = '27';
+  expect(posSaleSchema.safeParse(input).success).toBe(false);
+  expect(validatePosDraft(input)).toEqual(expect.arrayContaining([expect.objectContaining({ path: 'customer.state' })]));
+});

@@ -1,3 +1,4 @@
+import StateCityFields from '../address/StateCityFields';
 import { ORGANISATION_TYPES } from '../../../../shared/dealerOrganisation.js';
 import { lazy, Suspense, useRef, useState } from 'react';
 import apiClient from '../../api/axios';
@@ -67,9 +68,10 @@ export default function DealerEnrollmentAction({ customer, onSaved }) {
         {converting && <p className="rounded-lg bg-gray-50 p-3 text-sm">Converting <strong>{customer.fullName || customer.name}</strong> ({customer.email || customer.phone}). The existing account, sign-in details and history are retained. Existing sessions will be signed out.</p>}
         <fieldset disabled={busy} className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
-            {[...(converting ? [] : contactFields), ...fields].map(([key, label, maxLength, pattern]) => <label key={key} className="text-sm font-medium">{label}{['fullName', 'email', 'phone', 'companyName'].includes(key) ? ' *' : ' (optional)'}
+            {[...(converting ? [] : contactFields), ...fields].filter(([key]) => !['city', 'state'].includes(key)).map(([key, label, maxLength, pattern]) => <label key={key} className="text-sm font-medium">{label}{['fullName', 'email', 'phone', 'companyName'].includes(key) ? ' *' : ' (optional)'}
               <input className={fieldClass} type={key === 'email' ? 'email' : ['phone', 'whatsappNumber'].includes(key) ? 'tel' : 'text'} required={['fullName', 'email', 'phone', 'companyName'].includes(key)} value={form[key] || ''} maxLength={maxLength} minLength={['fullName', 'companyName'].includes(key) ? 2 : undefined} pattern={pattern} autoComplete={key === 'aadhaarNumber' ? 'off' : undefined} onChange={e => setForm(current => ({ ...current, [key]: ['gstin', 'pan', 'msmeNumber'].includes(key) ? e.target.value.toUpperCase() : e.target.value }))} />
             </label>)}
+            <StateCityFields value={form} onChange={setForm} disabled={busy} />
             <label className="text-sm font-medium">Organisation type (optional)<select className={fieldClass} value={form.organisationType || ''} onChange={e => setForm(current => ({ ...current, organisationType: e.target.value }))}><option value="">Select organisation type</option>{organisations.map(value => <option key={value}>{value}</option>)}</select></label>
             {!converting && <label className="text-sm font-medium">Account status<select className={fieldClass} value={form.accountStatus || 'active'} onChange={e => setForm(current => ({ ...current, accountStatus: e.target.value }))}>{['active', 'pending', 'blocked'].map(value => <option key={value}>{value}</option>)}</select></label>}
           </div>
