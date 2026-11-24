@@ -22,11 +22,13 @@ const reply = (res, data, message = 'Success') => ApiResponse.success(res, messa
 const idSchema = { params: z.object({ id: z.string().regex(/^[a-f\d]{24}$/i) }) };
 const searchSchema = { query: z.object({ search: z.string().trim().max(150).default('') }) };
 const escapedRegex = text => new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+const billTypeSchema = z.enum(['b2b', 'b2c']).default('b2c');
+const customerQuery = z.object({ billType: billTypeSchema });
 const phoneSchema = z.string().trim().min(10).max(20);
-router.get('/customer', validate({ query: z.object({ phone: phoneSchema }) }), asyncHandler(async (req, res) => reply(res, await posCustomerService.lookup(req.query.phone, req.user._id))));
-router.post('/customer/otp', validate({ body: z.object({ phone: phoneSchema }) }), asyncHandler(async (req, res) => reply(res, await posCustomerService.sendOtp(req.body.phone, req.user._id), 'Verification code sent.')));
+router.get('/customer', validate({ query: z.object({ phone: phoneSchema, billType: billTypeSchema }) }), asyncHandler(async (req, res) => reply(res, await posCustomerService.lookup(req.query.phone, req.user._id, req.query.billType))));
+router.post('/customer/otp', validate({ body: z.object({ phone: phoneSchema, billType: billTypeSchema }) }), asyncHandler(async (req, res) => reply(res, await posCustomerService.sendOtp(req.body.phone, req.user._id, req.body.billType), 'Verification code sent.')));
 router.post('/customer/verify', validate({ body: z.object({ phone: phoneSchema, otp: z.string().regex(/^\d{6}$/) }) }), asyncHandler(async (req, res) => reply(res, await posCustomerService.verifyOtp(req.body.phone, req.body.otp, req.user._id), 'Phone number verified.')));
-router.put('/customer', validate({ body: customerSchema }), asyncHandler(async (req, res) => reply(res, await posCustomerService.save(req.body, req.user._id), 'Customer details saved to the customer list.')));
+router.put('/customer', validate({ body: customerSchema, query: customerQuery }), asyncHandler(async (req, res) => reply(res, await posCustomerService.save(req.body, req.user._id, req.query.billType), 'Customer details saved to the customer list.')));
 
 router.get('/settings', asyncHandler(async (_req, res) => reply(res, await posService.getSettings())));
 router.put('/settings', validate({ body: posSellerSchema }), asyncHandler(async (req, res) => reply(res, await posService.updateSettings(req.body, req.user._id))));

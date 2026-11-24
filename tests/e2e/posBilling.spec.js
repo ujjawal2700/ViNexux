@@ -162,3 +162,33 @@ test('POS state and city are list-only and changing state clears the city and fi
   await page.screenshot({ path: testInfo.outputPath('pos-mobile-address-dropdowns.png') });
   await expect(city.locator('option[value="Kota"]')).toHaveCount(0);
 });
+
+test('B2B dealer phone autofills business details and completes billing without customer OTP', async ({ page }) => {
+  const state = await configure(page);
+  const dealer = { name: 'Dealer Company', phone: '9876543210', whatsappNumber: '8769959424', email: 'dealer@example.test', address: 'Dealer Street', city: 'Kota', state: 'Rajasthan', stateCode: '08', pincode: '324005', gstin: '08ABCDE1234F1Z5' };
+  let saved = false;
+  await page.route('**/api/admin/pos/customer**', async route => {
+    const request = route.request(), url = new URL(request.url());
+    if (!url.pathname.endsWith('/customer')) return route.fallback();
+    expect(url.searchParams.get('billType')).toBe('b2b');
+    if (request.method() === 'PUT') { expect(request.postDataJSON()).toMatchObject(dealer); saved = true; }
+    else expect(url.searchParams.get('phone')).toBe(dealer.phone);
+    return route.fulfill({ json: { success: true, data: { found: true, needsVerification: false, customer: dealer } } });
+  });
+  await page.getByRole('combobox', { name: 'Bill type', exact: true }).selectOption('b2b');
+  await page.getByRole('button', { name: /TRUEVIEW 3MP 4G Camera CAM-001/ }).click();
+  await page.getByRole('button', { name: /Add customer details/ }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Phone *', { exact: true }).fill(dealer.phone);
+  await expect(dialog.getByLabel('Customer name *', { exact: true })).toHaveValue(dealer.name);
+  await expect(dialog.getByLabel('Full street address *')).toHaveValue(dealer.address);
+  await expect(dialog.getByRole('combobox', { name: 'City *', exact: true })).toHaveValue('Kota');
+  await expect(dialog.getByRole('button', { name: 'Send OTP', exact: true })).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Save details' }).click();
+  await expect(dialog).toHaveCount(0); expect(saved).toBe(true);
+  await page.getByRole('button', { name: /Proceed to payment/ }).click();
+  await dialog.getByRole('button', { name: 'Complete sale & generate invoice' }).click();
+  await expect(dialog.getByRole('heading', { name: 'VI/26-27/000001' })).toBeVisible();
+  expect(state.sale()).toMatchObject({ billType: 'b2b', customer: dealer });
+  expect(state.otpRequests()).toBe(0);
+});

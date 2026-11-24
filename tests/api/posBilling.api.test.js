@@ -93,7 +93,7 @@ describe('POS API access and output contracts', () => {
     expect((await request.post('/api/admin/pos/customer/otp').send({ phone: '9876543210' })).status).toBe(401);
     expect((await request.post('/api/admin/pos/customer/otp').auth(customerToken, { type: 'bearer' }).send({ phone: '9876543210' })).status).toBe(403);
     expect((await request.post('/api/admin/pos/customer/otp').auth(adminToken, { type: 'bearer' }).send({ phone: '9876543210' })).status).toBe(200);
-    expect(send).toHaveBeenCalledWith('9876543210', posAdminId);
+    expect(send).toHaveBeenCalledWith('9876543210', posAdminId, 'b2c');
     expect((await request.post('/api/admin/pos/customer/verify').auth(adminToken, { type: 'bearer' }).send({ phone: '9876543210', otp: 'bad' })).status).toBe(400);
     expect(verify).not.toHaveBeenCalled();
     expect((await request.post('/api/admin/pos/customer/verify').auth(adminToken, { type: 'bearer' }).send({ phone: '9876543210', otp: '123456' })).status).toBe(200);
@@ -115,7 +115,7 @@ test('POS customer save and invoice creation accept an omitted PIN and reject a 
   const create = jest.spyOn(posService, 'createSale').mockResolvedValue(posInvoiceFixture());
   const customer = { ...posInput().customer }; delete customer.pincode;
   expect((await request.put('/api/admin/pos/customer').auth(adminToken, { type: 'bearer' }).send(customer)).status).toBe(200);
-  expect(save).toHaveBeenCalledWith(expect.objectContaining({ pincode: '' }), posAdminId);
+  expect(save).toHaveBeenCalledWith(expect.objectContaining({ pincode: '' }), posAdminId, 'b2c');
   const input = posInput(); delete input.customer.pincode;
   expect((await request.post('/api/admin/pos/sales').auth(adminToken, { type: 'bearer' }).send(input)).status).toBe(200);
   expect(create).toHaveBeenCalledWith(expect.objectContaining({ customer: expect.objectContaining({ pincode: '' }) }), posAdminId);
@@ -168,4 +168,16 @@ test('full invoice edit validates line quantities/prices and accepts a settlemen
   expect(result.status).toBe(200); expect(update).toHaveBeenCalledWith(posInvoiceFixture()._id, expect.objectContaining({ items: body.items, settlement: body.settlement }), posAdminId);
   for (const items of [[], [{ ...body.items[0], quantity: 0 }], [{ ...body.items[0], unitPrice: -1 }], [body.items[0], body.items[0]]]) expect((await request.put(path).auth(adminToken, { type: 'bearer' }).send({ ...body, items })).status).toBe(400);
   expect((await request.put(path).auth(adminToken, { type: 'bearer' }).send({ ...body, total: 1 })).status).toBe(400);
+});
+
+
+test('POS passes B2B context through dealer lookup and billing detail saving', async () => {
+  const input = posInput().customer;
+  const lookup = jest.spyOn(posCustomerService, 'lookup').mockResolvedValue({ found: true, customer: input, needsVerification: false });
+  const save = jest.spyOn(posCustomerService, 'save').mockResolvedValue({ found: true, customer: input });
+  expect((await request.get('/api/admin/pos/customer').query({ phone: input.phone, billType: 'b2b' }).auth(adminToken, { type: 'bearer' })).status).toBe(200);
+  expect(lookup).toHaveBeenCalledWith(input.phone, posAdminId, 'b2b');
+  expect((await request.put('/api/admin/pos/customer').query({ billType: 'b2b' }).auth(adminToken, { type: 'bearer' }).send(input)).status).toBe(200);
+  expect(save).toHaveBeenCalledWith(input, posAdminId, 'b2b');
+  expect((await request.get('/api/admin/pos/customer').query({ phone: input.phone, billType: 'invalid' }).auth(adminToken, { type: 'bearer' })).status).toBe(400);
 });
