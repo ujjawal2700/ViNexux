@@ -67,7 +67,7 @@ test('new arrival checkbox saves immediately and survives catalog reload', async
   await expect.poll(() => product.isNewArrival).toBe(false);
 });
 
-test('New Arrivals loads all selected pages, excludes automatic additions and auto slides', async ({ page }) => {
+test('New Arrivals shows a bounded preview, links to all selections and auto slides', async ({ page }) => {
   await page.clock.install(); await mockApi(page); await seedBrowserSession(page, 'account');
   const selected = Array.from({ length: 101 }, (_, index) => ({ _id: String(index + 1).padStart(24, '0'), name: `Selected Product ${index + 1}`, modelNumber: `MODEL-${index + 1}`, standardPrice: 1500, stockQuantity: 10, isActive: true, isNewArrival: true, images: [] }));
   const pages = [];
@@ -77,16 +77,17 @@ test('New Arrivals loads all selected pages, excludes automatic additions and au
     const current = Number(query.get('page') || 1);
     if (isArrival) pages.push(current);
     return route.fulfill({ json: { success: true, data: {
-      products: isArrival ? selected.slice((current - 1) * 100, current * 100) : [],
-      pagination: { total: isArrival ? 101 : 0, totalPages: isArrival ? 2 : 0 },
+      products: isArrival ? selected.slice((current - 1) * Number(query.get('limit')), current * Number(query.get('limit'))) : [],
+      pagination: { total: isArrival ? 101 : 0, totalPages: isArrival ? Math.ceil(101 / Number(query.get('limit'))) : 0 },
     } } });
   });
   await page.goto('/');
   const section = page.getByRole('region', { name: 'New arrival products', exact: true });
   await expect(section.getByRole('heading', { name: 'New Arrivals', exact: true })).toBeVisible();
-  await expect(section.locator('.trending-group').first().locator('.theme-product-card')).toHaveCount(101);
-  expect([...new Set(pages)]).toEqual([1, 2]);
-  await expect(section.locator('.trending-group').first().locator('.theme-product-card').last().getByRole('heading')).toHaveText('Selected Product 101');
+  await expect(section.locator('.trending-group').first().locator('.theme-product-card')).toHaveCount(16);
+  expect([...new Set(pages)]).toEqual([1]);
+  await expect(section.getByRole('link', { name: /view all/i })).toHaveAttribute('href', '/products?isNewArrival=true');
+  await expect(section.locator('.trending-group').first().locator('.theme-product-card').last().getByRole('heading')).toHaveText('Selected Product 16');
   const firstCard = section.locator('.trending-group').first().locator('.theme-product-card').first();
   await expect(firstCard).toContainText('Model Number: MODEL-1');
   await expect(firstCard).toContainText('₹1,500');

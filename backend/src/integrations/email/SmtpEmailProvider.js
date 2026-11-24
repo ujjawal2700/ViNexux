@@ -42,7 +42,7 @@ export class SmtpEmailProvider extends EmailProvider {
     });
   }
 
-  async sendEmail({ to, subject, html, text, from, replyTo, unsubscribeUrl, oneClickUrl }) {
+  async sendEmail({ to, subject, html, text, from, replyTo, unsubscribeUrl, oneClickUrl, attachments }) {
     try {
       const transporter = await this.getTransporter();
       const sender = from || `"${config.emailFromName}" <${config.emailFrom}>`;
@@ -54,6 +54,7 @@ export class SmtpEmailProvider extends EmailProvider {
         text,
         html,
         replyTo,
+        ...(attachments ? { attachments } : {}),
         ...(unsubscribeUrl ? { headers: { 'List-Unsubscribe': `<${oneClickUrl || unsubscribeUrl}>`, ...(oneClickUrl ? { 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } : {}) } } : {}),
       });
 

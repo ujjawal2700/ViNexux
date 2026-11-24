@@ -56,8 +56,8 @@ test('POS completes a counter sale with customer details, serials, invoice and E
   await dialog.getByLabel('Phone *', { exact: true }).fill('9876543210');
   await dialog.getByRole('button', { name: 'Use phone number for WhatsApp' }).click();
   await dialog.getByLabel('Full street address *').fill('116, Main Road');
-  await dialog.getByLabel('City *', { exact: true }).fill('Kota');
-  await dialog.getByLabel('PIN code *').fill('324001');
+  await dialog.getByRole('combobox', { name: 'City *', exact: true }).selectOption('Kota');
+  await expect(dialog.getByLabel('PIN code (optional)')).not.toHaveAttribute('required', '');
   await dialog.getByRole('button', { name: 'Send OTP', exact: true }).click();
   await dialog.getByLabel('Verification code', { exact: true }).fill('123456');
   await dialog.getByRole('button', { name: 'Verify OTP', exact: true }).click();
@@ -72,11 +72,10 @@ test('POS completes a counter sale with customer details, serials, invoice and E
   expect(state.saleRequests()).toBe(1);
   expect(state.customers().get('9876543210').name).toBe('Retail Customer');
   expect(state.otpRequests()).toBe(1);
+  expect(state.sale().customer.pincode).toBe('');
   expect(state.sale().items[0].serialNumbers).toEqual(['CAM-SERIAL-001']);
-  const whatsapp = dialog.getByRole('link', { name: 'Send to WhatsApp' });
-  await expect(whatsapp).toHaveAttribute('href', /https:\/\/wa.me\/919876543210\?text=/);
-  expect(decodeURIComponent(await whatsapp.getAttribute('href'))).toContain('/invoices/' + 'a'.repeat(64));
-  expect(decodeURIComponent(await whatsapp.getAttribute('href'))).not.toContain('/api/pos/invoices/');
+  await expect(dialog.getByRole('button', { name: 'Share invoice', exact: true })).toBeVisible();
+  await expect(dialog.getByRole('link', { name: 'Send to WhatsApp' })).toHaveCount(0);
   const pdfDownload = page.waitForEvent('download');
   await dialog.getByRole('button', { name: 'Download PDF' }).click();
   expect((await pdfDownload).suggestedFilename()).toBe('VI-26-27-000001.pdf');
@@ -93,6 +92,7 @@ test('POS completes a counter sale with customer details, serials, invoice and E
   await expect(dialog.getByLabel('Full street address *')).toHaveValue('116, Main Road');
   await expect(dialog.getByRole('button', { name: 'Send OTP', exact: true })).toHaveCount(0);
   expect(state.otpRequests()).toBe(1);
+  expect(state.sale().customer.pincode).toBe('');
   await expect(dialog.getByRole('button', { name: 'Delivery references', exact: true })).toHaveCount(0);
 });
 
@@ -142,4 +142,23 @@ test('POS switches retail and dealer prices for existing items and preserves B2B
   await page.reload();
   await expect(page.getByLabel('Bill type', { exact: true })).toHaveValue('b2b');
   await expect(price).toHaveValue('3000');
+});
+
+test('POS state and city are list-only and changing state clears the city and fills its code', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await configure(page);
+  await page.getByRole('button', { name: /Add customer details/ }).click();
+  const dialog = page.getByRole('dialog');
+  const state = dialog.getByRole('combobox', { name: 'State / place of supply *', exact: true });
+  const city = dialog.getByRole('combobox', { name: 'City *', exact: true });
+  await city.selectOption('Kota');
+  await state.selectOption('Maharashtra');
+  await expect(city).toHaveValue('');
+  await expect(dialog.getByLabel('GST state code *', { exact: true })).toHaveValue('27');
+  await expect(dialog.getByLabel('GST state code *', { exact: true })).toHaveAttribute('readonly', '');
+  await city.selectOption('Pune');
+  await expect(city).toHaveValue('Pune');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath('pos-mobile-address-dropdowns.png') });
+  await expect(city.locator('option[value="Kota"]')).toHaveCount(0);
 });

@@ -4,7 +4,7 @@ export const ADMIN_SECTIONS = [
   ['products', 'Products & inventory', 'Catalog'], ['filters', 'Product filters', 'Catalog'], ['brands', 'Brands', 'Catalog'],
   ['pos', 'Offline POS billing', 'Operations'], ['dealers', 'Dealer verification', 'People'], ['dealer-accounts', 'Dealer accounts', 'People'],
   ['customers', 'Customer accounts', 'People'], ['enquiries-customers', 'B2C enquiries', 'Operations'], ['enquiries-dealers', 'B2B enquiries', 'Operations'],
-  ['whatsapp-orders', 'Order on WhatsApp', 'Operations'],
+  ['whatsapp-orders', 'Order on WhatsApp', 'Operations'], ['quotations', 'CCTV quotations', 'Operations'],
   ['sessions', 'Customer & dealer sessions', 'People'], ['reports', 'Analytics reports', 'Operations'],
   ['themes', 'Seasonal themes', 'Website'], ['website-settings', 'Website & SEO settings', 'Website'],
   ['banners', 'Homepage banners', 'Website'], ['promotional-banners', 'Promotional cards', 'Website'],

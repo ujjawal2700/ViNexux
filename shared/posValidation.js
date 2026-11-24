@@ -1,3 +1,4 @@
+import { INDIA_GST_STATE_CODES } from './indiaGstStates.js';
 import { productLineKey } from './productVariants.js';
 const labels = { name: 'Name', phone: 'Phone', whatsappNumber: 'WhatsApp number', email: 'Email', address: 'Street address', city: 'City',
   state: 'State', stateCode: 'GST state code', pincode: 'PIN code', gstin: 'GSTIN', quantity: 'Quantity', unitPrice: 'Unit price',
@@ -29,8 +30,9 @@ export function validatePosCustomer(customer, prefix = 'customer') {
     if (phone.length === 12 && phone.startsWith('91')) phone = phone.slice(2);
     if (!/^[6-9]\d{9}$/.test(phone) && !issues.some(issue => issue.path === `${prefix}.phone`)) add('phone', 'Enter a valid Indian mobile number.');
   }
-  if (!/^\d{6}$/.test(customer?.pincode || '')) add('pincode', 'Enter a 6-digit PIN code.');
+  if (customer?.pincode && !/^\d{6}$/.test(customer.pincode)) add('pincode', 'Enter a 6-digit PIN code.');
   if (!/^\d{2}$/.test(customer?.stateCode || '')) add('stateCode', 'Enter a 2-digit GST state code.');
+  if (INDIA_GST_STATE_CODES[customer?.state] !== customer?.stateCode) add('state', 'Choose a state from the list; its GST code must match.');
   const email = String(customer?.email || '').trim();
   if (email && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 150)) add('email', 'Enter a valid email address or leave it blank.');
   const gstin = String(customer?.gstin || '').trim().toUpperCase();

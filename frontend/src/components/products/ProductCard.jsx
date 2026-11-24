@@ -49,13 +49,9 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
   const isLowStockItem = !isOutOfStock && isLowStock(product);
 
   let displayPrice = product?.applicablePrice ?? standardPrice;
-  let hasDealerDiscount = false;
 
   if (isApprovedDealer && dealerPrice > 0) {
     displayPrice = product?.applicablePrice ?? dealerPrice;
-    if (standardPrice > dealerPrice) {
-      hasDealerDiscount = true;
-    }
   }
 
   // Brand info
@@ -211,11 +207,6 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
             <span className="text-lg font-bold text-[var(--store-text)] sm:text-xl leading-none">
               {(product.variants?.length || product.hasVariants) ? 'From ' : ''}₹{(Number(displayPrice) || 0).toLocaleString('en-IN')}
             </span>
-            {pricesVisible && hasDealerDiscount && (
-              <span className="text-[10px] sm:text-xs text-[var(--store-muted)] line-through">
-                ₹{(Number(standardPrice) || 0).toLocaleString('en-IN')}
-              </span>
-            )}
           </div>
 
           </PriceGate>}
@@ -245,12 +236,6 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
             </span>
           )}
         </div>
-
-        {pricesVisible && hasDealerDiscount && (
-          <div className="mt-1 text-[10px] font-semibold text-[var(--store-primary)]">
-            Dealer saving: ₹{(standardPrice - displayPrice).toLocaleString('en-IN')}
-          </div>
-        )}
 
         {!pricesVisible ? (
           <div className="mt-auto pt-2 space-y-1.5">

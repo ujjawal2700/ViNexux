@@ -59,5 +59,26 @@ try {
   assert.equal((await PosSale.findById(sale._id)).refunds.length, 1);
   const exported = await auth('get', '/admin/pos/sales/export').buffer(true).parse((response, callback) => { const chunks = []; response.on('data', chunk => chunks.push(chunk)); response.on('end', () => callback(null, Buffer.concat(chunks))); }); assert.equal(exported.status, 200); assert.equal(exported.body.subarray(0, 2).toString(), 'PK');
   assert.ok(await AuditLog.exists({ entity: 'PosSale', 'actor.id': String(admin._id) }), 'POS changes appear in the admin logbook');
+  // Exercise financial edits with real transaction rollback and retained payment history.
+  const revisionInput = posInput(); revisionInput.items[0].productId = String(product._id);
+  const original = await auth('post', '/admin/pos/sales').send(revisionInput);
+  assert.equal(original.status, 200, JSON.stringify(original.body));
+  let revised = original.body.data;
+  const edit = { customer: revisionInput.customer, expectedUpdatedAt: revised.updatedAt, editRequestId: randomUUID(), items: [{ ...revisionInput.items[0], quantity: 3 }], settlement: { method: 'upi', reference: 'EDIT-COLLECTION' } };
+  const changed = await auth('put', `/admin/pos/sales/${revised._id}`).send(edit);
+  assert.equal(changed.status, 200, JSON.stringify(changed.body)); revised = changed.body.data;
+  assert.equal(revised.total, 10650); assert.equal(revised.balanceDue, 0);
+  assert.equal(revised.payments.length, 2); assert.equal(revised.payments[1].amount, 3550);
+  assert.equal(revised.revisionNumber, 1); assert.equal((await Product.findById(product._id)).stockQuantity, 0);
+  assert.equal((await auth('put', `/admin/pos/sales/${revised._id}`).send(edit)).status, 200);
+  assert.equal((await PosSale.findById(revised._id)).payments.length, 2, 'Edit replay cannot collect twice');
+  assert.equal((await auth('put', `/admin/pos/sales/${revised._id}`).send({ ...edit, editRequestId: randomUUID() })).status, 409, 'Stale revisions are rejected');
+  const unavailable = await auth('put', `/admin/pos/sales/${revised._id}`).send({ ...edit, expectedUpdatedAt: revised.updatedAt, editRequestId: randomUUID(), items: [{ ...edit.items[0], quantity: 4 }] });
+  assert.equal(unavailable.status, 409); assert.equal((await PosSale.findById(revised._id)).total, 10650, 'Failed edit rolls back invoice');
+  const reduction = await auth('put', `/admin/pos/sales/${revised._id}`).send({ ...edit, expectedUpdatedAt: revised.updatedAt, editRequestId: randomUUID(), items: [{ ...edit.items[0], quantity: 2 }], settlement: { method: 'bank', reference: 'EDIT-REFUND' } });
+  assert.equal(reduction.status, 200, JSON.stringify(reduction.body));
+  assert.equal(reduction.body.data.total, 7100); assert.equal(reduction.body.data.refunds[0].amount, 3550);
+  assert.equal(reduction.body.data.payments.length, 2); assert.equal((await Product.findById(product._id)).stockQuantity, 1);
+  assert.equal((await PosSale.findById(revised._id).select('+revisions')).revisions.length, 2);
   console.log('POS integration passed: real MongoDB checkout transactions, idempotency, stock rollback, HSN, PDF, customer ownership, return, void, refund, Excel and auditing.');
 } finally { await mongoose.disconnect(); }

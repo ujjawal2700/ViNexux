@@ -1,3 +1,4 @@
+import { INDIA_GST_STATE_CODES } from '../../../shared/indiaGstStates.js';
 import { z } from 'zod';
 
 const text = (max = 200) => z.string().trim().max(max).default('');
@@ -12,8 +13,8 @@ export const customerSchema = z.object({
   email: z.union([z.string().trim().email().max(150), z.literal('')]).default(''),
   address: z.string().trim().min(3).max(500), city: z.string().trim().min(2).max(100),
   state: z.string().trim().min(2).max(100), stateCode: z.string().regex(/^\d{2}$/),
-  pincode: z.string().regex(/^\d{6}$/), gstin: z.union([z.string().trim().toUpperCase().regex(/^\d{2}[A-Z0-9]{13}$/), z.literal('')]).default(''),
-});
+  pincode: z.string().trim().regex(/^$|^\d{6}$/).default(''), gstin: z.union([z.string().trim().toUpperCase().regex(/^\d{2}[A-Z0-9]{13}$/), z.literal('')]).default(''),
+}).refine(value => INDIA_GST_STATE_CODES[value.state] === value.stateCode, { message: 'Choose a state from the list with its matching GST code.', path: ['state'] });
 const deliverySchema = z.object(Object.fromEntries([
   'deliveryNote', 'paymentTerms', 'reference', 'otherReferences', 'dispatchDoc', 'deliveryNoteDate',
   'dispatchedThrough', 'destination', 'vesselFlight', 'receiptPlace', 'loadingPort', 'dischargePort', 'terms',
@@ -47,11 +48,29 @@ export const posSellerSchema = z.object({
   accountNumber: text(50), branch: text(), ifsc: text(20), jurisdiction: text(100),
   declarations: z.array(z.string().trim().min(1).max(200)).max(6),
 });
-export const returnSchema = z.object({ requestId: z.string().uuid(), reason: z.string().trim().min(3).max(500),
+export const returnSchema = z.object({ refund: z.object({ method: z.enum(['cash', 'upi', 'bank']), reference: text() }).strict().optional(), requestId: z.string().uuid(), reason: z.string().trim().min(3).max(500),
   items: z.array(z.object({ productId: z.string().regex(/^[a-f\d]{24}$/i), variantId: z.string().regex(/^[a-f\d]{24}$/i).nullable().optional(), quantity: z.number().int().min(1).max(10000) })).min(1).max(100),
 });
 export const posListSchema = z.object({
   search: text(150), from: date.optional(), to: date.optional(),
   status: z.enum(['all', 'completed', 'voided']).default('all'), paymentStatus: z.enum(['all', 'paid', 'partial', 'unpaid']).default('all'),
   page: z.coerce.number().int().min(1).default(1), limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+
+const editableBill = posSaleSchema.innerType().shape;
+export const invoiceEditSchema = z.object({
+  expectedUpdatedAt: z.string().datetime(), editRequestId: z.string().uuid().optional(),
+  customer: customerSchema, shipping: customerSchema.optional(), notes: text(1000),
+  items: editableBill.items.optional(), taxMode: editableBill.taxMode.optional(), roundOff: z.boolean().optional(),
+  billType: z.enum(['b2b', 'b2c']).optional(), delivery: deliverySchema.optional(),
+  settlement: z.object({ method: z.enum(['cash', 'upi', 'bank']), reference: text() }).strict().optional(),
+}).strict().superRefine((edit, ctx) => {
+  if (edit.items) {
+    if (!edit.editRequestId) ctx.addIssue({ code: 'custom', path: ['editRequestId'], message: 'An edit request ID is required.' });
+    const ids = edit.items.map(item => `${item.productId}:${item.variantId || ''}`);
+    const serials = edit.items.flatMap(item => item.serialNumbers);
+    if (new Set(ids).size !== ids.length) ctx.addIssue({ code: 'custom', path: ['items'], message: 'Combine duplicate products into one line.' });
+    if (new Set(serials).size !== serials.length || edit.items.some(item => item.serialNumbers.length > item.quantity)) ctx.addIssue({ code: 'custom', path: ['items'], message: 'Serial numbers must be unique and cannot exceed quantity.' });
+  } else if (edit.settlement || edit.taxMode !== undefined || edit.roundOff !== undefined || edit.billType !== undefined) ctx.addIssue({ code: 'custom', path: ['items'], message: 'Include the complete bill to update financial details.' });
 });

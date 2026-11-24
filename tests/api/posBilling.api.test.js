@@ -108,3 +108,64 @@ describe('POS API access and output contracts', () => {
     expect(result.status).toBe(200); expect(result.body.data.customer).toMatchObject(input);
   });
 });
+
+
+test('POS customer save and invoice creation accept an omitted PIN and reject a malformed one', async () => {
+  const save = jest.spyOn(posCustomerService, 'save').mockResolvedValue({ customer: { ...posInput().customer, pincode: '' } });
+  const create = jest.spyOn(posService, 'createSale').mockResolvedValue(posInvoiceFixture());
+  const customer = { ...posInput().customer }; delete customer.pincode;
+  expect((await request.put('/api/admin/pos/customer').auth(adminToken, { type: 'bearer' }).send(customer)).status).toBe(200);
+  expect(save).toHaveBeenCalledWith(expect.objectContaining({ pincode: '' }), posAdminId);
+  const input = posInput(); delete input.customer.pincode;
+  expect((await request.post('/api/admin/pos/sales').auth(adminToken, { type: 'bearer' }).send(input)).status).toBe(200);
+  expect(create).toHaveBeenCalledWith(expect.objectContaining({ customer: expect.objectContaining({ pincode: '' }) }), posAdminId);
+  expect((await request.put('/api/admin/pos/customer').auth(adminToken, { type: 'bearer' }).send({ ...customer, pincode: '123' })).status).toBe(400);
+});
+
+
+test('super admin can record a return with refund method while customers and dealers cannot mutate it', async () => {
+  const returns = jest.spyOn(posService, 'returnItems').mockResolvedValue(posInvoiceFixture());
+  const refund = jest.spyOn(posService, 'addPayment').mockResolvedValue(posInvoiceFixture());
+  const id = posInvoiceFixture()._id;
+  const input = { requestId: '310d5563-49b4-4405-a44b-c350c2d07051', reason: 'Customer returned camera', items: [{ productId: posInput().items[0].productId, quantity: 1 }], refund: { method: 'upi', reference: 'UPI-123' } };
+  expect((await request.post(`/api/admin/pos/sales/${id}/returns`).send(input)).status).toBe(401);
+  expect((await request.post(`/api/admin/pos/sales/${id}/returns`).auth(customerToken, { type: 'bearer' }).send(input)).status).toBe(403);
+  expect(returns).not.toHaveBeenCalled();
+  expect((await request.post(`/api/admin/pos/sales/${id}/returns`).auth(adminToken, { type: 'bearer' }).send(input)).status).toBe(200);
+  expect(returns).toHaveBeenCalledWith(id, input, posAdminId);
+  for (const invalid of [{ method: 'card' }, { method: 'cash', amount: 99999 }]) expect((await request.post(`/api/admin/pos/sales/${id}/returns`).auth(adminToken, { type: 'bearer' }).send({ ...input, refund: invalid })).status).toBe(400);
+  expect((await request.post(`/api/admin/pos/sales/${id}/refunds`).auth(customerToken, { type: 'bearer' }).send({ ...input.refund, amount: 3550, requestId: input.requestId })).status).toBe(403);
+  expect(refund).not.toHaveBeenCalled();
+});
+
+test('dealer accounts read only their own return and refund records through the same invoice owner filter', async () => {
+  User.findById.mockImplementation(async id => ({ _id: id, role: id === posAdminId ? 'admin' : 'dealer', accountStatus: 'active' }));
+  const list = jest.spyOn(customerInvoiceService, 'list').mockResolvedValue({ invoices: [], total: 0, page: 1, pages: 0 });
+  const result = await request.get('/api/pos/my-invoices').auth(customerToken, { type: 'bearer' });
+  expect(result.status).toBe(200);
+  expect(list).toHaveBeenCalledWith(expect.objectContaining({ role: 'dealer', _id: '507f1f77bcf86cd799439025' }), expect.anything());
+});
+
+
+test('invoice contact edit is restricted and rejects changes to financial records', async () => {
+  const update = jest.spyOn(posService, 'editSale').mockResolvedValue(posInvoiceFixture());
+  const id = posInvoiceFixture()._id;
+  const body = { expectedUpdatedAt: '2026-11-24T10:00:00.000Z', customer: posInput().customer, notes: 'Delivery note' };
+  expect((await request.put(`/api/admin/pos/sales/${id}`).send(body)).status).toBe(401);
+  expect((await request.put(`/api/admin/pos/sales/${id}`).auth(customerToken, { type: 'bearer' }).send(body)).status).toBe(403);
+  expect(update).not.toHaveBeenCalled();
+  expect((await request.put(`/api/admin/pos/sales/${id}`).auth(adminToken, { type: 'bearer' }).send(body)).status).toBe(200);
+  expect(update).toHaveBeenCalledWith(id, body, posAdminId);
+  for (const injected of [{ total: 1 }, { items: [] }, { payments: [] }, { customerId: posAdminId }]) expect((await request.put(`/api/admin/pos/sales/${id}`).auth(adminToken, { type: 'bearer' }).send({ ...body, ...injected })).status).toBe(400);
+});
+
+
+test('full invoice edit validates line quantities/prices and accepts a settlement method without client totals', async () => {
+  const update = jest.spyOn(posService, 'editSale').mockResolvedValue(posInvoiceFixture());
+  const body = { expectedUpdatedAt: '2026-11-24T10:00:00.000Z', editRequestId: '310d5563-49b4-4405-a44b-c350c2d07051', customer: posInput().customer, items: posInput().items, taxMode: 'inclusive', roundOff: true, billType: 'b2c', settlement: { method: 'upi', reference: 'COLLECTED' } };
+  const path = `/api/admin/pos/sales/${posInvoiceFixture()._id}`;
+  const result = await request.put(path).auth(adminToken, { type: 'bearer' }).send(body);
+  expect(result.status).toBe(200); expect(update).toHaveBeenCalledWith(posInvoiceFixture()._id, expect.objectContaining({ items: body.items, settlement: body.settlement }), posAdminId);
+  for (const items of [[], [{ ...body.items[0], quantity: 0 }], [{ ...body.items[0], unitPrice: -1 }], [body.items[0], body.items[0]]]) expect((await request.put(path).auth(adminToken, { type: 'bearer' }).send({ ...body, items })).status).toBe(400);
+  expect((await request.put(path).auth(adminToken, { type: 'bearer' }).send({ ...body, total: 1 })).status).toBe(400);
+});

@@ -1,3 +1,4 @@
+import { cctvQuoteRoutes, adminCctvQuoteRoutes } from './cctvQuote.routes.js';
 import seoRoutes from './seo.routes.js';
 import dealerApplicationRoutes from './dealerApplication.routes.js';
 import dealerAccountsRoutes from './dealerAccounts.routes.js';
@@ -83,6 +84,8 @@ router.use('/dealers', dealerRoutes);
 // Mount cart, enquiry, and saved-address modules
 router.use('/cart', cartRoutes);
 router.use('/enquiries', enquiryRoutes);
+router.use('/quotations', cctvQuoteRoutes);
+router.use('/admin/quotations', adminCctvQuoteRoutes);
 router.use('/addresses', addressRoutes);
 
 // Mount push notification token registration (any authenticated role)

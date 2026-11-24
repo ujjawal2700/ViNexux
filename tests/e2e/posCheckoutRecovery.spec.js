@@ -70,12 +70,12 @@ test('a customer field error is corrected before saving the customer or entering
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Phone *', { exact: true }).fill('9876543210');
   await expect(dialog.getByLabel('Customer name *', { exact: true })).toHaveValue('Sample Customer');
-  await dialog.getByLabel('PIN code *', { exact: true }).fill('12');
+  await dialog.getByLabel('PIN code (optional)', { exact: true }).fill('12');
   await dialog.getByRole('button', { name: 'Save details', exact: true }).click();
-  await expect(dialog.getByLabel('PIN code *', { exact: true })).toHaveAttribute('aria-invalid', 'true');
+  await expect(dialog.getByLabel('PIN code (optional)', { exact: true })).toHaveAttribute('aria-invalid', 'true');
   await expect(dialog.getByRole('alert').first()).toContainText('Customer → PIN code');
   expect(state.preflights()).toBe(0); expect(state.creates()).toBe(0);
-  await dialog.getByLabel('PIN code *', { exact: true }).fill('324005');
+  await dialog.getByLabel('PIN code (optional)', { exact: true }).fill('324005');
   await dialog.getByRole('button', { name: 'Save details', exact: true }).click();
   await expect(dialog).toHaveCount(0);
 });
@@ -106,7 +106,7 @@ test('a later server address error can be corrected inside the payment dialog', 
   await expect(dialog.getByRole('heading', { name: 'Correct customer details here' })).toBeVisible();
   await expect(dialog.getByRole('alert').first()).toContainText('Customer → PIN code');
   await expect(dialog.getByRole('button', { name: 'Complete sale & generate invoice' })).toBeDisabled();
-  await dialog.getByLabel('PIN code *', { exact: true }).fill('324099');
+  await dialog.getByLabel('PIN code (optional)', { exact: true }).fill('324099');
   await dialog.getByRole('button', { name: 'Save corrections', exact: true }).click();
   await expect(dialog.getByRole('heading', { name: 'Correct customer details here' })).toHaveCount(0);
   await dialog.getByRole('button', { name: 'Complete sale & generate invoice' }).click();

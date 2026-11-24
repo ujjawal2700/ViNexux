@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { BellRing, X } from 'lucide-react';
 import apiClient from '../../api/axios';
 import { isSuperAdmin } from '../../../../shared/adminAccess.js';
-import { playAdminArrivalSound, unlockNotificationSound, isNotificationSoundReady } from '../../utils/enquiryNotificationSound';
+import { playAdminArrivalSound, unlockNotificationSound, isNotificationSoundReady, enableEnquiryNotificationSound } from '../../utils/enquiryNotificationSound';
 
 export default function AdminArrivalAlerts({ account }) {
   const accountId = account?._id || account?.id;
@@ -18,7 +18,7 @@ export default function AdminArrivalAlerts({ account }) {
     const receive = arrival => {
       const key = String(arrival._id || arrival.data?.arrivalId || '');
       const link = arrival.link || arrival.data?.link;
-      if (!key || !/^\/admin\/(?:enquiries|whatsapp-orders|pos)(?:[/?]|$)/.test(link || '') || seen.current.has(key) || cancelled) return;
+      if (!key || !/^\/admin\/(?:enquiries|whatsapp-orders|pos|quotations)(?:[/?]|$)/.test(link || '') || seen.current.has(key) || cancelled) return;
       seen.current.add(key);
       if (seen.current.size > 2000) seen.current.delete(seen.current.values().next().value);
       setQueue(current => [...current, { ...arrival, _id: key, link }]);
@@ -51,19 +51,23 @@ export default function AdminArrivalAlerts({ account }) {
   const current = queue[0];
   useEffect(() => {
     if (!current) return;
-    playAdminArrivalSound(current._id);
     const timer = setTimeout(() => setQueue(items => items.slice(1)), 6000);
     return () => clearTimeout(timer);
   }, [current]);
   useEffect(() => {
+    if (current) playAdminArrivalSound(current._id);
+  }, [current, soundReady]);
+  useEffect(() => {
+    if (!allowed) return;
+    const disable = enableEnquiryNotificationSound();
     const update = () => { Promise.resolve().then(() => setSoundReady(isNotificationSoundReady())); };
     window.addEventListener('notification-sound-ready', update);
     window.addEventListener('pointerdown', update); window.addEventListener('keydown', update);
-    return () => { window.removeEventListener('notification-sound-ready', update); window.removeEventListener('pointerdown', update); window.removeEventListener('keydown', update); };
-  }, []);
+    return () => { disable(); window.removeEventListener('notification-sound-ready', update); window.removeEventListener('pointerdown', update); window.removeEventListener('keydown', update); };
+  }, [allowed]);
   if (!allowed) return null;
   return <>
-    {!soundReady && <button type="button" className="rounded-lg border border-border px-2 py-1.5 text-xs font-semibold text-primary" onClick={async () => { await unlockNotificationSound(); setSoundReady(isNotificationSoundReady()); }}>Enable alert sound</button>}
+    <button type="button" data-notification-sound-control className="rounded-lg border border-border px-2 py-1.5 text-xs font-semibold text-primary" onClick={async () => { await unlockNotificationSound(); setSoundReady(isNotificationSoundReady()); if (soundReady) playAdminArrivalSound(`test:${Date.now()}`); }}>{soundReady ? 'Test alert sound' : 'Enable alert sound'}</button>
     {current && <aside key={current._id} role="status" aria-label="New order or enquiry" className="fixed right-4 top-20 z-[150] w-[460px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-emerald-200 border-l-[6px] border-l-emerald-500 bg-white text-slate-900 shadow-2xl">
       <div className="flex items-start gap-3 p-5"><BellRing className="mt-1 h-7 w-7 shrink-0 text-emerald-600" />
         <div className="min-w-0 flex-1"><h3 className="text-lg font-bold">{current.title}</h3><p className="mt-2 break-words text-sm text-slate-600">{current.body}</p><Link to={current.link} onClick={() => setQueue(items => items.slice(1))} className="mt-4 inline-block rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white">View details{queue.length > 1 ? ` · ${queue.length - 1} more` : ''}</Link></div>

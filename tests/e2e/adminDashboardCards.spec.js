@@ -26,3 +26,34 @@ test('dashboard cards show separate B2B/B2C counts and link to the matching admi
     await expect(page).toHaveURL(new RegExp(`${destination.replace(/[?]/g, '\\?')}$`));
   }
 });
+
+test('POS Billing dashboard card opens a new sale', async ({ page }) => {
+  await mockApi(page); await seedBrowserSession(page, 'admin');
+  await page.goto('/admin/dashboard');
+  const card = page.getByRole('main').getByRole('link').filter({ has: page.getByText('POS Billing', { exact: true }) });
+  await expect(card).toHaveAttribute('href', '/admin/pos');
+  await card.click();
+  await expect(page).toHaveURL(/\/admin\/pos$/);
+  await expect(page.getByRole('button', { name: 'New sale', exact: true })).toBeVisible();
+});
+
+test('sidebar remembers its icon rail and expands on hover and keyboard focus', async ({ page }, testInfo) => {
+  await mockApi(page); await seedBrowserSession(page, 'admin');
+  await page.goto('/admin/dashboard');
+  const sidebar = page.getByRole('complementary', { name: 'Admin sidebar' });
+  await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click();
+  await expect(sidebar).toHaveCSS('width', '72px');
+  await page.screenshot({ path: testInfo.outputPath('admin-collapsed-sidebar.png') });
+  await sidebar.hover();
+  await expect(sidebar).toHaveCSS('width', '256px');
+  await page.getByRole('banner').hover();
+  await expect(sidebar).toHaveCSS('width', '72px');
+  // Any keyboard-focused link reveals all labels without changing the saved preference.
+  await sidebar.getByRole('link', { name: 'Admin Dashboard', exact: true }).focus();
+  await expect(sidebar).toHaveCSS('width', '256px');
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Expand sidebar', exact: true })).toBeVisible();
+  await expect(sidebar).toHaveCSS('width', '72px');
+  await page.getByRole('button', { name: 'Expand sidebar', exact: true }).click();
+  await expect(sidebar).toHaveCSS('width', '256px');
+});

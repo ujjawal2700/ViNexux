@@ -38,7 +38,7 @@ test('dealer registration exposes compliance, contact, location, and one legal a
   await page.goto('/register?role=dealer');
 
   await expect(page.getByText(/^ORGANISATION TYPE \*$/)).toBeVisible();
-  await expect(page.getByText(/^MSME \/ UDYAM NUMBER \*$/)).toBeVisible();
+  await expect(page.getByText(/^MSME \/ UDYAM NUMBER \(OPTIONAL\)$/)).toBeVisible();
   await expect(page.getByText(/^PAN NUMBER \*$/)).toBeVisible();
   await expect(page.getByText(/^WHATSAPP NUMBER \*$/)).toBeVisible();
   await expect(page.getByText(/MSME Certificate \(Optional\)/)).toBeVisible();

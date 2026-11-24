@@ -26,7 +26,7 @@ export const customerBillingDetails = user => {
   return { name: user.fullName || user.name || '', phone: normalizePhoneNumber(user.phone), whatsappNumber: profile.whatsappNumber || normalizePhoneNumber(user.phone),
     email: user.email || '', address: profile.address || [address?.line1, address?.line2].filter(Boolean).join(', ') || user.address || '',
     city: profile.city || address?.city || '', state: profile.state || address?.state || '', stateCode: profile.stateCode || '',
-    pincode: profile.pincode || address?.pincode || '', gstin: profile.gstin || '' };
+    pincode: profile.pincode ?? address?.pincode ?? '', gstin: profile.gstin || '' };
 };
 
 export const posCustomerService = {
@@ -101,8 +101,8 @@ export const posCustomerService = {
       state: input.state, stateCode: input.stateCode, pincode: input.pincode, gstin: input.gstin };
     const address = { label: 'POS billing', line1: input.address.slice(0, 255), line2: input.address.slice(255), city: input.city, state: input.state, pincode: input.pincode };
     const stored = user.savedAddresses.find(a => a.label === 'POS billing');
-    if (stored) Object.assign(stored, address);
-    else user.savedAddresses.push({ ...address, isDefault: !user.savedAddresses.some(a => a.isDefault) });
+    if (stored && input.pincode) Object.assign(stored, address);
+    else if (input.pincode) user.savedAddresses.push({ ...address, isDefault: !user.savedAddresses.some(a => a.isDefault) });
     await user.save({ session });
     if (proof) await PosCustomerOtp.deleteOne({ _id: proof._id }).session(session);
     return { user, customer: customerBillingDetails(user) };

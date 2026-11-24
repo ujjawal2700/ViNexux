@@ -7,12 +7,13 @@ export const adminArrivalService = {
   async publish(record, kind = 'enquiry') {
     try {
       const sale = kind === 'sale';
+      const quotation = kind === 'quotation';
       const whatsapp = record.source === 'whatsapp';
       const arrival = await AdminArrival.create({
         eventKey: `${kind}:${record._id}`,
-        title: sale ? 'New order received' : whatsapp ? 'New WhatsApp order lead' : 'New enquiry received',
-        body: `${record.invoiceNumber || record.enquiryNumber} · ${sale ? record.customer?.name || 'Customer' : record.contactName || 'Customer'}`,
-        link: sale ? `/admin/pos?invoice=${record._id}` : whatsapp ? `/admin/whatsapp-orders/${record._id}` : `/admin/enquiries/${record._id}`,
+        title: quotation ? 'New CCTV quotation request' : sale ? 'New order received' : whatsapp ? 'New WhatsApp order lead' : 'New enquiry received',
+        body: `${record.quoteNumber || record.invoiceNumber || record.enquiryNumber} · ${sale ? record.customer?.name || 'Customer' : record.contactName || 'Customer'}`,
+        link: quotation ? `/admin/quotations/${record._id}` : sale ? `/admin/pos?invoice=${record._id}` : whatsapp ? `/admin/whatsapp-orders/${record._id}` : `/admin/enquiries/${record._id}`,
       });
       const admins = await User.find({ role: 'admin', isEmployee: { $ne: true }, accountStatus: { $ne: 'blocked' }, status: { $ne: 'blocked' } }).select('_id').lean();
       await Promise.allSettled(admins.map(admin => pushService.sendToUser(admin._id, {

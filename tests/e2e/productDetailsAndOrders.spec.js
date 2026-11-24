@@ -50,3 +50,19 @@ test('cart WhatsApp button collects contact and delivery details before opening 
   await expect(page.getByLabel('Full Name', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Save & Open WhatsApp', exact: true })).toBeVisible();
 });
+
+test('main product image loads eagerly at high priority with gallery-sized responsive images', async ({ page }) => {
+  await mockApi(page); await seedBrowserSession(page, 'storefront');
+  const imageUrl = 'https://res.cloudinary.com/store/image/upload/v123/camera.webp';
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jY9kAAAAASUVORK5CYII=', 'base64');
+  await page.route('https://res.cloudinary.com/**', route => route.fulfill({ contentType: 'image/png', body: png }));
+  await page.route(`**/api/products/${id}`, route => route.fulfill({ json: { success: true, data: { ...product, images: [{ url: imageUrl }, { url: imageUrl.replace('camera', 'back') }] } } }));
+  await page.goto(`/products/${id}`);
+  const image = page.getByRole('button', { name: 'Open full size product image', exact: true }).locator('img');
+  await expect(image).toHaveAttribute('loading', 'eager');
+  await expect(image).toHaveAttribute('fetchpriority', 'high');
+  await expect(image).toHaveAttribute('srcset', /w_1280.*1280w$/);
+  await expect(image).toHaveCSS('opacity', '1');
+  const thumbs = page.getByRole('group', { name: 'Product image thumbnails', exact: true }).locator('img');
+  await expect(thumbs.first()).toHaveAttribute('srcset', /w_192.*192w$/);
+});

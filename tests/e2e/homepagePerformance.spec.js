@@ -23,7 +23,7 @@ test('mobile uses responsive banner images, shares public requests and keeps ina
   expect(requests.filter(url => url.includes('/api/products/brands'))).toHaveLength(1);
   expect(requests.filter(url => url.includes('/api/content/banner-grid'))).toHaveLength(1);
   expect(requests.some(url => url.includes('/second.webp'))).toBe(false);
-  expect(requests.some(url => /firebase.*\.js|\/ProductsPage-.*\.js|\/ProductDetailPage-.*\.js/.test(url))).toBe(false);
+  expect(requests.some(url => /(?:node_modules\/.*firebase|firebase-[A-Za-z0-9_-]+)\.js|\/ProductsPage-.*\.js|\/ProductDetailPage-.*\.js/.test(url))).toBe(false);
   await page.getByRole('button', { name: 'Next image in section 1' }).click();
   await expect.poll(() => requests.some(url => url.includes('/second.webp'))).toBe(true);
 });

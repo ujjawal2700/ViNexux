@@ -77,3 +77,40 @@ test('new POS order banner opens the saved invoice directly', async ({ page }) =
   await expect(page.getByRole('dialog')).toContainText(sale.invoiceNumber);
   await expect(page.getByRole('dialog')).toContainText('Sample Customer');
 });
+
+test('enabling sound during a visible arrival rings it once and offers a test', async ({ page }) => {
+  await setup(page);
+  await page.goto('/admin/dashboard');
+  await expect(page.getByRole('button', { name: 'Enable alert sound' })).toBeVisible();
+  await page.evaluate(id => window.dispatchEvent(new CustomEvent('vinexus-push', { detail: {
+    title: 'New enquiry received', data: { type: 'admin-arrival', arrivalId: id, link: `/admin/enquiries/${id}` },
+  } })), id);
+  await expect(page.getByRole('status', { name: 'New order or enquiry' })).toBeVisible();
+  expect(await page.evaluate(() => window.rings)).toEqual([]);
+  await page.getByRole('button', { name: 'Enable alert sound' }).click();
+  await expect.poll(() => page.evaluate(() => window.rings)).toEqual([1]);
+  await page.getByRole('button', { name: 'Test alert sound' }).click();
+  await expect.poll(() => page.evaluate(() => window.rings)).toEqual([1, 1]);
+});
+
+test('an ordinary admin interaction enables audio and a suspended context resumes for a new arrival', async ({ page }) => {
+  await setup(page);
+  await page.addInitScript(() => {
+    const Base = window.AudioContext;
+    window.AudioContext = class extends Base {
+      constructor() { super(); window.adminAudio = this; }
+      resume() { this.state = 'running'; return Promise.resolve(); }
+    };
+  });
+  await page.goto('/admin/dashboard');
+  await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Test alert sound' })).toBeVisible();
+  await page.evaluate(id => {
+    window.adminAudio.state = 'suspended';
+    window.dispatchEvent(new CustomEvent('vinexus-push', { detail: {
+      title: 'New order', data: { type: 'admin-arrival', arrivalId: id, link: '/admin/whatsapp-orders' },
+    } }));
+  }, id);
+  await expect.poll(() => page.evaluate(() => window.rings)).toEqual([1]);
+  expect(await page.evaluate(() => window.adminAudio.state)).toBe('running');
+});

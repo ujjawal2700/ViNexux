@@ -17,14 +17,14 @@ export default function AdminSidebarNav({ access, attentionCounts = {}, onNaviga
     const count = Number(attentionCounts[item.path]) || 0;
     const countLabel = item.path === '/admin/dealers' ? `${count} pending dealer verifications` : `${count} new enquiries`;
     const active = pathname === item.path || (!item.children?.length && !nested && pathname.startsWith(`${item.path}/`));
-    return <Link key={item.path} to={item.path} onClick={onNavigate} aria-current={active ? 'page' : undefined}
+    return <Link key={item.path} to={item.path} onClick={onNavigate} aria-label={item.label} title={item.label} aria-current={active ? 'page' : undefined}
       className={`flex min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs leading-5 font-semibold transition-colors ${active ? 'bg-primary/8 text-primary font-semibold' : 'text-gray-700 dark:text-gray-200 hover:bg-muted/60 hover:text-foreground'}`}>
-      <Icon size={nested ? 14 : 16} className="shrink-0" /><span className="min-w-0 flex-1">{item.label}</span>
-      {count > 0 && <span aria-label={countLabel} title={countLabel} className="inline-flex min-h-5 min-w-5 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-primary px-1.5 text-[10px] font-bold leading-5 tabular-nums text-primary-foreground">{count}{item.path !== '/admin/dealers' ? ' New' : ''}</span>}
+      <Icon size={nested ? 14 : 16} className="shrink-0" /><span className="admin-sidebar-label min-w-0 flex-1 whitespace-nowrap">{item.label}</span>
+      {count > 0 && <span aria-label={countLabel} title={countLabel} className="admin-sidebar-count inline-flex min-h-5 min-w-5 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-primary px-1.5 text-[10px] font-bold leading-5 tabular-nums text-primary-foreground">{count}{item.path !== '/admin/dealers' ? ' New' : ''}</span>}
     </Link>;
   };
   return <>
-    <div className="relative mb-4 shrink-0">
+    <div className="admin-sidebar-search relative mb-4 shrink-0">
       <Search size={15} className="pointer-events-none absolute left-3 top-3 text-gray-700 dark:text-gray-200" />
       <input aria-label="Search sidebar sections" placeholder="Find a section…" value={search} onChange={e => setSearch(e.target.value)}
         className="h-10 w-full rounded-lg border border-border bg-muted/30 text-gray-900 dark:text-gray-100 placeholder:text-gray-600 dark:placeholder:text-gray-400 pl-9 pr-8 text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/10" />
@@ -35,12 +35,12 @@ export default function AdminSidebarNav({ access, attentionCounts = {}, onNaviga
         const open = !!search.trim() || !collapsed[group.label];
         return <section key={group.label} aria-label={group.label}>
           <button type="button" aria-expanded={open} onClick={() => setCollapsed(state => ({ ...state, [group.label]: !state[group.label] }))}
-            className="mb-1 flex w-full items-center justify-between gap-2 px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-200 hover:text-primary">
+            className="admin-sidebar-group mb-1 flex w-full items-center justify-between gap-2 px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-200 hover:text-primary">
             {group.label}<ChevronDown size={13} className={`shrink-0 transition-transform ${open ? '' : '-rotate-90'}`} />
           </button>
           {open && <div className="space-y-0.5">{group.items.map(item => item.children?.length ? <div key={item.path}>
-            <div className="flex items-center"><div className="min-w-0 flex-1">{renderLink(item)}</div><button type="button" aria-label="Toggle category hierarchy sub-menu" aria-expanded={!!search.trim() || categoriesOpen} onClick={() => setCategoriesOpen(value => !value)} className="rounded p-1.5 text-gray-700 dark:text-gray-200 hover:text-primary">{search.trim() || categoriesOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}</button></div>
-            {(search.trim() || categoriesOpen) && <div className="ml-4 border-l border-border pl-2">{item.children.map(child => renderLink(child, true))}</div>}
+            <div className="flex items-center"><div className="min-w-0 flex-1">{renderLink(item)}</div><button type="button" aria-label="Toggle category hierarchy sub-menu" aria-expanded={!!search.trim() || categoriesOpen} onClick={() => setCategoriesOpen(value => !value)} className="admin-sidebar-submenu-toggle rounded p-1.5 text-gray-700 dark:text-gray-200 hover:text-primary">{search.trim() || categoriesOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}</button></div>
+            {(search.trim() || categoriesOpen) && <div className="admin-sidebar-submenu ml-4 border-l border-border pl-2">{item.children.map(child => renderLink(child, true))}</div>}
           </div> : renderLink(item))}</div>}
         </section>;
       })}

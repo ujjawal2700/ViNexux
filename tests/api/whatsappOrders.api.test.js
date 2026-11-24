@@ -81,15 +81,16 @@ test('WhatsApp admin queue only returns WhatsApp leads and regular queue include
   expect(Enquiry.countDocuments).toHaveBeenLastCalledWith({ source: { $ne: 'whatsapp' }, userType: 'customer' });
 });
 
-test('Installer WhatsApp orders snapshot the increased dealer price before building the message', async () => {
+test.each([0, 3])('Installer WhatsApp orders snapshot final pricing with %s%% private discount', async discount => {
   const user = { role: 'dealer', fullName: 'Installer', savedAddresses: { id: () => address } };
   User.findById.mockImplementation(() => ({ then: resolve => Promise.resolve(user).then(resolve), select: () => ({ lean: async () => user }) }));
-  jest.spyOn(DealerProfile, 'findOne').mockReturnValue({ select: () => ({ lean: async () => ({ _id: id, status: 'approved', organisationType: 'Installer' }) }) });
+  jest.spyOn(DealerProfile, 'findOne').mockReturnValue({ select: () => ({ lean: async () => ({ _id: id, status: 'approved', organisationType: 'Installer', dealerDiscountPercent: discount }) }) });
   jest.spyOn(DealerPricing, 'find').mockReturnValue({ select: () => ({ lean: async () => [] }) });
   jest.spyOn(DealerPricingSettings, 'findById').mockReturnValue({ select: () => ({ lean: async () => ({ installerPriceIncreasePercent: 10 }) }) });
   product.dealerPrice = 100; product.standardPrice = 150;
   const res = await submit();
   expect(res.status).toBe(201);
-  expect(stored.items[0].priceShown).toBe(110);
-  expect(new URL(res.body.data.whatsappUrl).searchParams.get('text')).toContain('Estimated Total: ₹220');
+  expect(stored.items[0].priceShown).toBe(discount ? 106.7 : 110);
+  expect(new URL(res.body.data.whatsappUrl).searchParams.get('text')).toContain(`Estimated Total: ₹${discount ? '213.4' : '220'}`);
+  expect(JSON.stringify(res.body)).not.toContain('dealerDiscountPercent');
 });

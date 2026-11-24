@@ -246,13 +246,9 @@ export const ProductDetailPage = () => {
   const dealerPrice = purchaseProduct?.dealerPrice || 0;
 
   let displayPrice = purchaseProduct?.applicablePrice ?? standardPrice;
-  let hasDealerDiscount = false;
 
   if (isApprovedDealer && dealerPrice > 0) {
     displayPrice = purchaseProduct?.applicablePrice ?? dealerPrice;
-    if (standardPrice > dealerPrice) {
-      hasDealerDiscount = true;
-    }
   }
 
   // Stock status: isActive = true means available in stock
@@ -502,7 +498,7 @@ export const ProductDetailPage = () => {
                     aria-pressed={selectedImageIndex === index}
                     aria-label={`Select photo ${index + 1}`}
                   >
-                    <Image src={img.url} sizes="96px" alt="" aspectRatio="aspect-square" className="object-contain w-full h-full" />
+                    <Image src={img.url} responsiveWidths={[64, 128, 192]} sizes="(max-width: 640px) 48px, 64px" alt="" aspectRatio="aspect-square" className="object-contain w-full h-full" />
                   </button>
                 ))}
                 </div>
@@ -526,8 +522,10 @@ export const ProductDetailPage = () => {
               >
                 <Image
                   src={currentImage}
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  responsiveWidths={[320, 640, 960, 1280, 1600, 2048]}
+                  loading="eager"
+                  fetchPriority="high"
+                  sizes="(min-width: 1280px) 360px, (min-width: 1024px) 34vw, (min-width: 640px) 400px, 85vw"
+                  responsiveWidths={[320, 480, 640, 960, 1280]}
                   alt={purchaseProduct?.name || product.name}
                   objectFit="object-contain"
                   className="h-full w-full rounded-lg"
@@ -583,7 +581,7 @@ export const ProductDetailPage = () => {
               {images.length > 1 && <button type="button" aria-label="Previous image" onClick={(event) => { event.stopPropagation(); setSelectedImageIndex((index) => (index - 1 + images.length) % images.length); }} className="absolute left-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/15 p-3 text-white hover:bg-white/25"><ChevronLeft className="h-7 w-7" /></button>}
               <img src={currentImage} alt={purchaseProduct?.name || product.name} onClick={(event) => event.stopPropagation()} className="max-h-[86vh] max-w-[92vw] select-none object-contain" />
               {images.length > 1 && <button type="button" aria-label="Next image" onClick={(event) => { event.stopPropagation(); setSelectedImageIndex((index) => (index + 1) % images.length); }} className="absolute right-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/15 p-3 text-white hover:bg-white/25"><ChevronRight className="h-7 w-7" /></button>}
-              {images.length > 1 && <div className="absolute bottom-4 left-1/2 flex max-w-[90vw] -translate-x-1/2 gap-2 overflow-x-auto rounded-lg bg-black/40 p-2" onClick={(event) => event.stopPropagation()}>{images.map((img, index) => <button key={img.publicId || img.url || index} type="button" aria-label={`Show image ${index + 1}`} onClick={() => setSelectedImageIndex(index)} className={`h-14 w-14 shrink-0 overflow-hidden rounded border-2 bg-white ${selectedImageIndex === index ? 'border-white' : 'border-white/30 opacity-70'}`}><img src={img.url} alt="" className="h-full w-full object-contain" /></button>)}</div>}
+              {images.length > 1 && <div className="absolute bottom-4 left-1/2 flex max-w-[90vw] -translate-x-1/2 gap-2 overflow-x-auto rounded-lg bg-black/40 p-2" onClick={(event) => event.stopPropagation()}>{images.map((img, index) => <button key={img.publicId || img.url || index} type="button" aria-label={`Show image ${index + 1}`} onClick={() => setSelectedImageIndex(index)} className={`h-14 w-14 shrink-0 overflow-hidden rounded border-2 bg-white ${selectedImageIndex === index ? 'border-white' : 'border-white/30 opacity-70'}`}><Image src={img.url} alt="" sizes="56px" responsiveWidths={[64, 128]} objectFit="object-contain" className="h-full w-full" /></button>)}</div>}
             </div>
           )}
         </div>
@@ -748,20 +746,8 @@ export const ProductDetailPage = () => {
                 <span data-testid="purchase-price" aria-live="polite" className="text-2xl sm:text-3xl font-black text-[var(--store-text)] tracking-tight">
                   {formatCurrency(displayPrice)}
                 </span>
-                {hasDealerDiscount && (
-                  <span className="text-xs text-[var(--store-muted)] line-through">
-                    Standard: {formatCurrency(standardPrice)}
-                  </span>
-                )}
               </div>
-
-              {hasDealerDiscount && (
-                <span className="inline-flex items-center rounded border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-bold uppercase tracking-tight text-[var(--store-primary)]">
-                  DEALER SAVING: {formatCurrency(standardPrice - dealerPrice)}
-                </span>
-              )}
             </div>
-
             </PriceGate>}
             {/* In Stock / Out of Stock Status Pill */}
             {isOutOfStock ? (

@@ -19,6 +19,7 @@ export const ADMIN_NAV_GROUPS = [
   ] },
   { label: 'Sales & Enquiries', items: [
     { label: 'Offline POS Billing', path: '/admin/pos', icon: 'Receipt', keywords: 'invoice sale payment' },
+    { label: 'CCTV Quotations', path: '/admin/quotations', icon: 'FileText', keywords: 'quick quote cctv estimate pdf' },
     { label: 'B2C Enquiries', path: '/admin/enquiries/customers', icon: 'Inbox', keywords: 'customer support' },
     { label: 'Order on WhatsApp', path: '/admin/whatsapp-orders', icon: 'MessageCircle', keywords: 'whatsapp orders leads follow up' },
     { label: 'B2B Enquiries', path: '/admin/enquiries/dealers', icon: 'Building2', keywords: 'dealer support' },

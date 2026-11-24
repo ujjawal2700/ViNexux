@@ -1,3 +1,4 @@
+import StateCityFields from '../../components/address/StateCityFields';
 import { ORGANISATION_TYPES } from '../../../../shared/dealerOrganisation.js';
 import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -45,6 +46,7 @@ export default function BecomeDealerPage() {
   const pending = profile?.applicationState === 'submitted' && profile?.status === 'pending';
   const validate = () => {
     if (!formRef.current?.reportValidity()) return false;
+    if (!form.state || !form.city) { setError('Choose a state and city from the lists.'); return false; }
     if (form.officeLocation.latitude === '' || form.officeLocation.longitude === '') { setError('Select your office location on the map.'); return false; }
     return true;
   };
@@ -87,8 +89,9 @@ export default function BecomeDealerPage() {
         <h2 className="text-lg font-bold">1. Business details</h2>
         <fieldset disabled={busy || !!uploading} className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
+            <StateCityFields value={form} onChange={setForm} disabled={busy || !!uploading} required />
             <label className="text-xs font-semibold">Organisation type *<select required className={input} value={form.organisationType} onChange={event => setForm({ ...form, organisationType: event.target.value })}><option value="">Select organisation type</option>{organisations.map(type => <option key={type}>{type}</option>)}</select></label>
-            {fields.map(([key, label, pattern, maxLength]) => <label key={key} className="text-xs font-semibold">{label}{key !== 'msmeNumber' && ' *'}<input required={key !== 'msmeNumber'} pattern={pattern} maxLength={maxLength} type={key === 'aadhaarNumber' ? 'password' : 'text'} autoComplete="off" className={input} value={form[key]}
+            {fields.filter(([key]) => !['city', 'state'].includes(key)).map(([key, label, pattern, maxLength]) => <label key={key} className="text-xs font-semibold">{label}{key !== 'msmeNumber' && ' *'}<input required={key !== 'msmeNumber'} pattern={pattern} maxLength={maxLength} type={key === 'aadhaarNumber' ? 'password' : 'text'} autoComplete="off" className={input} value={form[key]}
               onChange={event => setForm({ ...form, [key]: ['gstin', 'pan', 'msmeNumber'].includes(key) ? event.target.value.toUpperCase() : event.target.value })} /></label>)}
           </div>
           <p className="text-xs text-[var(--store-muted)]">Re-enter your Aadhaar number when returning to edit an application. Saved Aadhaar numbers are kept private.</p>

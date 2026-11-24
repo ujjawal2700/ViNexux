@@ -1,4 +1,4 @@
-import { withoutStorefrontPrices } from '../../../shared/storefrontPricing';
+import { withoutStorefrontPrices } from '../../../shared/storefrontPricing.js';
 import { allowsPreferences } from '../utils/storageConsent.js';
 
 const WISHLIST_KEY = 'vinexus_wishlist';

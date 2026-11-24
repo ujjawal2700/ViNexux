@@ -21,13 +21,15 @@ test('hierarchical and multi-value filters keep stable options and accurate disj
     const dome = await Category.create({ name: 'Dome', slug: 'filter-dome', parentId: ip._id });
     const poe = await Category.create({ name: 'PoE Switches', slug: 'filter-poe', parentId: switches._id });
     const hidden = await Category.create({ name: 'Hidden', slug: 'filter-hidden', isActive: false });
-    const make = (sku, category, brand, resolution, power, fields = {}) => Product.create({ sku, name: `Camera ${sku}`, modelNumber: `MODEL-${sku}`, categoryId: category._id, isActive: true, stockQuantity: 10, standardPrice: 100, specifications: [{ key: 'Brand', value: brand }, { key: 'Resolution', value: resolution }, { key: 'Power', value: power }, ...Array.from({ length: 10 }, (_, index) => ({ key: `Feature ${index}`, value: `Value ${index}` }))], ...fields });
+    const acme = await Brand.create({ name: 'Acme', slug: 'custom-acme' });
+    const beta = await Brand.create({ name: 'Beta', slug: 'beta' });
+    const make = (sku, category, brand, resolution, power, fields = {}) => Product.create({ sku, name: `Camera ${sku}`, modelNumber: `MODEL-${sku}`, categoryId: category._id, brandId: brand === 'Acme' ? acme._id : beta._id, isActive: true, stockQuantity: 10, standardPrice: 100, specifications: [{ key: 'Brand', value: brand }, { key: 'Resolution', value: resolution }, { key: 'Power', value: power }, ...Array.from({ length: 10 }, (_, index) => ({ key: `Feature ${index}`, value: `Value ${index}` }))], ...fields });
     const a = await make('A', bullet, 'Acme', '4 MP', 'PoE');
     const b = await make('B', dome, 'Acme', '8 MP', 'PoE', { stockQuantity: 0 });
     const c = await make('C', dome, 'Beta', '4 MP', '12V', { isLowStock: true });
     const m = await make('M', bullet, 'Acme', '4 MP', 'PoE', { categoryIds: [security._id, ip._id, bullet._id, dome._id] });
     await make('E', analog, 'Acme', '2 MP', '12V');
-    const network = await Product.create({ sku: 'NETWORK', name: 'PoE Network Switch', categoryId: poe._id, stockQuantity: 6, isActive: true, specifications: [{ key: 'Brand', value: 'Beta' }, { key: 'Ports', value: '16' }] });
+    const network = await Product.create({ sku: 'NETWORK', name: 'PoE Network Switch', categoryId: poe._id, brandId: beta._id, stockQuantity: 6, isActive: true, specifications: [{ key: 'Brand', value: 'Beta' }, { key: 'Ports', value: '16' }] });
     await make('HIDDEN', hidden, 'Acme', '4 MP', 'PoE');
     const base = `http://127.0.0.1:${server.address().port}${config.apiBaseUrl}`;
     const get = async (query = {}) => {
@@ -35,7 +37,6 @@ test('hierarchical and multi-value filters keep stable options and accurate disj
       assert.equal(response.status, 200, JSON.stringify(body)); return body.data;
     };
     const ids = result => result.products.map(product => product._id).sort();
-    await Brand.create({ name: 'Acme', slug: 'custom-acme' });
     const brandRoute = await get({ brandSlug: 'custom-acme' });
     assert.equal(brandRoute.resolvedBrand, 'Acme'); assert.equal(brandRoute.pagination.total, 4);
     const all = await get(); assert.equal(all.pagination.total, 6);
@@ -49,7 +50,7 @@ test('hierarchical and multi-value filters keep stable options and accurate disj
     const selection = { headerCategory: String(security._id), brand: 'ACME', specs: JSON.stringify({ Resolution: ['4 MP'], Power: ['PoE'] }) };
     const filtered = await get(selection); assert.deepEqual(ids(filtered), [String(a._id), String(m._id)].sort());
     assert.ok(filtered.facets.categories.some(category => category._id === String(networking._id)), 'other headers remain present');
-    assert.equal(filtered.facets.brands.find(brand => brand.name === 'BETA').count, 0);
+    assert.equal(filtered.facets.brands.find(brand => brand.name.toUpperCase() === 'BETA').count, 0);
     const resolution = filtered.facets.specs.find(spec => spec.key === 'Resolution');
     assert.equal(resolution.values.find(value => value.val === '8 MP').count, 1, 'same-spec alternatives ignore their own selection');
     assert.equal(filtered.facets.specs.find(spec => spec.key === 'Power').values.find(value => value.val === '12V').count, 0, 'counts respect the other spec and brand');

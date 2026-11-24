@@ -1,3 +1,4 @@
+import QuickQuoteTab from '../components/quotations/QuickQuoteTab';
 import { responsiveImage } from '../utils/responsiveImage';
 import { productLineKey } from '../../../shared/productVariants.js';
 import PriceGate, { LoginToViewPrices, usePriceVisibility } from '../components/products/PriceGate';
@@ -1345,6 +1346,7 @@ const PublicLayout = () => {
               className="flex-1 min-w-0 flex items-center overflow-x-auto scrollbar-none h-full pr-8"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
+              <div className="mr-1 flex h-full shrink-0 items-center sm:mr-1.5"><Link to="/cctv-quote" onClick={handleHeaderClick} className="flex h-[29px] items-center gap-1.5 whitespace-nowrap rounded bg-emerald-100 px-2.5 text-xs font-bold text-emerald-950 shadow-2xs hover:bg-emerald-200 sm:text-[13px]"><FileText className="h-3.5 w-3.5" /> Quick CCTV Quote</Link></div>
               {/* Shop By Brand Button */}
               <div
                 ref={(el) => {
@@ -1643,6 +1645,8 @@ const PublicLayout = () => {
           </div>
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 border-b border-[var(--store-border)] p-2.5">
             {[
+              { to: '/cctv-quote', label: 'Quick Quote', icon: FileText },
+              { to: '/account/quotations', label: 'My Quotes', icon: FileText },
               { to: '/cart', label: 'Cart', icon: ShoppingCart },
               { to: '/wishlist', label: 'Wishlist', icon: Heart },
               { to: '/account/enquiries', label: 'Enquiries', icon: FileText },
@@ -1745,6 +1749,8 @@ const PublicLayout = () => {
           <Outlet />
         </Suspense>
       </main>
+
+      <QuickQuoteTab />
 
       <ThemeDecorations config={theme.config} placement="footer" />
 

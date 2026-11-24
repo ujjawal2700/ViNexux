@@ -36,6 +36,9 @@ const VerifyOtpPage = lazyWithRetry(() => import('../pages/auth/VerifyOtpPage'))
 const ForgotPasswordPage = lazyWithRetry(() => import('../pages/auth/ForgotPasswordPage'));
 const ResetPasswordPage = lazyWithRetry(() => import('../pages/auth/ResetPasswordPage'));
 const LowStockProductsPage = lazyWithRetry(() => import('../pages/public/LowStockProductsPage'));
+const CctvQuotePage = lazyWithRetry(() => import('../pages/public/CctvQuotePage'));
+const QuotationsPage = lazyWithRetry(() => import('../pages/quotations/QuotationsPage'));
+const AdminQuotationSettingsPage = lazyWithRetry(() => import('../pages/admin/AdminQuotationSettingsPage'));
 const WishlistPage = lazyWithRetry(() => import('../pages/public/WishlistPage'));
 const BrandsPage = lazyWithRetry(() => import('../pages/public/BrandsPage'));
 const CmsPage = lazyWithRetry(() => import('../pages/public/CmsPage'));
@@ -107,6 +110,8 @@ const AppRoutes = () => {
           <Route path="/email-preferences" element={<EmailUnsubscribePage />} />
         <Route path="/theme-preview" element={<HomePage />} />
         <Route path="/products" element={<ProductsPage />} />
+        <Route path="/cctv-quote" element={<CctvQuotePage />} />
+        <Route path="/quick-quotation" element={<Navigate to="/cctv-quote" replace />} />
         <Route path="/products/:id" element={<ProductDetailPage />} />
         <Route path="/search" element={<ProductsPage />} />
         <Route path="/wishlist" element={<WishlistPage />} />
@@ -144,6 +149,8 @@ const AppRoutes = () => {
         <Route path="/account/cart" element={<Navigate to="/cart" replace />} />
         <Route element={<ProtectedRoute loginPath="/login" portal="customer" />}>
           <Route element={<RoleRoute allowedRoles={[ROLES.CUSTOMER, ROLES.DEALER]} portal="customer" />}>
+            <Route path="/account/quotations" element={<QuotationsPage />} />
+            <Route path="/account/quotations/:id" element={<QuotationsPage />} />
             <Route path="/account/checkout-enquiry" element={<CheckoutEnquiryPage />} />
             <Route path="/account/enquiries" element={<ProfilePage />} />
             <Route path="/account/invoices" element={<ProfilePage />} />
@@ -209,6 +216,9 @@ const AppRoutes = () => {
             <Route path="/admin/super-admins" element={<AdminSuperAdminsPage />} />
             <Route path="/admin/access" element={<AdminAccessPage />} />
             <Route path="/admin/logbook" element={<AdminLogbookPage />} />
+            <Route path="/admin/quotations" element={<QuotationsPage admin />} />
+            <Route path="/admin/quotations/settings" element={<AdminQuotationSettingsPage />} />
+            <Route path="/admin/quotations/:id" element={<QuotationsPage admin />} />
             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
             <Route path="/admin/categories" element={<AdminCategoriesPage />} />
             <Route path="/admin/categories/header" element={<AdminHeaderCategoriesPage />} />

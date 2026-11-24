@@ -31,6 +31,8 @@ test('Product Catalog has a dedicated header positioning section with persistent
   const save = async (name, value) => {
     await page.getByRole('spinbutton', { name: `Position for ${name}`, exact: true }).fill(value);
     await page.getByRole('button', { name: `Save position for ${name}`, exact: true }).click();
+    await expect(page.getByRole('button', { name: `Save position for ${name}`, exact: true })).toBeEnabled();
+    await expect.poll(() => categories.find(row => row.name === name).productPriority).toBe(value === '' ? null : Number(value));
     await expect(page.getByRole('status')).toHaveText(`${name} product position saved.`);
   };
   await expect(list.getByRole('listitem')).toHaveCount(3);

@@ -1,3 +1,4 @@
+import { quoteSettingsFixture } from '../fixtures/cctvQuote.js';
 import { presetConfig } from '../../shared/seasonalThemes.js';
 import { POS_SELLER_DEFAULTS, calculatePosBill } from '../../shared/posBilling.js';
 const objectId = '507f1f77bcf86cd799439011';
@@ -26,6 +27,8 @@ const pagination = { page: 1, limit: 20, total: 0, pages: 0, totalPages: 0 };
 
 const responseFor = (url, method, postData) => {
   const pathname = new URL(url).pathname;
+  if (pathname.endsWith('/quotations/catalog') || pathname.endsWith('/quotations/settings')) return { success: true, data: { settings: quoteSettingsFixture, catalog: [], pricesVisible: true } };
+  if (pathname.endsWith('/quotations')) return { success: true, data: { quotes: [], pagination: { total: 0, totalPages: 1, page: 1 } } };
   if (pathname.endsWith('/pos/my-invoices')) return { success: true, data: { invoices: [], total: 0, pages: 0, page: 1, selected: null } };
   if (pathname.endsWith('/admin/pos/settings')) return { success: true, data: POS_SELLER_DEFAULTS };
   if (pathname.endsWith('/admin/pos/sales/validate')) {
@@ -60,6 +63,8 @@ const responseFor = (url, method, postData) => {
   if (pathname.includes('/dealers')) return { success: true, data: { dealers: [], pagination } };
   if (/\/customers\/[0-9a-f]{24}$/.test(pathname)) return { success: true, data: { customer } };
   if (pathname.includes('/customers')) return { success: true, data: { customers: [], pagination } };
+  if (pathname === '/api/admin/campaigns/configuration') return { success: true, data: { email: { configured: false }, push: { configured: false } } };
+  if (pathname === '/api/admin/campaigns') return { success: true, data: { campaigns: [], pages: 0 } };
   if (pathname.includes('/sessions')) return { success: true, data: { sessions: [], pagination } };
   if (pathname.includes('/reports')) return { success: true, data: { summary: {}, series: [], rows: [], pagination } };
   if (pathname.includes('/dashboard')) return { success: true, data: { stats: {}, recentEnquiries: [], pendingDealers: [] } };
