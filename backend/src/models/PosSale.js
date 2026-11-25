@@ -7,9 +7,14 @@ const item = new mongoose.Schema({ productId: { type: mongoose.Schema.Types.Obje
   hsn: String, unit: String, serialNumbers: [String], taxable: Number, cgst: Number, sgst: Number, igst: Number,
   originalAmount: Number, discountAmount: Number, lineTotal: Number, taxableUnitRate: Number, returnedQuantity: { type: Number, default: 0 } }, { _id: false });
 const saleSchema = new mongoose.Schema({
+  documentType: { type: String, enum: ['invoice', 'delivery-note'], default: 'invoice', index: true },
+  deliveryNoteNumber: String, deliveryNoteIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'PosSale' }],
+  invoiceId: { type: mongoose.Schema.Types.ObjectId, ref: 'PosSale' },
+  conversionRequestId: String, deliveryNoteDate: String, dispatchDetails: Object, dueDate: String,
   invoiceNumber: { type: String, required: true, unique: true }, requestId: { type: String, required: true, unique: true },
   shareToken: { type: String, required: true, unique: true, select: false },
   seller: { type: Object, required: true }, customer: { type: Object, required: true }, shipping: Object, delivery: Object,
+  sourceEnquiryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Enquiry' },
   billType: { type: String, enum: ['b2b', 'b2c'], default: 'b2c' },
   items: [item], taxGroups: [Object], taxMode: String, interstate: Boolean, roundOff: Boolean,
   itemsTotal: Number, discountTotal: Number, subtotal: Number, cgst: Number, sgst: Number, igst: Number, taxTotal: Number, roundOffAmount: Number, total: Number, totalQuantity: Number,

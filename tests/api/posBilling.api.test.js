@@ -4,6 +4,8 @@ import supertest from 'supertest';
 import posRoutes from '../../backend/src/routes/pos.routes.js';
 import publicPosRoutes from '../../backend/src/routes/publicPos.routes.js';
 import { errorHandler } from '../../backend/src/middlewares/errorHandler.js';
+import { deliveryNoteService } from '../../backend/src/services/deliveryNote.service.js';
+import { AccessRole } from '../../backend/src/models/AccessRole.js';
 import { posService } from '../../backend/src/services/pos.service.js';
 import { posCustomerService } from '../../backend/src/services/posCustomer.service.js';
 import { customerInvoiceService } from '../../backend/src/services/customerInvoice.service.js';
@@ -86,6 +88,23 @@ describe('POS API access and output contracts', () => {
     expect(result.status).toBe(200); expect(result.headers['content-type']).toContain('spreadsheetml');
     expect(result.headers['content-disposition']).toContain('vinexus-offline-sales.xlsx');
     expect(exporter).toHaveBeenCalledWith(expect.objectContaining({ from: '2026-10-01', to: '2026-10-13' }));
+  });
+  test('sales register PDF exports all filtered bills with authentication and no caching', async () => {
+    const exporter = jest.spyOn(posService, 'exportSales').mockResolvedValue([posInvoiceFixture()]);
+    const path = '/api/admin/pos/sales/export/pdf?from=2026-10-01&to=2026-10-13&search=Camera&status=completed&page=2';
+    expect((await request.get(path)).status).toBe(401);
+    expect((await request.get(path).auth(customerToken, { type: 'bearer' })).status).toBe(403);
+    expect(exporter).not.toHaveBeenCalled();
+    const result = await request.get(path).auth(adminToken, { type: 'bearer' });
+    expect(result.status).toBe(200);
+    expect(result.headers['content-type']).toContain('application/pdf');
+    expect(result.headers['content-disposition']).toContain('vinexus-sales-register.pdf');
+    expect(result.headers['cache-control']).toBe('private, no-store');
+    expect(result.body.subarray(0, 5).toString()).toBe('%PDF-');
+    expect(exporter).toHaveBeenCalledWith(expect.objectContaining({ documentType: 'invoice', from: '2026-10-01', to: '2026-10-13', search: 'Camera', status: 'completed' }));
+    exporter.mockClear();
+    expect((await request.get('/api/admin/pos/sales/export/pdf?from=2026-02-31').auth(adminToken, { type: 'bearer' })).status).toBe(400);
+    expect(exporter).not.toHaveBeenCalled();
   });
   test('OTP endpoints require an admin and validate the verification code', async () => {
     const send = jest.spyOn(posCustomerService, 'sendOtp').mockResolvedValue({ phone: '9876543210' });
@@ -180,4 +199,29 @@ test('POS passes B2B context through dealer lookup and billing detail saving', a
   expect((await request.put('/api/admin/pos/customer').query({ billType: 'b2b' }).auth(adminToken, { type: 'bearer' }).send(input)).status).toBe(200);
   expect(save).toHaveBeenCalledWith(input, posAdminId, 'b2b');
   expect((await request.get('/api/admin/pos/customer').query({ phone: input.phone, billType: 'invalid' }).auth(adminToken, { type: 'bearer' })).status).toBe(400);
+});
+
+
+test('delivery notes accept zero or partial receipts with validated dispatch and due dates', async () => {
+  const create = jest.spyOn(posService, 'createSale').mockResolvedValue({ ...posInvoiceFixture(), documentType: 'delivery-note' });
+  const body = { ...posInput(), documentType: 'delivery-note', dispatchDetails: { date: '2026-11-25', vehicleNumber: 'RJ20-1234' }, dueDate: '2026-12-05', payments: [{ method: 'cash', amount: 0, requestId: posInput().requestId }] };
+  expect((await request.post('/api/admin/pos/sales').auth(adminToken, { type: 'bearer' }).send(body)).status).toBe(200);
+  expect(create).toHaveBeenCalledWith(expect.objectContaining({ documentType: 'delivery-note', dueDate: '2026-12-05', payments: [expect.objectContaining({ amount: 0 })] }), posAdminId);
+  for (const change of [{ dueDate: '2026-02-31' }, { dispatchDetails: { date: 'bad' } }]) expect((await request.post('/api/admin/pos/sales').auth(adminToken, { type: 'bearer' }).send({ ...body, ...change })).status).toBe(400);
+});
+test('account balances and delivery note invoicing require super admin access', async () => {
+  const id = posInvoiceFixture()._id;
+  const balance = jest.spyOn(deliveryNoteService, 'balance').mockResolvedValue({ balanceDue: 100, documents: [] });
+  const invoice = jest.spyOn(deliveryNoteService, 'invoice').mockResolvedValue(posInvoiceFixture());
+  const body = { requestId: posInput().requestId, noteIds: [id] };
+  expect((await request.get(`/api/admin/pos/account-balances/${id}`)).status).toBe(401);
+  const result = await request.get(`/api/admin/pos/account-balances/${id}`).auth(adminToken, { type: 'bearer' });
+  expect(result.status).toBe(200); expect(result.headers['cache-control']).toBe('private, no-store'); expect(balance).toHaveBeenCalledWith(id);
+  expect((await request.post('/api/admin/pos/delivery-notes/invoice').auth(adminToken, { type: 'bearer' }).send({ ...body, noteIds: [id, id] })).status).toBe(400);
+  expect((await request.post('/api/admin/pos/delivery-notes/invoice').auth(adminToken, { type: 'bearer' }).send(body)).status).toBe(200);
+  expect(invoice).toHaveBeenCalledWith(body, posAdminId);
+  User.findById.mockImplementation(async userId => ({ _id: userId, role: 'admin', isEmployee: true, accessRoleId: id }));
+  jest.spyOn(AccessRole, 'findById').mockReturnValue({ lean: async () => ({ isActive: true, permissions: { pos: { read: true, write: true } } }) });
+  expect((await request.get(`/api/admin/pos/account-balances/${id}`).auth(adminToken, { type: 'bearer' })).status).toBe(403);
+  expect((await request.post('/api/admin/pos/delivery-notes/invoice').auth(adminToken, { type: 'bearer' }).send(body)).status).toBe(403);
 });

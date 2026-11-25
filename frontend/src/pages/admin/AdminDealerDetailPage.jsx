@@ -1,10 +1,11 @@
+import AccountBalancePanel from '../../components/admin/AccountBalancePanel';
 import useAuth from '../../hooks/useAuth';
-import { isSuperAdmin } from '../../../../shared/adminAccess.js';
+import { isSuperAdmin, canAdmin } from '../../../../shared/adminAccess.js';
 import AccountManagementActions from '../../components/admin/AccountManagementActions';
 import apiClient from '../../api/axios';
 import DealerReviewAttribution from '../../components/admin/DealerReviewAttribution';
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useOutletContext } from 'react-router-dom';
 import adminService from '../../services/adminService';
 import DocumentViewerModal from '../../components/admin/DocumentViewerModal';
 import Card from '../../components/ui/Card';
@@ -32,6 +33,8 @@ import {
 
 const AdminDealerDetailPage = ({ mode = 'verification' }) => {
   const { adminUser } = useAuth();
+  const { adminAccess } = useOutletContext() || {};
+  const canReview = canAdmin(adminAccess || adminUser, 'dealers', 'write');
   const canSetDiscount = isSuperAdmin(adminUser);
   const [discountPercent, setDiscountPercent] = useState('0');
   const accounts = mode === 'accounts';
@@ -159,11 +162,13 @@ const AdminDealerDetailPage = ({ mode = 'verification' }) => {
   }
 
   const userObj = profile.userId || {};
+  const canReverify = canReview && profile.status === 'rejected' && profile.kycReviewAction === 'revoked' && userObj.role === 'dealer';
   const kycDocs = profile.kycDocuments || [];
   const addressStr = [profile.address, profile.city, profile.state, profile.pincode].filter(Boolean).join(', ');
 
   return (
     <div className="space-y-6">
+      {canSetDiscount && <AccountBalancePanel userId={userObj._id} />}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
 <div className="rounded-xl border border-border bg-card p-4"><DealerReviewAttribution profile={profile} /></div>
@@ -202,6 +207,7 @@ const AdminDealerDetailPage = ({ mode = 'verification' }) => {
             </>
           )}
 
+          {canReverify && <Button variant="primary" size="sm" isDisabled={userObj.accountStatus === 'blocked'} onClick={() => setIsApproveOpen(true)}><CheckCircle2 className="mr-1.5 h-4 w-4" />Verify KYC again</Button>}
           {accounts && profile.status === 'approved' && (
             <Button variant="outline" size="sm" onClick={() => { setIsRevokeOpen(true); setRevokeReason(''); }} className="text-rose-700 border-rose-200 hover:bg-rose-50">
               <RotateCcw className="w-4 h-4 mr-1.5" /> Revoke Access
@@ -358,14 +364,14 @@ const AdminDealerDetailPage = ({ mode = 'verification' }) => {
       />
 
       {/* Approve Confirmation Modal */}
-      <Modal isOpen={isApproveOpen} onClose={approveLoading ? undefined : () => setIsApproveOpen(false)} title="Approve Dealer KYC" size="sm">
+      <Modal isOpen={isApproveOpen} onClose={approveLoading ? undefined : () => setIsApproveOpen(false)} title={canReverify ? 'Verify Dealer KYC Again' : 'Approve Dealer KYC'} size="sm">
         <form className="space-y-4" onSubmit={event => { event.preventDefault(); handleApproveConfirm(); }}>
           <p className="text-sm text-muted-foreground">Approve KYC for {profile.companyName} and unlock dealer pricing?</p>
           {canSetDiscount && <label className="block space-y-2 text-sm font-semibold">Extra global dealer discount (%)
             <input aria-label="Extra global dealer discount (%)" type="number" min="0" max="100" step="0.01" required value={discountPercent} disabled={approveLoading} onChange={event => setDiscountPercent(event.target.value)} className="block w-full rounded-lg border bg-background p-2" />
             <span className="block text-xs font-normal text-muted-foreground">Private to super admins. Applied to this dealer’s prices across all products. Use 0 for ordinary dealer pricing; edit it later from the dealer profile.</span>
           </label>}
-          <div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={approveLoading} onClick={() => setIsApproveOpen(false)}>Cancel</Button><Button type="submit" isLoading={approveLoading}>Approve KYC</Button></div>
+          <div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={approveLoading} onClick={() => setIsApproveOpen(false)}>Cancel</Button><Button type="submit" isLoading={approveLoading}>{canReverify ? 'Verify KYC again' : 'Approve KYC'}</Button></div>
         </form>
       </Modal>
 

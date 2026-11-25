@@ -49,7 +49,7 @@ test('account invoices are accessible from the profile sidebar and download a PD
   expect((await download).suggestedFilename()).toBe('VI-26-27-000001.pdf');
   const popup = page.waitForEvent('popup');
   const pdfRequest = page.waitForRequest(request => request.url().endsWith('/my-invoices/' + invoice._id + '/pdf'));
-  await page.getByRole('button', { name: 'View invoice', exact: true }).click();
+  await page.getByRole('button', { name: 'View bill', exact: true }).click();
   expect(await popup).toBeTruthy();
   expect((await pdfRequest).headers().authorization).toBe('Bearer e2e-access');
   await expect(page.getByRole('alert')).toHaveCount(0);

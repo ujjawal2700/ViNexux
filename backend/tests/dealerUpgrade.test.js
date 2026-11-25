@@ -121,6 +121,16 @@ try {
   const revoked = await DealerProfile.findById(profileId);
   assert.equal(String(revoked.kycVerifiedBy), String(owner._id), 'Original approval attribution survives revocation');
   assert.equal(revoked.kycReviewAction, 'revoked');
+  assert.equal((await auth('put', `/admin/dealer-accounts/${profileId}/revoke`).send({ reason: 'Repeated revocation' })).status, 409);
+  assert.equal((await auth('put', `/admin/dealer-accounts/${profileId}/status`).send({ accountStatus: 'blocked' })).status, 200);
+  assert.equal((await auth('put', `/admin/dealers/${profileId}/kyc/approve`).send({})).status, 409, 'Blocked dealer cannot be reverified');
+  assert.equal((await auth('put', `/admin/dealer-accounts/${profileId}/status`).send({ accountStatus: 'active' })).status, 200);
+  const reverified = await auth('put', `/admin/dealers/${profileId}/kyc/approve`).send({ dealerDiscountPercent: 3 });
+  assert.equal(reverified.status, 200, JSON.stringify(reverified.body));
+  assert.equal(reverified.body.data.profile.status, 'approved');
+  assert.equal(reverified.body.data.profile.dealerDiscountPercent, 3);
+  assert.equal((await Session.findById(customerLogin.session._id)).isActive, false, 'Reverification does not revive invalidated sessions');
+  assert.equal((await DealerProfile.findById(profileId).select('+aadhaarNumber')).aadhaarNumber, details.aadhaarNumber);
   console.log('Dealer upgrade integration passed: authenticated drafts, required KYC, review locking, customer-to-dealer transaction, verifier identity, session and history preservation, separate directories/permissions and account blocking.');
 } finally {
   await client.close();

@@ -441,6 +441,13 @@ export const updateEnquiryStatus = async (enquiryId, updateData = {}, adminUserI
         enquiry.status = status;
       }
 
+      if (status === 'completed' && enquiry.deliveryNoteIds?.length && oldStatus !== 'completed') {
+        const { PosSale } = await import('../models/PosSale.js');
+        const notes = await PosSale.find({ sourceEnquiryId: enquiry._id, documentType: 'delivery-note', status: 'completed' }).session(session).lean();
+        const sent = new Map();
+        for (const doc of notes) for (const item of doc.items) { const key = productLineKey(item.productId, item.variantId); sent.set(key, (sent.get(key) || 0) + item.quantity - (item.returnedQuantity || 0)); }
+        if (enquiry.items.some(item => (sent.get(productLineKey(item.productId, item.variantId)) || 0) < item.quantity)) throw new AppError('Dispatch the remaining ordered items before completing this order.', 409, 'PARTIAL_DELIVERY');
+      }
       const noteText = note || adminNote;
       if (noteText?.trim()) {
         enquiry.notes.push({ adminId: adminUserId, note: noteText.trim(), createdAt: new Date() });

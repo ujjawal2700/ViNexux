@@ -1,0 +1,41 @@
+import { beforeEach, afterEach, expect, jest, test } from '@jest/globals';
+import express from '../../backend/node_modules/express/index.js';
+import supertest from 'supertest';
+import routes from '../../backend/src/routes/adminEnquiry.routes.js';
+import { errorHandler } from '../../backend/src/middlewares/errorHandler.js';
+import { User } from '../../backend/src/models/User.js';
+import { Session } from '../../backend/src/models/Session.js';
+import { Enquiry } from '../../backend/src/models/Enquiry.js';
+import { Product } from '../../backend/src/models/Product.js';
+import { AccessRole } from '../../backend/src/models/AccessRole.js';
+import { posCustomerService } from '../../backend/src/services/posCustomer.service.js';
+import { generateAccessToken } from '../../backend/src/utils/token.util.js';
+const id = '507f1f77bcf86cd799439011', productId = '507f1f77bcf86cd799439022';
+let request, user, token, order;
+beforeEach(() => {
+  user = { _id: id, role: 'admin', accountStatus: 'active' };
+  order = { _id: id, source: 'whatsapp', userType: 'customer', enquiryNumber: 'WA-123', contactPhone: '9876543210', contactName: 'Buyer', deliveryAddress: { city: 'Kota', state: 'Rajasthan' }, items: [{ productId, quantity: 2, priceShown: 90 }] };
+  const app = express(); app.use('/api/admin/enquiries', routes); app.use(errorHandler); request = supertest(app);
+  token = generateAccessToken({ userId: id, role: 'admin', sessionId: 'order-session' });
+  jest.spyOn(User, 'findById').mockImplementation(async () => user);
+  jest.spyOn(Session, 'findOne').mockResolvedValue({ isActive: true, lastActiveAt: new Date(), expiresAt: new Date(Date.now() + 600000) });
+  jest.spyOn(Enquiry, 'findById').mockImplementation(() => ({ select() { return this; }, lean: async () => order }));
+  jest.spyOn(Product, 'find').mockReturnValue({ lean: async () => [{ _id: productId, name: 'Camera', standardPrice: 100, stockQuantity: 3 }] });
+  jest.spyOn(posCustomerService, 'lookup').mockResolvedValue({ found: true, customer: {} });
+});
+afterEach(() => jest.restoreAllMocks());
+const call = () => request.get(`/api/admin/enquiries/${id}/pos-draft`).auth(token, { type: 'bearer' });
+test('preparing a bill requires an authenticated admin and returns a private draft', async () => {
+  expect((await request.get(`/api/admin/enquiries/${id}/pos-draft`)).status).toBe(401);
+  const response = await call(); expect(response.status).toBe(200); expect(response.headers['cache-control']).toBe('private, no-store');
+  expect(response.body.data.draft.items[0]).toMatchObject({ productId, quantity: 2, unitPrice: 90 });
+  user.role = 'customer'; expect((await call()).status).toBe(403);
+});
+test('employees need WhatsApp read access and both POS read/write permissions', async () => {
+  user.isEmployee = true; user.accessRoleId = id;
+  const permissions = { 'whatsapp-orders': { read: true }, pos: { read: true, write: false } };
+  jest.spyOn(AccessRole, 'findById').mockReturnValue({ lean: async () => ({ isActive: true, permissions }) });
+  expect((await call()).status).toBe(403);
+  permissions.pos.write = true; expect((await call()).status).toBe(200);
+  permissions['whatsapp-orders'].read = false; expect((await call()).status).toBe(403);
+});

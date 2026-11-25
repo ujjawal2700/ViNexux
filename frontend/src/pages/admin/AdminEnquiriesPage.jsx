@@ -1,6 +1,7 @@
 import { ALLOWED_ENQUIRY_TRANSITIONS as ALLOWED_STATUS_TRANSITIONS, ENQUIRY_STATUS_LABELS, canonicalEnquiryStatus } from '../../../../shared/enquiryStatuses.js';
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { canAdmin } from '../../../../shared/adminAccess.js';
+import { Link, useOutletContext } from 'react-router-dom';
 import adminService from '../../services/adminService';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import FilterBar from '../../components/admin/FilterBar';
@@ -13,7 +14,7 @@ import Skeleton from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 import ErrorState from '../../components/ui/ErrorState';
 import Toast from '../../components/ui/Toast';
-import { Inbox, Eye, FileSpreadsheet, MessageCircle, ChevronDown } from 'lucide-react';
+import { Inbox, Eye, FileSpreadsheet, MessageCircle, ChevronDown, Receipt } from 'lucide-react';
 import { buildEnquiryWhatsAppLink } from '../../lib/whatsapp';
 import { groupEnquiryItems } from '../../lib/enquiryItems';
 
@@ -26,6 +27,8 @@ import { groupEnquiryItems } from '../../lib/enquiryItems';
  * filter is hidden entirely (the route itself is the scope, not a dropdown).
  */
 const AdminEnquiriesPage = ({ forcedUserType, source = 'storefront' }) => {
+  const { adminAccess } = useOutletContext() || {};
+  const canSendToBilling = canAdmin(adminAccess, 'pos', 'read') && canAdmin(adminAccess, 'pos', 'write');
   const [enquiries, setEnquiries] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, totalPages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
@@ -307,6 +310,7 @@ const AdminEnquiriesPage = ({ forcedUserType, source = 'storefront' }) => {
                     </Table.Cell>
                     <Table.Cell className="text-right">
                       <div className="flex items-center justify-end gap-1">
+                        {source === 'whatsapp' && canSendToBilling && <Link to={`/admin/pos?order=${enq._id}`}><Button variant="outline" size="sm" className="h-8 px-2 text-xs"><Receipt className="mr-1 h-3.5 w-3.5" />Send to billing</Button></Link>}
                         <Link to={enq.source === 'whatsapp' ? `/admin/whatsapp-orders/${enq._id}` : `/admin/enquiries/${enq._id}`}>
                           <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" title="Inspect Full Enquiry">
                             <Eye className="w-3.5 h-3.5 mr-1" /> Inspect

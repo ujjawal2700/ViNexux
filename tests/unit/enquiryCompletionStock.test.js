@@ -193,3 +193,11 @@ test('submitting a cart enquiry leaves stock unchanged', async () => {
   expect(Enquiry.create).toHaveBeenCalledWith(expect.objectContaining({ status: 'new' }));
   expect(Product.findOneAndUpdate).not.toHaveBeenCalled();
 });
+
+test('a closed lead can be corrected to Completed with exactly one stock deduction', async () => {
+  const state = setup({ status: 'closed' });
+  await updateEnquiryStatus(enquiryId, { status: 'completed' }, adminId);
+  await updateEnquiryStatus(enquiryId, { status: 'completed' }, adminId);
+  expect(state.read().status).toBe('completed'); expect(state.stock().stockQuantity).toBe(7);
+  expect(Product.findOneAndUpdate).toHaveBeenCalledTimes(1);
+});
