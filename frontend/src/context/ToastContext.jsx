@@ -1,16 +1,22 @@
-import React, { createContext, useState, useCallback, useEffect, useMemo } from 'react';
+import React, { createContext, useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import ToastContainer from '../components/ui/Toast';
 
 export const ToastContext = createContext(null);
 
 export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
+  const { key: routeKey } = useLocation();
+  const activeRoute = useRef(routeKey);
+  activeRoute.current = routeKey;
+  useEffect(() => { setToasts(previous => previous.filter(toast => toast.type !== 'error' || toast.routeKey === routeKey)); }, [routeKey]);
 
   const removeToast = useCallback((id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   const addToast = useCallback((message, type = 'info', duration = 4000) => {
+    if (type === 'error' && activeRoute.current !== routeKey) return null;
     const id = Date.now() + Math.random().toString(36).substring(2, 9);
 
     setToasts((prev) => {
@@ -18,7 +24,7 @@ export const ToastProvider = ({ children }) => {
       if (prev.some((t) => t.message === message && t.type === type)) {
         return prev;
       }
-      return [...prev, { id, message, type, duration }];
+      return [...prev, { id, message, type, duration, routeKey }];
     });
 
     if (duration > 0) {
@@ -27,7 +33,7 @@ export const ToastProvider = ({ children }) => {
       }, duration);
     }
     return id;
-  }, [removeToast]);
+  }, [removeToast, routeKey]);
 
   useEffect(() => {
     try {
@@ -63,7 +69,7 @@ export const ToastProvider = ({ children }) => {
   return (
     <ToastContext.Provider value={toast}>
       {children}
-      <ToastContainer toasts={toasts} onDismiss={removeToast} />
+      <ToastContainer toasts={toasts.filter(toast => toast.type !== 'error' || toast.routeKey === routeKey)} onDismiss={removeToast} />
     </ToastContext.Provider>
   );
 };

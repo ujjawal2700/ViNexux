@@ -1,3 +1,6 @@
+import AccountBalancePanel from '../../components/admin/AccountBalancePanel';
+import useAuth from '../../hooks/useAuth';
+import { isSuperAdmin } from '../../../../shared/adminAccess.js';
 import DealerEnrollmentAction from '../../components/admin/DealerEnrollmentAction';
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
@@ -29,6 +32,7 @@ import {
  */
 const AdminCustomerDetailPage = () => {
   const { id } = useParams();
+  const { adminUser } = useAuth();
   const navigate = useNavigate();
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -132,6 +136,7 @@ const AdminCustomerDetailPage = () => {
 
   return (
     <div className="space-y-6">
+      {isSuperAdmin(adminUser) && <AccountBalancePanel userId={customer._id} />}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Header & Actions */}

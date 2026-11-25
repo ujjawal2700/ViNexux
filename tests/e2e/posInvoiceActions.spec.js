@@ -33,6 +33,10 @@ test('sales register row exposes functional view, edit, download and general sha
   const row = page.getByRole('row').filter({ hasText: state.invoice.invoiceNumber });
   for (const name of ['View invoice', 'Edit invoice', 'Download invoice', 'Share invoice']) await expect(row.getByRole('button', { name, exact: true })).toBeVisible();
   await expect(page.getByRole('row').filter({ hasText: 'VI/26-27/000002' }).getByRole('button', { name: 'Edit invoice', exact: true })).toBeDisabled();
+  await expect(row.getByText(state.invoice.customer.phone, { exact: true })).toHaveCSS('color', 'oklch(0.446 0.043 257.281)');
+  await expect(row.getByText(state.invoice.customer.phone, { exact: true })).toHaveCSS('font-size', '14px');
+  await expect(row.locator('td').first().locator('p').last()).toHaveCSS('color', 'oklch(0.446 0.043 257.281)');
+  await expect(row.locator('td').first().locator('p').last()).toHaveCSS('font-size', '14px');
   await page.screenshot({ path: testInfo.outputPath('sales-register-actions.png') });
   await row.getByRole('button', { name: 'View invoice', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText(state.invoice.invoiceNumber);
@@ -43,7 +47,7 @@ test('sales register row exposes functional view, edit, download and general sha
   await row.getByRole('button', { name: 'Share invoice', exact: true }).click();
   await expect.poll(() => page.evaluate(() => window.sharedInvoices.length)).toBe(1);
   const shared = await page.evaluate(() => window.sharedInvoices[0]);
-  expect(shared.title).toBe(`Invoice ${state.invoice.invoiceNumber}`);
+  expect(shared.title).toBe(`Sale Bill ${state.invoice.invoiceNumber}`);
   expect(shared.url).toContain('/invoices/' + 'a'.repeat(64));
   expect(shared.url).not.toContain('wa.me');
   await row.getByRole('button', { name: 'Edit invoice', exact: true }).click();
@@ -137,4 +141,22 @@ for (const mode of ['unsupported', 'unavailable', 'cancelled']) test(`general in
     await expect.poll(() => page.evaluate(() => window.copiedInvoice)).toContain('/invoices/' + 'a'.repeat(64));
     await expect(page.getByRole('status').filter({ hasText: 'Invoice link copied.' })).toBeVisible();
   }
+});
+
+
+test('sales register PDF export uses the active search, date and status filters', async ({ page }) => {
+  await setup(page); let exported;
+  await page.route('**/api/admin/pos/sales/export/pdf?*', route => {
+    exported = Object.fromEntries(new URL(route.request().url()).searchParams);
+    return route.fulfill({ contentType: 'application/pdf', body: '%PDF-1.4 register fixture' });
+  });
+  await page.goto('/admin/pos?tab=sales');
+  await page.getByLabel('Search invoices / products / models / customer / phone', { exact: true }).fill('Camera');
+  await page.getByLabel('From (IST)', { exact: true }).fill('2026-10-01');
+  await page.getByLabel('To (IST)', { exact: true }).fill('2026-10-31');
+  await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('completed');
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export PDF', exact: true }).click();
+  expect((await download).suggestedFilename()).toBe('vinexus-sales-register.pdf');
+  expect(exported).toEqual({ search: 'Camera', from: '2026-10-01', to: '2026-10-31', status: 'completed', paymentStatus: 'all' });
 });

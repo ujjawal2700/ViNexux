@@ -1,12 +1,12 @@
 import useAuth from '../../hooks/useAuth';
-import { isSuperAdmin } from '../../../../shared/adminAccess.js';
+import { isSuperAdmin, canAdmin } from '../../../../shared/adminAccess.js';
 import AdminDirectoryTable from '../../components/admin/AdminDirectoryTable';
 import InstallerPricingSettings from '../../components/admin/InstallerPricingSettings';
 import AccountManagementActions from '../../components/admin/AccountManagementActions';
 import apiClient from '../../api/axios';
 import DealerReviewAttribution from '../../components/admin/DealerReviewAttribution';
 import React, { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useOutletContext } from 'react-router-dom';
 import adminService from '../../services/adminService';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import FilterBar from '../../components/admin/FilterBar';
@@ -26,6 +26,8 @@ import { Users, Eye, CheckCircle2, XCircle, RotateCcw } from 'lucide-react';
 
 const AdminDealersPage = ({ mode = 'verification' }) => {
   const { adminUser } = useAuth();
+  const { adminAccess } = useOutletContext() || {};
+  const canReview = canAdmin(adminAccess || adminUser, 'dealers', 'write');
   const canSetDiscount = isSuperAdmin(adminUser);
   const [discountPercent, setDiscountPercent] = useState('0');
   const accounts = mode === 'accounts';
@@ -311,6 +313,7 @@ const AdminDealersPage = ({ mode = 'verification' }) => {
                         )}
 
                         <>{accounts && <AccountManagementActions role="dealer" record={dlr} onSaved={fetchDealers} layout="grid" />}</>
+                        {canReview && dlr.status === 'rejected' && dlr.kycReviewAction === 'revoked' && userObj?.role === 'dealer' && <Button variant="outline" size="sm" isDisabled={userObj.accountStatus === 'blocked'} className="min-h-9 min-w-0 px-2 text-sm" onClick={() => { setDiscountPercent(String(dlr.dealerDiscountPercent || 0)); setApproveTarget(dlr); }}><CheckCircle2 className="mr-1 h-3.5 w-3.5" />Verify KYC again</Button>}
                         {accounts && dlr.status === 'approved' && (
                           <Button
                             variant="ghost"
@@ -341,14 +344,14 @@ const AdminDealersPage = ({ mode = 'verification' }) => {
       )}
 
       {/* Quick Approve Confirmation Modal */}
-      <Modal isOpen={!!approveTarget} onClose={approveLoading ? undefined : () => setApproveTarget(null)} title="Approve Dealer KYC" size="sm">
+      <Modal isOpen={!!approveTarget} onClose={approveLoading ? undefined : () => setApproveTarget(null)} title={approveTarget?.kycReviewAction === 'revoked' ? 'Verify Dealer KYC Again' : 'Approve Dealer KYC'} size="sm">
         <form className="space-y-4" onSubmit={event => { event.preventDefault(); handleApproveConfirm(); }}>
           <p className="text-sm text-muted-foreground">Approve KYC for {approveTarget?.companyName} and unlock dealer pricing?</p>
           {canSetDiscount && <label className="block space-y-2 text-sm font-semibold">Extra global dealer discount (%)
             <input aria-label="Extra global dealer discount (%)" type="number" min="0" max="100" step="0.01" required value={discountPercent} disabled={approveLoading} onChange={event => setDiscountPercent(event.target.value)} className="block w-full rounded-lg border bg-background p-2" />
             <span className="block text-xs font-normal text-muted-foreground">Super admin only. Dealers see final prices without a special-discount label. Edit the discount later from their profile.</span>
           </label>}
-          <div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={approveLoading} onClick={() => setApproveTarget(null)}>Cancel</Button><Button type="submit" isLoading={approveLoading}>Approve KYC</Button></div>
+          <div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={approveLoading} onClick={() => setApproveTarget(null)}>Cancel</Button><Button type="submit" isLoading={approveLoading}>{approveTarget?.kycReviewAction === 'revoked' ? 'Verify KYC again' : 'Approve KYC'}</Button></div>
         </form>
       </Modal>
 

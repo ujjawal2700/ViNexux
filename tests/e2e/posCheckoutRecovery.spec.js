@@ -49,18 +49,20 @@ const saveCustomer = async page => {
   await expect(dialog).toHaveCount(0);
 };
 
-test('checkout has a fixed full charge and only Cash, UPI and Bank', async ({ page }) => {
+test('checkout supports partial receipts and only Cash, UPI and Bank', async ({ page }) => {
   const state = await setup(page); await saveCustomer(page);
   await page.getByRole('button', { name: /Proceed to payment/ }).click();
   const dialog = page.getByRole('dialog');
-  const amount = dialog.getByLabel('Payment amount (fixed)', { exact: true });
-  await expect(amount).toHaveValue('₹100.00'); await expect(amount).toHaveAttribute('readonly', '');
+  const amount = dialog.getByLabel('Amount received now', { exact: true });
+  await expect(amount).toHaveValue('100');
+  await amount.fill('40');
+  await expect(dialog.getByText('Outstanding after this payment: ₹60.00')).toBeVisible();
   expect(await dialog.getByLabel('Payment method', { exact: true }).locator('option').allTextContents()).toEqual(['Cash', 'UPI', 'Bank']);
   await expect(dialog.getByText(/Credit sale|pay later|split tender|Cash received/)).toHaveCount(0);
   await dialog.getByLabel('Payment method', { exact: true }).selectOption('upi');
-  await dialog.getByRole('button', { name: 'Complete sale & generate invoice' }).click();
+  await dialog.getByRole('button', { name: /Complete sale & generate (Sale Bill|Proforma Bill)/ }).click();
   await expect(dialog.getByRole('heading', { name: 'VI/26-27/000001' })).toBeVisible();
-  expect(state.payload().payments).toHaveLength(1); expect(state.payload().payments[0]).toMatchObject({ method: 'upi', amount: 100 });
+  expect(state.payload().payments).toHaveLength(1); expect(state.payload().payments[0]).toMatchObject({ method: 'upi', amount: 40 });
   expect(state.preflights()).toBe(1);
 });
 
@@ -101,15 +103,15 @@ test('a later server address error can be corrected inside the payment dialog', 
   const state = await setup(page, { creationError: { path: 'customer.pincode', message: 'Enter a 6-digit PIN code.' } });
   await saveCustomer(page); await page.getByRole('button', { name: /Proceed to payment/ }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByRole('button', { name: 'Complete sale & generate invoice' }).click();
-  await expect(dialog.getByRole('heading', { name: 'Complete sale', exact: true })).toBeVisible();
+  await dialog.getByRole('button', { name: /Complete sale & generate (Sale Bill|Proforma Bill)/ }).click();
+  await expect(dialog.getByRole('heading', { name: 'Complete Sale Bill', exact: true })).toBeVisible();
   await expect(dialog.getByRole('heading', { name: 'Correct customer details here' })).toBeVisible();
   await expect(dialog.getByRole('alert').first()).toContainText('Customer → PIN code');
-  await expect(dialog.getByRole('button', { name: 'Complete sale & generate invoice' })).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: /Complete sale & generate (Sale Bill|Proforma Bill)/ })).toBeDisabled();
   await dialog.getByLabel('PIN code (optional)', { exact: true }).fill('324099');
   await dialog.getByRole('button', { name: 'Save corrections', exact: true }).click();
   await expect(dialog.getByRole('heading', { name: 'Correct customer details here' })).toHaveCount(0);
-  await dialog.getByRole('button', { name: 'Complete sale & generate invoice' }).click();
+  await dialog.getByRole('button', { name: /Complete sale & generate (Sale Bill|Proforma Bill)/ }).click();
   await expect(dialog.getByRole('heading', { name: 'VI/26-27/000001' })).toBeVisible();
   expect(state.payload().customer.pincode).toBe('324099');
   expect(state.lookups()).toBe(1);
@@ -135,4 +137,19 @@ test('admin rendering errors identify the broken route and preserve storage on g
   await page.getByRole('button', { name: 'Refresh', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Offline POS Billing', exact: true })).toBeVisible();
   expect(await page.evaluate(() => [localStorage.getItem('recovery-marker'), sessionStorage.getItem('recovery-marker'), localStorage.getItem('vinexus_admin_refresh_token')])).toEqual(['keep', 'keep', 'admin-refresh']);
+});
+
+
+test('checkout validation feedback clears on tab changes without losing the bill draft', async ({ page }) => {
+  await setup(page, { missingHsn: true }); await saveCustomer(page);
+  await page.getByRole('button', { name: /Proceed to payment/ }).click();
+  await expect(page.getByRole('alert').first()).toContainText('Checkout camera → HSN/SAC');
+  await page.getByRole('button', { name: 'Sales register', exact: true }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'Checkout camera → HSN/SAC' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Delivery notes', exact: true }).click();
+  await expect(page.getByText('Checkout camera → HSN/SAC', { exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'New sale', exact: true }).click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await page.getByRole('button', { name: /Proceed to payment/ }).click();
+  await expect(page.getByRole('alert').first()).toContainText('Checkout camera → HSN/SAC');
 });

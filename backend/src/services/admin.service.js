@@ -55,7 +55,7 @@ export const getDashboardSummary = async () => {
     countEnquiries({ userType: 'customer', status: 'new' }),
     Enquiry.countDocuments({ source: 'whatsapp' }),
     Enquiry.countDocuments({ source: 'whatsapp', status: 'new' }),
-    PosSale.countDocuments({ status: { $ne: 'voided' } }),
+    PosSale.countDocuments({ documentType: { $ne: 'delivery-note' }, status: { $ne: 'voided' } }),
   ]);
 
   return {

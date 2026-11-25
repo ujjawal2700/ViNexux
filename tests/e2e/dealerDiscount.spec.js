@@ -59,3 +59,25 @@ test('dealer sees only their final regular product price without discount labels
   await expect(page.getByTestId('purchase-price')).toContainText('97');
   await expect(page.getByText(/dealer saving|special.discount|extra global dealer discount|standard:/i)).toHaveCount(0);
 });
+
+
+test('revoked dealer can be verified again from their admin account profile', async ({ page }) => {
+  await mockApi(page); await seedBrowserSession(page, 'admin');
+  const profile = { ...fixture(), status: 'rejected', kycReviewAction: 'revoked', dealerDiscountPercent: 3 };
+  let approval;
+  for (const path of [`**/api/admin/dealer-accounts/${id}`, `**/api/admin/dealers/${id}**`]) {
+    await page.route(path, route => {
+      if (route.request().url().endsWith('/kyc/approve')) {
+        approval = route.request().postDataJSON(); Object.assign(profile, approval, { status: 'approved', kycReviewAction: 'approved' });
+      }
+      return route.fulfill({ json: { success: true, data: { profile } } });
+    });
+  }
+  await page.goto(`/admin/dealer-accounts/${id}`);
+  await page.getByRole('button', { name: 'Verify KYC again', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByLabel('Extra global dealer discount (%)')).toHaveValue('3');
+  await dialog.getByRole('button', { name: 'Verify KYC again', exact: true }).click();
+  await expect.poll(() => approval).toEqual({ dealerDiscountPercent: 3 });
+  await expect(page.getByRole('button', { name: 'Verify KYC again', exact: true })).toHaveCount(0);
+});

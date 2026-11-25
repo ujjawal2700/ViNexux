@@ -1,4 +1,5 @@
-import { isSuperAdmin } from '../../../shared/adminAccess.js';
+import { deliveryNoteService } from '../services/deliveryNote.service.js';
+import { isSuperAdmin, canAdmin } from '../../../shared/adminAccess.js';
 import { AppError } from '../utils/AppError.js';
 import { activeVariants, hasVariants, selectedVariantProduct, productLineKey } from '../../../shared/productVariants.js';
 import { Router } from 'express';
@@ -10,14 +11,25 @@ import { ApiResponse } from '../utils/ApiResponse.js';
 import { posService } from '../services/pos.service.js';
 import { posCustomerService } from '../services/posCustomer.service.js';
 import { generatePosInvoice } from '../services/posInvoice.service.js';
+import { generatePosRegisterPdf } from '../services/posRegisterPdf.service.js';
 import { generatePosExport } from '../services/posExport.service.js';
 import { Product } from '../models/Product.js';
+import { Enquiry } from '../models/Enquiry.js';
 import { PosSale } from '../models/PosSale.js';
-import { posSaleSchema, posSellerSchema, posListSchema, paymentSchema, returnSchema, customerSchema, invoiceEditSchema } from '../validators/pos.validator.js';
+import { posSaleSchema, posSellerSchema, posListSchema, paymentSchema, returnSchema, customerSchema, invoiceEditSchema, deliveryNoteInvoiceSchema } from '../validators/pos.validator.js';
 
 export const requireReturnSuperAdmin = (req, res, next) => isSuperAdmin(req.user) ? next() : next(new AppError('Only super admins can edit invoices or record sale returns and refunds.', 403, 'FORBIDDEN'));
 const router = Router();
 router.use(authenticate, authorize('admin'));
+const requireOrderAccess = asyncHandler(async (req, res, next) => {
+  if (req.body.sourceEnquiryId) {
+    const access = req.user.isEmployee ? { role: 'admin', ...req.adminAccess } : req.user;
+    const order = await Enquiry.findById(req.body.sourceEnquiryId).select('source userType').lean();
+    const section = order?.source === 'whatsapp' ? 'whatsapp-orders' : `enquiries-${order?.userType === 'dealer' ? 'dealers' : 'customers'}`;
+    if (!canAdmin(access, section, 'read')) throw new AppError('Read access to this order is required.', 403, 'FORBIDDEN');
+  }
+  next();
+});
 const reply = (res, data, message = 'Success') => ApiResponse.success(res, message, data);
 const idSchema = { params: z.object({ id: z.string().regex(/^[a-f\d]{24}$/i) }) };
 const searchSchema = { query: z.object({ search: z.string().trim().max(150).default('') }) };
@@ -46,21 +58,31 @@ router.get('/customers', validate(searchSchema), asyncHandler(async (req, res) =
   reply(res, records.map(r => r.customer));
 }));
 router.get('/held', asyncHandler(async (req, res) => reply(res, await posService.listHeld(req.user._id))));
-router.post('/held', validate({ body: z.object({ label: z.string().trim().min(1).max(100), draft: z.object({ billType: z.enum(['b2b', 'b2c']).default('b2c'), requestId: z.string().uuid(), customer: z.record(z.unknown()), shipping: z.record(z.unknown()).optional(), delivery: z.record(z.unknown()), items: z.array(z.record(z.unknown())).max(100), taxMode: z.enum(['inclusive', 'exclusive']), roundOff: z.boolean(), notes: z.string().max(1000).default('') }) }) }),
+router.post('/held', validate({ body: z.object({ label: z.string().trim().min(1).max(100), draft: z.object({ documentType: z.enum(['invoice', 'delivery-note']).default('invoice'), dueDate: z.string().optional(), deliveryNoteDate: z.string().optional(), dispatchDetails: z.object({ date: z.string() }).optional(), sourceEnquiryId: z.string().regex(/^[a-f\d]{24}$/i).optional(), billType: z.enum(['b2b', 'b2c']).default('b2c'), requestId: z.string().uuid(), customer: z.record(z.unknown()), shipping: z.record(z.unknown()).optional(), delivery: z.record(z.unknown()), items: z.array(z.record(z.unknown())).max(100), taxMode: z.enum(['inclusive', 'exclusive']), roundOff: z.boolean(), notes: z.string().max(1000).default('') }) }) }),
   asyncHandler(async (req, res) => reply(res, await posService.holdBill(req.body.draft, req.body.label, req.user._id))));
 router.delete('/held/:id', validate(idSchema), asyncHandler(async (req, res) => reply(res, await posService.removeHeld(req.params.id, req.user._id))));
+router.get('/account-balances/:id', requireReturnSuperAdmin, validate(idSchema), asyncHandler(async (req, res) => { res.set('Cache-Control', 'private, no-store'); reply(res, await deliveryNoteService.balance(req.params.id)); }));
+router.get('/delivery-notes/:id', validate(idSchema), asyncHandler(async (req, res) => { res.set('Cache-Control', 'private, no-store'); reply(res, await deliveryNoteService.get(req.params.id)); }));
+router.post('/delivery-notes/invoice', requireReturnSuperAdmin, validate({ body: deliveryNoteInvoiceSchema }), asyncHandler(async (req, res) => reply(res, await deliveryNoteService.invoice(req.body, req.user._id))));
+router.get('/sales/export/pdf', validate({ query: posListSchema }), asyncHandler(async (req, res) => {
+  const filters = { ...req.query, documentType: 'invoice' };
+  const buffer = await generatePosRegisterPdf(await posService.exportSales(filters), filters);
+  res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': 'attachment; filename="vinexus-sales-register.pdf"', 'Cache-Control': 'private, no-store' });
+  res.send(buffer);
+}));
 router.get('/sales/export', validate({ query: posListSchema }), asyncHandler(async (req, res) => {
   const buffer = await generatePosExport(await posService.exportSales(req.query));
   res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': 'attachment; filename="vinexus-offline-sales.xlsx"' });
   res.send(Buffer.from(buffer));
 }));
 router.get('/sales', validate({ query: posListSchema }), asyncHandler(async (req, res) => reply(res, await posService.listSales(req.query))));
-router.post('/sales/validate', validate({ body: posSaleSchema }), asyncHandler(async (req, res) => reply(res, await posService.validateSale(req.body, req.user._id))));
-router.post('/sales', validate({ body: posSaleSchema }), asyncHandler(async (req, res) => reply(res, await posService.createSale(req.body, req.user._id), 'Sale completed and stock updated.')));
+router.post('/sales/validate', validate({ body: posSaleSchema }), requireOrderAccess, asyncHandler(async (req, res) => reply(res, await posService.validateSale(req.body, req.user._id))));
+router.post('/sales', validate({ body: posSaleSchema }), requireOrderAccess, asyncHandler(async (req, res) => reply(res, await posService.createSale(req.body, req.user._id), 'Sale completed and stock updated.')));
 router.get('/sales/:id', validate(idSchema), asyncHandler(async (req, res) => reply(res, await posService.getSale(req.params.id))));
 router.put('/sales/:id', requireReturnSuperAdmin, validate({ ...idSchema, body: invoiceEditSchema }), asyncHandler(async (req, res) => reply(res, await posService.editSale(req.params.id, req.body, req.user._id), 'Invoice details updated.')));
 router.get('/sales/:id/invoice', validate(idSchema), asyncHandler(async (req, res) => {
   const sale = await posService.getSale(req.params.id);
+  if (sale.documentType === 'delivery-note' && sale.invoiceId) { const invoice = await posService.getSale(sale.invoiceId); sale.linkedInvoiceNumber = invoice.invoiceNumber; sale.linkedInvoiceBalance = invoice.balanceDue; }
   res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="${sale.invoiceNumber.replaceAll('/', '-')}.pdf"`, 'Cache-Control': 'private, no-store' });
   res.send(await generatePosInvoice(sale));
 }));

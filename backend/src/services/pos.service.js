@@ -5,6 +5,7 @@ import { resolveVariant, variantStockChange, productLineKey } from '../utils/pro
 import mongoose from 'mongoose';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { PosSale, PosCounter, PosSettings, PosHeldBill } from '../models/PosSale.js';
+import { Enquiry } from '../models/Enquiry.js';
 import { Product } from '../models/Product.js';
 import { posCustomerService } from './posCustomer.service.js';
 import { AppError } from '../utils/AppError.js';
@@ -14,7 +15,7 @@ import { validatePosCustomer } from '../../../shared/posValidation.js';
 import { calculatePosBill, financialYear, money, toPaise, POS_SELLER_DEFAULTS } from '../../../shared/posBilling.js';
 
 const fail = (message, status = 400, details = []) => { throw new AppError(message, status, 'VALIDATION_ERROR', details); };
-const checkedBill = (input, seller, requireFullPayment = true) => {
+const checkedBill = (input, seller) => {
   const issues = [...validatePosCustomer(input.customer), ...(input.shipping ? validatePosCustomer(input.shipping, 'shipping') : [])];
   const sellerResult = posSellerSchema.safeParse(seller);
   if (!sellerResult.success) issues.push(...sellerResult.error.issues.map(issue => ({ path: `seller.${issue.path.join('.')}`, message: issue.message })));
@@ -23,8 +24,8 @@ const checkedBill = (input, seller, requireFullPayment = true) => {
   const interstate = input.customer.stateCode !== seller.stateCode;
   const bill = calculatePosBill(input.items, { ...input, interstate });
   if (bill.total > 100000000 || !Number.isSafeInteger(toPaise(bill.total))) fail('Invoice total exceeds the supported billing limit.', 400, [{ path: 'items', message: 'Reduce the bill total to the supported limit.' }]);
-  if (input.payments?.length !== 1 || !['cash', 'upi', 'bank'].includes(input.payments[0].method) || (requireFullPayment && toPaise(input.payments[0].amount) !== toPaise(bill.total))) {
-    fail('The full invoice amount must be paid using Cash, UPI or Bank. Credit and split payments are not available.', 400, [{ path: 'payments.0.amount', message: 'Payment must equal the calculated invoice total.' }]);
+  if (input.payments?.length !== 1 || !['cash', 'upi', 'bank'].includes(input.payments[0].method) || !Number.isFinite(input.payments[0].amount) || input.payments[0].amount < 0 || toPaise(input.payments[0].amount) > toPaise(bill.total)) {
+    fail('Enter the amount received using Cash, UPI or Bank, between zero and the document total.', 400, [{ path: 'payments.0.amount', message: 'Payment cannot exceed the calculated document total.' }]);
   }
   return { bill, interstate };
 };
@@ -61,6 +62,32 @@ const restock = async (productId, quantity, session, variantId) => {
   if (!product) fail('A product has been removed from the catalogue. Restore it before returning its stock.', 409);
 };
 
+async function sourceBillOrder(input, session = null) {
+  if (!input.sourceEnquiryId) return null;
+  const order = await Enquiry.findById(input.sourceEnquiryId).session(session);
+  if (!order || order.enquiryType === 'out-of-stock') fail('Billable order not found.', 404);
+  if (order.posSaleId) fail('This order has already been billed. Open its existing invoice.', 409);
+  if (input.documentType !== 'delivery-note') {
+    if (order.stockDeductedAt || order.status === 'completed' || order.deliveryNoteIds?.length) fail('This order was already dispatched. Invoice its delivery notes instead of creating another sale.', 409);
+    return order;
+  }
+  if ((order.stockDeductedAt || order.status === 'completed') && !order.deliveryNoteIds?.length) fail('This order has already been fulfilled.', 409);
+  const previous = await PosSale.find({ sourceEnquiryId: order._id, documentType: 'delivery-note', status: 'completed' }).session(session).lean();
+  const dispatched = new Map();
+  for (const note of previous) for (const item of note.items) {
+    const key = productLineKey(item.productId, item.variantId);
+    dispatched.set(key, (dispatched.get(key) || 0) + item.quantity - (item.returnedQuantity || 0));
+  }
+  const ordered = new Map(order.items.map(item => [productLineKey(item.productId, item.variantId), item.quantity]));
+  for (const item of input.items) {
+    const key = productLineKey(item.productId, item.variantId);
+    if (item.quantity > (ordered.get(key) || 0) - (dispatched.get(key) || 0)) fail('Dispatch quantity exceeds the remaining ordered quantity.', 409);
+    dispatched.set(key, (dispatched.get(key) || 0) + item.quantity);
+  }
+  order.$locals.fullyDispatched = [...ordered].every(([key, qty]) => (dispatched.get(key) || 0) >= qty);
+  return order;
+}
+
 export const posService = {
   async getSettings() {
     const record = await PosSettings.findById('primary').lean();
@@ -72,6 +99,7 @@ export const posService = {
     return seller;
   },
   async validateSale(input, adminId) {
+    await sourceBillOrder(input);
     const seller = await this.getSettings();
     const { bill } = checkedBill(input, seller, false);
     let customer;
@@ -98,6 +126,7 @@ export const posService = {
       const sale = await transact(async session => {
         const repeated = await PosSale.findOne({ requestId: input.requestId }).select('+shareToken').session(session);
         if (repeated) return repeated;
+        const sourceOrder = await sourceBillOrder(input, session);
         const customer = await posCustomerService.persist(input.customer, adminId, session, input.billType);
         const lines = [];
         for (const item of input.items) {
@@ -113,10 +142,19 @@ export const posService = {
         if (bill.total !== expectedBill.total) fail('The invoice total changed. Review the bill before retrying.');
         const record = new PosSale({ ...input, ...bill, customer: customer.customer, customerId: customer.user._id,
           seller, shipping: input.shipping || customer.customer, interstate,
-          invoiceNumber: await nextNumber(seller.invoicePrefix, session), shareToken: randomBytes(32).toString('hex'),
-          createdBy: adminId, payments: input.payments.map(p => ({ ...p, createdAt: new Date(), createdBy: adminId })), refunds: [], returnedAmount: 0 });
+          invoiceNumber: await nextNumber(input.documentType === 'delivery-note' ? `${seller.invoicePrefix}-DN` : seller.invoicePrefix, session), shareToken: randomBytes(32).toString('hex'),
+          createdBy: adminId, payments: input.payments.filter(p => p.amount > 0).map(p => ({ ...p, createdAt: new Date(), createdBy: adminId })), refunds: [], returnedAmount: 0 });
+        if (record.documentType === 'delivery-note') { record.deliveryNoteNumber = record.invoiceNumber; record.deliveryNoteDate ||= record.dispatchDetails?.date || new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10); }
         syncPayment(record);
         await record.save({ session });
+        if (sourceOrder) {
+          sourceOrder.stockDeductedAt = new Date();
+          if (record.documentType === 'delivery-note') {
+            sourceOrder.deliveryNoteIds.push(record._id);
+            sourceOrder.status = sourceOrder.$locals.fullyDispatched ? 'completed' : 'in-progress';
+          } else { sourceOrder.posSaleId = record._id; sourceOrder.status = 'completed'; }
+          await sourceOrder.save({ session });
+        }
         return record;
       });
       await adminArrivalService.publish(sale, 'sale');
@@ -137,7 +175,7 @@ export const posService = {
       if (sale.status !== 'completed') fail('Voided invoices cannot be edited.', 409);
       if (new Date(sale.updatedAt || sale.createdAt).getTime() !== new Date(input.expectedUpdatedAt).getTime()) fail('This invoice changed while you were editing. Reopen it and try again.', 409);
       if (normalizePhoneNumber(input.customer.phone) !== normalizePhoneNumber(sale.customer.phone)) fail('The invoice owner phone cannot be changed.');
-      const financialLocked = sale.returns.length > 0 || sale.items.some(item => item.returnedQuantity > 0) || sale.refunds.some(refund => refund.kind !== 'invoice-adjustment');
+      const financialLocked = sale.documentType === 'delivery-note' || sale.deliveryNoteIds?.length || sale.returns.length > 0 || sale.items.some(item => item.returnedQuantity > 0) || sale.refunds.some(refund => refund.kind !== 'invoice-adjustment');
       if (financialLocked && input.items) fail('Invoices with returns or refunds can only have contact details and notes corrected.', 409);
       if (!input.items && (input.customer.state !== sale.customer.state || input.customer.stateCode !== sale.customer.stateCode)) fail('Include the complete bill to change its tax state.');
       const issues = [...validatePosCustomer(input.customer), ...(input.shipping ? validatePosCustomer(input.shipping, 'shipping') : [])];
@@ -203,6 +241,7 @@ export const posService = {
   async addPayment(id, payment, adminId, refund = false) {
     return transact(async session => {
       const sale = await findSale(id, session);
+      if (sale.invoiceId) fail('This delivery note is invoiced. Record payments and refunds on its linked invoice.', 409);
       const entries = refund ? sale.refunds : sale.payments;
       if (entries.some(p => p.requestId === payment.requestId)) return sale;
       if (!refund && sale.status !== 'completed') fail('Cannot collect payment on a voided sale.');
@@ -218,6 +257,7 @@ export const posService = {
   async voidSale(id, reason, adminId) {
     return transact(async session => {
       const sale = await findSale(id, session);
+      if (sale.invoiceId || sale.deliveryNoteIds?.length) fail('An invoiced delivery note or linked invoice cannot be voided. Use a return to preserve dispatch and payment history.', 409);
       if (sale.status === 'voided') return sale;
       for (const item of sale.items) {
         const remaining = item.quantity - item.returnedQuantity;
@@ -232,6 +272,7 @@ export const posService = {
   async returnItems(id, input, adminId) {
     return transact(async session => {
       const sale = await findSale(id, session);
+      if (sale.invoiceId) fail('Record returns on the linked invoice.', 409);
       if (sale.returns.some(r => r.requestId === input.requestId)) return sale;
       if (sale.status !== 'completed') fail('Cannot return items from a voided sale.');
       if (new Set(input.items.map(i => productLineKey(i.productId, i.variantId))).size !== input.items.length) fail('Duplicate return items.');
@@ -262,7 +303,7 @@ export const posService = {
     });
   },
   buildFilter(query) {
-    const filter = {};
+    const filter = query.documentType === 'delivery-note' ? { documentType: 'delivery-note' } : { documentType: { $ne: 'delivery-note' } };
     if (query.status && query.status !== 'all') filter.status = query.status;
     if (query.paymentStatus && query.paymentStatus !== 'all') filter.paymentStatus = query.paymentStatus;
     if (query.from || query.to) {
@@ -292,7 +333,7 @@ export const posService = {
     const [sales, total, summary] = await Promise.all([
       PosSale.find(filter).sort({ createdAt: -1 }).skip((query.page - 1) * query.limit).limit(query.limit).lean(),
       PosSale.countDocuments(filter),
-      PosSale.aggregate([{ $match: filter }, { $group: { _id: null, invoices: { $sum: 1 },
+      PosSale.aggregate([{ $match: query.documentType === 'delivery-note' ? { ...filter, invoiceId: null } : filter }, { $group: { _id: null, invoices: { $sum: 1 },
         netSales: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, { $subtract: ['$total', '$returnedAmount'] }, 0] } },
         collected: { $sum: '$paidAmount' }, balance: { $sum: '$balanceDue' }, refundsDue: { $sum: '$refundDue' } } }]),
     ]);
@@ -315,3 +356,5 @@ export const posService = {
     return { removed: true };
   },
 };
+
+export { transact, nextNumber, syncPayment, findSale };

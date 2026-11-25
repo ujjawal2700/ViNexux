@@ -313,7 +313,8 @@ export const approveDealerKyc = async (dealerId, adminId = null, dealerDiscountP
     if (!user || !['customer', 'dealer'].includes(user.role)) throw new AppError('Dealer account not found.', 404, ERROR_CODES.NOT_FOUND);
     if (user.accountStatus === 'blocked' || user.status === 'blocked') throw new AppError('Unblock this account before approving its application.', 409, ERROR_CODES.CONFLICT);
     if (profile.applicationSource === 'customer') {
-      if (profile.applicationState !== 'submitted' || profile.status !== 'pending') throw new AppError('This application has not been submitted for review.', 409, ERROR_CODES.CONFLICT);
+      const reverifyRevoked = profile.status === 'rejected' && profile.kycReviewAction === 'revoked' && user.role === 'dealer';
+      if (!reverifyRevoked && (profile.applicationState !== 'submitted' || profile.status !== 'pending')) throw new AppError('This application has not been submitted for review.', 409, ERROR_CODES.CONFLICT);
       const data = profile.toObject(); delete data.kycDocuments;
       const fields = Object.keys(dealerApplicationSchema.body.shape);
       dealerApplicationSchema.body.parse(Object.fromEntries(fields.map(key => [key, data[key]])));
@@ -428,6 +429,7 @@ export const revokeDealerStatus = async (dealerId, reason, adminId = null) => {
     throw new AppError('Dealer profile not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
   }
 
+  if (profile.status !== 'approved') throw new AppError('Only an approved dealer can have KYC access revoked.', 409, ERROR_CODES.CONFLICT);
   profile.status = 'rejected';
   profile.rejectionReason = reason && reason.trim() ? reason.trim() : 'Dealer status revoked by admin';
   if (adminId) {

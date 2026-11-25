@@ -13,7 +13,7 @@ export function invoiceOwnerFilter(user) {
   return { $or: clauses };
 }
 
-const invoiceFields = 'invoiceNumber createdAt updatedAt revisionNumber status total paidAmount balanceDue refundDue items.productId items.variantId items.variantName items.productName items.sku items.modelNumber items.quantity items.returnedQuantity returnedAmount returns.creditNoteNumber returns.items returns.amount returns.reason returns.createdAt refunds.kind refunds.method refunds.amount refunds.reference refunds.creditNoteNumber refunds.createdAt';
+const invoiceFields = 'documentType deliveryNoteNumber deliveryNoteIds invoiceId dueDate dispatchDetails invoiceNumber createdAt updatedAt revisionNumber status total paidAmount balanceDue refundDue items.productId items.variantId items.variantName items.productName items.sku items.modelNumber items.quantity items.returnedQuantity returnedAmount returns.creditNoteNumber returns.items returns.amount returns.reason returns.createdAt refunds.kind refunds.method refunds.amount refunds.reference refunds.creditNoteNumber refunds.createdAt';
 
 export const customerInvoiceService = {
   async list(user, { page = 1, reference } = {}) {

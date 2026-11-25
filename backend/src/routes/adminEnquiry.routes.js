@@ -1,3 +1,5 @@
+import { prepareEnquiryBill } from '../services/posEnquiry.service.js';
+import { ApiResponse } from '../utils/ApiResponse.js';
 import mongoose from 'mongoose';
 import { Enquiry } from '../models/Enquiry.js';
 import { canAdmin } from '../../../shared/adminAccess.js';
@@ -49,6 +51,12 @@ router.use(authenticate, asyncHandler(async (req, res, next) => {
 }), authorize('admin'));
 
 router.get('/', validate(getEnquiriesQuerySchema), fetchAllEnquiries);
+router.get('/:id/pos-draft', validate(getEnquiryByIdSchema), asyncHandler(async (req, res) => {
+  const access = req.user.isEmployee ? { role: 'admin', ...req.adminAccess } : req.user;
+  if (!canAdmin(access, 'pos', 'read') || !canAdmin(access, 'pos', 'write')) throw new AppError('POS read and write access are required to send an order to billing.', 403, 'FORBIDDEN');
+  res.set('Cache-Control', 'private, no-store');
+  return ApiResponse.success(res, 'Bill prepared.', await prepareEnquiryBill(req.params.id, req.user._id));
+}));
 router.get('/:id', validate(getEnquiryByIdSchema), fetchAdminEnquiryById);
 router.put('/:id', validate(adminUpdateEnquiryStatusSchema), changeEnquiryStatus);
 router.put('/:id/status', validate(adminUpdateEnquiryStatusSchema), changeEnquiryStatus);

@@ -13,7 +13,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate, useLocation, useBlocker } from "react-router-dom";
 import { DEFAULT_QUICK_SPEC_KEYS } from "../../../../shared/productSpecifications";
 import { getProductImageMimeType, PRODUCT_IMAGE_ACCEPT } from "../../../../shared/productImageTypes.js";
 import adminService from "../../services/adminService";
@@ -679,7 +679,7 @@ const AdminProductDetailPage = () => {
   };
 
   // --- SAVE & PUBLISH HANDLER ---
-  const handleSaveAndPublish = async (targetStatus = status) => {
+  const handleSaveAndPublish = async (targetStatus = status, { leaving = false } = {}) => {
     const savingDraft = targetStatus === "draft";
     const publishingDraft = !savingDraft && product?.isActive === false;
     if (formSubmitting) return;
@@ -854,6 +854,7 @@ const AdminProductDetailPage = () => {
     try {
       // Assemble only legitimate specifications from state
       const allSpecs = specifications
+        .concat(savingDraft && (specKey.trim() || specVal.trim()) ? [{ key: specKey, value: specVal }] : [])
         .map((s) => ({
           key: String(s.key || "").trim(),
           value: String(s.value || "").trim(),
@@ -976,11 +977,13 @@ const AdminProductDetailPage = () => {
         message: `Product ${isCreateMode ? "created" : "updated"} ${savingDraft ? "as a draft" : "and published"} successfully!`,
         type: "success",
       });
-      if (isCreateMode) {
+      savedDraftFingerprint.current = JSON.stringify({ ...JSON.parse(draftFingerprint), images: savedImages.map(image => ({ url: image.url, altText: image.altText })) });
+      if (isCreateMode && !leaving) {
         setTimeout(() => handleBackToProducts(), 1200);
-      } else {
+      } else if (!isCreateMode) {
         loadProduct();
       }
+      return true;
     } catch (err) {
       console.error("Failed to save product:", err);
       const data = err.response?.data;
@@ -1114,6 +1117,28 @@ const AdminProductDetailPage = () => {
       setFormSubmitting(false);
     }
   };
+
+  const draftFingerprint = JSON.stringify({ name, description, selectedBrandId, sku, modelNumber, model, stockQuantity,
+    isNewArrival, isTrending, isLowStock, variants, variant, hsnCode, warranty, warrantyType, productUrl, additionalDetails,
+    standardPrice, dealerPrice, selectedHeaderId, selectedMainIds, selectedSubIds, specifications, specKey, specVal,
+    images: stagedImages.map(image => ({ url: image.url || image.previewUrl, name: image.file?.name, altText: image.altText })) });
+  const savedDraftFingerprint = useRef(draftFingerprint);
+  const navigationSave = useRef(false);
+  const blocker = useBlocker(({ currentLocation, nextLocation }) => isCreateMode &&
+    savedDraftFingerprint.current !== draftFingerprint && currentLocation.pathname !== nextLocation.pathname);
+  useEffect(() => {
+    if (blocker.state !== 'blocked') {
+      if (blocker.state === 'unblocked') navigationSave.current = false;
+      return;
+    }
+    if (formSubmitting || navigationSave.current) return;
+    navigationSave.current = true;
+    (async () => {
+      const saved = savedDraftFingerprint.current === draftFingerprint || await handleSaveAndPublish('draft', { leaving: true });
+      if (saved) blocker.proceed();
+      else blocker.reset();
+    })();
+  }, [blocker, formSubmitting]);
 
   // Loading skeleton state
   if (loading) {

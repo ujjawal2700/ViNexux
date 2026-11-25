@@ -1,3 +1,4 @@
+import { posDocumentLabel } from '../../../shared/posDocumentLabels.js';
 import PDFDocument from 'pdfkit';
 import { fileURLToPath } from 'node:url';
 import { amountInWords, money } from '../../../shared/posBilling.js';
@@ -9,7 +10,9 @@ const date = value => new Date(value).toLocaleDateString('en-GB', { day: '2-digi
 // Recreates the supplied boxed A4 invoice. Overflow uses continuation pages
 // with repeated item headers; the totals / declarations remain on the last page.
 export async function generatePosInvoice(sale) {
-  const doc = new PDFDocument({ size: 'A4', margin: 0, bufferPages: true, info: { Title: `Tax Invoice ${sale.invoiceNumber}`, Author: sale.seller.name } });
+  const deliveryNote = sale.documentType === 'delivery-note';
+  const documentTitle = posDocumentLabel(sale);
+  const doc = new PDFDocument({ size: 'A4', margin: 0, bufferPages: true, info: { Title: `${documentTitle} ${sale.invoiceNumber}`, Author: sale.seller.name } });
   doc.registerFont('regular', `${assets}LiberationSans-Regular.ttf`);
   doc.registerFont('bold', `${assets}LiberationSans-Bold.ttf`);
   const chunks = [];
@@ -23,13 +26,11 @@ export async function generatePosInvoice(sale) {
   const box = (x, y, w, h) => doc.lineWidth(0.4).rect(x, y, w, h).stroke();
   const seller = sale.seller;
   const metaRows = [
-    ['Invoice No.', sale.invoiceNumber, 'Dated', date(sale.createdAt)],
-    ['Delivery Note', sale.delivery?.deliveryNote, 'Mode/Terms of Payment', sale.delivery?.paymentTerms || sale.payments.map(p => p.method.toUpperCase()).join(' / ') || 'Credit'],
-    ['Reference No. & Date.', sale.delivery?.reference, 'Other References', sale.delivery?.otherReferences],
-    ['Dispatch Doc No.', sale.delivery?.dispatchDoc, 'Delivery Note Date', sale.delivery?.deliveryNoteDate],
-    ['Dispatched through', sale.delivery?.dispatchedThrough, 'Destination', sale.delivery?.destination],
-    ['Vessel/Flight No.', sale.delivery?.vesselFlight, 'Place of receipt by shipper:', sale.delivery?.receiptPlace],
-    ['City/Port of Loading', sale.delivery?.loadingPort, 'City/Port of Discharge', sale.delivery?.dischargePort],
+    [deliveryNote ? 'Delivery Note No.' : 'Bill No.', sale.invoiceNumber, 'Dated', date(deliveryNote ? sale.deliveryNoteDate || sale.dispatchDetails?.date || sale.createdAt : sale.createdAt)],
+    ['Delivery Note Reference', sale.delivery?.deliveryNote, 'Mode/Terms of Payment', sale.delivery?.paymentTerms || sale.payments.map(p => p.method.toUpperCase()).join(' / ') || 'Credit'],
+    [deliveryNote && sale.linkedInvoiceNumber ? 'Linked Bill' : 'Net Received', deliveryNote && sale.linkedInvoiceNumber ? sale.linkedInvoiceNumber : format(sale.paidAmount), deliveryNote && sale.linkedInvoiceNumber ? 'Linked bill balance' : 'Outstanding Balance', format(deliveryNote && sale.linkedInvoiceNumber ? sale.linkedInvoiceBalance : sale.balanceDue)],
+    ['Returns / Credit', format(sale.returnedAmount), 'Net document value', format(sale.status === 'voided' ? 0 : sale.total - (sale.returnedAmount || 0))],
+    ['Payment Due Date', sale.dueDate || '-', 'Refund Due', format(sale.refundDue)],
   ];
   const customerLines = (person, buyer) => [person.name, [person.address, person.city, person.pincode].filter(Boolean).join(', '),
     `GSTIN/UIN : ${person.gstin || '-'}`, `State Name : ${person.state}, Code : ${person.stateCode}`,
@@ -62,15 +63,15 @@ export async function generatePosInvoice(sale) {
   };
   const footer = () => {
     text(`SUBJECT TO ${seller.jurisdiction.toUpperCase()} JURISDICTION`, left, 804, width, 7.5, false, 'center');
-    text('This is a Computer Generated Invoice', left, 816, width, 7.5, false, 'center');
+    text(`This is a Computer Generated ${documentTitle}`, left, 816, width, 7.5, false, 'center');
   };
   const continuation = () => {
     closeTable(784); text('Continued on next page', 380, 788, 185, 7, false, 'right'); footer();
     doc.addPage(); pageNumber++;
-    text(`${seller.name} - Tax Invoice ${sale.invoiceNumber} (continued)`, left, 30, width, 10, true);
+    text(`${seller.name} - ${documentTitle} ${sale.invoiceNumber} (continued)`, left, 30, width, 10, true);
     tableHeader(50);
   };
-  text(sale.status === 'voided' ? 'Tax Invoice - VOID' : 'Tax Invoice', left, 30, width, 10, true, 'center');
+  text(sale.status === 'voided' ? `${documentTitle} - VOID` : documentTitle, left, 30, width, 10, true, 'center');
   const top = 43, split = 349;
   box(left, top, width, topHeight); line(split, top, split, top + topHeight);
   doc.image(`${assets}invoice-logo.jpg`, left + 2, top + 7, { fit: [56, 49] });
@@ -88,7 +89,7 @@ export async function generatePosInvoice(sale) {
     text(label2, 460, my + 2, 102); text(value2, 460, my + 2 + height(label2, 102), 102, 8, true);
     my += h; line(split, my, right, my);
   });
-  text('Terms of Delivery', split + 3, my + 2, 209); text(sale.delivery?.terms, split + 3, my + 14, 209);
+  text('Payment Terms', split + 3, my + 2, 209); text(sale.delivery?.paymentTerms || (sale.dueDate ? `Due ${sale.dueDate}` : ''), split + 3, my + 14, 209);
   tableHeader(top + topHeight);
   sale.items.forEach((item, i) => {
     const rowHeight = Math.max(16, height(item.productName, 270, 8.3, true) + 4);
@@ -183,7 +184,7 @@ export async function generatePosInvoice(sale) {
     const cols = [30, 215, 260, 335, 405, 475, 565];
     for (let start = 0; start < sale.taxGroups.length; start += 50) {
       doc.addPage(); pageNumber++;
-      text(`${seller.name} - Tax Invoice ${sale.invoiceNumber}`, left, 30, width, 10, true);
+      text(`${seller.name} - ${documentTitle} ${sale.invoiceNumber}`, left, 30, width, 10, true);
       text('HSN / SAC tax summary annexure', left, 48, width, 9);
       const groups = sale.taxGroups.slice(start, start + 50), h = 22 + groups.length * 13;
       box(left, 70, width, h); cols.slice(1, -1).forEach(x => line(x, 70, x, 70 + h));

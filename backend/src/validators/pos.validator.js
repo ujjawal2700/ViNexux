@@ -22,7 +22,12 @@ const deliverySchema = z.object(Object.fromEntries([
 export const paymentSchema = z.object({ method: z.enum(['cash', 'upi', 'bank']), amount: amount.refine(n => n > 0), reference: text(), requestId: z.string().uuid() });
 const salePaymentSchema = paymentSchema.extend({ amount });
 export const posSaleSchema = z.object({
+  documentType: z.enum(['invoice', 'delivery-note']).default('invoice'),
+  dueDate: date.optional(),
+  deliveryNoteDate: date.optional(),
+  dispatchDetails: z.object({ date: date }).optional(),
   billType: z.enum(['b2b', 'b2c']).default('b2c'),
+  sourceEnquiryId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
   requestId: z.string().uuid(), customer: customerSchema, shipping: customerSchema.optional(),
   delivery: deliverySchema.default({}), notes: text(1000),
   items: z.array(z.object({ productId: z.string().regex(/^[a-f\d]{24}$/i), variantId: z.string().regex(/^[a-f\d]{24}$/i).nullable().optional(), quantity: z.number().int().min(1).max(10000),
@@ -52,6 +57,7 @@ export const returnSchema = z.object({ refund: z.object({ method: z.enum(['cash'
   items: z.array(z.object({ productId: z.string().regex(/^[a-f\d]{24}$/i), variantId: z.string().regex(/^[a-f\d]{24}$/i).nullable().optional(), quantity: z.number().int().min(1).max(10000) })).min(1).max(100),
 });
 export const posListSchema = z.object({
+  documentType: z.enum(['invoice', 'delivery-note']).default('invoice'),
   search: text(150), from: date.optional(), to: date.optional(),
   status: z.enum(['all', 'completed', 'voided']).default('all'), paymentStatus: z.enum(['all', 'paid', 'partial', 'unpaid']).default('all'),
   page: z.coerce.number().int().min(1).default(1), limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -73,4 +79,9 @@ export const invoiceEditSchema = z.object({
     if (new Set(ids).size !== ids.length) ctx.addIssue({ code: 'custom', path: ['items'], message: 'Combine duplicate products into one line.' });
     if (new Set(serials).size !== serials.length || edit.items.some(item => item.serialNumbers.length > item.quantity)) ctx.addIssue({ code: 'custom', path: ['items'], message: 'Serial numbers must be unique and cannot exceed quantity.' });
   } else if (edit.settlement || edit.taxMode !== undefined || edit.roundOff !== undefined || edit.billType !== undefined) ctx.addIssue({ code: 'custom', path: ['items'], message: 'Include the complete bill to update financial details.' });
+});
+
+export const deliveryNoteInvoiceSchema = z.object({ requestId: z.string().uuid(),
+  noteIds: z.array(z.string().regex(/^[a-f\d]{24}$/i)).min(1).max(50).refine(ids => new Set(ids).size === ids.length, 'Duplicate delivery note.'),
+  dueDate: date.optional(),
 });
