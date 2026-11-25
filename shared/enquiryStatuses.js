@@ -10,6 +10,6 @@ export const ALLOWED_ENQUIRY_TRANSITIONS = {
   new: ['in-progress', 'closed', 'spam'],
   'in-progress': ['completed', 'closed', 'spam'],
   completed: ['closed', 'spam'],
-  closed: [],
+  closed: ['completed'],
   spam: [],
 };

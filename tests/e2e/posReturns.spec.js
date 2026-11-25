@@ -40,8 +40,8 @@ async function setup(page) {
 test('sale returns searches invoice and product/customer identifiers, returns partially then fully and tracks methods', async ({ page }, testInfo) => {
   const state = await setup(page);
   await page.goto('/admin/pos');
-  const tabs = page.getByRole('button', { name: /^(New sale|Sale returns|Sales register|Invoice setup)$/ });
-  await expect(tabs).toHaveText(['New sale', 'Sale returns', 'Sales register', 'Invoice setup']);
+  const tabs = page.getByRole('button', { name: /^(New sale|Sale returns|Sales register|Bill setup)$/ });
+  await expect(tabs).toHaveText(['New sale', 'Sale returns', 'Sales register', 'Bill setup']);
   await page.getByRole('button', { name: 'Sale returns', exact: true }).click();
   const section = page.getByRole('region', { name: 'Sale returns', exact: true });
   for (const query of [state.sale.invoiceNumber, 'TRUEVIEW', 'Mini PT', 'T-18120-SF', state.sale.customer.name, state.sale.customer.phone]) {

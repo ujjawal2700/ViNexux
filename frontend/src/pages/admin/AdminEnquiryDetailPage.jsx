@@ -1,7 +1,8 @@
 import { ALLOWED_ENQUIRY_TRANSITIONS as ALLOWED_STATUS_TRANSITIONS, ENQUIRY_STATUS_LABELS, canonicalEnquiryStatus } from '../../../../shared/enquiryStatuses.js';
 import EnquiryConversation from '../../components/ui/EnquiryConversation';
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { canAdmin } from '../../../../shared/adminAccess.js';
+import { useParams, Link, useOutletContext } from 'react-router-dom';
 import adminService from '../../services/adminService';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import Card from '../../components/ui/Card';
@@ -26,6 +27,7 @@ import {
   MessageSquare,
   MessageCircle,
   FileSpreadsheet,
+  Receipt,
   CheckCircle2,
   UserCheck
 } from 'lucide-react';
@@ -34,6 +36,8 @@ import {
 
 const AdminEnquiryDetailPage = () => {
   const { id } = useParams();
+  const { adminAccess } = useOutletContext() || {};
+  const canSendToBilling = canAdmin(adminAccess, 'pos', 'read') && canAdmin(adminAccess, 'pos', 'write');
   const [enquiry, setEnquiry] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -212,7 +216,8 @@ const AdminEnquiryDetailPage = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {canSendToBilling && enquiry.enquiryType !== 'out-of-stock' && <Link to={`/admin/pos?order=${enquiry._id}`}><Button variant="outline" size="sm"><Receipt className="mr-1.5 h-4 w-4" />Send to billing</Button></Link>}
           <Button variant="outline" size="sm" onClick={handleSyncGoogleSheet} isLoading={syncing} className="text-emerald-700 border-emerald-200">
             <FileSpreadsheet className="w-4 h-4 mr-1.5" /> Sync Sheet
           </Button>

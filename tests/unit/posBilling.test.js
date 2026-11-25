@@ -137,7 +137,7 @@ describe('POS transactional stock and payment lifecycle', () => {
   test('overpayment rolls back previously deducted stock', async () => {
     const state = setup();
     const input = posInput({ payments: [{ method: 'cash', amount: 8000, requestId: randomUUID() }] });
-    await expect(posService.createSale(input, posAdminId)).rejects.toThrow('full invoice amount');
+    await expect(posService.createSale(input, posAdminId)).rejects.toThrow('between zero and the document total');
     expect(state.stock()).toBe(10); expect(state.records().size).toBe(0);
   });
   test('historical unpaid invoices retain idempotent receipts', async () => {
@@ -174,9 +174,9 @@ describe('POS transactional stock and payment lifecycle', () => {
     const updated = await posService.returnItems(sale._id, { requestId: randomUUID(), reason: 'Customer return', items: [{ productId: posProductId, quantity: 2 }] }, posAdminId);
     expect(updated.returnedAmount).toBe(sale.total); expect(updated.balanceDue).toBe(0); expect(state.stock()).toBe(10);
   });
-  test.each([[], [{ method: 'cash', amount: 1000, requestId: randomUUID() }], [{ method: 'card', amount: 7100, requestId: randomUUID() }]].map(payments => [payments]))('new invoices reject credit, partial and card payments', async payments => {
+  test.each([[], [{ method: 'card', amount: 7100, requestId: randomUUID() }]].map(payments => [payments]))('new invoices reject invalid payment methods and missing payment instructions', async payments => {
     const state = setup();
-    await expect(posService.createSale(posInput({ payments }), posAdminId)).rejects.toThrow('full invoice amount');
+    await expect(posService.createSale(posInput({ payments }), posAdminId)).rejects.toThrow('between zero and the document total');
     expect(state.stock()).toBe(10); expect(state.records().size).toBe(0);
   });
 });
@@ -375,4 +375,11 @@ describe('full invoice corrections', () => {
     const updated = await posService.editSale(created._id, contact, posAdminId);
     expect(updated.customer.name).toBe('Corrected name'); expect(updated.returnedAmount).toBe(3550); expect(state.stock()).toBe(9);
   });
+});
+
+test.each([0, 1000])('new invoices accept %s received and retain the unpaid balance', async amount => {
+  setup();
+  const sale = await posService.createSale(posInput({ payments: [{ method: 'cash', amount, requestId: randomUUID() }] }), posAdminId);
+  expect(sale.paidAmount).toBe(amount); expect(sale.balanceDue).toBe(7100 - amount);
+  expect(sale.paymentStatus).toBe(amount ? 'partial' : 'unpaid');
 });

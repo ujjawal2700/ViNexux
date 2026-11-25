@@ -1,3 +1,4 @@
+import { posDocumentLabel } from '../../../../shared/posDocumentLabels.js';
 import PosReturnHistory from '../../components/invoices/PosReturnHistory';
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -99,15 +100,16 @@ export default function InvoicesPage({ embedded = false }) {
       {!cards.length ? <div className="rounded-xl border border-dashed border-gray-300 p-10 text-center"><Receipt className="mx-auto mb-3 text-gray-400" size={32} />
         <h2 className="font-semibold">No invoices yet</h2><p className="mt-2 text-sm text-gray-500">Invoices from your store purchases will appear here.</p></div>
         : <div className="space-y-4">{cards.map(invoice => <article key={invoice._id} className={`rounded-xl border bg-white p-5 sm:p-6 ${invoice._id === data.selected?._id ? 'border-primary ring-1 ring-primary' : 'border-gray-200'}`}>
-          <div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="font-bold text-gray-900">{invoice.invoiceNumber}</h2>
-            <p className="mt-1 text-xs text-gray-500">{date(invoice.createdAt)} · In-store purchase</p></div>
+          <div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="font-bold text-gray-900">{invoice.documentType === 'delivery-note' ? `Delivery note ${invoice.invoiceNumber}` : invoice.invoiceNumber}</h2>
+            <p className="mt-1 text-xs font-semibold text-gray-600">{posDocumentLabel(invoice)}</p><p className="mt-1 text-xs text-gray-500">{date(invoice.createdAt)} · In-store purchase</p></div>
             <div className="text-right"><p className="text-lg font-bold">{currency(invoice.total)}</p><p className={`mt-1 text-xs font-semibold ${invoice.status === 'voided' ? 'text-rose-600' : 'text-emerald-700'}`}>{invoice.status === 'voided' ? 'Voided' : invoice.items.some(item => item.returnedQuantity > 0) || invoice.returnedAmount > 0 ? 'Return recorded' : 'Completed'}</p></div></div>
           {invoice.revisionNumber > 0 && <p className="mt-3 text-xs font-semibold text-slate-500">Updated invoice · Revision {invoice.revisionNumber}{invoice.updatedAt ? ` · ${date(invoice.updatedAt)}` : ''}</p>}
-          {invoice.balanceDue > 0 && <p className="mt-3 text-sm font-semibold text-amber-700">Payment pending: {currency(invoice.balanceDue)}</p>}
+          {!invoice.invoiceId && invoice.balanceDue > 0 && <p className="mt-3 text-sm font-semibold text-amber-700">Payment pending: {currency(invoice.balanceDue)}</p>}
+          {invoice.invoiceId && <p className="mt-3 text-sm text-blue-700">Converted to a bill. Payments and returns are tracked on that bill in your purchase records.</p>}
           <p className="mt-4 text-sm leading-6 text-gray-600">{invoice.items.map(item => `${item.productName} × ${item.quantity}`).join(' · ')}</p>
           {invoice.returnedAmount > 0 && <p className="mt-2 text-xs text-gray-500">Returns: {currency(invoice.returnedAmount)}. The invoice and its return history are retained.</p>}
           <div className="mt-4"><PosReturnHistory invoice={invoice} /></div>
-          <div className="mt-5 flex flex-wrap gap-3"><button disabled={busy} className={button} onClick={() => openPdf(invoice, false)}><ExternalLink size={16} />View invoice</button>
+          <div className="mt-5 flex flex-wrap gap-3"><button disabled={busy} className={button} onClick={() => openPdf(invoice, false)}><ExternalLink size={16} />View bill</button>
             <button disabled={busy} className={`${button} border-primary bg-primary text-white`} onClick={() => openPdf(invoice, true)}><Download size={16} />Download PDF</button></div>
         </article>)}</div>}
       {data.pages > 1 && <nav aria-label="Invoice pages" className="flex items-center justify-between gap-4"><button className={button} disabled={page === 1 || busy} onClick={() => setPage(p => p - 1)}>Previous</button>

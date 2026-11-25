@@ -8,6 +8,7 @@ const button = 'rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs fo
 const primary = `${button} !border-primary !bg-primary !text-white`;
 
 export default function PosSaleActionDialog({ action, sale, onChange, onClose, onSubmit, busy, notice }) {
+  const deliveryNote = sale?.documentType === 'delivery-note';
   const returning = action?.type === 'return';
   const voiding = action?.type === 'void';
   const refunding = action?.type === 'refund';
@@ -15,13 +16,13 @@ export default function PosSaleActionDialog({ action, sale, onChange, onClose, o
   const refundable = preview ? Math.max(0, Math.min(preview.creditAmount, Math.round((sale.paidAmount - (sale.total - preview.returnedAmount)) * 100) / 100)) : 0;
   const remaining = (sale?.items || []).filter(item => item.quantity > (item.returnedQuantity || 0));
   const patch = values => onChange(current => ({ ...current, ...values }));
-  return <Modal isOpen={!!action} onClose={busy ? undefined : onClose} title={returning ? 'Sale return' : voiding ? 'Void sale' : refunding ? 'Record refund' : 'Record payment'} description={sale?.invoiceNumber} size={returning ? 'lg' : 'md'} closeOnOutsideClick={false}
-    footer={<><button type="button" className={button} disabled={busy} onClick={onClose}>Cancel</button><button className={primary} form="pos-sale-action" type="submit" disabled={busy}>{busy ? 'Saving…' : returning ? 'Save return' : voiding ? 'Void sale & restore stock' : 'Save'}</button></>}>
+  return <Modal isOpen={!!action} onClose={busy ? undefined : onClose} title={returning ? deliveryNote ? 'Delivery note return' : 'Sale return' : voiding ? deliveryNote ? 'Cancel delivery note' : 'Void sale' : refunding ? 'Record refund' : 'Record payment'} description={sale?.invoiceNumber} size={returning ? 'lg' : 'md'} closeOnOutsideClick={false}
+    footer={<><button type="button" className={button} disabled={busy} onClick={onClose}>Cancel</button><button className={primary} form="pos-sale-action" type="submit" disabled={busy}>{busy ? 'Saving…' : returning ? 'Save return' : voiding ? deliveryNote ? 'Cancel note & restore stock' : 'Void sale & restore stock' : 'Save'}</button></>}>
     {notice?.type === 'error' && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{notice.message}</p>}
     {action && <form id="pos-sale-action" onSubmit={event => { event.preventDefault(); onSubmit(); }} className="space-y-5">
       <fieldset disabled={busy} className="space-y-5">
         {(returning || voiding) ? <>
-          <p className="text-sm text-slate-500">{returning ? 'Return selected quantities or all remaining products. Stock is restored and a credit note is recorded against this invoice.' : 'The invoice will be voided and remaining stock restored. Record any customer refund separately.'}</p>
+          <p className="text-sm text-slate-500">{returning ? 'Return selected quantities or all remaining products. Stock is restored and a credit is recorded against this document.' : 'The invoice will be voided and remaining stock restored. Record any customer refund separately.'}</p>
           {returning && <>
             <div className="flex flex-wrap gap-2"><button type="button" className={button} onClick={() => patch({ quantities: Object.fromEntries(remaining.map(item => [productLineKey(item.productId, item.variantId), item.quantity - (item.returnedQuantity || 0)])) })}>Return all remaining products</button><button type="button" className={button} onClick={() => patch({ quantities: {} })}>Clear selection</button></div>
             <div className="space-y-3">{remaining.map(item => {
@@ -34,7 +35,7 @@ export default function PosSaleActionDialog({ action, sale, onChange, onClose, o
                 </label>
               </div>;
             })}</div>
-            <div className="rounded-lg bg-slate-50 p-3 text-sm"><strong>Return value: {money(preview.creditAmount)}</strong><p className="mt-1 text-xs text-slate-500">Based on the original invoice prices, tax and rounding.</p>{refundable !== preview.creditAmount && <p className="mt-2 text-xs font-semibold">Refund payable from recorded payments: {money(refundable)}</p>}</div>
+            <div className="rounded-lg bg-slate-50 p-3 text-sm"><strong>Return value: {money(preview.creditAmount)}</strong><p className="mt-1 text-xs text-slate-500">Based on the original document prices, tax and rounding.</p>{refundable !== preview.creditAmount && <p className="mt-2 text-xs font-semibold">Refund payable from recorded payments: {money(refundable)}</p>}</div>
           </>}
           <label className="block text-xs font-semibold">Reason<input className={inputClass} required minLength={3} maxLength={500} value={action.reason} onChange={event => patch({ reason: event.target.value })} /></label>
           {returning && <label className="block text-xs font-semibold">Refund status<select aria-label="Refund status" className={inputClass} value={action.refundNow ? 'paid' : 'pending'} onChange={event => patch({ refundNow: event.target.value === 'paid' })}><option value="pending">Refund pending — pay later</option><option value="paid" disabled={refundable <= 0}>Refund paid now</option></select><span className="mt-2 block text-xs font-normal text-slate-500">Select “Refund paid now” only after returning the money. This records the payment; it does not transfer funds.</span></label>}

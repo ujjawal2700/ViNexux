@@ -152,6 +152,8 @@ const enquirySchema = new mongoose.Schema(
       default: 'new',
       required: [true, 'Enquiry status is required'],
     },
+    deliveryNoteIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'PosSale' }],
+    posSaleId: { type: mongoose.Schema.Types.ObjectId, ref: 'PosSale' },
     stockDeductedAt: { type: Date, default: null },
     notes: {
       type: [enquiryNoteSchema],

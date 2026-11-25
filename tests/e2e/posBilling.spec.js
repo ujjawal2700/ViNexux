@@ -67,7 +67,7 @@ test('POS completes a counter sale with customer details, serials, invoice and E
   await page.screenshot({ path: '/private/tmp/vinexus-pos-checkout.png', fullPage: true });
   await page.getByRole('button', { name: /Proceed to payment/ }).click();
   await expect(dialog.getByText('₹3,550.00', { exact: true }).first()).toBeVisible();
-  await dialog.getByRole('button', { name: 'Complete sale & generate invoice' }).click();
+  await dialog.getByRole('button', { name: /Complete sale & generate (Sale Bill|Proforma Bill)/ }).click();
   await expect(dialog.getByRole('heading', { name: 'VI/26-27/000001' })).toBeVisible();
   expect(state.saleRequests()).toBe(1);
   expect(state.customers().get('9876543210').name).toBe('Retail Customer');
@@ -187,7 +187,7 @@ test('B2B dealer phone autofills business details and completes billing without 
   await dialog.getByRole('button', { name: 'Save details' }).click();
   await expect(dialog).toHaveCount(0); expect(saved).toBe(true);
   await page.getByRole('button', { name: /Proceed to payment/ }).click();
-  await dialog.getByRole('button', { name: 'Complete sale & generate invoice' }).click();
+  await dialog.getByRole('button', { name: /Complete sale & generate (Sale Bill|Proforma Bill)/ }).click();
   await expect(dialog.getByRole('heading', { name: 'VI/26-27/000001' })).toBeVisible();
   expect(state.sale()).toMatchObject({ billType: 'b2b', customer: dealer });
   expect(state.otpRequests()).toBe(0);
