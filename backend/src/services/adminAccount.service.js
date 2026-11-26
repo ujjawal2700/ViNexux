@@ -37,9 +37,11 @@ const business = {
   state: z.string().trim().max(100).default(''),
   pincode: z.string().regex(/^$|^\d{6}$/).default(''),
 };
-const dealerBusinessBody = z.object(Object.fromEntries(Object.entries(createDealerProfileSchema.body.omit({ kycDocuments: true }).shape).map(([key, schema]) => [key, key === 'companyName' ? schema : z.preprocess(value => typeof value === 'string' && !value.trim() ? undefined : value, schema)]))).strict();
+const customerDiscount = z.number().finite().min(0).max(100).refine(value => Math.abs(value * 100 - Math.round(value * 100)) < 1e-7, 'Use at most two decimal places').optional();
+const requiredGstin = z.string().trim().toUpperCase().regex(/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/, 'Enter a valid GSTIN.');
+const dealerBusinessBody = z.object(Object.fromEntries(Object.entries(createDealerProfileSchema.body.omit({ kycDocuments: true }).shape).map(([key, schema]) => [key, key === 'companyName' ? schema : z.preprocess(value => typeof value === 'string' && !value.trim() ? undefined : value, schema)]))).extend({ gstin: requiredGstin }).strict();
 const dealerEnrollmentBody = dealerBusinessBody.extend(contact).strict();
-export const accountBody = role => z.object({ ...contact, ...(role === 'dealer' ? business : {}) }).strict();
+export const accountBody = role => z.object({ ...contact, ...(role === 'dealer' ? business : { customerDiscountPercent: customerDiscount }) }).strict();
 const idParams = z.object({ id: z.string().regex(/^[a-f\d]{24}$/i, 'Invalid account ID') });
 export const superAdminAccountsOnly = (req, res, next) => isSuperAdmin(req.user) ? next() : next(new AppError('Only super admins can create, edit, convert or delete accounts.', 403, 'FORBIDDEN'));
 
@@ -71,7 +73,8 @@ export async function saveAccount({ id, role, data, actorId, converting = false,
       if (!converting) Object.assign(user, Object.fromEntries(Object.keys(contact).map(key => [key, data[key]])), { name: data.fullName, status: data.accountStatus });
       if (changedEmail) { user.isEmailVerified = false; user.googleId = undefined; }
       if (changedPhone) user.isPhoneVerified = false;
-      if (converting) user.role = 'dealer';
+      if (converting) { user.role = 'dealer'; user.customerDiscountPercent = undefined; }
+      if (role === 'customer' && data.customerDiscountPercent !== undefined) user.customerDiscountPercent = data.customerDiscountPercent;
       if (converting || changedEmail || changedPhone || data.accountStatus !== 'active') { user.currentSessionId = undefined; user.fcmTokens = []; }
       await user.save({ session });
       if (role === 'dealer') {

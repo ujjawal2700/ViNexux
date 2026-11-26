@@ -126,15 +126,16 @@ export const calculateApplicablePrices = async (userId, products) => {
   const fallbackPrice = (product) => product.standardPrice || 0;
   if (!products.length) return prices;
 
-  const user = await User.findById(userId).select('role').lean();
+  const user = await User.findById(userId).select('role +customerDiscountPercent').lean();
   let dealerProfile = null;
   if (user?.role === 'dealer') {
     dealerProfile = await DealerProfile.findOne({ userId }).select('_id status organisationType +dealerDiscountPercent').lean();
   }
 
+  prices.customerDiscountPercent = user?.role === 'customer' ? user.customerDiscountPercent || 0 : 0;
   prices.approvedDealer = dealerProfile?.status === 'approved';
   if (dealerProfile?.status !== 'approved') {
-    for (const product of products) prices.set(productLineKey(product._id, product._variantId), fallbackPrice(product));
+    for (const product of products) prices.set(productLineKey(product._id, product._variantId), applyDealerDiscount(fallbackPrice(product), prices.customerDiscountPercent));
     return prices;
   }
 
@@ -152,7 +153,7 @@ export const calculateApplicablePrices = async (userId, products) => {
     const customPrice = product._variantId ? undefined : customPriceByProduct.get(String(product._id));
     if (customPrice !== undefined && customPrice !== null) prices.set(productLineKey(product._id, product._variantId), customPrice);
     else if (product.dealerPrice !== undefined && product.dealerPrice > 0) prices.set(productLineKey(product._id, product._variantId), product.dealerPrice);
-    else prices.set(productLineKey(product._id, product._variantId), fallbackPrice(product));
+    else prices.set(productLineKey(product._id, product._variantId), applyDealerDiscount(fallbackPrice(product), prices.customerDiscountPercent));
   }
   for (const [key, price] of prices) prices.set(key, applyDealerDiscount(applyInstallerPriceIncrease(price, installerPercent), prices.dealerDiscountPercent));
   return prices;
@@ -243,8 +244,9 @@ const formatPopulatedCart = async (cart, userId) => {
     });
   }
   if (!currentPrices.approvedDealer) for (const item of items) {
+    item.productId.applicablePrice = currentPrices.get(productLineKey(item.productId, item.variantId));
     delete item.productId.dealerPrice;
-    if (Array.isArray(item.productId.variants)) item.productId.variants = item.productId.variants.map(({ dealerPrice: _private, ...option }) => option);
+    if (Array.isArray(item.productId.variants)) item.productId.variants = item.productId.variants.map(({ dealerPrice: _private, ...option }) => ({ ...option, applicablePrice: applyDealerDiscount(option.standardPrice, currentPrices.customerDiscountPercent) }));
   }
   const itemCount = items.length;
   const totalQuantity = items.reduce((sum, item) => sum + (item.quantity || 0), 0);

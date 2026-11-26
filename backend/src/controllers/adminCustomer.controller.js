@@ -1,3 +1,4 @@
+import { isSuperAdmin } from '../../../shared/adminAccess.js';
 import {
   listCustomers,
   getCustomerById,
@@ -8,7 +9,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { HTTP_STATUS } from '../constants/httpStatusCodes.js';
 
 export const getCustomers = asyncHandler(async (req, res) => {
-  const result = await listCustomers(req.query);
+  const result = await listCustomers(req.query, isSuperAdmin(req.user));
 
   return ApiResponse.success(
     res,
@@ -19,7 +20,7 @@ export const getCustomers = asyncHandler(async (req, res) => {
 });
 
 export const getCustomer = asyncHandler(async (req, res) => {
-  const customer = await getCustomerById(req.params.id);
+  const customer = await getCustomerById(req.params.id, isSuperAdmin(req.user));
 
   return ApiResponse.success(
     res,

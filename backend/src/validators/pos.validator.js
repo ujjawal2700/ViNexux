@@ -21,7 +21,9 @@ const deliverySchema = z.object(Object.fromEntries([
 ].map(key => [key, text(key === 'terms' ? 500 : 100)])));
 export const paymentSchema = z.object({ method: z.enum(['cash', 'upi', 'bank']), amount: amount.refine(n => n > 0), reference: text(), requestId: z.string().uuid() });
 const salePaymentSchema = paymentSchema.extend({ amount });
+export const invoiceNumberSchema = z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9/-]{0,63}$/, 'Use 1 to 64 letters, numbers, slashes or hyphens for the invoice number.');
 export const posSaleSchema = z.object({
+  invoiceNumber: invoiceNumberSchema.optional(),
   documentType: z.enum(['invoice', 'delivery-note']).default('invoice'),
   dueDate: date.optional(),
   deliveryNoteDate: date.optional(),
@@ -45,6 +47,9 @@ export const posSaleSchema = z.object({
     ctx.addIssue({ code: 'custom', path: ['items'], message: 'Serial numbers must be unique and cannot exceed the item quantity.' });
   }
 });
+export const posCreateSaleSchema = posSaleSchema.superRefine((sale, ctx) => {
+  if (sale.documentType === 'invoice' && sale.billType === 'b2b' && !sale.invoiceNumber) ctx.addIssue({ code: 'custom', path: ['invoiceNumber'], message: 'Enter the dealer Tax Invoice number.' });
+});
 export const posSellerSchema = z.object({
   name: z.string().trim().min(2).max(150), address: z.string().trim().min(3).max(500),
   gstin: z.string().trim().toUpperCase().regex(/^\d{2}[A-Z0-9]{13}$/), state: z.string().trim().min(2).max(100),
@@ -66,6 +71,7 @@ export const posListSchema = z.object({
 
 const editableBill = posSaleSchema.innerType().shape;
 export const invoiceEditSchema = z.object({
+  dueDate: date.nullable().optional(), deliveryNoteDate: date.optional(),
   expectedUpdatedAt: z.string().datetime(), editRequestId: z.string().uuid().optional(),
   customer: customerSchema, shipping: customerSchema.optional(), notes: text(1000),
   items: editableBill.items.optional(), taxMode: editableBill.taxMode.optional(), roundOff: z.boolean().optional(),
@@ -82,6 +88,7 @@ export const invoiceEditSchema = z.object({
 });
 
 export const deliveryNoteInvoiceSchema = z.object({ requestId: z.string().uuid(),
+  invoiceNumber: invoiceNumberSchema.optional(),
   noteIds: z.array(z.string().regex(/^[a-f\d]{24}$/i)).min(1).max(50).refine(ids => new Set(ids).size === ids.length, 'Duplicate delivery note.'),
   dueDate: date.optional(),
 });

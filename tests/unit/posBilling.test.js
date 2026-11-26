@@ -91,6 +91,7 @@ const setup = ({ stock = 10, retry = false, variants = [], extraProducts = [] } 
   });
   const query = lookup => ({ select() { return this; }, session(used) { if (used !== null) expect(used).toBe(session); return Promise.resolve(lookup()); },
     then(resolve, reject) { return Promise.resolve(lookup()).then(resolve, reject); } });
+  jest.spyOn(PosSale, 'exists').mockImplementation(filter => query(() => [...records.values()].find(r => r.invoiceNumber === filter.invoiceNumber) || null));
   const doc = record => record ? new PosSale(record) : null;
   jest.spyOn(PosSale, 'findOne').mockImplementation(filter => query(() => doc([...records.values()].find(r => r.requestId === filter.requestId))));
   jest.spyOn(PosSale, 'findById').mockImplementation(id => query(() => doc(records.get(String(id)))));
@@ -128,6 +129,20 @@ describe('POS transactional stock and payment lifecycle', () => {
     expect(sale.shareToken).toMatch(/^[a-f\d]{64}$/);
     expect(adminArrivalService.publish).toHaveBeenCalledTimes(1);
     expect(adminArrivalService.publish).toHaveBeenCalledWith(sale, 'sale');
+  });
+  test('dealer numbers are unique and retail sequence skips custom numbers without duplicating stock', async () => {
+    const state = setup();
+    const number = `VI/${financialYear()}/000001`;
+    const dealer = posInput({ billType: 'b2b', invoiceNumber: number });
+    const saved = await posService.createSale(dealer, posAdminId);
+    expect(saved.invoiceNumber).toBe(number);
+    await expect(posService.createSale({ ...dealer, requestId: randomUUID() }, posAdminId)).rejects.toMatchObject({ statusCode: 409 });
+    expect(state.stock()).toBe(8);
+    const retail = await posService.createSale(posInput({ invoiceNumber: 'IGNORED-RETAIL-NUMBER' }), posAdminId);
+    expect(retail.invoiceNumber).toBe(`VI/${financialYear()}/000002`);
+    expect(state.records().size).toBe(2); expect(state.stock()).toBe(6);
+    await expect(posService.createSale(posInput({ billType: 'b2b' }), posAdminId)).rejects.toMatchObject({ statusCode: 400 });
+    expect(state.stock()).toBe(6);
   });
   test('insufficient stock rolls back the entire bill', async () => {
     const state = setup({ stock: 1 });

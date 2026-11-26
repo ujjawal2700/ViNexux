@@ -1,4 +1,4 @@
-import { productLineKey } from '../../../shared/productVariants.js';
+import { returnReportRows } from './posReturnReport.service.js';
 import ExcelJS from 'exceljs';
 
 export async function generatePosExport(sales) {
@@ -28,15 +28,16 @@ export async function generatePosExport(sales) {
     ['HSN/SAC', 'hsn'], ['Quantity', 'quantity', 12, '0'], ['Returned qty', 'returnedQuantity', 15, '0'], ['Unit', 'unit', 12],
     ['Unit price', 'unitPrice', 18, currency], ['Discount %', 'discountPercent', 15, '0.00'], ['GST %', 'gstRate', 12, '0.00'],
     ['Taxable', 'taxable', 18, currency], ['CGST', 'cgst', 18, currency], ['SGST', 'sgst', 18, currency], ['IGST', 'igst', 18, currency], ['Line total', 'lineTotal', 18, currency], ['Serial numbers', 'serials', 55], ['Variant', 'variantName', 20]]);
-  const payments = make('Payments and refunds', [['Invoice', 'invoiceNumber', 25], ['Date (IST)', 'date', 24, 'dd-mmm-yyyy hh:mm'], ['Type', 'type', 15], ['Method', 'method', 15], ['Amount', 'amount', 18, currency], ['Reference', 'reference', 35]]);
-  const returns = make('Returns', [['Invoice', 'invoiceNumber', 25], ['Credit note', 'creditNoteNumber', 28], ['Date (IST)', 'date', 24, 'dd-mmm-yyyy hh:mm'], ['Amount', 'amount', 18, currency], ['Reason', 'reason', 45], ['Items', 'items', 60]]);
+  const payments = make('Payments and refunds', [['Invoice', 'invoiceNumber', 25], ['Date (IST)', 'date', 24, 'dd-mmm-yyyy hh:mm'], ['Type', 'type', 15], ['Method', 'method', 15], ['Amount', 'amount', 18, currency], ['Reference', 'reference', 35], ['Customer', 'customerName', 28], ['Phone', 'phone', 20], ['Customer GSTIN', 'gstin', 24], ['Credit note', 'creditNoteNumber', 28]]);
+  const returns = make('Returns', [['Invoice', 'invoiceNumber', 25], ['Credit note', 'creditNoteNumber', 28], ['Date (IST)', 'date', 24, 'dd-mmm-yyyy hh:mm'], ['Customer', 'customerName', 28], ['Phone', 'phone', 20], ['Customer GSTIN', 'gstin', 24], ['Credit note amount', 'amount', 20, currency], ['Reason', 'reason', 35], ['Returned products / SKU / model / quantity', 'items', 75], ['Refunds linked to this return', 'linkedRefunds', 65], ['Other refunds on invoice (not allocated to a return)', 'otherRefunds', 65], ['Total invoice refunds processed', 'invoiceRefunded', 24, currency], ['Invoice refund still due', 'refundDue', 24, currency], ['Refund status', 'refundStatus', 28]]);
+
   // Excel has no timezone. Store a typed date representing the IST wall clock.
   const localDate = value => new Date(new Date(value).getTime() + 330 * 60000);
   for (const sale of sales) {
     orders.addRow({ ...sale, ...sale.customer, date: localDate(sale.createdAt), net: sale.status === 'voided' ? 0 : sale.total - sale.returnedAmount });
     sale.items.forEach(item => items.addRow({ ...item, invoiceNumber: sale.invoiceNumber, serials: item.serialNumbers.join(', ') }));
-    for (const [type, entries] of [['Payment', sale.payments], ['Refund', sale.refunds || []]]) entries.forEach(p => payments.addRow({ ...p, invoiceNumber: sale.invoiceNumber, date: localDate(p.createdAt), type }));
-    sale.returns.forEach(r => returns.addRow({ ...r, invoiceNumber: sale.invoiceNumber, date: localDate(r.createdAt), items: r.items.map(i => `${sale.items.find(line => productLineKey(line.productId, line.variantId) === productLineKey(i.productId, i.variantId))?.productName || i.productId} x ${i.quantity}`).join('; ') }));
+    for (const [type, entries] of [['Payment', sale.payments], ['Refund', sale.refunds || []]]) entries.forEach(p => payments.addRow({ ...p, customerName: sale.customer.name, phone: sale.customer.phone, gstin: sale.customer.gstin || '', invoiceNumber: sale.invoiceNumber, date: localDate(p.createdAt), type }));
+    returnReportRows(sale).forEach(row => returns.addRow({ ...row, date: localDate(row.createdAt) }));
   }
   workbook.eachSheet(sheet => {
     sheet.eachRow((row, n) => { if (n > 1) row.eachCell(cell => { cell.alignment = { vertical: 'top', wrapText: true }; }); });

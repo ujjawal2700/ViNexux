@@ -765,7 +765,7 @@ const PublicLayout = () => {
       prod.specifications?.find((s) => s.key?.toLowerCase().includes('code') || s.key?.toLowerCase().includes('item cd'))?.value ||
       (prod.sku ? prod.sku.replace(/[^A-Za-z0-9]/g, '').slice(-7).toUpperCase() : (prod._id || '1INGRUO').slice(-7).toUpperCase());
 
-    const stockText = prod.stockStatus === 'low-stock' ? 'Low Stock' : prod.stockStatus === 'in-stock' ? 'In Stock' : prod.stockStatus === 'out-of-stock' ? 'Out of Stock' : 'On Request';
+    const stockText = prod.stockStatus === 'low-stock' ? 'In Stock' : prod.stockStatus === 'in-stock' ? 'In Stock' : prod.stockStatus === 'out-of-stock' ? 'Out of Stock' : 'On Request';
     const stockClass = 'text-[var(--store-muted)] font-medium text-[11px]';
 
     return { img, brand, price, pidCode, itemCd, stockText, stockClass };
@@ -882,7 +882,7 @@ const PublicLayout = () => {
   };
 
   return (
-    <StorefrontScopeContext.Provider value={true}><div className="storefront-theme min-h-screen w-full max-w-full bg-[var(--store-background)] text-[var(--store-text)] flex flex-col font-sans overflow-x-hidden" style={themeVariables(theme.config)} {...themeStyleAttributes(theme.config)} data-theme={theme.id || 'default'} data-decoration={theme.config.decoration} data-custom-background={Boolean(theme.config.assets?.background?.url)}>
+    <StorefrontScopeContext.Provider value={true}><div className="storefront-theme min-h-screen w-full max-w-full bg-[var(--store-background)] text-[var(--store-text)] flex flex-col font-sans overflow-x-clip" style={themeVariables(theme.config)} {...themeStyleAttributes(theme.config)} data-theme={theme.id || 'default'} data-decoration={theme.config.decoration} data-custom-background={Boolean(theme.config.assets?.background?.url)}>
       {/* 1. STICKY HEADER CONTAINER (Locks top announcement + main header + category nav at top when scrolling) */}
       <header className="sticky top-0 z-50 w-full max-w-full bg-[var(--store-surface)] shadow-xs">
         {theme.config.announcement && <div className="theme-announcement"><span className="announcement-sparkles" aria-hidden="true"><i /></span><span className="announcement-message">{theme.config.announcement}</span><span className="announcement-sparkles" aria-hidden="true"><i /></span></div>}
@@ -1372,14 +1372,6 @@ const PublicLayout = () => {
 
 
               <div className="shrink-0 h-full flex items-center relative mr-1 sm:mr-1.5">
-                <Link to="/low-stock" onClick={handleHeaderClick}
-                  className="flex items-center gap-1.5 font-bold text-xs sm:text-[13px] px-2.5 h-[29px] rounded shadow-2xs bg-amber-500 hover:bg-amber-400 text-amber-950 transition-colors whitespace-nowrap"
-                  title="Browse low stock products">
-                  <Flame className="w-3.5 h-3.5 text-red-700" />
-                  <span>Low Stock</span>
-                </Link>
-              </div>
-              <div className="shrink-0 h-full flex items-center relative mr-1 sm:mr-1.5">
                 <Link to="/trending" onClick={handleHeaderClick}
                   className="flex items-center gap-1.5 font-bold text-xs sm:text-[13px] px-2.5 h-[29px] rounded shadow-2xs bg-rose-100 hover:bg-rose-200 text-rose-900 transition-colors whitespace-nowrap"
                   title="Browse trending products">
@@ -1652,7 +1644,6 @@ const PublicLayout = () => {
               { to: '/account/enquiries', label: 'Enquiries', icon: FileText },
               { to: '/invoices', label: 'Invoices', icon: FileText },
               { to: '/brands', label: 'Brands', icon: Store },
-              { to: '/low-stock', label: 'Low Stock', icon: Flame, highlight: true },
               { to: '/trending', label: 'Trending', icon: Flame, highlight: false },
             ].map(({ to, label, icon: Icon, highlight }) => (
               <Link

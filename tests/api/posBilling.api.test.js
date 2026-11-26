@@ -61,6 +61,22 @@ describe('POS API access and output contracts', () => {
     expect(create).toHaveBeenCalledWith(expect.objectContaining({ requestId: valid.requestId }), posAdminId);
     expect(create.mock.calls[0][0].total).toBeUndefined(); expect(create.mock.calls[0][0].seller).toBeUndefined();
   });
+  test('dealer creation requires a custom number after preflight; retail numbering stays server managed', async () => {
+    const create = jest.spyOn(posService, 'createSale').mockResolvedValue(posInvoiceFixture());
+    const preflight = jest.spyOn(posService, 'validateSale').mockResolvedValue({ ready: true });
+    const dealer = posInput({ billType: 'b2b' });
+    const post = (path, body) => request.post(`/api/admin/pos/${path}`).auth(adminToken, { type: 'bearer' }).send(body);
+    expect((await post('sales/validate', dealer)).status).toBe(200);
+    expect(preflight).toHaveBeenCalled();
+    for (const invoiceNumber of [undefined, '', '  ', 'BAD NUMBER', '../bad']) {
+      expect((await post('sales', { ...dealer, invoiceNumber })).status).toBe(400);
+    }
+    expect(create).not.toHaveBeenCalled();
+    expect((await post('sales', { ...dealer, invoiceNumber: ' dealer/26-001 ' })).status).toBe(200);
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ invoiceNumber: 'DEALER/26-001' }), posAdminId);
+    expect((await post('sales', posInput())).status).toBe(200);
+    expect((await post('sales', { ...dealer, documentType: 'delivery-note' })).status).toBe(200);
+  });
   test('rejects invalid calendar date filters before querying the sales register', async () => {
     const list = jest.spyOn(posService, 'listSales');
     const result = await request.get('/api/admin/pos/sales?from=2026-02-31').auth(adminToken, { type: 'bearer' });

@@ -6,7 +6,7 @@ const decodeBody = req => {
   return JSON.parse(req.postData().match(/name="details"\r\n\r\n([^]*?)\r\n--/)[1]);
 };
 const fillDealer = async dialog => {
-  for (const [label, value] of [['Company name *', 'Cable Company'], ['GSTIN (optional)' , '08ABCDE1234F1Z5'], ['PAN number (optional)' , 'ABCDE1234F'], ['Aadhaar number (optional)' , '123456789012'], ['WhatsApp number (optional)' , '9876543210'], ['Business address (optional)' , 'Business road'], ['Pincode (optional)' , '324001']]) {
+  for (const [label, value] of [['Company name *', 'Cable Company'], ['GSTIN *' , '08ABCDE1234F1Z5'], ['PAN number (optional)' , 'ABCDE1234F'], ['Aadhaar number (optional)' , '123456789012'], ['WhatsApp number (optional)' , '9876543210'], ['Business address (optional)' , 'Business road'], ['Pincode (optional)' , '324001']]) {
     await dialog.getByLabel(label, { exact: true }).fill(value);
   }
   await dialog.getByRole('combobox', { name: 'State', exact: true }).selectOption('Rajasthan');
@@ -44,6 +44,7 @@ for (const dealer of [false, true]) {
     await dialog.getByLabel('Email address *', { exact: true }).fill('owner@example.com');
     await dialog.getByLabel('Mobile number *', { exact: true }).fill('9876543210');
     if (dealer) {
+      await expect(dialog.getByLabel('GSTIN *', { exact: true })).toHaveAttribute('required', '');
       await fillDealer(dialog);
       await attachDocuments(dialog);
       await expect(dialog).toContainText('approved immediately');
@@ -55,9 +56,11 @@ for (const dealer of [false, true]) {
     expect(mutations[0].method).toBe('POST');
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await dialog.getByLabel('Full name *', { exact: true }).fill('Updated Owner');
+    if (!dealer) await dialog.getByRole('spinbutton', { name: 'Customer discount (%)', exact: true }).fill('5');
     await dialog.getByRole('button', { name: 'Save Account', exact: true }).click();
     await expect(dialog).toHaveCount(0);
     expect(mutations[1].method).toBe('PUT'); expect(mutations[1].data.fullName).toBe('Updated Owner');
+    if (!dealer) expect(mutations[1].data.customerDiscountPercent).toBe(5);
     await page.getByRole('button', { name: 'Delete', exact: true }).click();
     await expect(dialog).toContainText('Historical enquiries and invoices will remain');
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -137,7 +140,7 @@ test('admin creates a dealer with basic details and no supplementary fields or d
   await page.goto('/admin/dealer-accounts');
   await page.getByRole('button', { name: 'Create Dealer', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  for (const [label, value] of [['Full name *', 'Basic Dealer'], ['Email address *', 'basic@example.test'], ['Mobile number *', '9876543210'], ['Company name *', 'Basic Company']]) await dialog.getByLabel(label, { exact: true }).fill(value);
+  for (const [label, value] of [['Full name *', 'Basic Dealer'], ['Email address *', 'basic@example.test'], ['Mobile number *', '9876543210'], ['Company name *', 'Basic Company'], ['GSTIN *', '08ABCDE1234F1Z5']]) await dialog.getByLabel(label, { exact: true }).fill(value);
   await expect(dialog.getByLabel('GST certificate (optional)', { exact: true })).toBeAttached();
   await expect(dialog.getByLabel('Aadhaar card (optional)', { exact: true })).toBeAttached();
   await dialog.getByRole('button', { name: 'Create & Approve Dealer', exact: true }).click();

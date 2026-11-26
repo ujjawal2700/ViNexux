@@ -36,7 +36,6 @@ const AdminLoginPage = lazyWithRetry(() => import('../pages/auth/AdminLoginPage'
 const VerifyOtpPage = lazyWithRetry(() => import('../pages/auth/VerifyOtpPage'));
 const ForgotPasswordPage = lazyWithRetry(() => import('../pages/auth/ForgotPasswordPage'));
 const ResetPasswordPage = lazyWithRetry(() => import('../pages/auth/ResetPasswordPage'));
-const LowStockProductsPage = lazyWithRetry(() => import('../pages/public/LowStockProductsPage'));
 const CctvQuotePage = lazyWithRetry(() => import('../pages/public/CctvQuotePage'));
 const QuotationsPage = lazyWithRetry(() => import('../pages/quotations/QuotationsPage'));
 const AdminQuotationSettingsPage = lazyWithRetry(() => import('../pages/admin/AdminQuotationSettingsPage'));
@@ -119,9 +118,9 @@ const AppRoutes = () => {
         <Route path="/invoices" element={<InvoicesPage />} />
         <Route path="/invoices/:token" element={<InvoicesPage />} />
         <Route path="/cart" element={<CartPage />} />
-        <Route path="/low-stock" element={<LowStockProductsPage />} />
+        <Route path="/low-stock" element={<Navigate to="/products" replace />} />
         <Route path="/trending" element={<ProductsPage key="trending-catalog" trendingOnly />} />
-        <Route path="/limited-stock" element={<Navigate to="/low-stock" replace />} />
+        <Route path="/limited-stock" element={<Navigate to="/products" replace />} />
         <Route path="/categories" element={<Navigate to="/" replace />} />
         <Route path="/brands" element={<BrandsPage />} />
         <Route path="/shop-by-brand" element={<BrandsPage />} />

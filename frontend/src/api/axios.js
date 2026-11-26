@@ -105,7 +105,7 @@ const releaseRequest = (requestConfig) => {
 
 // Request Interceptor: Attach Access Token if present
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
     const isAdminEndpoint = config.portal === 'admin' || config.url?.startsWith('/admin') || config.url?.includes('/admin/');
     const token = isAdminEndpoint
       ? inMemoryAdminAccessToken
@@ -119,13 +119,12 @@ apiClient.interceptors.request.use(
       delete config.headers['Content-Type'];
     }
 
-    if (isAdminEndpoint) config.headers['X-Admin-Location'] = JSON.stringify(adminLocation.get());
+    if (isAdminEndpoint && config.url?.split('?')[0] !== '/auth/logout' && !config.url?.includes('/admin-privacy/recovery/')) config.headers['X-Admin-Location'] = JSON.stringify(await adminLocation.requireValid());
 
     const method = (config.method || 'get').toLowerCase();
     const isMutation = ['post', 'put', 'patch', 'delete'].includes(method);
 
     if (isMutation && isAdminEndpoint) {
-      config.headers['X-Admin-Location'] = JSON.stringify(adminLocation.get());
       const access = getAdminAccessState();
       const section = /^\/admin\/enquiries(?:\/|$)/.test(config.url) && window.location.pathname.startsWith('/admin/whatsapp-orders')
         ? 'whatsapp-orders' : sectionForAdminPath(config.url);
@@ -246,7 +245,7 @@ apiClient.interceptors.response.use(
       try {
         const response = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
           refreshToken,
-        }, { headers: isAdminEndpoint ? { 'X-Admin-Location': JSON.stringify(adminLocation.get()) } : {} });
+        }, { headers: isAdminEndpoint ? { 'X-Admin-Location': JSON.stringify(await adminLocation.requireValid()) } : {} });
 
         const newAccessToken = response.data?.data?.accessToken;
         const newRefreshToken = response.data?.data?.refreshToken;
@@ -265,7 +264,7 @@ apiClient.interceptors.response.use(
         }
       } catch (refreshErr) {
         processQueue(refreshErr, null);
-        if (refreshErr.response?.data?.error?.code === 'LOCATION_REQUIRED') { window.dispatchEvent(new Event('admin-location-required')); return Promise.reject(refreshErr); }
+        if (refreshErr.code === 'LOCATION_REQUIRED' || refreshErr.response?.data?.error?.code === 'LOCATION_REQUIRED') { window.dispatchEvent(new Event('admin-location-required')); return Promise.reject(refreshErr); }
         clearStoredRefreshToken(portal);
         clearStoredUser(portal);
         setAccessToken(null, portal);
