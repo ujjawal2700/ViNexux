@@ -1,3 +1,6 @@
+import { employeeWorkService } from './employeeWork.service.js';
+import { requireAdminLocation } from '../utils/adminLocation.util.js';
+import { AccessRole } from '../models/AccessRole.js';
 import mongoose from 'mongoose';
 import { accessProfile } from './adminAccess.service.js';
 import crypto from 'crypto';
@@ -320,9 +323,9 @@ export const authService = {
   /**
    * Generates and dispatches an OTP for signup, login, or phone-change.
    */
-  async sendOtp({ identifier, purpose = 'login', portal, password }) {
+  async sendOtp({ identifier, purpose = 'login', portal, password, location }) {
     const normalized = normalizeIdentifier(identifier);
-    let smsRecipient = null;
+    let smsRecipient = null, employeeCredentialId = null;
     if (!normalized) {
       throw new AppError('Identifier is required', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
     }
@@ -352,6 +355,7 @@ export const authService = {
       }
 
       if (purpose === 'password-reset') {
+        if (user.isEmployee && (await AccessRole.findById(user.accessRoleId).lean())?.workSchedule?.enabled) throw new AppError('Your daily password is managed by your super admin. Contact them for today’s password.', 403, 'DAILY_PASSWORD_MANAGED');
         if (portal === 'admin' && user.role !== 'admin') {
           throw new AppError(
             'This password reset page is reserved for administrator accounts.',
@@ -385,7 +389,8 @@ export const authService = {
           // ever generated/sent. No passwordHash set at all (e.g. a freshly
           // seeded admin who hasn't used /forgot-password yet) is treated
           // as a hard failure, not an open door.
-          const passwordMatches = user.passwordHash && (await bcrypt.compare(password, user.passwordHash));
+          requireAdminLocation(location);
+          const passwordMatches = await employeeWorkService.verifyPassword(user, password);
           if (!passwordMatches) {
             throw new AppError(
               'Invalid administrator credentials.',
@@ -393,6 +398,7 @@ export const authService = {
               ERROR_CODES.UNAUTHORIZED
             );
           }
+          if (user.isEmployee) employeeCredentialId = (await employeeWorkService.loginWindow(user))?.credentialId || null;
         } else {
           // Standard customer/dealer login surface (/login): reject admin accounts
           if (user.role === 'admin') {
@@ -444,6 +450,7 @@ export const authService = {
         identifier: normalized,
         purpose,
         otpHash,
+        employeeCredentialId,
         expiresAt,
         attempts: 0,
         isVerified: false,
@@ -484,6 +491,7 @@ export const authService = {
    */
   async verifyOtp({ identifier, otp, purpose = 'login', portal, reqInfo }) {
     const normalized = normalizeIdentifier(identifier);
+    if (portal === 'admin') requireAdminLocation(reqInfo?.location);
     if (!normalized || !otp) {
       throw new AppError('Identifier and OTP are required', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
     }
@@ -558,6 +566,11 @@ export const authService = {
           ERROR_CODES.FORBIDDEN
         );
       }
+    }
+
+    if (user.role === 'admin' && user.isEmployee) {
+      const work = await employeeWorkService.loginWindow(user);
+      if (work && String(otpRecord.employeeCredentialId) !== String(work.credentialId)) throw new AppError('The daily employee password changed. Request a new login OTP with today’s password.', 401, 'EMPLOYEE_SESSION_EXPIRED');
     }
 
     // A successful mobile OTP proves ownership of the current login number.
@@ -768,6 +781,7 @@ export const authService = {
       throw new AppError('Invalid or expired reset session. Please start over.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
     }
 
+    if (user.isEmployee && (await AccessRole.findById(user.accessRoleId).lean())?.workSchedule?.enabled) throw new AppError('Daily employee passwords are managed by the super admin.', 403, 'DAILY_PASSWORD_MANAGED');
     user.passwordHash = await bcrypt.hash(newPassword, 10);
     await user.save();
 
@@ -791,11 +805,16 @@ export const authService = {
     const refreshToken = generateRefreshToken();
     const refreshTokenHash = hashToken(refreshToken);
     const issuedAt = new Date();
-    const sessionExpiresAt = getSessionExpiryForRole(user.role, issuedAt);
+    let sessionExpiresAt = getSessionExpiryForRole(user.role, issuedAt);
+    const loginLocation = user.role === 'admin' ? requireAdminLocation(reqInfo?.location, issuedAt) : undefined;
+    const work = user.role === 'admin' ? await employeeWorkService.loginWindow(user, issuedAt) : null;
+    if (work) sessionExpiresAt = new Date(Math.min(sessionExpiresAt.getTime(), new Date(work.expiresAt).getTime()));
 
     const sessionFields = {
       userId: user._id,
       userType: user.role,
+      ...(loginLocation ? { loginLocation } : {}),
+      ...(work ? { employeeWorkDate: work.workDate, employeeCredentialId: work.credentialId, employeeScheduleRevision: work.revision } : {}),
       sessionId,
       refreshTokenHash,
       deviceInfo: reqInfo?.deviceInfo || {},
@@ -883,7 +902,7 @@ export const authService = {
   /**
    * Refreshes access token and rotates refresh token.
    */
-  async refreshToken({ refreshToken }) {
+  async refreshToken({ refreshToken, location }) {
     if (!refreshToken) {
       throw new AppError('Refresh token is required', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
     }
@@ -913,6 +932,11 @@ export const authService = {
       session.isActive = false;
       await session.save();
       throw new AppError('User account is blocked or no longer exists.', HTTP_STATUS.FORBIDDEN, ERROR_CODES.FORBIDDEN);
+    }
+
+    if (user.role === 'admin') {
+      requireAdminLocation(location);
+      await employeeWorkService.checkSession(user, session, await accessProfile(user));
     }
 
     // Refresh Token Rotation: generate new refresh token and update hash
@@ -1079,6 +1103,7 @@ export const authService = {
       if (!isMatch) {
         throw new AppError('Current password is incorrect', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
       }
+      if (user.isEmployee && (await AccessRole.findById(user.accessRoleId).lean())?.workSchedule?.enabled) throw new AppError('Daily employee passwords are managed by the super admin.', 403, 'DAILY_PASSWORD_MANAGED');
       user.passwordHash = await bcrypt.hash(newPassword, 10);
     }
 

@@ -8,6 +8,7 @@ const otpVerificationSchema = new mongoose.Schema(
       required: [true, 'Identifier (email or phone) is required'],
       trim: true,
     },
+    employeeCredentialId: { type: mongoose.Schema.Types.ObjectId, ref: 'EmployeeWorkCredential' },
     otpHash: {
       type: String,
       required: [true, 'OTP hash is required'],

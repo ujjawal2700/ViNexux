@@ -42,6 +42,9 @@ const sessionSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    employeeWorkDate: String, employeeCredentialId: { type: mongoose.Schema.Types.ObjectId, ref: 'EmployeeWorkCredential' }, employeeScheduleRevision: Number,
+    loginLocation: Object,
+    privacyLocked: { type: Boolean, default: false },
     isActive: {
       type: Boolean,
       default: true,

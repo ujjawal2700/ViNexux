@@ -27,6 +27,9 @@ const pagination = { page: 1, limit: 20, total: 0, pages: 0, totalPages: 0 };
 
 const responseFor = (url, method, postData) => {
   const pathname = new URL(url).pathname;
+  if (/\/admin\/super-admins\/[a-f0-9]{24}$/.test(pathname)) return { success: true, data: { user: { ...admin, createdAt: new Date().toISOString() } } };
+  if (/\/admin\/access\/employees\/[a-f0-9]{24}$/.test(pathname)) return { success: true, data: { user: { ...admin, isEmployee: true, createdAt: new Date().toISOString() } } };
+  if (pathname === '/api/auth/admin-privacy/status') return { success: true, data: { configured: false, locked: false } };
   if (pathname.endsWith('/quotations/catalog') || pathname.endsWith('/quotations/settings')) return { success: true, data: { settings: quoteSettingsFixture, catalog: [], pricesVisible: true } };
   if (pathname.endsWith('/quotations')) return { success: true, data: { quotes: [], pagination: { total: 0, totalPages: 1, page: 1 } } };
   if (pathname.endsWith('/pos/my-invoices')) return { success: true, data: { invoices: [], total: 0, pages: 0, page: 1, selected: null } };
@@ -83,6 +86,8 @@ const responseFor = (url, method, postData) => {
 };
 
 export const mockApi = async (page) => {
+  await page.context().grantPermissions(['geolocation']);
+  await page.context().setGeolocation({ latitude: 25.18, longitude: 75.85, accuracy: 10 });
   await page.route('**/api/**', async (route) => {
     const request = route.request();
     // Vite serves the Axios module at /src/api/axios.js; the broad glob also

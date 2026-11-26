@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 import adminService from '../../services/adminService';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
@@ -13,6 +14,9 @@ import EmptyState from '../../components/ui/EmptyState';
 import ErrorState from '../../components/ui/ErrorState';
 import Toast from '../../components/ui/Toast';
 import { ShieldAlert, Eye, LogOut, Laptop, Smartphone, Globe, Clock, Trash2 } from 'lucide-react';
+
+const profilePath = (user, role) => !user?._id ? null : role === 'admin' ? (user.isEmployee ? `/admin/access/employees/${user._id}` : `/admin/super-admins/${user._id}`) : role === 'dealer' ? `/admin/dealer-accounts/${user.dealerProfileId || user._id}` : `/admin/customers/${user._id}`;
+const SessionUserName = ({ user, role }) => { const path = profilePath(user, role); const name = user.fullName || user.name || 'Unknown user'; return path ? <Link to={path} className="font-semibold text-primary underline underline-offset-2">{name}</Link> : <span>{name}</span>; };
 
 const AdminSessionsPage = () => {
   const [sessions, setSessions] = useState([]);
@@ -168,7 +172,7 @@ const AdminSessionsPage = () => {
               { value: '', label: 'All User Roles' },
               { value: 'customer', label: 'Customers' },
               { value: 'dealer', label: 'Dealers' },
-              { value: 'admin', label: 'Admins' },
+              { value: 'admin', label: 'Super admins / employees' },
             ],
           },
         ]}
@@ -225,8 +229,7 @@ const AdminSessionsPage = () => {
             <Table.Body>
               {sessions.map((sess) => {
                 const userObj = sess.userId || {};
-                const userName = userObj.name || userObj.fullName || 'Anonymous User';
-                const roleStr = sess.userType || userObj.role || 'user';
+                const roleStr = userObj.role || sess.userType || 'user';
                 const isSessionActive = sess.isActive && new Date(sess.expiresAt) > new Date();
 
                 return (
@@ -237,7 +240,7 @@ const AdminSessionsPage = () => {
                         {sess.isCurrent && <span className="block mt-1 text-xs font-semibold text-emerald-700">Current session · This browser</span>}
                       </div>
                       <div className="text-[11px] font-semibold text-foreground">
-                        {userName} <span className="text-[10px] text-muted-foreground">({userObj.email || userObj.phone || 'N/A'})</span>
+                        <SessionUserName user={userObj} role={roleStr} /> <span className="text-[10px] text-muted-foreground">({userObj.email || userObj.phone || 'N/A'})</span>
                       </div>
                     </Table.Cell>
                     <Table.Cell>
@@ -248,7 +251,7 @@ const AdminSessionsPage = () => {
                           ? 'bg-purple-50 text-purple-800 border-purple-200'
                           : 'bg-blue-50 text-blue-800 border-blue-200'
                       }`}>
-                        {roleStr}
+                        {roleStr === 'admin' ? userObj.isEmployee ? 'Employee' : 'Super admin' : roleStr === 'dealer' ? 'Dealer' : 'Customer'}
                       </span>
                     </Table.Cell>
                     <Table.Cell className="font-mono text-xs text-muted-foreground">
@@ -379,7 +382,7 @@ const AdminSessionsPage = () => {
                 <div className="p-4 rounded-xl bg-card border border-border space-y-2">
                   <div className="flex justify-between py-1 border-b border-border">
                     <span className="text-muted-foreground">User Name:</span>
-                    <span className="font-bold text-foreground">{inspectSession.userId.name || inspectSession.userId.fullName}</span>
+                    <span className="font-bold text-foreground"><SessionUserName user={inspectSession.userId} role={inspectSession.userId.role || inspectSession.userType} /></span>
                   </div>
                   <div className="flex justify-between py-1 border-b border-border">
                     <span className="text-muted-foreground">Email:</span>
@@ -391,7 +394,7 @@ const AdminSessionsPage = () => {
                   </div>
                   <div className="flex justify-between py-1">
                     <span className="text-muted-foreground">Role:</span>
-                    <span className="font-bold uppercase text-primary">{inspectSession.userId.role}</span>
+                    <span className="font-bold uppercase text-primary">{inspectSession.userId.role === 'admin' ? inspectSession.userId.isEmployee ? 'Employee' : 'Super admin' : inspectSession.userId.role}</span>
                   </div>
                 </div>
               </div>

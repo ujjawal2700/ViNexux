@@ -1,3 +1,4 @@
+import AdminTeamProfilePage from '../pages/admin/AdminTeamProfilePage';
 import React, { Suspense } from 'react';
 import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 
@@ -213,6 +214,8 @@ const AppRoutes = () => {
         <Route element={<RoleRoute allowedRoles={[ROLES.ADMIN]} portal="admin" />}>
           <Route element={<AdminLayout />}>
             <Route path="/admin/campaigns" element={<AdminCampaignsPage />} />
+            <Route path="/admin/super-admins/:id" element={<AdminTeamProfilePage />} />
+            <Route path="/admin/access/employees/:id" element={<AdminTeamProfilePage employee />} />
             <Route path="/admin/super-admins" element={<AdminSuperAdminsPage />} />
             <Route path="/admin/access" element={<AdminAccessPage />} />
             <Route path="/admin/logbook" element={<AdminLogbookPage />} />

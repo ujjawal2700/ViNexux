@@ -108,7 +108,7 @@ apiClient.interceptors.request.use(
   (config) => {
     const isAdminEndpoint = config.portal === 'admin' || config.url?.startsWith('/admin') || config.url?.includes('/admin/');
     const token = isAdminEndpoint
-      ? (inMemoryAdminAccessToken || inMemoryAccessToken)
+      ? inMemoryAdminAccessToken
       : inMemoryAccessToken;
 
     if (token) {
@@ -118,6 +118,8 @@ apiClient.interceptors.request.use(
     if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
       delete config.headers['Content-Type'];
     }
+
+    if (isAdminEndpoint) config.headers['X-Admin-Location'] = JSON.stringify(adminLocation.get());
 
     const method = (config.method || 'get').toLowerCase();
     const isMutation = ['post', 'put', 'patch', 'delete'].includes(method);
@@ -190,6 +192,11 @@ apiClient.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
+    if (error.response?.data?.error?.code === 'LOCATION_REQUIRED') window.dispatchEvent(new Event('admin-location-required'));
+    if (error.response?.data?.error?.code === 'EMPLOYEE_SESSION_EXPIRED') notifySessionExpired('admin', error.response.data.message);
+    if (error.response?.status === 423 && error.response?.data?.error?.code === 'ADMIN_PRIVACY_LOCKED') {
+      window.dispatchEvent(new Event('admin-privacy-locked'));
+    }
     if (error.response?.data?.error?.code === 'MAINTENANCE_MODE') {
       window.dispatchEvent(new CustomEvent('site-maintenance', { detail: error.response.data.message }));
     }
@@ -207,7 +214,8 @@ apiClient.interceptors.response.use(
                            originalRequest.url?.includes('/auth/verify-otp') ||
                            originalRequest.url?.includes('/auth/send-otp') ||
                            originalRequest.url?.includes('/auth/force-login') ||
-                           originalRequest.url?.includes('/auth/refresh-token');
+                           originalRequest.url?.includes('/auth/refresh-token') ||
+                           error.response?.data?.error?.code === 'INVALID_CREDENTIALS';
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       const isAdminEndpoint = originalRequest.portal === 'admin' || originalRequest.url?.startsWith('/admin') || originalRequest.url?.includes('/admin/');
@@ -238,7 +246,7 @@ apiClient.interceptors.response.use(
       try {
         const response = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
           refreshToken,
-        });
+        }, { headers: isAdminEndpoint ? { 'X-Admin-Location': JSON.stringify(adminLocation.get()) } : {} });
 
         const newAccessToken = response.data?.data?.accessToken;
         const newRefreshToken = response.data?.data?.refreshToken;
@@ -257,6 +265,7 @@ apiClient.interceptors.response.use(
         }
       } catch (refreshErr) {
         processQueue(refreshErr, null);
+        if (refreshErr.response?.data?.error?.code === 'LOCATION_REQUIRED') { window.dispatchEvent(new Event('admin-location-required')); return Promise.reject(refreshErr); }
         clearStoredRefreshToken(portal);
         clearStoredUser(portal);
         setAccessToken(null, portal);

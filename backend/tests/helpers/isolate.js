@@ -1,3 +1,4 @@
+import '../../../tests/helpers/adminLocation.js';
 import mongoose from 'mongoose';
 import { appendFileSync } from 'node:fs';
 

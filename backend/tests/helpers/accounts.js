@@ -9,6 +9,7 @@ import { User } from '../../src/models/User.js';
 export function accountRequests(rawRequest) {
   const signups = new Map();
   return async (path, options = {}, body = null) => {
+    options = { ...options, headers: { 'X-Admin-Location': JSON.stringify({ status: 'available', latitude: 25.18, longitude: 75.85, accuracy: 10, timestamp: Date.now() }), ...options.headers } };
     if (path === '/api/auth/signup' && body && body.role !== 'admin') {
       await authService.sendOtp({ identifier: body.phone, purpose: 'signup' });
       await authService.verifySignupOtp({ identifier: body.phone, otp: '123456' });
@@ -45,11 +46,12 @@ export function accountRequests(rawRequest) {
   };
 }
 export async function loginFixture(user) {
+  const location = { status: 'available', latitude: 25.18, longitude: 75.85, accuracy: 10, timestamp: Date.now() };
   const password = 'Fixture-admin-password-2026';
   if (user.role === 'admin') {
     user.passwordHash = await bcrypt.hash(password, 10);
     await user.save();
   }
-  await authService.sendOtp({ identifier: user.email, purpose: 'login', portal: user.role === 'admin' ? 'admin' : 'customer', ...(user.role === 'admin' ? { password } : {}) });
-  return authService.verifyOtp({ identifier: user.email, purpose: 'login', portal: user.role === 'admin' ? 'admin' : 'customer', otp: '123456' });
+  await authService.sendOtp({ location, identifier: user.email, purpose: 'login', portal: user.role === 'admin' ? 'admin' : 'customer', ...(user.role === 'admin' ? { password } : {}) });
+  return authService.verifyOtp({ reqInfo: { location }, identifier: user.email, purpose: 'login', portal: user.role === 'admin' ? 'admin' : 'customer', otp: '123456' });
 }

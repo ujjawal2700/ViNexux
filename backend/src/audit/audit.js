@@ -18,7 +18,7 @@ schema.index({ createdAt: -1, _id: -1 });
 schema.index({ 'actor.id': 1, createdAt: -1 });
 export const AuditLog = mongoose.model('AuditLog', schema);
 
-const secret = /password|token|secret|credential|otp|privatekey|authorization|cookie/i;
+const secret = /password|token|secret|credential|otp|privatekey|authorization|cookie|^pin$|pinHash|currentPin|newPin|confirmPin/i;
 export const redactAudit = value => {
   if (value instanceof Date) return value.toISOString();
   if (value && typeof value.toHexString === 'function') return value.toHexString();

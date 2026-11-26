@@ -214,6 +214,12 @@ export const listDealers = async (query = {}) => {
   } = query;
 
   const filter = { applicationState: { $ne: 'draft' } };
+  if (query.from || query.to) {
+    const range = {};
+    if (query.from) range.$gte = new Date(`${query.from}T00:00:00+05:30`);
+    if (query.to) range.$lt = new Date(new Date(`${query.to}T00:00:00+05:30`).getTime() + 86400000);
+    filter.$and = [{ $or: [{ applicationSubmittedAt: range }, { applicationSubmittedAt: null, createdAt: range }] }];
+  }
   if (query.scope === 'verification') filter.status = status === 'rejected' ? 'rejected' : status === 'pending' ? 'pending' : { $in: ['pending', 'rejected'] };
   else if (status) filter.status = status;
 

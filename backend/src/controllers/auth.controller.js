@@ -1,3 +1,4 @@
+import { readAuditLocation } from '../audit/audit.js';
 import { authService } from '../services/auth.service.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -29,6 +30,7 @@ export const signup = asyncHandler(async (req, res) => {
   } = req.body;
 
   const reqInfo = {
+    location: readAuditLocation(req.headers),
     deviceInfo: {
       userAgent: req.headers['user-agent'] || 'Unknown',
       platform: req.headers['sec-ch-ua-platform'] || 'Unknown Platform',
@@ -73,6 +75,7 @@ export const signup = asyncHandler(async (req, res) => {
 export const googleLogin = asyncHandler(async (req, res) => {
   const { credential, email, name, googleId, acceptPrivacyPolicy, acceptTerms } = req.body;
   const reqInfo = {
+    location: readAuditLocation(req.headers),
     deviceInfo: {
       userAgent: req.headers['user-agent'] || 'Unknown',
       platform: req.headers['sec-ch-ua-platform'] || 'Unknown Platform',
@@ -108,7 +111,7 @@ export const verifySignupOtp = asyncHandler(async (req, res) => {
 
 export const sendOtp = asyncHandler(async (req, res) => {
   const { identifier, purpose, portal, password } = req.body;
-  const result = await authService.sendOtp({ identifier, purpose, portal, password });
+  const result = await authService.sendOtp({ identifier, purpose, portal, password, location: readAuditLocation(req.headers) });
 
   return ApiResponse.success(
     res,
@@ -121,6 +124,7 @@ export const sendOtp = asyncHandler(async (req, res) => {
 export const verifyOtp = asyncHandler(async (req, res) => {
   const { identifier, otp, purpose, portal } = req.body;
   const reqInfo = {
+    location: readAuditLocation(req.headers),
     deviceInfo: {
       userAgent: req.headers['user-agent'] || 'Unknown',
       platform: req.headers['sec-ch-ua-platform'] || 'Unknown Platform',
@@ -162,6 +166,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
 export const forceLogin = asyncHandler(async (req, res) => {
   const { conflictTicket } = req.body;
   const reqInfo = {
+    location: readAuditLocation(req.headers),
     deviceInfo: {
       userAgent: req.headers['user-agent'] || 'Unknown',
       platform: req.headers['sec-ch-ua-platform'] || 'Unknown Platform',
@@ -185,7 +190,7 @@ export const forceLogin = asyncHandler(async (req, res) => {
 
 export const refreshToken = asyncHandler(async (req, res) => {
   const { refreshToken } = req.body;
-  const result = await authService.refreshToken({ refreshToken });
+  const result = await authService.refreshToken({ refreshToken, location: readAuditLocation(req.headers) });
 
   return ApiResponse.success(
     res,

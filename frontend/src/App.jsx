@@ -1,3 +1,4 @@
+import EmployeeWorkSession from './components/admin/EmployeeWorkSession';
 import MicrosoftClarity from './components/ui/MicrosoftClarity';
 import PwaSupport from './components/ui/PwaSupport';
 import GoogleAnalytics from './components/ui/GoogleAnalytics';
@@ -42,6 +43,7 @@ function App() {
         <AuthProvider>
           <ToastProvider>
             <ConfirmationProvider>
+            <EmployeeWorkSession />
             <PushNotificationBridge />
             <CustomerPushPrompt />
             <ScrollToTop />

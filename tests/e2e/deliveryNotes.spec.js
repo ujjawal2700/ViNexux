@@ -79,6 +79,15 @@ for (const billType of ['b2c', 'b2b']) test(`${billType} dispatch note supports 
   await expect(page.getByRole('columnheader', { name: 'Select', exact: true })).toHaveCount(0);
   await expect(page.getByRole('checkbox')).toHaveCount(0);
   await page.getByRole('button', { name: 'Convert to bill', exact: true }).click();
+  const confirmation = page.getByRole('dialog', { name: `Create ${billType === 'b2b' ? 'Proforma Bill' : 'Sale Bill'}?`, exact: true });
+  await expect(confirmation).toContainText('VI-DN/26-27/000001');
+  await expect(confirmation).toContainText(state.customer.name);
+  expect(state.invoice()).toBeUndefined();
+  await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click();
+  expect(state.invoice()).toBeUndefined(); expect(state.note().invoiceId).toBeUndefined();
+  await page.getByRole('button', { name: 'Convert to bill', exact: true }).click();
+  await confirmation.getByRole('button', { name: 'Create bill', exact: true }).click();
+
   await expect(dialog.getByRole('heading', { name: 'VI/26-27/000001', exact: true })).toBeVisible();
   expect(state.invoice().balanceDue).toBe(due);
   await page.goto(`/admin/customers/${customerId}`);
@@ -110,6 +119,13 @@ test('partial product returns remain on the note and only kept goods become a Sa
   await dialog.getByRole('button', { name: 'Save return', exact: true }).click();
   await expect(dialog.getByRole('button', { name: 'Convert to Sale Bill', exact: true })).toBeVisible();
   await dialog.getByRole('button', { name: 'Convert to Sale Bill', exact: true }).click();
+  const confirmation = page.getByRole('dialog', { name: 'Create Sale Bill?', exact: true });
+  await expect(confirmation).toContainText('₹200.00'); expect(state.invoice()).toBeUndefined();
+  await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click();
+  expect(state.invoice()).toBeUndefined();
+  await dialog.getByRole('button', { name: 'Convert to Sale Bill', exact: true }).click();
+  await confirmation.getByRole('button', { name: 'Create bill', exact: true }).click();
+
   await expect(dialog.getByText(/Sale Bill/).first()).toBeVisible();
   expect(state.invoice().items[0].quantity).toBe(2);
   expect(state.invoice().total).toBe(200);

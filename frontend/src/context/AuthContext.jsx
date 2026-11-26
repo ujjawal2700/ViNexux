@@ -1,5 +1,6 @@
+import { adminLocation } from '../utils/adminLocation';
 import pushService from '../services/pushService';
-import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import authService from '../services/authService';
 import cartService from '../services/cartService';
 import guestCartService from '../services/guestCartService';
@@ -7,7 +8,7 @@ import { setAccessToken, notifySessionExpired } from '../api/axios';
 import { getStoredRefreshToken, setStoredRefreshToken, clearStoredRefreshToken, getStoredUser, setStoredUser, clearStoredUser, getStoredCustomerSessionExpiry, setStoredCustomerSessionExpiry } from '../utils/tokenStorage';
 import { ROLES } from '../constants';
 
-export const AuthContext = createContext(null);
+import { AuthContext } from './authContextStore';
 
 export const AuthProvider = ({ children }) => {
   // 1. Customer / Dealer session state (guarded by presence of refresh token)
@@ -23,6 +24,7 @@ export const AuthProvider = ({ children }) => {
     const refresh = getStoredRefreshToken('admin');
     return refresh ? getStoredUser('admin') : null;
   });
+  const [adminLocationRequired, setAdminLocationRequired] = useState(false);
   const [adminAccessToken, setAdminAccessTokenState] = useState(null);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -31,6 +33,7 @@ export const AuthProvider = ({ children }) => {
 
   // Helper to handle tokens & load user profile (portal: 'admin' | 'customer')
   const handleAuthSuccess = useCallback(async (tokens, portal) => {
+    if (portal === 'admin') setAdminLocationRequired(false);
     const { accessToken: newAccess, refreshToken: newRefresh, user: authUser, session } = tokens;
 
     let u = authUser || null;
@@ -38,7 +41,7 @@ export const AuthProvider = ({ children }) => {
     // If user object not provided in tokens payload, fetch via /auth/me
     if (!u && newAccess) {
       try {
-        const meResponse = await authService.getMe(newAccess);
+        const meResponse = await authService.getMe(newAccess, portal);
         if (meResponse.success && meResponse.data) {
           u = meResponse.data.user || meResponse.data;
         }
@@ -109,12 +112,25 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const retryAdminLocation = useCallback(async () => {
+    try {
+      const response = await authService.refreshToken(getStoredRefreshToken('admin'), { portal: 'admin' });
+      await handleAuthSuccess(response.data, 'admin');
+    } catch (error) {
+      if (error.code === 'LOCATION_REQUIRED' || error.response?.data?.error?.code === 'LOCATION_REQUIRED') adminLocation.invalidate();
+      else notifySessionExpired('admin');
+      throw error;
+    }
+  }, [handleAuthSuccess]);
+
   // Listen for global session expiration events (e.g. forced revocation by admin)
   useEffect(() => {
     const handleSessionExpiredEvent = (e) => {
       const portal = e.detail?.portal;
       const expiryMessage = e.detail?.message || 'Your session has expired. Please login again.';
       if (portal === 'admin') {
+        adminLocation.stop();
+        setAdminLocationRequired(false);
         setAdminUser(null);
         setAdminAccessTokenState(null);
         setAccessToken(null, 'admin');
@@ -231,7 +247,7 @@ export const AuthProvider = ({ children }) => {
         tasks.push(
           (async () => {
             try {
-              const response = await authService.refreshToken(storedAdminRefresh);
+              const response = await authService.refreshToken(storedAdminRefresh, { portal: 'admin' });
               if (response.success && response.data?.accessToken) {
                 await handleAuthSuccess(response.data, 'admin');
               } else {
@@ -242,6 +258,7 @@ export const AuthProvider = ({ children }) => {
                 setAdminAccessTokenState(null);
               }
             } catch (err) {
+              if (err.code === 'LOCATION_REQUIRED' || err.response?.data?.error?.code === 'LOCATION_REQUIRED') { adminLocation.invalidate(); setAdminLocationRequired(true); return; }
               console.warn('Admin session restoration failed:', err);
               clearStoredRefreshToken('admin');
               clearStoredUser('admin');
@@ -354,12 +371,15 @@ export const AuthProvider = ({ children }) => {
   // Logout (supports portal: 'admin' vs customer default)
   const logout = async (portal) => {
     try {
+      if (portal === 'admin' && !adminAccessToken) return;
       await pushService.unregisterToken(undefined, portal || 'customer').catch(() => {});
       await authService.logout(portal);
     } catch (err) {
       console.warn('Logout API error:', err);
     } finally {
       if (portal === 'admin') {
+        adminLocation.stop();
+        setAdminLocationRequired(false);
         setAdminUser(null);
         setAdminAccessTokenState(null);
         setAccessToken(null, 'admin');
@@ -451,6 +471,8 @@ export const AuthProvider = ({ children }) => {
     adminUser,
     adminAccessToken,
     isAdminAuthenticated,
+    adminLocationRequired,
+    retryAdminLocation,
 
     isLoading,
     sessionConflict,

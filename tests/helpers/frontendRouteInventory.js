@@ -13,6 +13,8 @@ export const declaredFrontendRoutes = () => {
 export const discoverFrontendRoutes = () => [...new Set(declaredFrontendRoutes())];
 
 const SAMPLES = {
+  '/admin/super-admins/:id': '/admin/super-admins/507f1f77bcf86cd799439011',
+  '/admin/access/employees/:id': '/admin/access/employees/507f1f77bcf86cd799439011',
   '/invoices/:token': `/invoices/${'a'.repeat(64)}`,
   '/admin/cms/themes/:id': '/admin/cms/themes/507f1f77bcf86cd799439011',
   '/products/:id': '/products/507f1f77bcf86cd799439011',

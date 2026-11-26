@@ -1,3 +1,4 @@
+import SendToBillingButton from '../../components/admin/SendToBillingButton';
 import { ALLOWED_ENQUIRY_TRANSITIONS as ALLOWED_STATUS_TRANSITIONS, ENQUIRY_STATUS_LABELS, canonicalEnquiryStatus } from '../../../../shared/enquiryStatuses.js';
 import React, { useState, useEffect } from 'react';
 import { canAdmin } from '../../../../shared/adminAccess.js';
@@ -14,7 +15,7 @@ import Skeleton from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 import ErrorState from '../../components/ui/ErrorState';
 import Toast from '../../components/ui/Toast';
-import { Inbox, Eye, FileSpreadsheet, MessageCircle, ChevronDown, Receipt } from 'lucide-react';
+import { Inbox, Eye, FileSpreadsheet, MessageCircle, ChevronDown } from 'lucide-react';
 import { buildEnquiryWhatsAppLink } from '../../lib/whatsapp';
 import { groupEnquiryItems } from '../../lib/enquiryItems';
 
@@ -310,7 +311,7 @@ const AdminEnquiriesPage = ({ forcedUserType, source = 'storefront' }) => {
                     </Table.Cell>
                     <Table.Cell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {source === 'whatsapp' && canSendToBilling && <Link to={`/admin/pos?order=${enq._id}`}><Button variant="outline" size="sm" className="h-8 px-2 text-xs"><Receipt className="mr-1 h-3.5 w-3.5" />Send to billing</Button></Link>}
+                        {source === 'whatsapp' && canSendToBilling && <SendToBillingButton order={enq} className="h-8 px-2 text-xs" />}
                         <Link to={enq.source === 'whatsapp' ? `/admin/whatsapp-orders/${enq._id}` : `/admin/enquiries/${enq._id}`}>
                           <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" title="Inspect Full Enquiry">
                             <Eye className="w-3.5 h-3.5 mr-1" /> Inspect
