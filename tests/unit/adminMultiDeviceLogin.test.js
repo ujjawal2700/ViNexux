@@ -23,7 +23,7 @@ const mockLogin = (role) => {
 };
 const login = (role, platform) => authService.verifyOtp({
   identifier: 'test@example.com', otp, portal: role === 'admin' ? 'admin' : undefined,
-  reqInfo: { deviceInfo: { platform } },
+  reqInfo: { deviceInfo: { platform }, location: { status: 'available', latitude: 25.18, longitude: 75.85, accuracy: 10, timestamp: Date.now() } },
 });
 afterEach(() => jest.restoreAllMocks());
 
@@ -48,7 +48,7 @@ describe('temporary admin multi-device login', () => {
     expect(lookup).not.toHaveBeenCalled();
     expect(revoke).not.toHaveBeenCalled();
     for (const result of [first, second]) {
-      const req = { headers: { authorization: `Bearer ${result.accessToken}` } };
+      const req = { headers: { authorization: `Bearer ${result.accessToken}`, 'x-admin-location': JSON.stringify({ status: 'available', latitude: 25.18, longitude: 75.85, accuracy: 10, timestamp: Date.now() }) } };
       const next = jest.fn();
       await authenticate(req, {}, next);
       expect(next).toHaveBeenCalledWith();

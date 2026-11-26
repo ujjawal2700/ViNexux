@@ -94,6 +94,8 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    dailyPasswordId: { type: mongoose.Schema.Types.ObjectId, ref: 'EmployeeWorkCredential' },
+    dailyPasswordDate: { type: String },
     passwordHash: {
       type: String,
       select: false,

@@ -1,5 +1,6 @@
 import '../audit/audit.js';
 import mongoose from 'mongoose';
+import { DEFAULT_WORK_SCHEDULE } from '../../../shared/employeeWorkSchedule.js';
 import { ADMIN_SECTIONS } from '../../../shared/adminAccess.js';
 
 const permission = new mongoose.Schema({ read: { type: Boolean, default: false }, write: { type: Boolean, default: false } }, { _id: false });
@@ -7,6 +8,8 @@ const schema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, maxlength: 80 },
   description: { type: String, trim: true, maxlength: 300, default: '' },
   permissions: { type: new mongoose.Schema(Object.fromEntries(ADMIN_SECTIONS.map(({ key }) => [key, { type: permission, default: () => ({}) }])), { _id: false }), required: true },
+  workSchedule: { type: Object, default: () => structuredClone(DEFAULT_WORK_SCHEDULE) },
+  workScheduleRevision: { type: Number, default: 0 },
   isActive: { type: Boolean, default: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });

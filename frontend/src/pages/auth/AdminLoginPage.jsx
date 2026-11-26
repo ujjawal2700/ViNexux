@@ -1,3 +1,6 @@
+import { adminLocation } from '../../utils/adminLocation';
+import Modal from '../../components/ui/Modal';
+import { PrivacyPinRecovery } from '../../components/admin/AdminPrivacyPinForms';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
@@ -16,6 +19,7 @@ const PHONE_REGEX = /^[6-9]\d{9}$/;
  * security boundary.
  */
 const AdminLoginPage = () => {
+  const [recoverPin, setRecoverPin] = useState(false);
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -138,8 +142,9 @@ const AdminLoginPage = () => {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Your OTP will be sent by SMS to the mobile number registered on your administrator account.
+            Location permission is mandatory for employees and super admins. Your OTP will be sent by SMS to the mobile number registered on your administrator account.
           </p>
+          <button type="button" className="text-xs font-semibold text-primary underline" onClick={() => adminLocation.requireValid().then(() => setError(null)).catch(error => setError(error.message))}>Enable location for admin sign-in</button>
           <Button
             type="submit"
             variant="primary"
@@ -152,6 +157,8 @@ const AdminLoginPage = () => {
           </Button>
         </form>
 
+        <div className="mt-5 text-center"><button type="button" className="text-xs font-bold text-primary underline" onClick={() => setRecoverPin(true)}>Forgot privacy PIN?</button></div>
+        <Modal isOpen={recoverPin} onClose={() => setRecoverPin(false)} title="Set or reset privacy PIN" size="sm"><PrivacyPinRecovery login /></Modal>
         <div className="mt-6 text-center text-[11px] text-muted-foreground flex items-center justify-center gap-1.5">
           <Lock className="w-3 h-3" />
           <span>Non-administrator accounts are rejected by this sign-in page</span>

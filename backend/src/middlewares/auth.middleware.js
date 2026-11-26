@@ -1,3 +1,5 @@
+import { employeeWorkService } from '../services/employeeWork.service.js';
+import { requireAdminLocation } from '../utils/adminLocation.util.js';
 import { randomUUID } from 'node:crypto';
 import { auditContext, readAuditLocation } from '../audit/audit.js';
 import { accessProfile } from '../services/adminAccess.service.js';
@@ -83,6 +85,16 @@ export const authenticate = async (req, res, next) => {
       );
     }
 
+    const route = (req.originalUrl || '').split('?')[0];
+    if (user.role === 'admin' && route !== '/api/auth/logout') requireAdminLocation(readAuditLocation(req.headers));
+    const adminAccess = await accessProfile(user);
+    if (user.role === 'admin' && route !== '/api/auth/logout') await employeeWorkService.checkSession(user, session, adminAccess);
+
+    const privacyAllowed = route.startsWith('/api/auth/admin-privacy/') || ['/api/auth/me', '/api/auth/logout'].includes(route);
+    if (user.role === 'admin' && session.privacyLocked === true && !privacyAllowed) {
+      throw new AppError('Your admin panel is locked. Enter your privacy PIN to continue.', 423, 'ADMIN_PRIVACY_LOCKED');
+    }
+
     // Update session lastActiveAt at most every few minutes rather than
     // writing to the database on every authenticated request.
     const now = new Date();
@@ -93,7 +105,7 @@ export const authenticate = async (req, res, next) => {
 
     // Attach user and session to request object
     req.user = user;
-    req.adminAccess = await accessProfile(user);
+    req.adminAccess = adminAccess;
     req.session = session;
     if (user.role === 'admin') {
       return auditContext.run({ actor: { id: String(user._id), name: user.fullName || user.name, email: user.email,

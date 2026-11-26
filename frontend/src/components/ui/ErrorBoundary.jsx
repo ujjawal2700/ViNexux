@@ -22,7 +22,8 @@ export default class ErrorBoundary extends React.Component {
   };
 
   render() {
-    if (!this.state.error) return this.props.children;
+    const error = this.props.error || this.state.error;
+    if (!error) return this.props.children;
     const pathname = this.props.pathname || window.location.pathname;
     return <section role="alert" className={`flex flex-col items-center justify-center bg-white px-6 py-12 text-center ${this.props.embedded ? 'min-h-96 rounded-xl border border-slate-200' : 'min-h-screen'}`}>
       <h1 className="text-2xl font-semibold text-slate-900">This page ran into a problem</h1>
@@ -34,7 +35,7 @@ export default class ErrorBoundary extends React.Component {
       </div>
       <details className="mt-6 w-full max-w-xl rounded-lg border border-slate-200 p-4 text-left text-xs text-slate-600">
         <summary className="cursor-pointer font-semibold">Error details</summary>
-        <p className="mt-3 break-words">{this.state.error.message || 'An unexpected rendering error occurred.'}</p>
+        <p className="mt-3 break-words">{error.message || 'An unexpected rendering error occurred.'}</p>
         {this.state.componentStack && <pre className="mt-3 max-h-40 overflow-auto whitespace-pre-wrap break-words text-[11px]">{this.state.componentStack}</pre>}
       </details>
     </section>;

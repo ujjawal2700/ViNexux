@@ -1,3 +1,5 @@
+import AdminLocationGate from '../components/admin/AdminLocationGate';
+import AdminPrivacyGuard, { useAdminPrivacy } from '../components/admin/AdminPrivacyGuard';
 import AdminArrivalAlerts from '../components/admin/AdminArrivalAlerts';
 import AdminSidebarNav from '../components/admin/AdminSidebarNav';
 import Modal from '../components/ui/Modal';
@@ -14,9 +16,10 @@ import useLogoutConfirmation from '../hooks/useLogoutConfirmation';
 import Logo from '../components/ui/Logo';
 import ErrorBoundary from '../components/ui/ErrorBoundary';
 import { AdminNumberInputContext } from '../context/AdminNumberInputContext';
-import { LogOut, Menu, X, RefreshCw, PanelLeftClose, PanelLeftOpen, LayoutDashboard } from 'lucide-react';
+import { LogOut, Menu, X, RefreshCw, PanelLeftClose, PanelLeftOpen, LayoutDashboard, LockKeyhole } from 'lucide-react';
 
-const AdminLayout = () => {
+const AdminLayoutContent = () => {
+  const privacy = useAdminPrivacy();
   const { user, adminUser } = useAuth();
   const confirmLogout = useLogoutConfirmation();
   const currentAdmin = adminUser || (user?.role === 'admin' ? user : null);
@@ -25,7 +28,7 @@ const AdminLayout = () => {
     let active = true;
     const refresh = async () => {
       try { const response = await apiClient.get('/admin/access/self', { skipGlobalLoader: true });
-        if (active && response.data?.data?.access) { const next = { ...currentAdmin, ...response.data.data.access }; setAccess(next); setAdminAccessState(next); }
+        if (active && response.data?.data?.access) { const next = { ...currentAdmin, ...response.data.data.access }; setAccess(next); setAdminAccessState(next); window.dispatchEvent(new CustomEvent('employee-work-window-updated', { detail: next.employeeWorkWindow })); }
       } catch { /* Server authorization still checks every request. */ }
     };
     setAccess(currentAdmin); setAdminAccessState(currentAdmin); refresh();
@@ -183,6 +186,7 @@ const AdminLayout = () => {
             </div>
           </div>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            {privacy && <button type="button" onClick={privacy.lock} title="Lock admin panel (F8)" aria-label="Lock admin panel (F8)" className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 font-semibold text-foreground"><LockKeyhole size={15} /><span className="hidden sm:inline">Lock panel</span></button>}
             <AdminArrivalAlerts account={access} />
             <button
               type="button"
@@ -226,4 +230,8 @@ const AdminLayout = () => {
   );
 };
 
-export default AdminLayout;
+export default function AdminLayout() {
+  const { user, adminUser } = useAuth();
+  const admin = adminUser || (user?.role === 'admin' ? user : null);
+  return <AdminLocationGate><AdminPrivacyGuard admin={admin}><AdminLayoutContent /></AdminPrivacyGuard></AdminLocationGate>;
+}

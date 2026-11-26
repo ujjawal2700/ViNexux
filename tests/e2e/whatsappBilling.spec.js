@@ -6,14 +6,24 @@ for (const billType of ['b2c', 'b2b']) test(`WhatsApp Send to billing opens ${bi
   await mockApi(page); await seedBrowserSession(page, 'admin');
   const customer = { ...posInput().customer, name: 'WhatsApp buyer' };
   const draft = { ...posInput(), billType, customer, items: [{ ...posInput().items[0], productName: 'Ordered Camera', sku: 'CAM', stockQuantity: 8, quantity: 3, unitPrice: 123.45, standardPrice: 150, dealerPrice: 130, serialInput: '' }] };
+  let preparations = 0;
   await page.route('**/api/admin/enquiries**', route => {
     const path = new URL(route.request().url()).pathname;
+    if (path.endsWith('/pos-draft')) preparations++;
     const data = path.endsWith('/pos-draft') ? { orderId: id, orderNumber: 'WA-123', draft, customerKnown: true } : { enquiries: [{ _id: id, enquiryNumber: 'WA-123', source: 'whatsapp', status: 'new', userType: billType === 'b2b' ? 'dealer' : 'customer', contactName: customer.name, contactPhone: customer.phone, items: [{ productId: draft.items[0].productId, productName: 'Ordered Camera', quantity: 3, priceShown: 123.45 }], createdAt: new Date().toISOString() }], pagination: { page: 1, total: 1, totalPages: 1 } };
     return route.fulfill({ json: { success: true, data } });
   });
   await page.goto('/admin/whatsapp-orders');
-  await page.getByRole('link', { name: 'Send to billing', exact: true }).click();
+  await page.getByRole('button', { name: 'Send to billing', exact: true }).click();
+  const confirmation = page.getByRole('dialog', { name: 'Send order to billing?', exact: true });
+  await expect(confirmation).toContainText('WA-123');
+  expect(preparations).toBe(0); await expect(page).toHaveURL(/\/admin\/whatsapp-orders$/);
+  await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(confirmation).toHaveCount(0); expect(preparations).toBe(0);
+  await page.getByRole('button', { name: 'Send to billing', exact: true }).click();
+  await confirmation.getByRole('button', { name: 'Yes, open billing', exact: true }).click();
   await expect(page).toHaveURL(`/admin/pos?order=${id}`);
+  await expect.poll(() => preparations).toBeGreaterThan(0);
   await expect(page.getByRole('combobox', { name: 'Bill type', exact: true })).toHaveValue(billType);
   await expect(page.getByText('WA-123 loaded.', { exact: false })).toBeVisible();
   await expect(page.getByText('Ordered Camera', { exact: true })).toBeVisible();
@@ -55,7 +65,21 @@ for (const source of ['whatsapp', 'storefront']) test(`Send to billing is availa
   const enquiry = { _id: id, source, status: 'closed', enquiryNumber: 'VNX-000011', userType: 'dealer', contactName: 'Dealer buyer', contactPhone: '9876543210', contactEmail: 'buyer@example.test', createdAt: new Date().toISOString(), items: [{ productId: posInput().items[0].productId, productName: 'Camera', quantity: 2, priceShown: 100 }], notes: [], customerReplies: [] };
   await page.route(`**/api/admin/enquiries/${id}`, route => route.fulfill({ json: { success: true, data: { enquiry } } }));
   await page.goto(source === 'whatsapp' ? `/admin/whatsapp-orders/${id}` : `/admin/enquiries/${id}`);
-  await expect(page.getByRole('link', { name: 'Send to billing', exact: true })).toHaveAttribute('href', `/admin/pos?order=${id}`);
+  await expect(page.getByRole('button', { name: 'Send to billing', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sync Sheet', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Message on WhatsApp', exact: true })).toBeVisible();
+  let preparations = 0;
+  await page.route(`**/api/admin/enquiries/${id}/pos-draft`, route => {
+    preparations++;
+    return route.fulfill({ json: { success: true, data: { orderId: id, orderNumber: enquiry.enquiryNumber, draft: { ...posInput(), billType: 'b2b', items: posInput().items.map(item => ({ ...item, productName: 'Camera', stockQuantity: 10, standardPrice: 100, dealerPrice: 100 })) }, customerKnown: true } } });
+  });
+  await page.getByRole('button', { name: 'Send to billing', exact: true }).click();
+  const confirmation = page.getByRole('dialog', { name: 'Send order to billing?', exact: true });
+  await expect(confirmation).toContainText(enquiry.enquiryNumber);
+  await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click();
+  expect(preparations).toBe(0); await expect(page).toHaveURL(source === 'whatsapp' ? `/admin/whatsapp-orders/${id}` : `/admin/enquiries/${id}`);
+  await page.getByRole('button', { name: 'Send to billing', exact: true }).click();
+  await confirmation.getByRole('button', { name: 'Yes, open billing', exact: true }).click();
+  await expect(page).toHaveURL(`/admin/pos?order=${id}`); await expect.poll(() => preparations).toBeGreaterThan(0);
+
 });

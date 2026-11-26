@@ -31,7 +31,7 @@ for (const [identifier, purpose] of [
 ]) {
   test(`admin ${purpose} using ${identifier} delivers only to registered phone`, async (t) => {
     const { sms, email, save } = setup(t);
-    const result = await authService.sendOtp({ identifier, purpose, portal: 'admin', password: 'test-password' });
+    const result = await authService.sendOtp({ location: { status: 'available', latitude: 25.18, longitude: 75.85, accuracy: 10, timestamp: Date.now() }, identifier, purpose, portal: 'admin', password: 'test-password' });
     assert.equal(sms.mock.callCount(), 1);
     assert.equal(sms.mock.calls[0].arguments[0].identifier, '8949940610');
     assert.match(sms.mock.calls[0].arguments[0].otp, /^\d{6}$/);
@@ -46,7 +46,7 @@ for (const [identifier, purpose] of [
 test('incorrect admin password cannot trigger an SMS', async (t) => {
   const { sms, password, save } = setup(t);
   password.mock.mockImplementation(async () => false);
-  await assert.rejects(authService.sendOtp({ identifier: 'admin@example.test', portal: 'admin', password: 'wrong' }), /Invalid administrator credentials/);
+  await assert.rejects(authService.sendOtp({ location: { status: 'available', latitude: 25.18, longitude: 75.85, accuracy: 10, timestamp: Date.now() }, identifier: 'admin@example.test', portal: 'admin', password: 'wrong' }), /Invalid administrator credentials/);
   assert.equal(sms.mock.callCount(), 0);
   assert.equal(save.mock.callCount(), 0);
 });
@@ -54,7 +54,7 @@ test('incorrect admin password cannot trigger an SMS', async (t) => {
 for (const phone of [undefined, '12345']) {
   test(`admin with invalid stored phone (${phone}) cannot fall back to email`, async (t) => {
     const { sms, email, save } = setup(t, { phone });
-    await assert.rejects(authService.sendOtp({ identifier: 'admin@example.test', portal: 'admin', password: 'test-password' }), /valid registered mobile number/);
+    await assert.rejects(authService.sendOtp({ location: { status: 'available', latitude: 25.18, longitude: 75.85, accuracy: 10, timestamp: Date.now() }, identifier: 'admin@example.test', portal: 'admin', password: 'test-password' }), /valid registered mobile number/);
     assert.equal(sms.mock.callCount(), 0);
     assert.equal(email.mock.callCount(), 0);
     assert.equal(save.mock.callCount(), 0);
@@ -63,7 +63,7 @@ for (const phone of [undefined, '12345']) {
 
 test('customer email delivery remains available', async (t) => {
   const { sms, email } = setup(t, { role: 'customer' });
-  await authService.sendOtp({ identifier: 'customer@example.test', portal: 'customer' });
+  await authService.sendOtp({ location: { status: 'available', latitude: 25.18, longitude: 75.85, accuracy: 10, timestamp: Date.now() }, identifier: 'customer@example.test', portal: 'customer' });
   assert.equal(sms.mock.callCount(), 0);
   assert.equal(email.mock.callCount(), 1);
 });
@@ -71,7 +71,7 @@ test('customer email delivery remains available', async (t) => {
 test('explicit mock mode contacts neither SMS nor email', async (t) => {
   const { sms, email } = setup(t);
   config.mockOtpEnabled = true;
-  const result = await authService.sendOtp({ identifier: 'admin@example.test', portal: 'admin', password: 'test-password' });
+  const result = await authService.sendOtp({ location: { status: 'available', latitude: 25.18, longitude: 75.85, accuracy: 10, timestamp: Date.now() }, identifier: 'admin@example.test', portal: 'admin', password: 'test-password' });
   assert.equal(result.mockOtpEnabled, true);
   assert.equal(sms.mock.callCount(), 0);
   assert.equal(email.mock.callCount(), 0);

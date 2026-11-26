@@ -1,3 +1,4 @@
+import AdminPrivacySettings from '../../components/admin/AdminPrivacySettings';
 import React, { useEffect, useState } from 'react';
 import apiClient from '../../api/axios';
 import useWebsiteSettings from '../../hooks/useWebsiteSettings';
@@ -68,7 +69,7 @@ const AdminProfilePage = () => {
         </Link>
       </div>
 
-      {isSuperAdmin(currentAdmin) && <MaintenanceSettings />}
+      {isSuperAdmin(currentAdmin) && <><AdminPrivacySettings /><MaintenanceSettings /></>}
 
       {/* Profile Details Card */}
       <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">

@@ -64,6 +64,7 @@ const AdminDealersPage = ({ mode = 'verification' }) => {
   const [approveLoading, setApproveLoading] = useState(false);
 
   // Toast State
+  const [fromDate, setFromDate] = useState(''), [toDate, setToDate] = useState('');
   const [toast, setToast] = useState(null);
 
   // Debounce search
@@ -85,6 +86,8 @@ const AdminDealersPage = ({ mode = 'verification' }) => {
         sortBy,
         sortOrder,
       };
+      if (!accounts && fromDate) params.from = fromDate;
+      if (!accounts && toDate) params.to = toDate;
       if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
       if (statusFilter) params.status = statusFilter;
       if (cityFilter.trim()) params.city = cityFilter.trim();
@@ -113,7 +116,7 @@ const AdminDealersPage = ({ mode = 'verification' }) => {
 
   useEffect(() => {
     fetchDealers();
-  }, [page, statusFilter, sortBy, sortOrder, debouncedSearch]);
+  }, [page, statusFilter, sortBy, sortOrder, debouncedSearch, fromDate, toDate]);
 
   const handleApproveConfirm = async () => {
     if (!approveTarget) return;
@@ -233,6 +236,8 @@ const AdminDealersPage = ({ mode = 'verification' }) => {
         }}
       />
 
+      {!accounts && <section aria-label="Dealer verification date filters" className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-4"><label className="text-sm font-semibold">From date (IST)<input aria-label="Verification from date" type="date" value={fromDate} max={toDate || undefined} onChange={event => { setFromDate(event.target.value); setPage(1); }} className="mt-2 block rounded-lg border border-border bg-background p-2" /></label><label className="text-sm font-semibold">To date (IST)<input aria-label="Verification to date" type="date" value={toDate} min={fromDate || undefined} onChange={event => { setToDate(event.target.value); setPage(1); }} className="mt-2 block rounded-lg border border-border bg-background p-2" /></label><button type="button" className="rounded-lg border border-border px-3 py-2 text-sm font-semibold" onClick={() => { setFromDate(''); setToDate(''); setPage(1); }}>Clear dates</button><p className="text-xs text-muted-foreground">Filter by when the application was submitted for verification. Both dates are included.</p></section>}
+
       {/* Table Content */}
       {loading ? (
         <div className="space-y-3">
@@ -263,7 +268,7 @@ const AdminDealersPage = ({ mode = 'verification' }) => {
               return <Table.Row key={dlr._id}>
                 <Table.Cell>
                   <p className="mb-1 text-xs font-bold uppercase text-slate-500 xl:hidden">Company / Tax details</p>
-                  <p className="text-sm font-bold leading-6 text-foreground">{dlr.companyName}</p>
+                  <p className="text-sm font-bold leading-6 text-foreground">{dlr.companyName}</p>{!accounts && (dlr.applicationSubmittedAt || dlr.createdAt) && <p className="mt-1 text-sm text-slate-600">Applied {new Date(dlr.applicationSubmittedAt || dlr.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })}</p>}
                   {dlr.organisationType && <p className="mt-1 text-sm text-slate-600">{dlr.organisationType}</p>}
                   <p className="mt-2 break-all text-xs text-slate-600">GST: {dlr.gstin || 'N/A'}</p>
                   <p className="break-all text-xs text-slate-600">PAN: {dlr.pan || 'N/A'}</p>

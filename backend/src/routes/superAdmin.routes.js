@@ -37,6 +37,12 @@ router.get('/', validate({ query: z.object({ page: z.coerce.number().int().min(1
     res.set('Cache-Control', 'no-store');
     ApiResponse.success(res, 'Super admins', { admins: admins.map(publicAdmin), total, page: req.query.page, pages: Math.ceil(total / 25) });
   }));
+router.get('/:id', validate({ params: z.object({ id: z.string().regex(/^[a-f\d]{24}$/i) }) }), asyncHandler(async (req, res) => {
+  const admin = await User.findOne({ _id: req.params.id, role: 'admin', isEmployee: { $ne: true } }).select('fullName email phone accountStatus createdAt').lean();
+  if (!admin) throw new AppError('Super admin not found.', 404, 'NOT_FOUND');
+  res.set('Cache-Control', 'private, no-store');
+  ApiResponse.success(res, 'Super admin profile', { user: { ...publicAdmin(admin), role: 'admin', isEmployee: false } });
+}));
 router.post('/', validate({ body: superAdminInput }), asyncHandler(async (req, res) => {
   const { password, ...data } = req.body;
   const admin = await User.create({ ...data, name: data.fullName, passwordHash: await bcrypt.hash(password, 12),

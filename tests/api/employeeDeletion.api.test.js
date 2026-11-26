@@ -1,3 +1,4 @@
+import { EmployeeWorkCredential } from '../../backend/src/models/EmployeeWorkCredential.js';
 import { beforeEach, afterEach, expect, jest, test } from '@jest/globals';
 import express from '../../backend/node_modules/express/index.js';
 import supertest from 'supertest';
@@ -19,7 +20,7 @@ beforeEach(() => {
   session = {};
   jest.spyOn(mongoose.connection, 'transaction').mockImplementation(async fn => fn(session));
   jest.spyOn(User, 'findOne').mockImplementation(() => ({ session: async () => ({ _id: employeeId, email: 'employee@example.com', phone: '9876543210' }) }));
-  for (const [model, method] of [[User, 'deleteOne'], [Session, 'deleteMany'], [PushDevice, 'deleteMany'], [OtpVerification, 'deleteMany']]) jest.spyOn(model, method).mockResolvedValue({ deletedCount: 1 });
+  for (const [model, method] of [[User, 'deleteOne'], [Session, 'deleteMany'], [EmployeeWorkCredential, 'deleteMany'], [PushDevice, 'deleteMany'], [OtpVerification, 'deleteMany']]) jest.spyOn(model, method).mockResolvedValue({ deletedCount: 1 });
   const app = express(); app.use(express.json()); app.use('/admin/access', router); app.use(errorHandler); request = supertest(app);
 });
 afterEach(() => jest.restoreAllMocks());

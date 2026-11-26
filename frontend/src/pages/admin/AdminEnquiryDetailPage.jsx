@@ -1,3 +1,4 @@
+import SendToBillingButton from '../../components/admin/SendToBillingButton';
 import { ALLOWED_ENQUIRY_TRANSITIONS as ALLOWED_STATUS_TRANSITIONS, ENQUIRY_STATUS_LABELS, canonicalEnquiryStatus } from '../../../../shared/enquiryStatuses.js';
 import EnquiryConversation from '../../components/ui/EnquiryConversation';
 import React, { useState, useEffect } from 'react';
@@ -27,7 +28,6 @@ import {
   MessageSquare,
   MessageCircle,
   FileSpreadsheet,
-  Receipt,
   CheckCircle2,
   UserCheck
 } from 'lucide-react';
@@ -217,7 +217,7 @@ const AdminEnquiryDetailPage = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {canSendToBilling && enquiry.enquiryType !== 'out-of-stock' && <Link to={`/admin/pos?order=${enquiry._id}`}><Button variant="outline" size="sm"><Receipt className="mr-1.5 h-4 w-4" />Send to billing</Button></Link>}
+          {canSendToBilling && enquiry.enquiryType !== 'out-of-stock' && <SendToBillingButton order={enquiry} />}
           <Button variant="outline" size="sm" onClick={handleSyncGoogleSheet} isLoading={syncing} className="text-emerald-700 border-emerald-200">
             <FileSpreadsheet className="w-4 h-4 mr-1.5" /> Sync Sheet
           </Button>
