@@ -99,11 +99,11 @@ export const listSessions = async (query = {}, currentSessionId = null) => {
   const totalItems = await Session.countDocuments(filter);
   // Pin only the requesting browser's authenticated session, within the selected filters.
   const current = currentSessionId ? await Session.findOne({ ...filter, sessionId: currentSessionId })
-    .populate('userId', 'fullName name email phone role accountStatus isPhoneVerified isEmailVerified').lean() : null;
+    .populate({ path: 'userId', select: 'fullName name email phone role isEmployee accessRoleId dealerProfileId accountStatus isPhoneVerified isEmailVerified', populate: { path: 'accessRoleId', select: 'name' } }).lean() : null;
   const remainingFilter = current ? { $and: [filter, { _id: { $ne: current._id } }] } : filter;
   const skip = Math.max(0, (page - 1) * limit - (current && page > 1 ? 1 : 0));
   const rows = await Session.find(remainingFilter)
-    .populate('userId', 'fullName name email phone role accountStatus isPhoneVerified isEmailVerified')
+    .populate({ path: 'userId', select: 'fullName name email phone role isEmployee accessRoleId dealerProfileId accountStatus isPhoneVerified isEmailVerified', populate: { path: 'accessRoleId', select: 'name' } })
     .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1, _id: 1 })
     .skip(skip)
     .limit(current && page === 1 ? Math.max(1, limit - 1) : limit)
@@ -130,17 +130,11 @@ export const listSessions = async (query = {}, currentSessionId = null) => {
 export const getSessionById = async (id) => {
   let session;
   if (mongoose.Types.ObjectId.isValid(id)) {
-    session = await Session.findById(id).populate(
-      'userId',
-      'fullName name email phone role accountStatus isPhoneVerified isEmailVerified'
-    );
+    session = await Session.findById(id).populate({ path: 'userId', select: 'fullName name email phone role isEmployee accessRoleId dealerProfileId accountStatus isPhoneVerified isEmailVerified', populate: { path: 'accessRoleId', select: 'name' } });
   }
 
   if (!session) {
-    session = await Session.findOne({ sessionId: id }).populate(
-      'userId',
-      'fullName name email phone role accountStatus isPhoneVerified isEmailVerified'
-    );
+    session = await Session.findOne({ sessionId: id }).populate({ path: 'userId', select: 'fullName name email phone role isEmployee accessRoleId dealerProfileId accountStatus isPhoneVerified isEmailVerified', populate: { path: 'accessRoleId', select: 'name' } });
   }
 
   if (session?.userType === 'admin' && auditContext.getStore()?.actor?.isEmployee) {
@@ -189,10 +183,7 @@ export const revokeSession = async (id, currentSessionId = null) => {
     await user.save();
   }
 
-  return await Session.findById(session._id).populate(
-    'userId',
-    'fullName name email phone role accountStatus isPhoneVerified isEmailVerified'
-  );
+  return await Session.findById(session._id).populate({ path: 'userId', select: 'fullName name email phone role isEmployee accessRoleId dealerProfileId accountStatus isPhoneVerified isEmailVerified', populate: { path: 'accessRoleId', select: 'name' } });
 };
 
 /**

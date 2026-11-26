@@ -60,6 +60,7 @@ export const submitApplication = async userId => {
     dealerApplicationSchema.body.parse(Object.fromEntries(Object.keys(dealerApplicationSchema.body.shape).map(key => [key, data[key]])));
     if (!['gst', 'aadhaar'].every(type => profile.kycDocuments.some(doc => doc.type === type && doc.url))) throw new AppError('Upload your GST certificate and Aadhaar card before submitting.', 400, 'VALIDATION_ERROR');
     profile.applicationState = 'submitted';
+    profile.applicationSubmittedAt = new Date();
     await profile.save({ session });
   });
   return getApplication(userId);

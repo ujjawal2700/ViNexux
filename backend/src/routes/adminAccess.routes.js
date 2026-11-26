@@ -1,3 +1,6 @@
+import { employeeScheduleSchema } from '../validators/employeeSchedule.validator.js';
+import { employeeWorkService } from '../services/employeeWork.service.js';
+import { EmployeeWorkCredential } from '../models/EmployeeWorkCredential.js';
 import { AUDIT_RETENTION_DAYS, retentionCutoff } from '../../../shared/dataRetention.js';
 import { logQuery, buildAuditFilter, readableAuditLogs, auditLogsQuery, auditSummaryQuery } from '../services/auditReport.service.js';
 import { generateAuditPdf, generateAuditExcel } from '../services/auditExport.service.js';
@@ -24,12 +27,13 @@ const id = value => { if (!mongoose.isValidObjectId(value)) fail('Invalid record
 const reply = (res, data) => ApiResponse.success(res, 'Access control', data);
 export const roleInput = z.object({
   name: z.string().trim().min(2).max(80), description: z.string().trim().max(300).default(''), isActive: z.boolean().default(true),
+  workSchedule: employeeScheduleSchema.optional(),
   permissions: z.object(Object.fromEntries(ADMIN_SECTIONS.map(({ key }) => [key, z.object({ read: z.boolean(), write: z.boolean() }).strict().default({ read: false, write: false })]))).strict(),
 }).strict();
 export const employeeInput = z.object({
   fullName: z.string().trim().min(2).max(100), email: z.string().trim().email().max(254).toLowerCase(),
   phone: z.string().trim().regex(/^[6-9]\d{9}$/, 'Enter a 10-digit Indian mobile number.'),
-  password: z.string().min(8).max(72), accessRoleId: z.string().refine(mongoose.isValidObjectId, 'Choose a valid role.'),
+  password: z.string().min(8).max(72).optional(), accessRoleId: z.string().refine(mongoose.isValidObjectId, 'Choose a valid role.'),
   accountStatus: z.enum(['active', 'blocked']).default('active'),
 }).strict();
 const editableEmployee = employeeInput.extend({ password: z.string().min(8).max(72).optional() });
@@ -50,9 +54,21 @@ router.post('/roles', asyncHandler(async (req, res) => {
 }));
 router.put('/roles/:id', asyncHandler(async (req, res) => {
   const data = parse(roleInput, req.body);
-  const role = await AccessRole.findByIdAndUpdate(id(req.params.id), { $set: data }, { new: true, runValidators: true });
-  if (!role) fail('Role not found.', 404);
-  reply(res, { role });
+  const role = await mongoose.connection.transaction(async session => {
+    const current = await AccessRole.findById(id(req.params.id)).session(session);
+    if (!current) fail('Role not found.', 404);
+    const changed = data.workSchedule && JSON.stringify(current.workSchedule) !== JSON.stringify(data.workSchedule);
+    const disabled = current.isActive && !data.isActive && current.workSchedule?.enabled;
+    Object.assign(current, data);
+    if (changed) current.workScheduleRevision = (current.workScheduleRevision || 0) + 1;
+    await current.save({ session });
+    if (changed || disabled) {
+      const employees = await User.find({ role: 'admin', isEmployee: true, accessRoleId: current._id }).select('_id').session(session);
+      await employeeWorkService.invalidate(employees.map(user => user._id), session);
+    }
+    return current;
+  });
+  role.$session(null); reply(res, { role });
 }));
 const assignedEmployees = (roleId, session = null) => User.find({ isEmployee: true, accessRoleId: roleId })
   .select('fullName email phone accountStatus accessRoleId').sort({ fullName: 1, _id: 1 }).session(session).lean();
@@ -78,12 +94,24 @@ router.get('/employees', asyncHandler(async (req, res) => {
   const query = parse(z.object({ page: z.coerce.number().int().min(1).default(1), search: z.string().max(100).default('') }), req.query);
   const filter = { role: 'admin', isEmployee: true };
   if (query.search) { const regex = new RegExp(query.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'); filter.$or = ['fullName', 'email', 'phone'].map(key => ({ [key]: regex })); }
-  const [employees, total] = await Promise.all([User.find(filter).populate('accessRoleId', 'name isActive').sort({ createdAt: -1 }).skip((query.page - 1) * 25).limit(25).lean(), User.countDocuments(filter)]);
+  const [employees, total] = await Promise.all([User.find(filter).populate('accessRoleId', 'name isActive workSchedule').sort({ createdAt: -1 }).skip((query.page - 1) * 25).limit(25).lean(), User.countDocuments(filter)]);
   reply(res, { employees: employees.map(publicEmployee), total, page: query.page, pages: Math.ceil(total / 25) });
+}));
+router.post('/employees/:id/daily-password', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  reply(res, await employeeWorkService.reveal(id(req.params.id)));
+}));
+router.get('/employees/:id', asyncHandler(async (req, res) => {
+  const employee = await User.findOne({ _id: id(req.params.id), role: 'admin', isEmployee: true }).populate('accessRoleId', 'name isActive workSchedule').lean();
+  if (!employee) fail('Employee not found.', 404);
+  res.set('Cache-Control', 'private, no-store');
+  reply(res, { user: publicEmployee(employee) });
 }));
 router.post('/employees', asyncHandler(async (req, res) => {
   const { password, ...data } = parse(employeeInput, req.body);
-  const passwordHash = await bcrypt.hash(password, 12);
+  const assignedRole = await AccessRole.findById(data.accessRoleId).lean();
+  if (!assignedRole?.workSchedule?.enabled && !password) fail('Set an initial password for an unscheduled employee.');
+  const passwordHash = password ? await bcrypt.hash(password, 12) : undefined;
   const employee = await mongoose.connection.transaction(async session => {
     if (!await AccessRole.findOneAndUpdate({ _id: data.accessRoleId, isActive: true }, { $inc: { __v: 1 } }, { session })) fail('Choose an active role.');
     const [created] = await User.create([{ ...data, name: data.fullName, role: 'admin', isEmployee: true,
@@ -98,11 +126,17 @@ router.put('/employees/:id', asyncHandler(async (req, res) => {
   if (!await AccessRole.exists({ _id: data.accessRoleId, isActive: true })) fail('Choose an active role.');
   const employee = await User.findOne({ _id: id(req.params.id), role: 'admin', isEmployee: true });
   if (!employee) fail('Employee not found.', 404);
+  const roleChanged = String(employee.accessRoleId) !== String(data.accessRoleId);
+  const restored = employee.accountStatus === 'blocked' && data.accountStatus === 'active';
+  const assignedRole = await AccessRole.findById(data.accessRoleId).lean();
+  if (password && assignedRole?.workSchedule?.enabled) fail('Daily passwords are generated automatically for this role.');
   Object.assign(employee, data, { name: data.fullName, status: data.accountStatus });
   if (password) employee.passwordHash = await bcrypt.hash(password, 12);
   try {
     await mongoose.connection.transaction(async session => {
       if (!await AccessRole.findOneAndUpdate({ _id: data.accessRoleId, isActive: true }, { $inc: { __v: 1 } }, { session })) fail('Choose an active role.');
+      if (roleChanged || data.accountStatus === 'blocked') await employeeWorkService.invalidate([employee._id], session);
+      if (roleChanged || restored) await EmployeeWorkCredential.deleteMany({ userId: employee._id, discardedAt: { $ne: null } }, { session });
       await employee.save({ session });
       if (password || data.accountStatus === 'blocked') await Session.updateMany({ userId: employee._id, isActive: true },
         { $set: { isActive: false, revokedAt: new Date() } }, { session });
@@ -117,6 +151,7 @@ router.delete('/employees/:id', asyncHandler(async (req, res) => {
     const employee = await User.findOne({ _id: employeeId, role: 'admin', isEmployee: true }).session(session);
     if (!employee) fail('Employee not found.', 404);
     await Session.deleteMany({ userId: employee._id }, { session });
+    await EmployeeWorkCredential.deleteMany({ userId: employee._id }, { session });
     await PushDevice.deleteMany({ userId: employee._id }, { session });
     await OtpVerification.deleteMany({ identifier: { $in: [employee.email, employee.phone].filter(Boolean) } }, { session });
     await User.deleteOne({ _id: employee._id, role: 'admin', isEmployee: true }, { session });

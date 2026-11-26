@@ -224,6 +224,7 @@ export const adminRevokeDealerSchema = {
     .optional(),
 };
 
+const filterDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => { const date = new Date(value + 'T00:00:00Z'); return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value; }, 'Enter a valid date.');
 export const getDealersQuerySchema = {
   query: z.object({
     page: z
@@ -236,13 +237,14 @@ export const getDealersQuerySchema = {
       .optional()
       .transform((val) => (val ? parseInt(val, 10) : 20))
       .refine((val) => !isNaN(val) && val >= 1 && val <= 100, { message: 'Limit must be between 1 and 100' }),
+    from: filterDate.optional(), to: filterDate.optional(),
     status: z.enum(['pending', 'approved', 'rejected']).optional(),
     city: z.string().trim().optional(),
     state: z.string().trim().optional(),
     search: z.string().trim().optional(),
     sortBy: z.enum(['createdAt', 'companyName', 'status']).optional().default('createdAt'),
     sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
-  }),
+  }).refine(query => !query.from || !query.to || query.from <= query.to, { message: 'From date must be on or before To date.', path: ['to'] }),
 };
 
 // Customer applications accept business details only. Documents must be uploaded

@@ -1,3 +1,4 @@
+import adminPrivacyRoutes from './adminPrivacy.routes.js';
 import { Router } from 'express';
 import {
   signup,
@@ -30,6 +31,7 @@ import {
 } from '../validators/auth.validator.js';
 
 const router = Router();
+router.use('/admin-privacy', adminPrivacyRoutes);
 
 // Public Authentication Endpoints
 router.post('/signup', authRateLimiter, validate(signupSchema), signup);

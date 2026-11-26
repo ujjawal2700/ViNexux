@@ -1,0 +1,27 @@
+import { Router } from 'express';
+import { z } from 'zod';
+import { authenticate } from '../middlewares/auth.middleware.js';
+import { authRateLimiter, otpRateLimiter } from '../middlewares/rateLimiter.js';
+import { validate } from '../middlewares/validate.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { AppError } from '../utils/AppError.js';
+import { ApiResponse } from '../utils/ApiResponse.js';
+import { isSuperAdmin } from '../../../shared/adminAccess.js';
+import { adminPrivacyService as service } from '../services/adminPrivacy.service.js';
+
+const router = Router();
+const pin = z.string().regex(/^\d{6}$/, 'Enter exactly six numeric digits.');
+const password = z.string().min(6).max(200);
+const body = shape => validate({ body: z.object(shape).strict() });
+const reset = { challengeToken: z.string().regex(/^[a-f\d]{64}$/), otp: pin, newPin: pin };
+const reply = (res, data) => { res.set('Cache-Control', 'private, no-store'); return ApiResponse.success(res, 'Success', data); };
+router.post('/recovery/request', authRateLimiter, body({ email: z.string().trim().email().max(254), password }), asyncHandler(async (req, res) => reply(res, await service.requestReset(req.body))));
+router.post('/recovery/reset', otpRateLimiter, body(reset), asyncHandler(async (req, res) => reply(res, await service.resetPin(req.body))));
+router.use(authenticate, (req, _res, next) => isSuperAdmin(req.user) ? next() : next(new AppError('Only super admins can manage the privacy lock.', 403, 'FORBIDDEN')));
+router.get('/status', asyncHandler(async (req, res) => reply(res, await service.status(req.user._id, req.session))));
+router.post('/lock', asyncHandler(async (req, res) => reply(res, await service.lock(req.user._id, req.session.sessionId))));
+router.post('/unlock', authRateLimiter, body({ pin }), asyncHandler(async (req, res) => reply(res, await service.unlock(req.user._id, req.session.sessionId, req.body.pin))));
+router.put('/pin', authRateLimiter, body({ password, currentPin: pin.optional(), newPin: pin }), asyncHandler(async (req, res) => reply(res, await service.setPin(req.user._id, req.session.sessionId, req.body))));
+router.post('/reset/request', authRateLimiter, body({ password }), asyncHandler(async (req, res) => reply(res, await service.requestReset(req.body, req.user._id, req.session.sessionId))));
+router.post('/reset/confirm', otpRateLimiter, body(reset), asyncHandler(async (req, res) => reply(res, await service.resetPin(req.body, req.user._id, req.session.sessionId))));
+export default router;

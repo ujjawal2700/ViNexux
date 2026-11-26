@@ -1,3 +1,5 @@
+import useConfirm from '../../hooks/useConfirm';
+import { deliveryNoteBillConfirmation } from '../../lib/billingConfirmations';
 import Table from '../ui/Table';
 import { posBillLabel } from '../../../../shared/posDocumentLabels.js';
 import { useEffect, useRef, useState } from 'react';
@@ -7,6 +9,7 @@ import posService from '../../services/posService';
 const money = value => Number(value || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' });
 const button = 'inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-foreground disabled:opacity-50';
 export default function PosDeliveryNotes({ version, canInvoice, onNew, onView, onDownload, initialId }) {
+  const askConfirm = useConfirm();
   const [data, setData] = useState({ sales: [], pages: 0, summary: {} }), [search, setSearch] = useState(''), [page, setPage] = useState(1);
   const [error, setError] = useState(''), [busy, setBusy] = useState(false), [refresh, setRefresh] = useState(0);
   const requestId = useRef({}), opened = useRef('');
@@ -22,7 +25,7 @@ export default function PosDeliveryNotes({ version, canInvoice, onNew, onView, o
     return () => { active = false; clearTimeout(timer); };
   }, [page, search, refresh, version]);
   const convert = async note => {
-    if (busy) return;
+    if (busy || !await askConfirm(deliveryNoteBillConfirmation(note))) return;
     setBusy(true); setError('');
     requestId.current[note._id] ||= crypto.randomUUID();
     try {
