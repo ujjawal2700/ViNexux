@@ -28,7 +28,8 @@ for (const stockQuantity of [3, 6]) test(`flagged product with stock ${stockQuan
   await mockApi(page); await seedBrowserSession(page, 'account');
   await page.route(`**/api/products/${id}`, route => route.fulfill({ json: { success: true, data: product({ isLowStock: true, stockQuantity }) } }));
   await page.goto(`/products/${id}`);
-  await expect(page.getByText('LOW STOCK', { exact: true })).toBeVisible();
+  await expect(page.getByText('LOW STOCK', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('IN STOCK', { exact: true }).first()).toBeVisible();
   const increment = page.getByRole('button', { name: 'Increase quantity', exact: true }).first();
   for (let quantity = 1; quantity < Math.min(stockQuantity, 5); quantity++) await increment.click();
   await expect(increment).toBeDisabled();
@@ -104,4 +105,14 @@ test('late website settings cannot replace a product photo and non-product pages
   await page.locator('input[aria-label="Search products"]:visible').first().press('Enter');
   await expect(page).toHaveURL(/search=CCTV/);
   await expect(image).toHaveAttribute('content', 'https://cdn.example.test/generic.png');
+});
+
+for (const width of [390, 1440]) test(`storefront header stays at the top at ${width}px without a low-stock link`, async ({ page }) => {
+  await mockApi(page); await page.setViewportSize({ width, height: 900 });
+  await page.goto('/products');
+  await expect(page.getByRole('link', { name: 'Low Stock', exact: true })).toHaveCount(0);
+  const header = page.locator('header').first();
+  await expect(header).toHaveCSS('position', 'sticky');
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect.poll(async () => Math.round((await header.boundingBox()).y)).toBe(0);
 });

@@ -10,7 +10,7 @@ import { Product } from '../models/Product.js';
 import { posCustomerService } from './posCustomer.service.js';
 import { AppError } from '../utils/AppError.js';
 import { stockUpdate } from '../utils/productStockUpdate.js';
-import { posSellerSchema } from '../validators/pos.validator.js';
+import { invoiceNumberSchema, posSellerSchema } from '../validators/pos.validator.js';
 import { validatePosCustomer } from '../../../shared/posValidation.js';
 import { calculatePosBill, financialYear, money, toPaise, POS_SELLER_DEFAULTS } from '../../../shared/posBilling.js';
 
@@ -56,13 +56,25 @@ const findSale = async (id, session) => {
   if (!sale) fail('Sale not found.', 404);
   return sale;
 };
+export async function allocateInvoiceNumber(input, prefix, session) {
+  if (input.documentType !== 'delivery-note' && input.billType === 'b2b') {
+    const result = invoiceNumberSchema.safeParse(input.invoiceNumber);
+    if (!result.success) fail('Enter a valid dealer Tax Invoice number.', 400, [{ path: 'invoiceNumber', message: 'A custom invoice number is required.' }]);
+    if (await PosSale.exists({ invoiceNumber: result.data }).session(session)) fail('This invoice number is already in use. Enter a different number.', 409, [{ path: 'invoiceNumber', message: 'Invoice number already exists.' }]);
+    return result.data;
+  }
+  // Skip custom dealer numbers which overlap the standard invoice series.
+  let number;
+  do { number = await nextNumber(prefix, session); } while (await PosSale.exists({ invoiceNumber: number }).session(session));
+  return number;
+}
 const restock = async (productId, quantity, session, variantId) => {
   const change = variantId ? variantStockChange(productId, variantId, quantity, { active: false }) : { filter: { _id: productId, 'variants.0': { $exists: false } }, update: stockUpdate(quantity) };
   const product = await Product.findOneAndUpdate(change.filter, change.update, { new: true, runValidators: true, session });
   if (!product) fail('A product has been removed from the catalogue. Restore it before returning its stock.', 409);
 };
 
-async function sourceBillOrder(input, session = null) {
+async function sourceBillOrder(input, session = null, excludeNoteId = null) {
   if (!input.sourceEnquiryId) return null;
   const order = await Enquiry.findById(input.sourceEnquiryId).session(session);
   if (!order || order.enquiryType === 'out-of-stock') fail('Billable order not found.', 404);
@@ -72,7 +84,7 @@ async function sourceBillOrder(input, session = null) {
     return order;
   }
   if ((order.stockDeductedAt || order.status === 'completed') && !order.deliveryNoteIds?.length) fail('This order has already been fulfilled.', 409);
-  const previous = await PosSale.find({ sourceEnquiryId: order._id, documentType: 'delivery-note', status: 'completed' }).session(session).lean();
+  const previous = await PosSale.find({ sourceEnquiryId: order._id, documentType: 'delivery-note', status: 'completed', ...(excludeNoteId ? { _id: { $ne: excludeNoteId } } : {}) }).session(session).lean();
   const dispatched = new Map();
   for (const note of previous) for (const item of note.items) {
     const key = productLineKey(item.productId, item.variantId);
@@ -142,7 +154,7 @@ export const posService = {
         if (bill.total !== expectedBill.total) fail('The invoice total changed. Review the bill before retrying.');
         const record = new PosSale({ ...input, ...bill, customer: customer.customer, customerId: customer.user._id,
           seller, shipping: input.shipping || customer.customer, interstate,
-          invoiceNumber: await nextNumber(input.documentType === 'delivery-note' ? `${seller.invoicePrefix}-DN` : seller.invoicePrefix, session), shareToken: randomBytes(32).toString('hex'),
+          invoiceNumber: await allocateInvoiceNumber(input, input.documentType === 'delivery-note' ? `${seller.invoicePrefix}-DN` : seller.invoicePrefix, session), shareToken: randomBytes(32).toString('hex'),
           createdBy: adminId, payments: input.payments.filter(p => p.amount > 0).map(p => ({ ...p, createdAt: new Date(), createdBy: adminId })), refunds: [], returnedAmount: 0 });
         if (record.documentType === 'delivery-note') { record.deliveryNoteNumber = record.invoiceNumber; record.deliveryNoteDate ||= record.dispatchDetails?.date || new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10); }
         syncPayment(record);
@@ -163,6 +175,7 @@ export const posService = {
       if (error.code === 11000) {
         const repeated = await PosSale.findOne({ requestId: input.requestId }).select('+shareToken');
         if (repeated) return repeated;
+        fail('This invoice number is already in use. Enter a different number.', 409, [{ path: 'invoiceNumber', message: 'Invoice number already exists.' }]);
       }
       throw error;
     }
@@ -175,13 +188,16 @@ export const posService = {
       if (sale.status !== 'completed') fail('Voided invoices cannot be edited.', 409);
       if (new Date(sale.updatedAt || sale.createdAt).getTime() !== new Date(input.expectedUpdatedAt).getTime()) fail('This invoice changed while you were editing. Reopen it and try again.', 409);
       if (normalizePhoneNumber(input.customer.phone) !== normalizePhoneNumber(sale.customer.phone)) fail('The invoice owner phone cannot be changed.');
-      const financialLocked = sale.documentType === 'delivery-note' || sale.deliveryNoteIds?.length || sale.returns.length > 0 || sale.items.some(item => item.returnedQuantity > 0) || sale.refunds.some(refund => refund.kind !== 'invoice-adjustment');
+      const financialLocked = Boolean(sale.invoiceId) || sale.deliveryNoteIds?.length || sale.returns.length > 0 || sale.items.some(item => item.returnedQuantity > 0) || sale.refunds.some(refund => refund.kind !== 'invoice-adjustment');
       if (financialLocked && input.items) fail('Invoices with returns or refunds can only have contact details and notes corrected.', 409);
       if (!input.items && (input.customer.state !== sale.customer.state || input.customer.stateCode !== sale.customer.stateCode)) fail('Include the complete bill to change its tax state.');
       const issues = [...validatePosCustomer(input.customer), ...(input.shipping ? validatePosCustomer(input.shipping, 'shipping') : [])];
       if (issues.length) fail('Correct the invoice contact details.', 400, issues);
-      const before = JSON.parse(JSON.stringify(Object.fromEntries(['customer', 'shipping', 'items', 'total', 'subtotal', 'taxTotal', 'taxGroups', 'taxMode', 'interstate', 'roundOff', 'billType', 'delivery', 'notes'].map(key => [key, sale[key]]))));
+      const before = JSON.parse(JSON.stringify(Object.fromEntries(['customer', 'shipping', 'items', 'total', 'subtotal', 'taxTotal', 'taxGroups', 'taxMode', 'interstate', 'roundOff', 'billType', 'delivery', 'notes', 'dueDate', 'deliveryNoteDate'].map(key => [key, sale[key]]))));
       if (input.items) {
+        if (sale.documentType === 'delivery-note' && input.billType && input.billType !== sale.billType) fail('The delivery-note bill type cannot change after dispatch.');
+        const sourceOrder = sale.documentType === 'delivery-note' && sale.sourceEnquiryId ? await sourceBillOrder({ ...input, documentType: 'delivery-note', sourceEnquiryId: sale.sourceEnquiryId }, session, sale._id) : null;
+        if (sourceOrder) { sourceOrder.status = sourceOrder.$locals.fullyDispatched ? 'completed' : 'in-progress'; await sourceOrder.save({ session }); }
         const oldByKey = new Map(sale.items.map(item => [productLineKey(item.productId, item.variantId), item]));
         const newByKey = new Map(input.items.map(item => [productLineKey(item.productId, item.variantId), item]));
         // Restore removals and reductions; deduct only additional quantities.
@@ -223,6 +239,11 @@ export const posService = {
       sale.customer = { ...input.customer, phone: sale.customer.phone };
       sale.shipping = input.shipping || { ...sale.customer };
       sale.notes = input.notes;
+      if (sale.documentType === 'delivery-note') {
+        if (sale.invoiceId && (input.dueDate !== undefined || input.deliveryNoteDate !== undefined)) fail('Converted delivery-note dates cannot be changed.', 409);
+        if (input.dueDate !== undefined) sale.dueDate = input.dueDate || undefined;
+        if (input.deliveryNoteDate !== undefined) sale.deliveryNoteDate = input.deliveryNoteDate;
+      }
       if (input.delivery !== undefined) sale.delivery = input.delivery;
       sale.revisions ||= [];
       sale.revisions.push({ requestId: input.editRequestId, before, afterTotal: sale.total, createdAt: new Date(), createdBy: adminId });

@@ -1,3 +1,4 @@
+import { User } from '../models/User.js';
 import { applyDealerDiscount, dealerDiscountExpression } from '../../../shared/dealerDiscount.js';
 import { applyInstallerPriceIncrease, installerPriceExpression } from '../../../shared/installerPricing.js';
 import { getInstallerPriceIncreasePercent } from './installerPricing.service.js';
@@ -236,9 +237,10 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
     if (['standardPrice', 'dealerPrice', 'applicablePrice'].includes(query.sortBy)) query.sortBy = 'createdAt';
   }
   const includeFacets = query.includeFacets !== 'false' && query.includeFacets !== false;
-  const [categories, approvedDealer] = await Promise.all([
+  const [categories, approvedDealer, customerPricing] = await Promise.all([
     getPublicCategories(),
     user?.role === 'dealer' ? DealerProfile.findOne({ userId: user._id, status: 'approved' }).select('+dealerDiscountPercent').lean() : null,
+    user?.role === 'customer' && user._id ? User.findById(user._id).select('+customerDiscountPercent').lean() : null,
   ]);
   const allowedIds = categories.map(category => category._id);
   const levels = categoryLevels(categories);
@@ -310,7 +312,7 @@ export const getPublicProducts = async (query = {}, user = null, options = {}) =
   }
 
   const installerPercent = approvedDealer?.organisationType === 'Installer' ? await getInstallerPriceIncreasePercent() : 0;
-  const discountPercent = approvedDealer?.dealerDiscountPercent || 0;
+  const discountPercent = approvedDealer?.dealerDiscountPercent || customerPricing?.customerDiscountPercent || 0;
   const pricingStages = [];
   if (approvedDealer) {
     pricingStages.push({ $lookup: {

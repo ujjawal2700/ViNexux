@@ -1,3 +1,4 @@
+import AccountManagementActions from '../../components/admin/AccountManagementActions';
 import AccountBalancePanel from '../../components/admin/AccountBalancePanel';
 import useAuth from '../../hooks/useAuth';
 import { isSuperAdmin } from '../../../../shared/adminAccess.js';
@@ -136,7 +137,7 @@ const AdminCustomerDetailPage = () => {
 
   return (
     <div className="space-y-6">
-      {isSuperAdmin(adminUser) && <AccountBalancePanel userId={customer._id} />}
+      {isSuperAdmin(adminUser) && <><section className="rounded-xl border border-border bg-card p-4 text-sm"><strong>Customer discount: {customer.customerDiscountPercent || 0}%</strong><p className="mt-1 text-xs text-muted-foreground">Use Edit to change the discount on this customer’s storefront prices and orders.</p></section><AccountBalancePanel userId={customer._id} /></>}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Header & Actions */}
@@ -153,6 +154,7 @@ const AdminCustomerDetailPage = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <AccountManagementActions role="customer" record={customer} onSaved={fetchCustomer} showDelete={false} />
           <DealerEnrollmentAction customer={customer} onSaved={user => navigate(`/admin/dealer-accounts/${user.dealerProfileId}`)} />
           <Link to={`/admin/pos?customer=${encodeURIComponent(customer.phone || nameStr)}`} className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs font-semibold hover:bg-muted">
             <FileText className="h-4 w-4" />View customer invoices

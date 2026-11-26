@@ -47,7 +47,7 @@ test('sales register row exposes functional view, edit, download and general sha
   await row.getByRole('button', { name: 'Share invoice', exact: true }).click();
   await expect.poll(() => page.evaluate(() => window.sharedInvoices.length)).toBe(1);
   const shared = await page.evaluate(() => window.sharedInvoices[0]);
-  expect(shared.title).toBe(`Sale Bill ${state.invoice.invoiceNumber}`);
+  expect(shared.title).toBe(`Tax Invoice ${state.invoice.invoiceNumber}`);
   expect(shared.url).toContain('/invoices/' + 'a'.repeat(64));
   expect(shared.url).not.toContain('wa.me');
   await row.getByRole('button', { name: 'Edit invoice', exact: true }).click();

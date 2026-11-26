@@ -88,12 +88,19 @@ try {
   assert.equal(dealerLookup.status, 200, JSON.stringify(dealerLookup.body));
   assert.equal(dealerLookup.body.data.customer.name, dealerProfile.companyName);
   assert.equal(dealerLookup.body.data.customer.stateCode, '08');
-  const dealerBill = posInput({ billType: 'b2b', customer: dealerLookup.body.data.customer, payments: [{ method: 'cash', amount: 3550, requestId: randomUUID(), reference: '' }] });
+  const dealerBill = posInput({ billType: 'b2b', invoiceNumber: 'DEALER-CUSTOM-001', customer: dealerLookup.body.data.customer, payments: [{ method: 'cash', amount: 3550, requestId: randomUUID(), reference: '' }] });
   dealerBill.items[0] = { ...dealerBill.items[0], productId: String(product._id), quantity: 1, serialNumbers: [] };
   assert.equal((await auth('put', '/admin/pos/customer?billType=b2b').send(dealerBill.customer)).status, 200);
   assert.equal((await auth('post', '/admin/pos/sales/validate').send(dealerBill)).status, 200);
+  assert.equal((await auth('post', '/admin/pos/sales').send({ ...dealerBill, invoiceNumber: undefined })).status, 400);
   const dealerSale = await auth('post', '/admin/pos/sales').send(dealerBill);
   assert.equal(dealerSale.status, 200, JSON.stringify(dealerSale.body));
+  assert.equal(dealerSale.body.data.invoiceNumber, 'DEALER-CUSTOM-001');
+  const stockAfterDealer = (await Product.findById(product._id)).stockQuantity;
+  assert.equal((await auth('post', '/admin/pos/sales').send({ ...dealerBill, requestId: randomUUID() })).status, 409);
+  assert.equal((await Product.findById(product._id)).stockQuantity, stockAfterDealer);
+  const dealerRegister = await auth('get', '/admin/pos/sales?search=DEALER-CUSTOM-001');
+  assert.equal(dealerRegister.body.data.sales[0]._id, dealerSale.body.data._id);
   assert.equal(dealerSale.body.data.customerId, String(dealer._id));
   assert.equal((await User.findById(dealer._id)).fullName, 'Dealer Owner');
   assert.equal((await DealerProfile.findById(dealerProfile._id)).companyName, 'POS Dealer Business');
@@ -108,6 +115,7 @@ try {
   const transferBill = { ...prepared.body.data.draft, requestId: randomUUID(), payments: [{ method: 'cash', amount: 7100, reference: '', requestId: randomUUID() }] };
   const billed = await auth('post', '/admin/pos/sales').send(transferBill);
   assert.equal(billed.status, 200, JSON.stringify(billed.body));
+  assert.equal((await auth('get', `/admin/pos/sales?search=${encodeURIComponent(billed.body.data.invoiceNumber)}`)).body.data.sales[0]._id, billed.body.data._id);
   assert.equal(billed.body.data.sourceEnquiryId, String(whatsapp._id));
   assert.equal((await Product.findById(product._id)).stockQuantity, 3);
   const fulfilled = await Enquiry.findById(whatsapp._id);

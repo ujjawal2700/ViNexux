@@ -36,7 +36,7 @@ export default function AccountManagementActions({ role, record, onSaved, layout
   const start = () => {
     const values = Object.fromEntries(fields.map(([key]) => [key, (commonFields.some(([name]) => name === key) ? user?.[key] : record?.[key]) || '']));
     if (dealer) values.address = record?.address || user?.address || '';
-    setForm({ ...values, accountStatus: user?.accountStatus || 'active', ...(dealer ? { organisationType: record?.organisationType || 'Proprietorship', dealerDiscountPercent: record?.dealerDiscountPercent || 0 } : {}) });
+    setForm({ ...values, accountStatus: user?.accountStatus || 'active', ...(dealer ? { organisationType: record?.organisationType || 'Proprietorship', dealerDiscountPercent: record?.dealerDiscountPercent || 0 } : { customerDiscountPercent: record?.customerDiscountPercent || 0 }) });
     setFiles({}); setError(''); setOpen(true);
   };
   const save = async event => {
@@ -78,6 +78,7 @@ export default function AccountManagementActions({ role, record, onSaved, layout
             <input aria-label="Extra global dealer discount (%)" type="number" min="0" max="100" step="0.01" required className="block w-full rounded-lg border p-2" value={form.dealerDiscountPercent ?? 0} onChange={event => setForm(previous => ({ ...previous, dealerDiscountPercent: event.target.value === '' ? '' : Number(event.target.value) }))} />
             <span className="block text-xs font-normal text-gray-500">Super admin only. Dealers see final prices without a special-discount label. Use 0 to remove the extra discount.</span>
           </label></>}
+          {!dealer && <label className="space-y-1 text-sm font-medium">Customer discount (%)<input aria-label="Customer discount (%)" type="number" min="0" max="100" step="0.01" required className="block w-full rounded-lg border p-2" value={form.customerDiscountPercent ?? 0} onChange={event => setForm(previous => ({ ...previous, customerDiscountPercent: event.target.value === '' ? '' : Number(event.target.value) }))} /><span className="block text-xs font-normal text-gray-500">Applies to this customer’s storefront prices, cart and orders. Use 0 to remove.</span></label>}
           {dealer && <label className="space-y-1 text-sm font-medium">Organisation type<select aria-label="Organisation type" className="block w-full rounded-lg border p-2" value={form.organisationType} onChange={e => setForm(prev => ({ ...prev, organisationType: e.target.value }))}>{ORGANISATION_TYPES.map(value => <option key={value}>{value}</option>)}</select></label>}
           <label className="space-y-1 text-sm font-medium">Account status<select className="block w-full rounded-lg border p-2" value={form.accountStatus} onChange={e => setForm(prev => ({ ...prev, accountStatus: e.target.value }))}>{['active', 'pending', 'blocked'].map(value => <option key={value}>{value}</option>)}</select></label>
         </div>

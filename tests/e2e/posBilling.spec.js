@@ -33,7 +33,7 @@ const configure = async page => {
     if (path.endsWith('/sales') && request.method() === 'POST') {
       const data = request.postDataJSON(); saleRequests++;
       saved = { ...data, ...calculatePosBill(data.items.map(item => ({ ...item, productName: 'TRUEVIEW 3MP 4G Camera', sku: 'CAM-001', returnedQuantity: 0 })), data),
-        _id: '507f1f77bcf86cd799439099', invoiceNumber: 'VI/26-27/000001', seller: POS_SELLER_DEFAULTS, shipping: data.customer,
+        _id: '507f1f77bcf86cd799439099', invoiceNumber: data.invoiceNumber || 'VI/26-27/000001', seller: POS_SELLER_DEFAULTS, shipping: data.customer,
         shareToken: 'a'.repeat(64), status: 'completed', createdAt: new Date().toISOString(), returnedAmount: 0,
         paidAmount: data.payments.reduce((sum, p) => sum + p.amount, 0), balanceDue: 0, refundDue: 0, paymentStatus: 'paid', returns: [], refunds: [],
         payments: data.payments.map(p => ({ ...p, createdAt: new Date().toISOString() })) };
@@ -67,7 +67,7 @@ test('POS completes a counter sale with customer details, serials, invoice and E
   await page.screenshot({ path: '/private/tmp/vinexus-pos-checkout.png', fullPage: true });
   await page.getByRole('button', { name: /Proceed to payment/ }).click();
   await expect(dialog.getByText('₹3,550.00', { exact: true }).first()).toBeVisible();
-  await dialog.getByRole('button', { name: /Complete sale & generate (Sale Bill|Proforma Bill)/ }).click();
+  await dialog.getByRole('button', { name: /Complete sale & generate Tax Invoice/ }).click();
   await expect(dialog.getByRole('heading', { name: 'VI/26-27/000001' })).toBeVisible();
   expect(state.saleRequests()).toBe(1);
   expect(state.customers().get('9876543210').name).toBe('Retail Customer');
@@ -187,8 +187,21 @@ test('B2B dealer phone autofills business details and completes billing without 
   await dialog.getByRole('button', { name: 'Save details' }).click();
   await expect(dialog).toHaveCount(0); expect(saved).toBe(true);
   await page.getByRole('button', { name: /Proceed to payment/ }).click();
-  await dialog.getByRole('button', { name: /Complete sale & generate (Sale Bill|Proforma Bill)/ }).click();
-  await expect(dialog.getByRole('heading', { name: 'VI/26-27/000001' })).toBeVisible();
-  expect(state.sale()).toMatchObject({ billType: 'b2b', customer: dealer });
+  await dialog.getByRole('button', { name: /Complete sale & generate Tax Invoice/ }).click();
+  const numbering = page.getByRole('dialog', { name: 'Dealer Tax Invoice number', exact: true });
+  await expect(numbering).toBeVisible();
+  expect(state.saleRequests()).toBe(0);
+  await expect(numbering.getByRole('button', { name: 'Create Tax Invoice', exact: true })).toBeDisabled();
+  await numbering.getByLabel('Invoice number *', { exact: true }).fill('dealer/2026/001');
+  await numbering.getByRole('button', { name: 'Back', exact: true }).click();
+  expect(state.saleRequests()).toBe(0);
+  await dialog.getByRole('button', { name: 'Complete sale & generate Tax Invoice', exact: true }).click();
+  await numbering.getByLabel('Invoice number *', { exact: true }).fill('dealer/2026/001');
+  await numbering.getByRole('button', { name: 'Create Tax Invoice', exact: true }).click();
+  await expect(dialog.getByRole('heading', { name: 'DEALER/2026/001' })).toBeVisible();
+  expect(state.sale()).toMatchObject({ billType: 'b2b', invoiceNumber: 'DEALER/2026/001', customer: dealer });
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByRole('button', { name: 'Sales register', exact: true }).click();
+  await expect(page.getByRole('row').filter({ hasText: 'DEALER/2026/001' })).toContainText('Tax Invoice');
   expect(state.otpRequests()).toBe(0);
 });

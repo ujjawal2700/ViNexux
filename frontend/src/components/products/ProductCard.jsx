@@ -10,7 +10,7 @@ import wishlistService from '../../services/wishlistService';
 import { Minus, Plus, Check, Heart, ImageOff, LockKeyhole } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { buildProductPath } from '../../utils/categoryUrls';
-import { getMaximumOrderQuantity, isLowStock } from '../../utils/inventory';
+import { getMaximumOrderQuantity } from '../../utils/inventory';
 
 export const ProductCard = ({ product, onCartUpdated, className }) => {
   const { user, isAuthenticated } = useAuth();
@@ -46,7 +46,6 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
   const dealerPrice = product.dealerPrice || 0;
   const maximumQuantity = getMaximumOrderQuantity(product);
   const isOutOfStock = product.stockStatus === 'out-of-stock' || maximumQuantity === 0;
-  const isLowStockItem = !isOutOfStock && isLowStock(product);
 
   let displayPrice = product?.applicablePrice ?? standardPrice;
 
@@ -223,11 +222,6 @@ export const ProductCard = ({ product, onCartUpdated, className }) => {
             <span className="inline-flex items-center gap-1 rounded border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-rose-700">
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-rose-500" />
               Out of Stock
-            </span>
-          ) : isLowStockItem ? (
-            <span className="inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-amber-800">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
-              Low Stock
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-emerald-700">

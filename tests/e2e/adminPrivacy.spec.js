@@ -44,7 +44,7 @@ test('F8 immediately hides admin details and requires the PIN after Escape, navi
   await expect(guard(page)).toBeVisible();
   await expect(page.getByRole('link', { name: 'Admin Dashboard', exact: true })).toHaveCount(0);
   await page.keyboard.press('Escape'); await expect(guard(page)).toBeVisible();
-  await expect(page.locator('[data-admin-privacy-workspace]')).toHaveCSS('filter', 'blur(24px)');
+  await expect(page.locator('[data-admin-privacy-workspace]')).toHaveCSS('filter', 'blur(8px)');
   await expect(page.locator('[data-admin-privacy-workspace]')).toHaveCSS('visibility', 'visible');
   await page.screenshot({ path: testInfo.outputPath('privacy-locked.png') });
   await unlock(page, '111111'); await expect(guard(page).getByRole('alert')).toContainText('Incorrect privacy PIN');
@@ -119,10 +119,13 @@ test('login-screen PIN recovery requires email and password before phone OTP and
 
 test('admin details remain hidden when initial lock status cannot be verified', async ({ page }) => {
   const { state } = await setup(page); state.failed = true;
-  await page.goto('/admin/dashboard'); await expect(guard(page)).toBeVisible();
-  await expect(guard(page).getByRole('alert')).toContainText('Unable to verify');
+  await page.goto('/admin/dashboard');
+  const checking = page.getByRole('status', { name: 'Checking admin access', exact: true });
+  await expect(checking).toBeVisible();
+  await expect(guard(page)).toHaveCount(0);
+  await expect(checking.getByRole('alert')).toContainText('Unable to verify');
   await expect(page.getByRole('link', { name: 'Admin Dashboard', exact: true })).toHaveCount(0);
-  state.failed = false; await guard(page).getByRole('button', { name: 'Retry connection', exact: true }).click();
+  state.failed = false; await checking.getByRole('button', { name: 'Retry connection', exact: true }).click();
   await expect(guard(page)).toHaveCount(0);
 });
 
@@ -184,4 +187,23 @@ test('a late status response cannot relock a successfully unlocked panel', async
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await expect(guard(page)).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Lock admin panel (F8)' })).toBeVisible();
+});
+
+test('an unlocked admin refresh shows neutral verification without flashing the lock screen', async ({ page }) => {
+  await setup(page);
+  await page.addInitScript(() => {
+    window.privacyLockFlashes = 0;
+    new MutationObserver(() => { if (document.getElementById('admin-privacy-title')) window.privacyLockFlashes++; }).observe(document, { childList: true, subtree: true });
+  });
+  await page.route('**/api/auth/admin-privacy/status', async route => {
+    await new Promise(resolve => setTimeout(resolve, 250));
+    await route.fulfill({ json: { success: true, data: { configured: true, locked: false } } });
+  });
+  await page.goto('/admin/dashboard');
+  await expect(page.getByRole('button', { name: 'Lock admin panel (F8)' })).toBeVisible();
+  expect(await page.evaluate(() => window.privacyLockFlashes)).toBe(0);
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Lock admin panel (F8)' })).toBeVisible();
+  expect(await page.evaluate(() => window.privacyLockFlashes)).toBe(0);
+  await expect(guard(page)).toHaveCount(0);
 });
