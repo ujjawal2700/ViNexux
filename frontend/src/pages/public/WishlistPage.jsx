@@ -7,7 +7,7 @@ import useAuth from '../../hooks/useAuth';
 import useToast from '../../hooks/useToast';
 import wishlistService from '../../services/wishlistService';
 import cartService from '../../services/cartService';
-import { isLowStock, isOutOfStock } from '../../utils/inventory';
+import { isOutOfStock } from '../../utils/inventory';
 import { buildProductPath } from '../../utils/categoryUrls';
 
 export const WishlistPage = () => {
@@ -51,7 +51,6 @@ export const WishlistPage = () => {
   // Stock status logic
   const getStockInfo = (product) => {
     if (isOutOfStock(product)) return { label: '• Out of Stock', color: 'text-amber-700', canAdd: false };
-    if (isLowStock(product)) return { label: '• Low Stock', color: 'text-amber-600', canAdd: true };
     return { label: '• In Stock', color: 'text-emerald-600', canAdd: true };
   };
 

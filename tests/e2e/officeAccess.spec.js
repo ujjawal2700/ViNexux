@@ -37,8 +37,19 @@ test('active sessions identify separate super admins and link every user type to
   await expect(page).toHaveURL(`/admin/super-admins/${id}`); await expect(page.getByRole('heading', { name: 'Super admin profile', exact: true })).toBeVisible(); await expect(page.getByText('First Owner', { exact: true })).toBeVisible();
 });
 
+async function synchronizeGeolocationClock(page) {
+  // Browser-native positions use real time; these two tests run days ahead.
+  await page.addInitScript(() => {
+    for (const method of ['getCurrentPosition', 'watchPosition']) {
+      const native = navigator.geolocation[method].bind(navigator.geolocation);
+      navigator.geolocation[method] = (ok, error, options) => native(value => ok({ coords: value.coords, timestamp: Date.now() }), error, options);
+    }
+  });
+}
+
 test('super admin manages weekday hours per role and privately reveals the employee daily password', async ({ page }, testInfo) => {
   await page.clock.install({ time: new Date('2026-11-30T10:00:00+05:30') });
+  await synchronizeGeolocationClock(page);
   await mockApi(page); await seedBrowserSession(page, 'admin');
   const role = { _id: roleId, name: 'Office team', description: '', isActive: true, permissions: {}, workSchedule: structuredClone(DEFAULT_WORK_SCHEDULE) }; let saved;
   const employee = { _id: employeeId, fullName: 'Asha Office', email: 'asha@example.test', phone: '9876543210', accountStatus: 'active' };
@@ -99,13 +110,14 @@ test('revoking location hides the workspace and restoring it preserves an open d
   const gate = page.getByRole('dialog', { name: 'Mandatory admin location', exact: true });
   await expect(gate).toBeVisible();
   await context.grantPermissions(['geolocation']);
-  await gate.getByRole('button', { name: 'Enable location', exact: true }).click();
+  // Granting permission now recovers automatically without another Enable click.
   await expect(gate).toHaveCount(0);
   await expect(page.getByRole('dialog').getByLabel('Customer name *', { exact: true })).toHaveValue('Keep my office draft');
 });
 
 test('employee warning appears at 6:45 PM and the portal signs out at 7:20 PM even while idle', async ({ page }) => {
   await page.clock.install({ time: new Date('2026-11-30T18:40:00+05:30') });
+  await synchronizeGeolocationClock(page);
   await mockApi(page); await seedBrowserSession(page, 'admin');
   const schedule = { ...structuredClone(DEFAULT_WORK_SCHEDULE), enabled: true }, work = employeeWorkWindow(schedule, new Date('2026-11-30T18:40:00+05:30'));
   const employee = { _id: id, role: 'admin', isEmployee: true, accessRoleActive: true, accessRoleName: 'Office team', fullName: 'Office Employee', workSchedule: schedule, employeeWorkWindow: work, permissions: {} };
@@ -122,4 +134,19 @@ test('employee warning appears at 6:45 PM and the portal signs out at 7:20 PM ev
   await page.clock.setSystemTime(new Date('2026-11-30T19:20:00+05:30')); await page.clock.runFor(1100);
   await expect(page).toHaveURL(/\/admin\/login$/);
   await expect(page.getByPlaceholder('Enter Email Address or Phone Number')).toBeVisible();
+});
+
+test('a temporary location watch timeout does not reopen the enable-location screen', async ({ page }) => {
+  await mockApi(page); await seedBrowserSession(page, 'admin');
+  await page.addInitScript(() => {
+    const fix = () => ({ coords: { latitude: 25.18, longitude: 75.85, accuracy: 20 }, timestamp: Date.now() });
+    navigator.geolocation.getCurrentPosition = ok => ok(fix());
+    navigator.geolocation.watchPosition = (ok, error) => { window.officeWatchError = error; setTimeout(() => ok(fix()), 0); return 1; };
+  });
+  await page.goto('/admin/dashboard');
+  await expect(page.getByRole('button', { name: 'Lock admin panel (F8)' })).toBeVisible();
+  await page.evaluate(() => window.officeWatchError({ code: 3 }));
+  await expect(page.getByRole('dialog', { name: 'Mandatory admin location', exact: true })).toHaveCount(0);
+  await page.getByRole('link', { name: /Offline POS billing/i }).first().click();
+  await expect(page.getByRole('heading', { name: 'Offline POS Billing', exact: true })).toBeVisible();
 });

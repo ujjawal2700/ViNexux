@@ -12,7 +12,7 @@ const escapeRegex = (string) => {
 /**
  * Admin: List customers (role strictly = 'customer') with pagination, filtering & search
  */
-export const listCustomers = async (query = {}) => {
+export const listCustomers = async (query = {}, includePrivatePricing = false) => {
   const {
     page = 1,
     limit = 20,
@@ -54,7 +54,7 @@ export const listCustomers = async (query = {}) => {
 
   const totalItems = await User.countDocuments(filter);
   const customers = await User.find(filter)
-    .select('-passwordHash -currentSessionId')
+    .select(`-passwordHash -currentSessionId${includePrivatePricing ? ' +customerDiscountPercent' : ''}`)
     .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 })
     .skip(skip)
     .limit(limit)
@@ -76,8 +76,8 @@ export const listCustomers = async (query = {}) => {
 /**
  * Admin: Get customer detail by ID (role strictly = 'customer')
  */
-export const getCustomerById = async (customerId) => {
-  const user = await User.findById(customerId).select('-passwordHash -currentSessionId').lean();
+export const getCustomerById = async (customerId, includePrivatePricing = false) => {
+  const user = await User.findById(customerId).select(`-passwordHash -currentSessionId${includePrivatePricing ? ' +customerDiscountPercent' : ''}`).lean();
 
   if (!user || user.role !== 'customer') {
     throw new AppError('Customer not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);

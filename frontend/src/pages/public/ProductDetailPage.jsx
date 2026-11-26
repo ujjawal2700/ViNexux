@@ -23,7 +23,7 @@ import { extractProductId, buildProductPath, buildCategoryPath, buildCategoryTra
 import { Image } from '../../components/ui/Image';
 import { Skeleton } from '../../components/ui/Skeleton';
 import NotFoundPage from './NotFoundPage';
-import { getAvailableStock, getMaximumOrderQuantity, isLowStock } from '../../utils/inventory';
+import { getAvailableStock, getMaximumOrderQuantity } from '../../utils/inventory';
 import {
   ShoppingCart,
   ShieldCheck,
@@ -256,7 +256,6 @@ export const ProductDetailPage = () => {
   const maxAllowedQuantity = getMaximumOrderQuantity(purchaseProduct);
   const isOutOfStock = !purchaseProduct || purchaseProduct?.stockStatus === 'out-of-stock' || availableStock === 0 || maxAllowedQuantity === 0;
   const isInStock = !isOutOfStock;
-  const productIsLowStock = !isOutOfStock && isLowStock(purchaseProduct);
 
   // Dynamic SEO metadata & Google Product Structured Data (JSON-LD)
   usePageSeo({
@@ -754,11 +753,6 @@ export const ProductDetailPage = () => {
               <div className="w-full py-2.5 px-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center justify-center gap-2">
                 <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
                 <span>OUT OF STOCK</span>
-              </div>
-            ) : productIsLowStock ? (
-              <div className="w-full py-2.5 px-3 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold flex items-center justify-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-amber-500" />
-                <span>LOW STOCK</span>
               </div>
             ) : (
               <div className="w-full py-2 px-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-center gap-2">

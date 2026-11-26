@@ -100,6 +100,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       select: false,
     },
+    customerDiscountPercent: { type: Number, min: 0, max: 100, select: false },
     role: {
       type: String,
       enum: ['customer', 'dealer', 'admin'],

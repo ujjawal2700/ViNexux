@@ -1,3 +1,4 @@
+import { User } from '../src/models/User.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { getPublicProducts, getPublicProductById } from '../src/services/catalog.service.js';
@@ -17,6 +18,7 @@ const product = {
 };
 
 function setup(t, approved = false) {
+  t.mock.method(User, 'findById', () => ({ select: () => ({ lean: async () => null }) }));
   invalidateCategoryCache();
   t.after(invalidateCategoryCache);
   t.mock.method(Category, 'find', () => ({ sort: () => ({ lean: async () => [] }) }));

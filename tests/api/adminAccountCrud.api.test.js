@@ -132,7 +132,7 @@ test('dealer profile IDs resolve to the role-checked user for editing', async ()
 
 
 test('admin dealer creation accepts optional business details and no documents', async () => {
-  expect((await enroll({ ...input, organisationType: '', gstin: '', pan: '', aadhaarNumber: '', whatsappNumber: '', msmeNumber: '', city: '', state: '', pincode: '' }, { documents: [] })).status).toBe(201);
+  expect((await enroll({ ...input, organisationType: '', gstin: details.gstin, pan: '', aadhaarNumber: '', whatsappNumber: '', msmeNumber: '', city: '', state: '', pincode: '' }, { documents: [] })).status).toBe(201);
   expect(profiles[0].kycDocuments).toHaveLength(0);
   expect(profiles[0].status).toBe('approved');
   expect(storageService.uploadFile).not.toHaveBeenCalled();
@@ -207,7 +207,7 @@ test('conversion accepts only company name, keeps existing documents and leaves 
   lookup.mockReturnValue({ session: async () => user });
   const existing = new DealerProfile({ _id: profileId, userId, companyName: 'Old application', gstin: details.gstin, kycDocuments: [{ type: 'aadhaar', url: 'https://storage.example/original.pdf' }] });
   DealerProfile.findOne.mockReturnValue({ session: async () => existing });
-  const res = await enroll({ companyName: 'Updated company' }, { path: `/customer/${userId}/convert-to-dealer`, documents: [] });
+  const res = await enroll({ companyName: 'Updated company', gstin: details.gstin }, { path: `/customer/${userId}/convert-to-dealer`, documents: [] });
   expect(res.status).toBe(200); expect(user.role).toBe('dealer');
   expect(existing.kycDocuments[0].url).toBe('https://storage.example/original.pdf');
   expect(existing.gstin).toBe(details.gstin);
@@ -278,4 +278,17 @@ test('only super admins can edit the private dealer discount and old edit client
     expect((await request.put(`/dealer/${userId}`).set('x-role', 'admin').send({ ...input, dealerDiscountPercent })).status).toBe(200);
     expect(profile.dealerDiscountPercent).toBe(dealerDiscountPercent);
   }
+});
+
+test('admin dealer enrollment requires GSTIN even without documents', async () => {
+  for (const gstin of [undefined, '', 'invalid']) expect((await enroll({ ...input, gstin }, { documents: [] })).status).toBe(400);
+  expect(users).toHaveLength(0); expect(profiles).toHaveLength(0);
+});
+
+test('customer discount is validated and saved only by a super admin', async () => {
+  const { companyName, ...body } = input;
+  for (const customerDiscountPercent of [-1, 101, 3.123, '5']) expect((await request.post('/customer').set('x-role', 'admin').send({ ...body, customerDiscountPercent })).status).toBe(400);
+  expect((await request.post('/customer').set('x-role', 'employee').send({ ...body, customerDiscountPercent: 5 })).status).toBe(403);
+  expect((await request.post('/customer').set('x-role', 'admin').send({ ...body, customerDiscountPercent: 5 })).status).toBe(201);
+  expect(users[0].customerDiscountPercent).toBe(5);
 });

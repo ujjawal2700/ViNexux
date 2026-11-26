@@ -5,7 +5,7 @@ import { Enquiry } from '../models/Enquiry.js';
 import { invoiceOwnerFilter } from './customerInvoice.service.js';
 import { User } from '../models/User.js';
 import { AppError } from '../utils/AppError.js';
-import { transact, nextNumber, syncPayment, findSale } from './pos.service.js';
+import { transact, allocateInvoiceNumber, syncPayment, findSale } from './pos.service.js';
 import { money, calculatePosBill } from '../../../shared/posBilling.js';
 import { productLineKey } from '../../../shared/productVariants.js';
 const fail = message => { throw new AppError(message, 409, 'DELIVERY_NOTE_CONFLICT'); };
@@ -69,8 +69,8 @@ export const deliveryNoteService = {
       if (sum('total') > 100000000) fail('Choose fewer notes to keep the invoice within the supported billing limit.');
       const serials = [...items.values()].flatMap(item => item.serialNumbers);
       if (new Set(serials).size !== serials.length) fail('Duplicate serial numbers exist across the selected delivery notes. Correct the notes before invoicing.');
-      const transferred = field => notes.flatMap(note => note[field].map(entry => ({ ...entry.toObject(), requestId: `${note._id}:${entry.requestId}`, reference: `${note.deliveryNoteNumber}${entry.reference ? ` / ${entry.reference}` : ''}`, kind: 'delivery-note-transfer' })));
-      const invoice = new PosSale({ requestId, documentType: 'invoice', invoiceNumber: await nextNumber(first.seller.invoicePrefix, session), shareToken: randomBytes(32).toString('hex'),
+      const transferred = field => notes.flatMap(note => note[field].map(entry => ({ ...(entry.toObject ? entry.toObject() : entry), requestId: `${note._id}:${entry.requestId}`, reference: `${note.deliveryNoteNumber}${entry.reference ? ` / ${entry.reference}` : ''}`, kind: 'delivery-note-transfer' })));
+      const invoice = new PosSale({ requestId, documentType: 'invoice', invoiceNumber: await allocateInvoiceNumber({ ...input, billType: first.billType, documentType: 'invoice' }, first.seller.invoicePrefix, session), shareToken: randomBytes(32).toString('hex'),
         seller: first.seller, customer: first.customer, customerId: first.customerId, shipping: first.shipping, billType: first.billType,
         taxMode: first.taxMode, interstate: first.interstate, roundOff: first.roundOff, ...Object.fromEntries(totals.map(field => [field, sum(field)])),
         items: [...items.values()], taxGroups: [...groups.values()], payments: transferred('payments'), refunds: transferred('refunds'),

@@ -24,7 +24,7 @@ async function setup(page) {
     if (path.endsWith('/delivery-notes/invoice')) {
       expect(req.postDataJSON().noteIds).toEqual([noteId]);
       const remaining = calculatePosBill(note.items.filter(item => item.quantity > item.returnedQuantity).map(item => ({ ...item, quantity: item.quantity - item.returnedQuantity, returnedQuantity: 0 })), note);
-      invoice = { ...note, ...remaining, returns: [], returnedAmount: 0, _id: invoiceId, documentType: 'invoice', invoiceNumber: 'VI/26-27/000001', deliveryNoteIds: [noteId] }; note.invoiceId = invoiceId;
+      invoice = { ...note, ...remaining, returns: [], returnedAmount: 0, _id: invoiceId, documentType: 'invoice', invoiceNumber: req.postDataJSON().invoiceNumber || 'VI/26-27/000001', deliveryNoteIds: [noteId] }; note.invoiceId = invoiceId;
       return reply(invoice);
     }
     if (path.includes('/account-balances/')) return reply({ balanceDue: (invoice || note)?.balanceDue || 0, paidAmount: (invoice || note)?.paidAmount || 0, refundDue: 0, documents: invoice ? [invoice] : note ? [note] : [] });
@@ -76,10 +76,10 @@ for (const billType of ['b2c', 'b2b']) test(`${billType} dispatch note supports 
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await page.setViewportSize({ width: 1280, height: 900 });
-  await expect(page.getByRole('columnheader', { name: 'Select', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('checkbox')).toHaveCount(0);
+  await expect(page.getByRole('columnheader', { name: 'Select', exact: true })).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: 'Select VI-DN/26-27/000001', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Convert to bill', exact: true }).click();
-  const confirmation = page.getByRole('dialog', { name: `Create ${billType === 'b2b' ? 'Proforma Bill' : 'Sale Bill'}?`, exact: true });
+  const confirmation = page.getByRole('dialog', { name: `Create Tax Invoice?`, exact: true });
   await expect(confirmation).toContainText('VI-DN/26-27/000001');
   await expect(confirmation).toContainText(state.customer.name);
   expect(state.invoice()).toBeUndefined();
@@ -88,16 +88,26 @@ for (const billType of ['b2c', 'b2b']) test(`${billType} dispatch note supports 
   await page.getByRole('button', { name: 'Convert to bill', exact: true }).click();
   await confirmation.getByRole('button', { name: 'Create bill', exact: true }).click();
 
-  await expect(dialog.getByRole('heading', { name: 'VI/26-27/000001', exact: true })).toBeVisible();
+  if (billType === 'b2b') {
+    const numbering = page.getByRole('dialog', { name: 'Dealer Tax Invoice number', exact: true });
+    expect(state.invoice()).toBeUndefined();
+    await numbering.getByLabel('Invoice number *', { exact: true }).fill('DN-DEALER-001');
+    await numbering.getByRole('button', { name: 'Create Tax Invoice', exact: true }).click();
+  }
+  const number = billType === 'b2b' ? 'DN-DEALER-001' : 'VI/26-27/000001';
+  await expect(dialog.getByRole('heading', { name: number, exact: true })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByRole('button', { name: 'Sales register', exact: true }).click();
+  await expect(page.getByRole('row').filter({ hasText: number })).toContainText('Tax Invoice');
   expect(state.invoice().balanceDue).toBe(due);
   await page.goto(`/admin/customers/${customerId}`);
   const account = page.getByRole('region', { name: 'Customer account balance', exact: true });
   await expect(account.getByText(`₹${due}.00`, { exact: true }).first()).toBeVisible();
-  await expect(account.getByText(`VI/26-27/000001 · ${billType === 'b2b' ? 'Proforma Bill' : 'Sale Bill'}`, { exact: true })).toBeVisible();
+  await expect(account.getByText(`${number} · Tax Invoice`, { exact: true })).toBeVisible();
   await expect(account.getByText(/VI-DN/)).toHaveCount(0);
 });
 
-test('partial product returns remain on the note and only kept goods become a Sale Bill', async ({ page }) => {
+test('partial product returns remain on the note and only kept goods become a Tax Invoice', async ({ page }) => {
   const state = await setup(page);
   await page.goto('/admin/pos');
   await page.getByRole('button', { name: 'Delivery notes', exact: true }).click();
@@ -117,16 +127,16 @@ test('partial product returns remain on the note and only kept goods become a Sa
   await dialog.getByLabel(/Return quantity.*Delivery Camera/).fill('1');
   await dialog.getByLabel('Reason', { exact: true }).fill('One product returned');
   await dialog.getByRole('button', { name: 'Save return', exact: true }).click();
-  await expect(dialog.getByRole('button', { name: 'Convert to Sale Bill', exact: true })).toBeVisible();
-  await dialog.getByRole('button', { name: 'Convert to Sale Bill', exact: true }).click();
-  const confirmation = page.getByRole('dialog', { name: 'Create Sale Bill?', exact: true });
+  await expect(dialog.getByRole('button', { name: 'Convert to Tax Invoice', exact: true })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Convert to Tax Invoice', exact: true }).click();
+  const confirmation = page.getByRole('dialog', { name: 'Create Tax Invoice?', exact: true });
   await expect(confirmation).toContainText('₹200.00'); expect(state.invoice()).toBeUndefined();
   await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click();
   expect(state.invoice()).toBeUndefined();
-  await dialog.getByRole('button', { name: 'Convert to Sale Bill', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Convert to Tax Invoice', exact: true }).click();
   await confirmation.getByRole('button', { name: 'Create bill', exact: true }).click();
 
-  await expect(dialog.getByText(/Sale Bill/).first()).toBeVisible();
+  await expect(dialog.getByText(/Tax Invoice/).first()).toBeVisible();
   expect(state.invoice().items[0].quantity).toBe(2);
   expect(state.invoice().total).toBe(200);
   expect(state.invoice().paidAmount).toBe(50);
