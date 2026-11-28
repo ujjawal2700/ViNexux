@@ -1,9 +1,9 @@
-let latest = { status: 'checking' }, watchId = null, permission = null, permissionRequest = null;
+let latest = { status: 'unavailable' }, watchId = null, permission = null, permissionRequest = null;
 let tracking = false, generation = 0, acquiring = null;
 const listeners = new Set();
 const publish = value => { latest = value; listeners.forEach(listener => listener(value)); };
 const isFresh = () => latest.status === 'available' && Number.isFinite(latest.timestamp) && Math.abs(Date.now() - latest.timestamp) <= 2 * 60000;
-const locationError = () => Object.assign(new Error('A current location is required for employee and super-admin access. Allow location and keep device location services enabled.'), { code: 'LOCATION_REQUIRED' });
+const locationError = () => Object.assign(new Error('Location could not be shared. You can continue using the admin panel.'), { code: 'LOCATION_UNAVAILABLE' });
 const clearWatch = () => { if (watchId !== null) navigator.geolocation?.clearWatch(watchId); watchId = null; };
 const position = value => {
   if (Math.abs(value.coords?.latitude) > 90 || Math.abs(value.coords?.longitude) > 180 || value.coords?.accuracy < 0 || !Number.isFinite(value.coords?.latitude) || !Number.isFinite(value.coords?.longitude) || !Number.isFinite(value.coords?.accuracy) || !Number.isFinite(value.timestamp) || Math.abs(Date.now() - value.timestamp) > 2 * 60000) throw locationError();
@@ -22,13 +22,15 @@ async function observePermission() {
       if (!tracking) return;
       generation++; acquiring = null; clearWatch();
       if (permission.state !== 'granted') publish({ status: permission.state === 'denied' ? 'denied' : 'unavailable' });
-      else { publish({ status: 'checking' }); adminLocation.requireValid().catch(() => {}); }
+      else { publish({ status: 'checking' }); adminLocation.request().catch(() => {}); }
     };
   }).catch(() => { /* Geolocation still enforces permission without PermissionStatus. */ }).finally(() => { permissionRequest = null; });
   await permissionRequest;
 }
 export const adminLocation = {
   get: () => latest,
+  // Requests and session refreshes never trigger browser permission prompts.
+  headers: () => isFresh() ? { 'X-Admin-Location': JSON.stringify(latest) } : {},
   subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
   invalidate() { generation++; acquiring = null; clearWatch(); publish({ status: 'checking' }); },
   start() {
@@ -46,7 +48,7 @@ export const adminLocation = {
     }, { enableHighAccuracy: false, maximumAge: 30000, timeout: 12000 });
     watchId = id;
   },
-  async requireValid() {
+  async request() {
     tracking = true;
     await observePermission();
     if (!tracking) throw locationError();

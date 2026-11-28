@@ -1,4 +1,3 @@
-import AdminLocationGate from '../components/admin/AdminLocationGate';
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
@@ -6,14 +5,12 @@ import { AppShellSkeleton } from '../components/ui/Skeleton';
 import { getStoredRefreshToken } from '../utils/tokenStorage';
 
 const ProtectedRoute = ({ loginPath = '/login', portal = null }) => {
-  const { isAuthenticated, isAdminAuthenticated, isLoading, adminLocationRequired, retryAdminLocation } = useAuth();
+  const { isAuthenticated, isAdminAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
   const isAdmin = portal === 'admin' || loginPath.includes('/admin');
   const isAuthed = isAdmin ? isAdminAuthenticated : isAuthenticated;
   const hasRefreshToken = Boolean(getStoredRefreshToken(isAdmin ? 'admin' : undefined));
-
-  if (isAdmin && !isLoading && adminLocationRequired) return <AdminLocationGate onGranted={retryAdminLocation} />;
 
   // If restoring session or if a valid refresh token exists in storage, hold on skeleton instead of prematurely redirecting to login
   if (isLoading || (!isAuthed && hasRefreshToken)) {

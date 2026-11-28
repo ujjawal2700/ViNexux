@@ -119,7 +119,7 @@ apiClient.interceptors.request.use(
       delete config.headers['Content-Type'];
     }
 
-    if (isAdminEndpoint && config.url?.split('?')[0] !== '/auth/logout' && !config.url?.includes('/admin-privacy/recovery/')) config.headers['X-Admin-Location'] = JSON.stringify(await adminLocation.requireValid());
+    if (isAdminEndpoint) Object.assign(config.headers, adminLocation.headers());
 
     const method = (config.method || 'get').toLowerCase();
     const isMutation = ['post', 'put', 'patch', 'delete'].includes(method);
@@ -191,7 +191,6 @@ apiClient.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
-    if (error.response?.data?.error?.code === 'LOCATION_REQUIRED') window.dispatchEvent(new Event('admin-location-required'));
     if (error.response?.data?.error?.code === 'EMPLOYEE_SESSION_EXPIRED') notifySessionExpired('admin', error.response.data.message);
     if (error.response?.status === 423 && error.response?.data?.error?.code === 'ADMIN_PRIVACY_LOCKED') {
       window.dispatchEvent(new Event('admin-privacy-locked'));
@@ -245,7 +244,7 @@ apiClient.interceptors.response.use(
       try {
         const response = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
           refreshToken,
-        }, { headers: isAdminEndpoint ? { 'X-Admin-Location': JSON.stringify(await adminLocation.requireValid()) } : {} });
+        }, { headers: isAdminEndpoint ? adminLocation.headers() : {} });
 
         const newAccessToken = response.data?.data?.accessToken;
         const newRefreshToken = response.data?.data?.refreshToken;
@@ -264,7 +263,6 @@ apiClient.interceptors.response.use(
         }
       } catch (refreshErr) {
         processQueue(refreshErr, null);
-        if (refreshErr.code === 'LOCATION_REQUIRED' || refreshErr.response?.data?.error?.code === 'LOCATION_REQUIRED') { window.dispatchEvent(new Event('admin-location-required')); return Promise.reject(refreshErr); }
         clearStoredRefreshToken(portal);
         clearStoredUser(portal);
         setAccessToken(null, portal);

@@ -1,4 +1,3 @@
-import AdminLocationGate from '../components/admin/AdminLocationGate';
 import AdminPrivacyGuard, { useAdminPrivacy } from '../components/admin/AdminPrivacyGuard';
 import AdminArrivalAlerts from '../components/admin/AdminArrivalAlerts';
 import AdminSidebarNav from '../components/admin/AdminSidebarNav';
@@ -233,5 +232,5 @@ const AdminLayoutContent = () => {
 export default function AdminLayout() {
   const { user, adminUser } = useAuth();
   const admin = adminUser || (user?.role === 'admin' ? user : null);
-  return <AdminLocationGate><AdminPrivacyGuard admin={admin}><AdminLayoutContent /></AdminPrivacyGuard></AdminLocationGate>;
+  return <AdminPrivacyGuard admin={admin}><AdminLayoutContent /></AdminPrivacyGuard>;
 }

@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
 import { DEFAULT_WORK_SCHEDULE, employeeWorkWindow, withinWorkWindow } from '../../shared/employeeWorkSchedule.js';
 import { employeeScheduleSchema } from '../../backend/src/validators/employeeSchedule.validator.js';
-import { requireAdminLocation } from '../../backend/src/utils/adminLocation.util.js';
+import { optionalAdminLocation } from '../../backend/src/utils/adminLocation.util.js';
 const schedule = () => ({ ...structuredClone(DEFAULT_WORK_SCHEDULE), enabled: true });
 describe('employee weekly schedule in IST', () => {
   test('a 10 AM–7 PM shift opens at 9 AM, warns at 6:45 PM and closes at 7:20 PM', () => {
@@ -26,11 +26,11 @@ describe('employee weekly schedule in IST', () => {
     }
     expect(employeeScheduleSchema.safeParse(schedule()).success).toBe(true);
   });
-  test('location must be current and include valid coordinates', () => {
+  test('optional location only records current valid coordinates', () => {
     const now = new Date('2026-11-30T10:00:00+05:30');
     const location = { status: 'available', latitude: 25.18, longitude: 75.85, accuracy: 10, timestamp: now.getTime() };
-    expect(requireAdminLocation(location, now).latitude).toBe(25.18);
-    for (const patch of [{ status: 'denied' }, { latitude: 91 }, { longitude: -181 }, { accuracy: -1 }, { timestamp: now.getTime() - 301000 }]) expect(() => requireAdminLocation({ ...location, ...patch }, now)).toThrow();
-    expect(() => requireAdminLocation(null, now)).toThrow();
+    expect(optionalAdminLocation(location, now).latitude).toBe(25.18);
+    for (const patch of [{ status: 'denied' }, { latitude: 91 }, { longitude: -181 }, { accuracy: -1 }, { timestamp: now.getTime() - 301000 }]) expect(optionalAdminLocation({ ...location, ...patch }, now)).toBeUndefined();
+    expect(optionalAdminLocation(null, now)).toBeUndefined();
   });
 });

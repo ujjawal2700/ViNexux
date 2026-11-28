@@ -1,5 +1,5 @@
 import { employeeWorkService } from './employeeWork.service.js';
-import { requireAdminLocation } from '../utils/adminLocation.util.js';
+import { optionalAdminLocation } from '../utils/adminLocation.util.js';
 import { AccessRole } from '../models/AccessRole.js';
 import mongoose from 'mongoose';
 import { accessProfile } from './adminAccess.service.js';
@@ -323,7 +323,7 @@ export const authService = {
   /**
    * Generates and dispatches an OTP for signup, login, or phone-change.
    */
-  async sendOtp({ identifier, purpose = 'login', portal, password, location }) {
+  async sendOtp({ identifier, purpose = 'login', portal, password }) {
     const normalized = normalizeIdentifier(identifier);
     let smsRecipient = null, employeeCredentialId = null;
     if (!normalized) {
@@ -389,7 +389,6 @@ export const authService = {
           // ever generated/sent. No passwordHash set at all (e.g. a freshly
           // seeded admin who hasn't used /forgot-password yet) is treated
           // as a hard failure, not an open door.
-          requireAdminLocation(location);
           const passwordMatches = await employeeWorkService.verifyPassword(user, password);
           if (!passwordMatches) {
             throw new AppError(
@@ -491,7 +490,6 @@ export const authService = {
    */
   async verifyOtp({ identifier, otp, purpose = 'login', portal, reqInfo }) {
     const normalized = normalizeIdentifier(identifier);
-    if (portal === 'admin') requireAdminLocation(reqInfo?.location);
     if (!normalized || !otp) {
       throw new AppError('Identifier and OTP are required', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
     }
@@ -806,7 +804,7 @@ export const authService = {
     const refreshTokenHash = hashToken(refreshToken);
     const issuedAt = new Date();
     let sessionExpiresAt = getSessionExpiryForRole(user.role, issuedAt);
-    const loginLocation = user.role === 'admin' ? requireAdminLocation(reqInfo?.location, issuedAt) : undefined;
+    const loginLocation = user.role === 'admin' ? optionalAdminLocation(reqInfo?.location, issuedAt) : undefined;
     const work = user.role === 'admin' ? await employeeWorkService.loginWindow(user, issuedAt) : null;
     if (work) sessionExpiresAt = new Date(Math.min(sessionExpiresAt.getTime(), new Date(work.expiresAt).getTime()));
 
@@ -902,7 +900,7 @@ export const authService = {
   /**
    * Refreshes access token and rotates refresh token.
    */
-  async refreshToken({ refreshToken, location }) {
+  async refreshToken({ refreshToken }) {
     if (!refreshToken) {
       throw new AppError('Refresh token is required', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.BAD_REQUEST);
     }
@@ -935,7 +933,6 @@ export const authService = {
     }
 
     if (user.role === 'admin') {
-      requireAdminLocation(location);
       await employeeWorkService.checkSession(user, session, await accessProfile(user));
     }
 

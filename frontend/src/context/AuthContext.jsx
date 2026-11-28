@@ -24,7 +24,6 @@ export const AuthProvider = ({ children }) => {
     const refresh = getStoredRefreshToken('admin');
     return refresh ? getStoredUser('admin') : null;
   });
-  const [adminLocationRequired, setAdminLocationRequired] = useState(false);
   const [adminAccessToken, setAdminAccessTokenState] = useState(null);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -33,7 +32,6 @@ export const AuthProvider = ({ children }) => {
 
   // Helper to handle tokens & load user profile (portal: 'admin' | 'customer')
   const handleAuthSuccess = useCallback(async (tokens, portal) => {
-    if (portal === 'admin') setAdminLocationRequired(false);
     const { accessToken: newAccess, refreshToken: newRefresh, user: authUser, session } = tokens;
 
     let u = authUser || null;
@@ -112,17 +110,6 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const retryAdminLocation = useCallback(async () => {
-    try {
-      const response = await authService.refreshToken(getStoredRefreshToken('admin'), { portal: 'admin' });
-      await handleAuthSuccess(response.data, 'admin');
-    } catch (error) {
-      if (error.code === 'LOCATION_REQUIRED' || error.response?.data?.error?.code === 'LOCATION_REQUIRED') adminLocation.invalidate();
-      else notifySessionExpired('admin');
-      throw error;
-    }
-  }, [handleAuthSuccess]);
-
   // Listen for global session expiration events (e.g. forced revocation by admin)
   useEffect(() => {
     const handleSessionExpiredEvent = (e) => {
@@ -130,7 +117,6 @@ export const AuthProvider = ({ children }) => {
       const expiryMessage = e.detail?.message || 'Your session has expired. Please login again.';
       if (portal === 'admin') {
         adminLocation.stop();
-        setAdminLocationRequired(false);
         setAdminUser(null);
         setAdminAccessTokenState(null);
         setAccessToken(null, 'admin');
@@ -258,7 +244,6 @@ export const AuthProvider = ({ children }) => {
                 setAdminAccessTokenState(null);
               }
             } catch (err) {
-              if (err.code === 'LOCATION_REQUIRED' || err.response?.data?.error?.code === 'LOCATION_REQUIRED') { adminLocation.invalidate(); setAdminLocationRequired(true); return; }
               console.warn('Admin session restoration failed:', err);
               clearStoredRefreshToken('admin');
               clearStoredUser('admin');
@@ -379,7 +364,6 @@ export const AuthProvider = ({ children }) => {
     } finally {
       if (portal === 'admin') {
         adminLocation.stop();
-        setAdminLocationRequired(false);
         setAdminUser(null);
         setAdminAccessTokenState(null);
         setAccessToken(null, 'admin');
@@ -471,8 +455,6 @@ export const AuthProvider = ({ children }) => {
     adminUser,
     adminAccessToken,
     isAdminAuthenticated,
-    adminLocationRequired,
-    retryAdminLocation,
 
     isLoading,
     sessionConflict,

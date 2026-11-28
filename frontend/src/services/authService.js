@@ -1,4 +1,3 @@
-import { adminLocation } from '../utils/adminLocation';
 import apiClient from '../api/axios';
 
 export const authService = {
@@ -21,7 +20,6 @@ export const authService = {
   // `purpose` defaults to 'login' server-side; pass 'signup' for pre-account
   // contact verification during registration.
   sendOtp: async (identifier, portal, purpose, password) => {
-    if (portal === 'admin' && (!purpose || purpose === 'login')) await adminLocation.requireValid();
     const response = await apiClient.post('/auth/send-otp', {
       identifier,
       ...(portal ? { portal } : {}),
@@ -33,7 +31,6 @@ export const authService = {
 
   // Verify OTP
   verifyOtp: async (identifier, otpCode, portal) => {
-    if (portal === 'admin') await adminLocation.requireValid();
     const response = await apiClient.post('/auth/verify-otp', {
       identifier,
       otp: otpCode,
@@ -74,7 +71,6 @@ export const authService = {
 
   // Refresh Access Token
   refreshToken: async (refreshToken, options = {}) => {
-    if (options.portal === 'admin') await adminLocation.requireValid();
     const response = await apiClient.post('/auth/refresh-token', { refreshToken }, options);
     return response.data;
   },

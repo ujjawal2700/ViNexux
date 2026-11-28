@@ -32,10 +32,14 @@ try {
   const staff = [];
   for (let i = 0; i < 2; i++) staff.push(await User.create({ fullName: `Employee ${i}`, email: `office.employee${i}@example.test`, phone: `988888888${i}`, role: 'admin', isEmployee: true, accessRoleId: role._id, accountStatus: 'active', status: 'active', passwordHash: await bcrypt.hash(initialPassword, 10) }));
   const reveal = async employee => check(await api('post', `/admin/access/employees/${employee._id}/daily-password`));
-  const send = async (employee, password) => request.post('/api/auth/send-otp').send({ identifier: employee.email, portal: 'admin', password });
-  const signin = async (employee, password) => {
-    check(await send(employee, password));
-    return check(await request.post('/api/auth/verify-otp').send({ identifier: employee.email, portal: 'admin', otp: config.mockOtpCode }));
+  const send = (employee, password) => request.post('/api/auth/send-otp').send({ identifier: employee.email, portal: 'admin', password });
+  const signin = async (employee, password, shareLocation = true) => {
+    const otpRequest = send(employee, password);
+    if (!shareLocation) otpRequest.set('X-Test-No-Admin-Location', '1');
+    check(await otpRequest);
+    const verifyRequest = request.post('/api/auth/verify-otp').send({ identifier: employee.email, portal: 'admin', otp: config.mockOtpCode });
+    if (!shareLocation) verifyRequest.set('X-Test-No-Admin-Location', '1');
+    return check(await verifyRequest);
   };
   assert.equal((await reveal(staff[0])).available, false, 'No password is issued before 8 AM');
   assert.equal(await EmployeeWorkCredential.countDocuments(), 0);
@@ -58,7 +62,10 @@ try {
   check(await api('put', '/auth/profile', staff[0], employeeSession).send({ currentPassword: first.password, newPassword: 'PermanentOverride123!' }), 403);
   clock('2026-11-30T12:00:00+05:30');
   check(await api('post', '/auth/logout', staff[0], employeeSession));
-  const again = await signin(staff[0], first.password);
+  const again = await signin(staff[0], first.password, false);
+  assert.equal((await Session.findOne({ sessionId: again.session.sessionId })).loginLocation, undefined);
+  const refreshed = check(await request.post('/api/auth/refresh-token').set('X-Test-No-Admin-Location', '1').send({ refreshToken: again.refreshToken }));
+  again.refreshToken = refreshed.refreshToken;
   assert.notEqual(again.session.sessionId, employeeSession.sessionId, 'Early sign-out keeps the day password usable');
   const active = await Session.findOne({ sessionId: again.session.sessionId });
   clock('2026-11-30T18:45:00+05:30');
@@ -95,17 +102,17 @@ try {
   check(await request.post('/api/auth/verify-otp').send({ identifier: staff[0].email, portal: 'admin', otp: config.mockOtpCode }), 401);
   clock('2026-12-06T10:00:00+05:30'); await employeeWorkService.tick();
   assert.equal((await reveal(staff[0])).window.working, false); check(await send(staff[0], changed.password), 403);
-  // Location enforcement applies to both administrator types, not storefront sessions.
+  // Missing, denied, invalid and stale locations do not block admin access.
   for (const location of [null, { status: 'denied' }, { status: 'available', latitude: 91, longitude: 75, accuracy: 10, timestamp: Date.now() }, { status: 'available', latitude: 25, longitude: 75, accuracy: 10, timestamp: Date.now() - 3600000 }]) {
     const req = api('get', '/admin/access/self');
     if (location) req.set('X-Admin-Location', JSON.stringify(location)); else req.set('X-Test-No-Admin-Location', '1');
-    check(await req, 403);
+    check(await req);
   }
-  check(await request.post('/api/auth/send-otp').set('X-Test-No-Admin-Location', '1').send({ identifier: owner.email, portal: 'admin', password: initialPassword }), 403);
+  check(await request.post('/api/auth/send-otp').set('X-Test-No-Admin-Location', '1').send({ identifier: owner.email, portal: 'admin', password: initialPassword }));
   const customer = await User.create({ fullName: 'Customer', email: 'location.customer@example.test', phone: '9777777777', role: 'customer', accountStatus: 'active', status: 'active' });
   const customerSession = await Session.create({ userId: customer._id, userType: 'customer', sessionId: randomUUID(), issuedAt: new Date(), createdAt: new Date(), expiresAt: new Date(Date.now() + 3600000) });
   check(await api('get', '/auth/me', customer, customerSession).set('X-Test-No-Admin-Location', '1'));
-  console.log('Employee work integration passed: per-day timetables, 8 AM unique encrypted passwords, one-hour early login, cutoff/refresh enforcement, password disposal, early logout reuse, schedule edits, OTP binding and mandatory admin location.');
+  console.log('Employee work integration passed: per-day timetables, 8 AM unique encrypted passwords, one-hour early login, cutoff/refresh enforcement, password disposal, early logout reuse, schedule edits, OTP binding and optional admin location.');
 } finally {
   mock.timers.reset();
   if (connected) await mongoose.connection.dropDatabase();

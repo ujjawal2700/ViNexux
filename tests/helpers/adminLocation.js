@@ -2,8 +2,8 @@ import http from 'node:http';
 import supertest from 'supertest';
 if (process.env.NODE_ENV !== 'test') throw new Error('Test location fixtures must never run outside tests.');
 const original = supertest.Test.prototype.end;
-// Admin APIs now require a current location on every request. Individual security
-// tests opt out explicitly; this changes only the test HTTP client, never the server.
+// Supply optional audit locations for tests that inspect location metadata.
+// Tests can opt out explicitly; this fixture never changes server requirements.
 supertest.Test.prototype.end = function (callback) {
   const omit = this.getHeader('X-Test-No-Admin-Location');
   if (!omit && !this.getHeader('X-Admin-Location')) this.set('X-Admin-Location', JSON.stringify({ status: 'available', latitude: 25.18, longitude: 75.85, accuracy: 10, timestamp: Date.now() }));

@@ -1,5 +1,4 @@
 import { employeeWorkService } from '../services/employeeWork.service.js';
-import { requireAdminLocation } from '../utils/adminLocation.util.js';
 import { randomUUID } from 'node:crypto';
 import { auditContext, readAuditLocation } from '../audit/audit.js';
 import { accessProfile } from '../services/adminAccess.service.js';
@@ -86,7 +85,6 @@ export const authenticate = async (req, res, next) => {
     }
 
     const route = (req.originalUrl || '').split('?')[0];
-    if (user.role === 'admin' && route !== '/api/auth/logout') requireAdminLocation(readAuditLocation(req.headers));
     const adminAccess = await accessProfile(user);
     if (user.role === 'admin' && route !== '/api/auth/logout') await employeeWorkService.checkSession(user, session, adminAccess);
 

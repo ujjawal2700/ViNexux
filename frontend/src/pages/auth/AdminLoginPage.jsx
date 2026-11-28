@@ -142,9 +142,9 @@ const AdminLoginPage = () => {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Location permission is mandatory for employees and super admins. Your OTP will be sent by SMS to the mobile number registered on your administrator account.
+            Location sharing is optional. Your OTP will be sent by SMS to the mobile number registered on your administrator account.
           </p>
-          <button type="button" className="text-xs font-semibold text-primary underline" onClick={() => adminLocation.requireValid().then(() => setError(null)).catch(error => setError(error.message))}>Enable location for admin sign-in</button>
+          <button type="button" className="text-xs font-semibold text-primary underline" onClick={() => adminLocation.request().then(() => setError(null)).catch(error => setError(error.message))}>Share location (optional)</button>
           <Button
             type="submit"
             variant="primary"

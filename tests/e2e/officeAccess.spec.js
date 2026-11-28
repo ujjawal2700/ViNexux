@@ -83,35 +83,36 @@ test('super admin manages weekday hours per role and privately reveals the emplo
   await expect(page.getByText('AshaUniqueDaily-123456', { exact: true })).toHaveCount(0);
 });
 
-test('mandatory location blocks admin restore until permission is granted', async ({ page }) => {
-  await mockApi(page); await seedBrowserSession(page, 'admin'); let refreshes = 0;
+test('admin restore and idle navigation work without requesting location', async ({ page }) => {
+  await mockApi(page); await seedBrowserSession(page, 'admin');
+  await page.clock.install();
+  let refreshes = 0;
   page.on('request', request => { if (new URL(request.url()).pathname.endsWith('/auth/refresh-token')) refreshes++; });
   await page.addInitScript(() => {
-    navigator.geolocation.getCurrentPosition = (_ok, fail) => fail({ code: 1 });
-    navigator.geolocation.watchPosition = (_ok, fail) => { setTimeout(() => fail({ code: 1 }), 0); return 1; };
+    window.locationRequests = 0;
+    navigator.geolocation.getCurrentPosition = (_ok, fail) => { window.locationRequests++; fail({ code: 1 }); };
+    navigator.geolocation.watchPosition = (_ok, fail) => { window.locationRequests++; fail({ code: 1 }); return 1; };
   });
   await page.goto('/admin/dashboard');
-  await expect(page.getByRole('heading', { name: 'Location access required', exact: true })).toBeVisible();
-  expect(refreshes).toBe(0); await expect(page.getByRole('link', { name: 'Admin Dashboard', exact: true })).toHaveCount(0);
-  await page.evaluate(() => {
-    const position = () => ({ coords: { latitude: 25.18, longitude: 75.85, accuracy: 10 }, timestamp: Date.now() });
-    navigator.geolocation.getCurrentPosition = ok => ok(position()); navigator.geolocation.watchPosition = ok => { ok(position()); return 2; };
-  });
-  await page.getByRole('button', { name: 'Enable location', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Lock admin panel (F8)' })).toBeVisible(); expect(refreshes).toBeGreaterThan(0);
+  await expect(page.getByRole('button', { name: 'Lock admin panel (F8)' })).toBeVisible();
+  expect(refreshes).toBeGreaterThan(0);
+  await page.clock.fastForward('06:00');
+  await page.getByRole('link', { name: 'Product Catalog', exact: true }).first().click();
+  await expect(page).toHaveURL(/admin\/products/);
+  await expect(page.getByRole('dialog', { name: 'Mandatory admin location' })).toHaveCount(0);
+  expect(await page.evaluate(() => window.locationRequests)).toBe(0);
 });
 
-test('revoking location hides the workspace and restoring it preserves an open draft', async ({ page, context }) => {
+test('revoking optional location preserves an open admin draft', async ({ page, context }) => {
   await mockApi(page); await seedBrowserSession(page, 'admin'); await page.goto('/admin/pos');
+  await page.getByRole('button', { name: 'Share location (optional)', exact: true }).click();
+  await expect(page.getByText(/Audit location enabled/)).toBeVisible();
   await page.getByRole('button', { name: /E2E Product E2E-001/ }).click();
   await page.getByRole('button', { name: /Add customer details/ }).click();
   await page.getByRole('dialog').getByLabel('Customer name *', { exact: true }).fill('Keep my office draft');
   await context.clearPermissions();
-  const gate = page.getByRole('dialog', { name: 'Mandatory admin location', exact: true });
-  await expect(gate).toBeVisible();
-  await context.grantPermissions(['geolocation']);
-  // Granting permission now recovers automatically without another Enable click.
-  await expect(gate).toHaveCount(0);
+  await expect(page.getByText(/Location sharing is optional/)).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Mandatory admin location', exact: true })).toHaveCount(0);
   await expect(page.getByRole('dialog').getByLabel('Customer name *', { exact: true })).toHaveValue('Keep my office draft');
 });
 
@@ -145,6 +146,8 @@ test('a temporary location watch timeout does not reopen the enable-location scr
   });
   await page.goto('/admin/dashboard');
   await expect(page.getByRole('button', { name: 'Lock admin panel (F8)' })).toBeVisible();
+  await page.getByRole('button', { name: 'Share location (optional)', exact: true }).click();
+  await expect(page.getByText(/Audit location enabled/)).toBeVisible();
   await page.evaluate(() => window.officeWatchError({ code: 3 }));
   await expect(page.getByRole('dialog', { name: 'Mandatory admin location', exact: true })).toHaveCount(0);
   await page.getByRole('link', { name: /Offline POS billing/i }).first().click();
